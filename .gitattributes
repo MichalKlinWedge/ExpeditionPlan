@@ -1,0 +1,9 @@
+# Nowe pliki tekstowe z końcami linii LF.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary
+*.docx binary
+*.pmtiles binary

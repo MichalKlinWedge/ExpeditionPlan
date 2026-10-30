@@ -1,0 +1,103 @@
+{
+  "title": "Barcelona 5–7 grudnia",
+  "goal": "Mecz FC Barcelona – Celta Vigo w niedzielę, a wokół niego najważniejsze widoki i zabytki: Bunkry del Carmel, Sagrada Família w środku, zachód słońca na Montjuïc, Gotyk i El Born.",
+  "location": {
+    "kind": "city",
+    "countries": [
+      "ES"
+    ],
+    "places": [
+      "Barcelona"
+    ]
+  },
+  "dates": {
+    "kind": "fixed",
+    "start": "2026-12-05",
+    "end": "2026-12-07"
+  },
+  "profiles": [
+    "sightseeing",
+    "sport"
+  ],
+  "travelers": [
+    {
+      "name": "Uczestnik 1",
+      "notes": "Skład grupy nie wynika z dokumentu (forma „wy”) — do uzupełnienia."
+    },
+    {
+      "name": "Uczestnik 2"
+    }
+  ],
+  "transport": [
+    "flight",
+    "public",
+    "walk"
+  ],
+  "budget": {
+    "level": "medium",
+    "currency": "EUR"
+  },
+  "constraints": {
+    "pace": "intense",
+    "notes": [
+      "Ostatni dzień: wylot 09:45 z T2, wyjście z noclegu ok. 07:15."
+    ]
+  },
+  "fixed": [
+    {
+      "kind": "flight",
+      "title": "Przylot do Barcelony",
+      "status": "booked",
+      "from": "Wrocław",
+      "to": "BCN T2",
+      "endLocal": "2026-12-05T09:00",
+      "endTz": "Europe/Madrid",
+      "note": "Godzina wylotu z Wrocławia nie wynika z dokumentu."
+    },
+    {
+      "kind": "flight",
+      "title": "Wylot do Wrocławia",
+      "status": "booked",
+      "provider": "Wizz Air",
+      "reference": "W6 1812",
+      "from": "BCN T2",
+      "to": "Wrocław",
+      "startLocal": "2026-12-07T09:45",
+      "startTz": "Europe/Madrid",
+      "endLocal": "2026-12-07T12:35",
+      "endTz": "Europe/Warsaw"
+    },
+    {
+      "kind": "event",
+      "title": "Mecz FC Barcelona – Celta Vigo",
+      "status": "booked",
+      "place": "Camp Nou (metro L3 Les Corts / Palau Reial)",
+      "startLocal": "2026-12-06T17:00",
+      "startTz": "Europe/Madrid",
+      "note": "Bramki i kontrola zajmują czas; duże torby i plecaki mogą nie przejść."
+    },
+    {
+      "kind": "lodging",
+      "title": "Nocleg u znajomej",
+      "status": "booked",
+      "place": "okolice Jaume I (Gotyk)",
+      "startLocal": "2026-12-05T20:00",
+      "startTz": "Europe/Madrid",
+      "endLocal": "2026-12-07T11:00",
+      "endTz": "Europe/Madrid",
+      "note": "Zameldowanie wieczorem — późne albo samodzielne wejście do ustalenia; plecaki rano u gospodyni albo w skrytce przy Pl. Catalunya."
+    }
+  ],
+  "mustSee": [
+    "Bunkry del Carmel",
+    "Sagrada Família (wnętrze)",
+    "Montjuïc o zachodzie słońca (tarasy MNAC)",
+    "Dach Arenas",
+    "Gotyk, El Born, Santa Maria del Mar",
+    "Barça Store (koszulki przed meczem)"
+  ],
+  "notes": [
+    "6.12 to święto (Dzień Konstytucji) — większość sklepów zamknięta; pierwsza niedziela miesiąca — wiele muzeów gratis.",
+    "Komunikacja na bilecie T-casual."
+  ]
+}

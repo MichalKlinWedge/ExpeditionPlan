@@ -1,0 +1,79 @@
+{
+  "title": "Gruzja 2027",
+  "goal": "Najpierw góry Swanetii (Mestia, Uszguli, trekking do jezior Koruldi), potem odpoczynek nad morzem z basenem. Trzy bazy zamiast codziennych przeprowadzek.",
+  "location": {
+    "kind": "base_camps",
+    "countries": ["GE"],
+    "places": ["Kutaisi", "Zugdidi", "Mestia", "Szekwetili"]
+  },
+  "dates": { "kind": "fixed", "start": "2027-08-04", "end": "2027-08-15" },
+  "profiles": ["trekking", "relax", "sightseeing", "family"],
+  "travelers": [
+    { "name": "Uczestnik 1", "notes": "Dokument mówi o 5 osobach, ceny liczone dla 5 dorosłych, ale wspomina łóżka dla dzieci i plac zabaw — wieki do uzupełnienia." },
+    { "name": "Uczestnik 2" },
+    { "name": "Uczestnik 3" },
+    { "name": "Uczestnik 4" },
+    { "name": "Uczestnik 5" }
+  ],
+  "transport": ["flight", "rental_car", "hired_driver", "walk"],
+  "budget": { "level": "medium", "currency": "PLN" },
+  "constraints": {
+    "pace": "normal",
+    "notes": [
+      "Dni w górach (6–9.08) zamieniać kolejnością według pogody.",
+      "Przylot późnym wieczorem — pierwszy dzień tylko dojazd do Zugdidi."
+    ]
+  },
+  "fixed": [
+    {
+      "kind": "flight",
+      "title": "Wrocław → Kutaisi",
+      "provider": "Wizz Air",
+      "from": "Wrocław",
+      "to": "Kutaisi",
+      "startLocal": "2027-08-04T15:40",
+      "startTz": "Europe/Warsaw",
+      "endLocal": "2027-08-04T21:10",
+      "endTz": "Asia/Tbilisi",
+      "note": "Status rezerwacji nie wynika z dokumentu."
+    },
+    {
+      "kind": "flight",
+      "title": "Kutaisi → Wrocław",
+      "provider": "Wizz Air",
+      "from": "Kutaisi",
+      "to": "Wrocław",
+      "startLocal": "2027-08-15T21:45",
+      "startTz": "Asia/Tbilisi",
+      "endLocal": "2027-08-15T23:30",
+      "endTz": "Europe/Warsaw"
+    },
+    {
+      "kind": "car_rental",
+      "title": "Minivan 7-osobowy",
+      "status": "candidate",
+      "from": "Lotnisko Kutaisi",
+      "to": "Lotnisko Kutaisi",
+      "startLocal": "2027-08-04T21:30",
+      "startTz": "Asia/Tbilisi",
+      "endLocal": "2027-08-15T19:00",
+      "endTz": "Asia/Tbilisi",
+      "note": "Do ustalenia; odbiór na lotnisku ok. 21:30."
+    }
+  ],
+  "mustSee": [
+    "Kolejka na Hacwali",
+    "Lodowiec Czalaadi",
+    "Uszguli i lodowiec Szchara",
+    "Jeziora Koruldi",
+    "Kanion Martwili",
+    "Park Narodowy Kolchidy",
+    "Jaskinia Prometeusza"
+  ],
+  "avoid": ["Wjazd do centrum Batumi"],
+  "notes": [
+    "Noclegi: 1 noc Zugdidi, 5 nocy Mestia, 5 nocy nad morzem (Szekwetili/Ureki).",
+    "Apartament z basenem nad morzem rezerwować zimą — szczyt sezonu.",
+    "W poniedziałki jaskinie, kaniony i muzea zwykle zamknięte."
+  ]
+}

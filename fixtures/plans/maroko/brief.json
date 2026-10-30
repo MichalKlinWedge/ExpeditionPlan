@@ -1,0 +1,76 @@
+{
+  "title": "Maroko w cztery noce",
+  "goal": "Cztery noce w czterech różnych miejscach: medyna Marakeszu, pustynia, wydmy i ocean. Jazda rozłożona na wszystkie dni, żaden dzień nie dłuższy niż ok. 3 h za kierownicą.",
+  "location": {
+    "kind": "route",
+    "countries": ["MA"],
+    "places": ["Agadir", "Marakesz", "pustynia Agafay", "Essaouira", "Sidi Kaouki", "Taghazout"]
+  },
+  "dates": { "kind": "fixed", "start": "2026-12-26", "end": "2026-12-30" },
+  "profiles": ["road_trip", "sightseeing", "family", "relax"],
+  "travelers": [
+    { "name": "Dorosły 1", "household": "rodzina", "isDriver": true },
+    { "name": "Dorosły 2", "household": "rodzina" },
+    { "name": "Dorosły 3", "household": "rodzina" },
+    { "name": "Nastolatek", "age": 16, "household": "rodzina" },
+    { "name": "Dziecko", "age": 10, "household": "rodzina", "notes": "152 cm — bez podkładki w aucie." }
+  ],
+  "transport": ["flight", "rental_car", "walk"],
+  "budget": { "level": "medium", "currency": "PLN" },
+  "constraints": {
+    "pace": "normal",
+    "maxDrivingMinPerDay": 180,
+    "noDrivingAfterDark": true,
+    "notes": [
+      "Powrót przed sylwestrem — piątej nocy nie ma.",
+      "Odbiór i zwrot auta na lotnisku w Agadirze."
+    ]
+  },
+  "fixed": [
+    {
+      "kind": "flight",
+      "title": "Wrocław → Agadir",
+      "status": "paid",
+      "provider": "Ryanair",
+      "from": "Wrocław",
+      "to": "Agadir Al Massira",
+      "startLocal": "2026-12-26T06:10",
+      "startTz": "Europe/Warsaw",
+      "endLocal": "2026-12-26T09:55",
+      "endTz": "Africa/Casablanca",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 377500,
+        "maxMinor": 377500,
+        "note": "Obie strony, 5 osób, z podatkami, bez bagażu rejestrowanego.",
+        "checkedAt": "2026-10-10"
+      }
+    },
+    {
+      "kind": "flight",
+      "title": "Agadir → Wrocław",
+      "status": "paid",
+      "provider": "Ryanair",
+      "from": "Agadir Al Massira",
+      "to": "Wrocław",
+      "startLocal": "2026-12-30T10:15",
+      "startTz": "Africa/Casablanca",
+      "endLocal": "2026-12-30T15:50",
+      "endTz": "Europe/Warsaw",
+      "note": "Cena w pozycji lotu tam."
+    }
+  ],
+  "mustSee": [
+    "Dżami al-Fna o zmierzchu",
+    "Medersa Ben Youssefa",
+    "Pałac Bahia",
+    "Noc w obozie na pustyni Agafay (wielbłądy, quady)",
+    "Essaouira: mury i port",
+    "Wydmy w Sidi Kaouki nad oceanem"
+  ],
+  "notes": [
+    "Jeden bagaż rejestrowany 20 kg na piątkę, reszta w torbach pod fotel.",
+    "Dirham to waluta zamknięta — gotówka z bankomatu na lotnisku; bramki, kasy i obozy tylko gotówką."
+  ]
+}

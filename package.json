@@ -1,0 +1,20 @@
+{
+  "name": "expeditionplan",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "web": "npm run dev --workspace apps/web",
+    "mobile": "npm run start --workspace apps/mobile",
+    "supabase": "npx --yes supabase@2.122.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

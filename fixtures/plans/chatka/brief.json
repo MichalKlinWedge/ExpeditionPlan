@@ -1,0 +1,108 @@
+{
+  "title": "Chatka Sylwestrowa",
+  "goal": "Nocka w Chatce Sylwestrowej to główna atrakcja — cały plan jest podporządkowany temu, żeby miejsce w chatce było nasze. Do tego zdobycie Jagodnej (Korona Gór Polski) z wieżą widokową. Wyprawa młodych zdobywców.",
+  "location": {
+    "kind": "outdoor",
+    "countries": [
+      "PL"
+    ],
+    "places": [
+      "Przełęcz Spalona",
+      "Chatka Sylwestrowa",
+      "Jagodna (977 m n.p.m.)",
+      "Góry Bystrzyckie"
+    ],
+    "pins": [
+      {
+        "name": "Parking na Przełęczy Spalonej (schronisko PTTK „Jagodna”)",
+        "lat": 50.2767,
+        "lng": 16.5373
+      }
+    ]
+  },
+  "dates": {
+    "kind": "fixed",
+    "start": "2026-10-24",
+    "end": "2026-10-25"
+  },
+  "profiles": [
+    "trekking",
+    "family"
+  ],
+  "travelers": [
+    {
+      "name": "Dorosły A",
+      "household": "A"
+    },
+    {
+      "name": "Dziecko A1",
+      "household": "A"
+    },
+    {
+      "name": "Dorosły B",
+      "household": "B"
+    },
+    {
+      "name": "Dziecko B1",
+      "household": "B"
+    },
+    {
+      "name": "Dorosły C",
+      "household": "C"
+    },
+    {
+      "name": "Dziecko C1",
+      "household": "C"
+    },
+    {
+      "name": "Dziecko C2",
+      "household": "C"
+    },
+    {
+      "name": "Dziecko C3",
+      "age": 5,
+      "household": "C",
+      "notes": "Najmłodszy, wyznacza tempo. W dokumencie raz jako 5, raz jako 6 lat."
+    },
+    {
+      "name": "Dorosły D",
+      "household": "D"
+    },
+    {
+      "name": "Dziecko D1",
+      "household": "D"
+    },
+    {
+      "name": "Dorosły E",
+      "household": "E"
+    }
+  ],
+  "transport": [
+    "own_car",
+    "walk"
+  ],
+  "budget": {
+    "level": "low",
+    "currency": "PLN"
+  },
+  "constraints": {
+    "pace": "calm",
+    "notes": [
+      "Być w chatce najpóźniej o 14:00–15:00 w sobotę — chatka jest bez rezerwacji, kto pierwszy, ten lepszy.",
+      "Decyzja o Planie B (schronisko PTTK „Jagodna”) najpóźniej o 15:00, żeby wracać za dnia.",
+      "W chatce nie ma prądu, wody ani toalety — wszystko wnosimy i wynosimy.",
+      "Start z Wrocławia (do potwierdzenia), dojazd ok. 130 km, 2:15–2:30."
+    ]
+  },
+  "fixed": [],
+  "mustSee": [
+    "Nocka w Chatce Sylwestrowej",
+    "Jagodna 977 m n.p.m. z 23-metrową wieżą widokową",
+    "Skrzynka geocachingowa „Chatka Sylwestrowa” (OP83LW)"
+  ],
+  "notes": [
+    "Grupa: 5 dorosłych i 6 dzieci w wieku 5–13 lat.",
+    "W nocy 24/25.10 zmiana czasu na zimowy (3:00 → 2:00).",
+    "Chatka nie leży na szlaku pieszym i nie ma jej na każdej mapie — punkt i ślad muszą być w telefonie offline."
+  ]
+}

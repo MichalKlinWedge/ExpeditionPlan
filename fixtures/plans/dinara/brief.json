@@ -1,0 +1,123 @@
+{
+  "title": "Dinara 1831 m n.p.m.",
+  "goal": "Zdobycie najwyższego szczytu Chorwacji (Korona Europy) via ferratą. Eksplorować maksymalnie dużo w jak najkrótszym czasie.",
+  "location": {
+    "kind": "region",
+    "countries": [
+      "HR"
+    ],
+    "places": [
+      "Zadar",
+      "Tulove Grede",
+      "via ferrata Čikola",
+      "Szybenik",
+      "Dinara"
+    ]
+  },
+  "dates": {
+    "kind": "fixed",
+    "start": "2026-04-24",
+    "end": "2026-04-26"
+  },
+  "profiles": [
+    "trekking",
+    "sport"
+  ],
+  "travelers": [
+    {
+      "name": "Uczestnik 1"
+    },
+    {
+      "name": "Uczestnik 2"
+    },
+    {
+      "name": "Uczestnik 3"
+    },
+    {
+      "name": "Uczestnik 4"
+    },
+    {
+      "name": "Uczestnik 5"
+    }
+  ],
+  "transport": [
+    "flight",
+    "rental_car",
+    "walk"
+  ],
+  "budget": {
+    "level": "low",
+    "currency": "PLN"
+  },
+  "constraints": {
+    "pace": "intense",
+    "notes": [
+      "Sobota: śniadanie 5:30, godzina „zero” wyjazdu z Szybenika do ustalenia; trasa ferratą na Dinarę ok. 9 h.",
+      "Powrót z ferraty Čikola po zmroku — czołówki obowiązkowe."
+    ]
+  },
+  "fixed": [
+    {
+      "kind": "flight",
+      "title": "Wrocław → Zadar",
+      "status": "booked",
+      "provider": "Ryanair",
+      "from": "Wrocław",
+      "to": "Zadar",
+      "startLocal": "2026-04-24T11:20",
+      "startTz": "Europe/Warsaw",
+      "endLocal": "2026-04-24T12:55",
+      "endTz": "Europe/Zagreb",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_person",
+        "minMinor": 40000,
+        "maxMinor": 40000,
+        "approx": true,
+        "note": "Szacunek z dokumentu, obie strony; bagaż rejestrowany osobno ok. 140 zł."
+      }
+    },
+    {
+      "kind": "flight",
+      "title": "Zadar → Wrocław",
+      "status": "booked",
+      "provider": "Ryanair",
+      "from": "Zadar",
+      "to": "Wrocław",
+      "startLocal": "2026-04-26T14:40",
+      "startTz": "Europe/Zagreb",
+      "endLocal": "2026-04-26T16:15",
+      "endTz": "Europe/Warsaw"
+    },
+    {
+      "kind": "car_rental",
+      "title": "Wynajem auta",
+      "status": "booked",
+      "from": "Lotnisko Zadar",
+      "to": "Lotnisko Zadar",
+      "startLocal": "2026-04-24T13:30",
+      "startTz": "Europe/Zagreb",
+      "endLocal": "2026-04-26T12:30",
+      "endTz": "Europe/Zagreb",
+      "note": "Voucher w dokumencie (link do Google Drive), a jednocześnie „wynajem auta” na liście TODO — do wyjaśnienia."
+    },
+    {
+      "kind": "lodging",
+      "title": "2 noclegi w okolicy Szybenika",
+      "status": "candidate",
+      "place": "Szybenik, ok. 15 min do centrum",
+      "note": "Link do Booking w dokumencie; na liście TODO nadal „zabookowanie noclegów”."
+    }
+  ],
+  "mustSee": [
+    "Via ferrata na Dinarę",
+    "Tulove Grede",
+    "Via ferrata Čikola",
+    "Zadar"
+  ],
+  "notes": [
+    "Sprzęt ferratowy: uprząż, lonża, kask, rękawiczki, czołówka.",
+    "Wariant awaryjny: wejście na Dinarę bez ferraty.",
+    "eSIM na Bośnię (trasa przy granicy)."
+  ]
+}
