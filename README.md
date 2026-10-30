@@ -15,6 +15,7 @@ Planowanie wyjazdów z pomocą AI na dużym ekranie (**Planner Hub**, web) i prz
 | `apps/mobile` | Expo SDK 58 — Pocket Guide (tylko Android) |
 | `packages/core` | czysty TS: schematy Zod domeny, później silnik harmonogramu i ograniczeń |
 | `packages/ai` | dostawcy LLM (Claude, Gemini, OpenAI) za jednym klientem, odpowiedzi walidowane schematem |
+| `tools/import-plan` | CLI: import planu DOCX/PDF przez AI do `TripDocument` i porównanie ze wzorcem |
 | `supabase/` | konfiguracja, migracje, Edge Functions, testy RLS |
 | `fixtures/plans/` | plany referencyjne (`brief.json`, później `plan.json`) |
 
@@ -39,6 +40,14 @@ npx eas-cli@latest build -p android --profile development
 ```
 
 Sekrety: skopiuj `.env.example` do `.env.local` i uzupełnij.
+
+Import istniejącego planu przez AI (potrzebny klucz w `.env.local`):
+
+```bash
+npm run import-plan -- exaples/plan.docx --out plan.json --compare fixtures/plans/maroko/plan.json
+```
+
+Sam tekst wyciągnięty z dokumentu, bez AI: dodaj `--text-only`.
 
 ## Kontrola jakości
 

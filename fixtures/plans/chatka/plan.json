@@ -1,0 +1,2144 @@
+{
+  "schemaVersion": 1,
+  "trip": {
+    "title": "Chatka Sylwestrowa",
+    "subtitle": "Jagodna 977 m n.p.m. • Góry Bystrzyckie — wyprawa młodych zdobywców, 24–25 października 2026",
+    "goal": "Nocka w Chatce Sylwestrowej (ok. 780 m n.p.m., zachodnie zbocza Masywu Jagodnej) — to główna atrakcja wyjazdu, nie dodatek do trasy. Cały plan jest podporządkowany temu, żeby miejsce w chatce było nasze. Chatka jest niekomercyjna, bezpłatna i bez rezerwacji — kto pierwszy, ten lepszy. Dlatego twardy cel: być w chatce najpóźniej o 14:00–15:00 w sobotę, zająć prycze, narąbać drewna na całą noc i rozpalić kozę, zanim zrobi się ciemno (zachód słońca 17:45). Poza tym: zdobycie Jagodnej (977 m n.p.m., Korona Gór Polski) z 23-metrową wieżą widokową oraz krótka trasa po okolicy. Dla 5-letniego Dziecka C3 to maksimum — nie przeciągamy kilometrów.",
+    "summary": "Grupa: 11 osób — 5 dorosłych i 6 dzieci w wieku 5–13 lat. Własny prowiant, gotowanie na miejscu. W chatce nie ma prądu, wody ani toalety — wszystko wnosimy i wynosimy. 24–25 października 2026 (sobota–niedziela), jedna noc.",
+    "startDate": "2026-10-24",
+    "endDate": "2026-10-25",
+    "primaryTz": "Europe/Warsaw",
+    "homeTz": "Europe/Warsaw",
+    "baseCurrency": "PLN"
+  },
+  "travelers": [
+    {
+      "ref": "dorosly-a",
+      "name": "Dorosły A",
+      "household": "A"
+    },
+    {
+      "ref": "dziecko-a1",
+      "name": "Dziecko A1",
+      "household": "A",
+      "guardianRef": "dorosly-a",
+      "notes": "Jeden z młodszych — do śpiwora o 22:30."
+    },
+    {
+      "ref": "dorosly-b",
+      "name": "Dorosły B",
+      "household": "B"
+    },
+    {
+      "ref": "dziecko-b1",
+      "name": "Dziecko B1",
+      "household": "B",
+      "guardianRef": "dorosly-b",
+      "notes": "Jedno z najstarszych dzieci — może realnie pomóc przy drewnie i nieść pełny plecak. W szpicy."
+    },
+    {
+      "ref": "dorosly-c",
+      "name": "Dorosły C",
+      "household": "C"
+    },
+    {
+      "ref": "dziecko-c1",
+      "name": "Dziecko C1",
+      "household": "C",
+      "guardianRef": "dorosly-c",
+      "notes": "Jedno z najstarszych dzieci — może realnie pomóc przy drewnie i nieść pełny plecak."
+    },
+    {
+      "ref": "dziecko-c2",
+      "name": "Dziecko C2",
+      "household": "C",
+      "guardianRef": "dorosly-c",
+      "notes": "Jeden z młodszych — do śpiwora o 22:30."
+    },
+    {
+      "ref": "dziecko-c3",
+      "name": "Dziecko C3",
+      "age": 5,
+      "household": "C",
+      "guardianRef": "dorosly-c",
+      "notes": "Najmłodszy — pod niego kalibrujemy tempo i długość tras. W dokumencie raz jako 5 lat (Założenia, Uczestnicy), raz jako 6 lat (Trasy, Bezpieczeństwo). Do śpiwora o 22:30."
+    },
+    {
+      "ref": "dorosly-d",
+      "name": "Dorosły D",
+      "household": "D"
+    },
+    {
+      "ref": "dziecko-d1",
+      "name": "Dziecko D1",
+      "household": "D",
+      "guardianRef": "dorosly-d",
+      "notes": "Jedno z najstarszych dzieci — może realnie pomóc przy drewnie i nieść pełny plecak. W szpicy."
+    },
+    {
+      "ref": "dorosly-e",
+      "name": "Dorosły E",
+      "household": "E"
+    }
+  ],
+  "places": [
+    {
+      "ref": "wroclaw",
+      "name": "Wrocław",
+      "category": "city",
+      "notes": "Punkt startu — do potwierdzenia, czy wszyscy startują z Wrocławia."
+    },
+    {
+      "ref": "bystrzyca",
+      "name": "Bystrzyca Kłodzka",
+      "category": "town",
+      "notes": "Ostatnie miejsce z normalnym sklepem i stacją — dokupujemy wodę i to, co zapomniane."
+    },
+    {
+      "ref": "parking-spalona",
+      "name": "Parking na Przełęczy Spalonej (przy schronisku PTTK „Jagodna”)",
+      "category": "parking",
+      "lat": 50.2767,
+      "lng": 16.5373,
+      "elevationM": 811,
+      "provider": "user",
+      "notes": "Punkt zbiorczy. Duży parking (ok. 100 miejsc), ale w weekend potrafi się zapchać. Przy schronisku parking płatny, przy drodze miejsca bezpłatne — do potwierdzenia na miejscu; bierzemy gotówkę. Auta stoją całą noc — nic widocznego w środku."
+    },
+    {
+      "ref": "schronisko-jagodna",
+      "name": "Schronisko PTTK „Jagodna”",
+      "category": "mountain_hut",
+      "address": "Przełęcz Spalona",
+      "elevationM": 811,
+      "openingHours": "czynne cały rok",
+      "notes": "Noclegi i posiłki. Plan B noclegu. Przy 11 osobach posiłek lepiej uprzedzić telefonicznie."
+    },
+    {
+      "ref": "chatka",
+      "name": "Chatka Sylwestrowa",
+      "category": "shelter",
+      "elevationM": 780,
+      "notes": "Zachodnie zbocza Masywu Jagodnej, w zlewni Orlicy — głęboko w lesie; ok. 2 km od schroniska na Przełęczy Spalonej, przy dawnym niebieskim szlaku rowerowym. Nie leży na szlaku pieszym i nie ma jej na każdej mapie — jest zaznaczona na mapy.cz / mapy.com; bez punktu w telefonie można jej nie znaleźć, zwłaszcza po ciemku. Dawna chatka studencka, remontowana społecznie. Duża izba: koza, stół, ławy, prycze + strych do spania. Brak prądu, wody i toalety. Dokument nie podaje współrzędnych."
+    },
+    {
+      "ref": "skrzynka-op83lw",
+      "name": "Skrzynka geocachingowa „Chatka Sylwestrowa” (OP83LW)",
+      "category": "geocache",
+      "notes": "Ok. 100 m od chatki, przy rozdrożu; część GeoŚcieżki Jagodna.",
+      "links": [
+        {
+          "label": "opencaching.pl — OP83LW",
+          "url": "https://opencaching.pl/viewcache.php?wp=OP83LW"
+        }
+      ]
+    },
+    {
+      "ref": "jagodna",
+      "name": "Jagodna (977 m n.p.m.)",
+      "category": "peak",
+      "elevationM": 977,
+      "notes": "Korona Gór Polski. 23-metrowa wieża widokowa: Masyw Śnieżnika, Góry Orlickie, czeska strona."
+    },
+    {
+      "ref": "sasin",
+      "name": "Sasin (Kohlberg)",
+      "category": "area",
+      "notes": "Kierunek krótkiej pętli przy chatce, szerokimi drogami leśnymi."
+    },
+    {
+      "ref": "czerniec",
+      "name": "Czerniec",
+      "category": "peak",
+      "notes": "Z drewnianą wieżą — na przyszłość."
+    },
+    {
+      "ref": "orlica",
+      "name": "Orlica",
+      "category": "peak",
+      "notes": "Kolejny szczyt Korony Gór Polski — na przyszłość."
+    }
+  ],
+  "days": [
+    {
+      "ref": "d1",
+      "date": "2026-10-24",
+      "tz": "Europe/Warsaw",
+      "title": "Sobota — dojazd, wejście do chatki, nocka",
+      "summary": "Wyjazd rano (bez pośpiechu), dojazd, wejście do chatki, nocka.",
+      "baseRef": "chatka",
+      "dayStart": "08:00",
+      "statedDriving": {
+        "distanceKm": 130,
+        "durationMin": 135
+      },
+      "lodgingRef": "nocleg-chatka"
+    },
+    {
+      "ref": "d2",
+      "date": "2026-10-25",
+      "tz": "Europe/Warsaw",
+      "title": "Niedziela — zejście, Jagodna, powrót",
+      "summary": "Zejście do aut, Jagodna + wieża widokowa, obiad w schronisku, powrót.",
+      "dayStart": "06:32",
+      "dayEnd": "18:00"
+    }
+  ],
+  "items": [
+    {
+      "ref": "zbiorka-wyjazd",
+      "dayRef": "d1",
+      "sortKey": "0010",
+      "kind": "transport",
+      "title": "Zbiórka i wyjazd",
+      "placeRef": "wroclaw",
+      "time": {
+        "precision": "exact",
+        "start": "08:00"
+      },
+      "leg": {
+        "mode": "car",
+        "distanceKm": 130,
+        "durationMin": 135,
+        "durationMaxMin": 150,
+        "instructions": "Wrocław → S8/DK8 → Kłodzko → Bystrzyca Kłodzka → Wilkanów → Nowa Bystrzyca → Spalona / Przełęcz Spalona. Z jedną przerwą (Bystrzyca Kłodzka). Ostatnie kilkanaście km to wąska, kręta droga — w październiku mokre liście; jedziemy spokojnie.",
+        "fromPlaceRef": "wroclaw",
+        "toPlaceRef": "parking-spalona"
+      },
+      "notes": [
+        "Start z Wrocławia — do potwierdzenia. Dojazd własny, podział na auta do ustalenia."
+      ]
+    },
+    {
+      "ref": "bystrzyca-zakupy",
+      "dayRef": "d1",
+      "sortKey": "0020",
+      "kind": "errand",
+      "title": "Przerwa i zakupy w Bystrzycy Kłodzkiej",
+      "description": "Woda, pieczywo, brakujące drobiazgi, toaleta.",
+      "placeRef": "bystrzyca",
+      "time": {
+        "precision": "exact",
+        "start": "10:15"
+      }
+    },
+    {
+      "ref": "parking-przepakowanie",
+      "dayRef": "d1",
+      "sortKey": "0030",
+      "kind": "errand",
+      "title": "Przełęcz Spalona — parking, przepakowanie",
+      "description": "Do chatki idzie tylko to, co potrzebne, reszta zostaje w autach.",
+      "placeRef": "parking-spalona",
+      "time": {
+        "precision": "exact",
+        "start": "11:30"
+      },
+      "notes": [
+        "Jeszcze z parkingu ustalamy godzinę kontaktu z domem i punkt zbiórki na wypadek rozdzielenia grupy (chatka, a jeśli nie — schronisko)."
+      ]
+    },
+    {
+      "ref": "schronisko-herbata",
+      "dayRef": "d1",
+      "sortKey": "0040",
+      "kind": "meal",
+      "title": "Ciepła herbata / posiłek w schronisku (opcja)",
+      "description": "Napełnienie baniaków wodą, ostatnia normalna toaleta. Menu: ciepły posiłek w schronisku (opcja) lub kanapki + termos.",
+      "placeRef": "schronisko-jagodna",
+      "time": {
+        "precision": "exact",
+        "start": "11:45"
+      },
+      "priority": "optional",
+      "notes": [
+        "Kto bierze: każdy swoje.",
+        "Czy robimy obiad / herbatę w schronisku — do ustalenia; przy 11 osobach lepiej uprzedzić telefonicznie."
+      ]
+    },
+    {
+      "ref": "szpica-wyjscie",
+      "dayRef": "d1",
+      "sortKey": "0050",
+      "kind": "transport",
+      "title": "SZPICA rusza po miejsca",
+      "description": "2 dorosłych + Dziecko B1 i Dziecko D1, lekkie plecaki, siekiera i rozpałka — szybkim marszem po miejsca.",
+      "placeRef": "parking-spalona",
+      "time": {
+        "precision": "exact",
+        "start": "12:30"
+      },
+      "priority": "must",
+      "weather": "outdoor",
+      "leg": {
+        "mode": "hike",
+        "distanceKm": 2,
+        "durationMin": 45,
+        "instructions": "Trasa 1 (Przełęcz Spalona → Chatka Sylwestrowa). 45 min bez bagażu.",
+        "fromPlaceRef": "parking-spalona",
+        "toPlaceRef": "chatka"
+      },
+      "activity": {
+        "trackRef": "trasa-chatka",
+        "waymarking": "brak szlaku pieszego — dawny niebieski szlak rowerowy"
+      },
+      "participantRefs": [
+        "dziecko-b1",
+        "dziecko-d1"
+      ],
+      "notes": [
+        "W składzie są też 2 dorosłych — dokument ich nie wskazuje („skład szpicy” jest w Do ustalenia); w participantRefs tylko dzieci."
+      ]
+    },
+    {
+      "ref": "grupa-glowna-wyjscie",
+      "dayRef": "d1",
+      "sortKey": "0060",
+      "kind": "transport",
+      "title": "Grupa główna wychodzi spokojnym tempem",
+      "description": "3 dorosłych + Dziecko A1, Dziecko C1, Dziecko C2, Dziecko C3 + cały ciężar.",
+      "placeRef": "parking-spalona",
+      "time": {
+        "precision": "exact",
+        "start": "12:45"
+      },
+      "weather": "outdoor",
+      "leg": {
+        "mode": "hike",
+        "distanceKm": 2,
+        "durationMin": 60,
+        "durationMaxMin": 75,
+        "instructions": "Trasa 1. 1:00–1:15 z pełnymi plecakami i najmłodszym dzieckiem.",
+        "fromPlaceRef": "parking-spalona",
+        "toPlaceRef": "chatka"
+      },
+      "activity": {
+        "trackRef": "trasa-chatka",
+        "waymarking": "brak szlaku pieszego — dawny niebieski szlak rowerowy"
+      },
+      "participantRefs": [
+        "dziecko-a1",
+        "dziecko-c1",
+        "dziecko-c2",
+        "dziecko-c3"
+      ],
+      "notes": [
+        "W składzie są też 3 dorosłych — dokument ich nie wskazuje; w participantRefs tylko dzieci."
+      ]
+    },
+    {
+      "ref": "szpica-w-chatce",
+      "dayRef": "d1",
+      "sortKey": "0070",
+      "kind": "activity",
+      "title": "Szpica w chatce",
+      "description": "Zajęcie prycz i strychu, otwarcie i przewietrzenie izby, rozpalenie kozy, pierwszy zapas drewna.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "exact",
+        "start": "13:10"
+      },
+      "priority": "must",
+      "participantRefs": [
+        "dziecko-b1",
+        "dziecko-d1"
+      ],
+      "notes": [
+        "+ 2 dorosłych szpicy (nieprzypisani)."
+      ]
+    },
+    {
+      "ref": "grupa-glowna-w-chatce",
+      "dayRef": "d1",
+      "sortKey": "0080",
+      "kind": "lodging",
+      "title": "Grupa główna w chatce",
+      "description": "Rozpakowanie, rozkładanie śpiworów — miejsca już nasze.",
+      "placeRef": "chatka",
+      "bookingRef": "nocleg-chatka",
+      "time": {
+        "precision": "exact",
+        "start": "14:00"
+      },
+      "priority": "must",
+      "participantRefs": [
+        "dziecko-a1",
+        "dziecko-c1",
+        "dziecko-c2",
+        "dziecko-c3"
+      ],
+      "notes": [
+        "+ 3 dorosłych grupy głównej (nieprzypisani)."
+      ]
+    },
+    {
+      "ref": "praca",
+      "dayRef": "d1",
+      "sortKey": "0090",
+      "kind": "activity",
+      "title": "PRACA: drewno, ogień, kuchnia, latryna, woda",
+      "description": "Cel: zapas drewna na całą noc PLUS nadwyżka dla następnych. Podział na ekipy — osobne punkty „Ekipa …”.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "range",
+        "start": "14:15",
+        "end": "16:00"
+      },
+      "priority": "must"
+    },
+    {
+      "ref": "ekipa-drewno",
+      "dayRef": "d1",
+      "sortKey": "0100",
+      "kind": "activity",
+      "title": "Ekipa Drewno",
+      "description": "Rąbanie i cięcie, ułożenie zapasu przy kozie na całą noc + nadwyżka dla następnych grup; suche drzazgi pod rozpałkę.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "range",
+        "start": "14:15",
+        "end": "16:00"
+      },
+      "participantRefs": [
+        "dziecko-b1",
+        "dziecko-d1"
+      ],
+      "notes": [
+        "Skład: 3 dorosłych + Dziecko B1, Dziecko D1 — dorośli nieprzypisani.",
+        "Część bloku PRACA (punkt „praca”)."
+      ]
+    },
+    {
+      "ref": "ekipa-ogien",
+      "dayRef": "d1",
+      "sortKey": "0110",
+      "kind": "activity",
+      "title": "Ekipa Ogień",
+      "description": "Rozpalenie kozy, przewietrzenie izby, rozstawienie i uruchomienie czujnika czadu, sznur nad kozą na mokre rzeczy.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "range",
+        "start": "14:15",
+        "end": "16:00"
+      },
+      "participantRefs": [
+        "dziecko-a1",
+        "dziecko-c2"
+      ],
+      "notes": [
+        "Skład: 1 dorosły + Dziecko A1, Dziecko C2 — dorosły nieprzypisany.",
+        "Część bloku PRACA (punkt „praca”)."
+      ]
+    },
+    {
+      "ref": "ekipa-kuchnia",
+      "dayRef": "d1",
+      "sortKey": "0120",
+      "kind": "activity",
+      "title": "Ekipa Kuchnia",
+      "description": "Woda, stół, kolacja, herbata; jedzenie zamknięte szczelnie — w takich chatkach są myszy.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "range",
+        "start": "14:15",
+        "end": "16:00"
+      },
+      "participantRefs": [
+        "dziecko-c3"
+      ],
+      "notes": [
+        "Skład: 1 dorosły + Dziecko C3 — dorosły nieprzypisany.",
+        "Część bloku PRACA (punkt „praca”)."
+      ]
+    },
+    {
+      "ref": "ekipa-latryna",
+      "dayRef": "d1",
+      "sortKey": "0130",
+      "kind": "activity",
+      "title": "Ekipa Latryna",
+      "description": "Miejsce 50+ m od chatki i od cieków wodnych, dołek łopatką, papier, oznaczenie trasy na noc.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "range",
+        "start": "14:15",
+        "end": "16:00"
+      },
+      "participantRefs": [
+        "dziecko-c1"
+      ],
+      "notes": [
+        "Skład: 1 dorosły + Dziecko C1 — dorosły nieprzypisany.",
+        "Część bloku PRACA (punkt „praca”)."
+      ]
+    },
+    {
+      "ref": "spacer-rozpoznawczy",
+      "dayRef": "d1",
+      "sortKey": "0140",
+      "kind": "activity",
+      "title": "Spacer rozpoznawczy + polowanie na skrzynkę geocachingową",
+      "description": "Krótki spacer w okolicy chatki; skrzynka OP83LW ok. 100 m od chatki, przy rozdrożu. Wracamy przed zmrokiem.",
+      "placeRef": "skrzynka-op83lw",
+      "time": {
+        "precision": "range",
+        "start": "16:00",
+        "end": "17:00"
+      },
+      "weather": "outdoor",
+      "notes": [
+        "Wydrukowana wskazówka do skrzynki — zadanie dla dzieci."
+      ]
+    },
+    {
+      "ref": "kolacja",
+      "dayRef": "d1",
+      "sortKey": "0150",
+      "kind": "meal",
+      "title": "KOLACJA",
+      "description": "Jednogarnkowa zupa gulaszowa / chili ugotowane w domu, w słoikach — tylko odgrzać; pieczywo; kiełbaski i boczek opiekane nad kozą; ogórki, pomidory; herbata, kakao.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "exact",
+        "start": "18:30"
+      },
+      "notes": [
+        "Kto bierze: do ustalenia."
+      ]
+    },
+    {
+      "ref": "nocka",
+      "dayRef": "d1",
+      "sortKey": "0160",
+      "kind": "activity",
+      "title": "NOCKA: gry, opowieści, pianki i pieczone jabłka na kozie",
+      "description": "Główny punkt programu. Menu nocki: pianki do opiekania, pieczone jabłka z cynamonem na kozie, herbata; dla dorosłych z umiarem — jest dyżur przy piecu i 6 dzieci. Gry: karty, Dobble, Story Cubes, kości, kalambury.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "exact",
+        "start": "20:00"
+      },
+      "priority": "must",
+      "weather": "indoor",
+      "notes": [
+        "Kto bierze (menu nocki): do ustalenia."
+      ]
+    },
+    {
+      "ref": "spacer-ksiezyc",
+      "dayRef": "d1",
+      "sortKey": "0170",
+      "kind": "activity",
+      "title": "Spacer przy Księżycu",
+      "description": "Tarcza oświetlona w ok. 98%, pełnia 26.10. 20–30 min szeroką drogą leśną, próba marszu bez czołówek.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "exact",
+        "start": "21:00"
+      },
+      "durationMin": 20,
+      "durationMaxMin": 30,
+      "priority": "optional",
+      "weather": "outdoor",
+      "notes": [
+        "Dzieci w parach, dorośli na początku i na końcu."
+      ]
+    },
+    {
+      "ref": "mlodsi-spac",
+      "dayRef": "d1",
+      "sortKey": "0180",
+      "kind": "lodging",
+      "title": "Młodsi do śpiworów",
+      "description": "Starsi mogą dłużej.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "exact",
+        "start": "22:30"
+      },
+      "participantRefs": [
+        "dziecko-c3",
+        "dziecko-c2",
+        "dziecko-a1"
+      ]
+    },
+    {
+      "ref": "dyzur-piec",
+      "dayRef": "d1",
+      "sortKey": "0190",
+      "kind": "activity",
+      "title": "Dyżur przy piecu (cała noc)",
+      "description": "Rotacja dorosłych co ok. 2 h: dorzucenie drewna, kontrola szybra i dymu.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "night"
+      },
+      "priority": "must",
+      "participantRefs": [
+        "dorosly-a",
+        "dorosly-b",
+        "dorosly-c",
+        "dorosly-d",
+        "dorosly-e"
+      ],
+      "notes": [
+        "Grafik dyżurów (kto o której) nie jest ustalony w dokumencie."
+      ]
+    },
+    {
+      "ref": "odwrot-schronisko",
+      "dayRef": "d1",
+      "sortKey": "0200",
+      "kind": "lodging",
+      "planStatus": "alternative",
+      "title": "Plan B: odwrót na Przełęcz Spaloną i nocleg w schronisku PTTK „Jagodna”",
+      "description": "2 km szeroką drogą leśną z powrotem na Przełęcz Spaloną.",
+      "placeRef": "schronisko-jagodna",
+      "bookingRef": "nocleg-schronisko",
+      "notes": [
+        "Najpierw sprawdzamy, czy da się docisnąć (strych!)."
+      ],
+      "variantRefs": [
+        "war-plan-b-schronisko"
+      ]
+    },
+    {
+      "ref": "rezerwa-bystrzyca-dom",
+      "dayRef": "d1",
+      "sortKey": "0210",
+      "kind": "lodging",
+      "planStatus": "alternative",
+      "title": "Absolutna rezerwa: nocleg w Bystrzycy Kłodzkiej albo powrót do domu",
+      "description": "Auta stoją 2 km dalej.",
+      "placeRef": "bystrzyca",
+      "variantRefs": [
+        "war-plan-c-rezerwa"
+      ]
+    },
+    {
+      "ref": "odpada-auto-zjezdza",
+      "dayRef": "d1",
+      "sortKey": "0220",
+      "kind": "transport",
+      "planStatus": "alternative",
+      "title": "Ktoś odpada: jedno auto zjeżdża",
+      "description": "Grupa 2 km od parkingu to komfortowa sytuacja.",
+      "placeRef": "parking-spalona",
+      "variantRefs": [
+        "war-odpada-auto"
+      ]
+    },
+    {
+      "ref": "odpada-schronisko",
+      "dayRef": "d1",
+      "sortKey": "0230",
+      "kind": "lodging",
+      "planStatus": "alternative",
+      "title": "Ktoś odpada: ta osoba śpi w schronisku",
+      "placeRef": "schronisko-jagodna",
+      "variantRefs": [
+        "war-odpada-schronisko"
+      ]
+    },
+    {
+      "ref": "petla-sasin",
+      "dayRef": "d1",
+      "sortKey": "0240",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "title": "Krótka pętla w kierunku Sasina (Kohlberg)",
+      "description": "Zamiast spaceru przy chatce, gdy jest zapas czasu i sił. Szerokimi drogami leśnymi.",
+      "placeRef": "sasin",
+      "durationMin": 60,
+      "durationMaxMin": 90,
+      "weather": "outdoor",
+      "activity": {
+        "trackRef": "trasa-sasin"
+      },
+      "notes": [
+        "Powrót najpóźniej 17:00."
+      ],
+      "variantRefs": [
+        "war-zapas-sasin"
+      ],
+      "replacesRefs": [
+        "spacer-rozpoznawczy"
+      ]
+    },
+    {
+      "ref": "wschod-slonca",
+      "dayRef": "d2",
+      "sortKey": "0010",
+      "kind": "activity",
+      "title": "Wschód słońca — kto chce, wychodzi na pierwsze światło",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "exact",
+        "start": "06:32"
+      },
+      "priority": "optional",
+      "weather": "outdoor",
+      "notes": [
+        "Już czas zimowy."
+      ]
+    },
+    {
+      "ref": "sniadanie",
+      "dayRef": "d2",
+      "sortKey": "0020",
+      "kind": "meal",
+      "title": "Pobudka, śniadanie",
+      "description": "Owsianka na mleku UHT + bakalie, kanapki, jajka na twardo z domu, kawa / herbata.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "exact",
+        "start": "07:30"
+      },
+      "notes": [
+        "Kto bierze: do ustalenia."
+      ]
+    },
+    {
+      "ref": "sprzatanie",
+      "dayRef": "d2",
+      "sortKey": "0030",
+      "kind": "errand",
+      "title": "SPRZĄTANIE",
+      "description": "Wszystkie śmieci do worków i ze sobą, wygaszenie i wyczyszczenie kozy, uzupełnienie drewna i rozpałki dla następnych, zamiecenie izby, zamknięcie chatki.",
+      "placeRef": "chatka",
+      "time": {
+        "precision": "range",
+        "start": "08:30",
+        "end": "09:30"
+      },
+      "priority": "must"
+    },
+    {
+      "ref": "zejscie-parking",
+      "dayRef": "d2",
+      "sortKey": "0040",
+      "kind": "transport",
+      "title": "Zejście do parkingu",
+      "placeRef": "parking-spalona",
+      "time": {
+        "precision": "exact",
+        "start": "09:30"
+      },
+      "weather": "outdoor",
+      "leg": {
+        "mode": "hike",
+        "distanceKm": 2,
+        "durationMin": 45,
+        "fromPlaceRef": "chatka",
+        "toPlaceRef": "parking-spalona"
+      },
+      "activity": {
+        "trackRef": "trasa-chatka"
+      },
+      "notes": [
+        "Trasa 1 w przeciwną stronę."
+      ]
+    },
+    {
+      "ref": "auta-przepakowanie",
+      "dayRef": "d2",
+      "sortKey": "0050",
+      "kind": "errand",
+      "title": "Auta: zrzucamy śpiwory, karimaty i cały ciężar",
+      "description": "Przepakowanie na lekko — woda, przekąski, kurtka, czołówka.",
+      "placeRef": "parking-spalona",
+      "time": {
+        "precision": "exact",
+        "start": "10:15"
+      }
+    },
+    {
+      "ref": "jagodna-wejscie",
+      "dayRef": "d2",
+      "sortKey": "0060",
+      "kind": "activity",
+      "title": "Wyjście na Jagodną niebieskim szlakiem z Przełęczy Spalonej",
+      "description": "4,2 km, ok. 1:30, szeroka droga, łatwo.",
+      "placeRef": "parking-spalona",
+      "time": {
+        "precision": "exact",
+        "start": "10:45"
+      },
+      "durationMin": 90,
+      "weather": "outdoor",
+      "activity": {
+        "distanceKm": 4.2,
+        "ascentM": 170,
+        "difficulty": "łatwa",
+        "waymarking": "niebieski",
+        "trackRef": "trasa-jagodna"
+      },
+      "notes": [
+        "Na szlak: batony, orzechy, suszone owoce, kabanosy, termos z herbatą — każdy swoje."
+      ]
+    },
+    {
+      "ref": "jagodna-szczyt",
+      "dayRef": "d2",
+      "sortKey": "0070",
+      "kind": "visit",
+      "title": "SZCZYT Jagodna 977 m n.p.m. + 23-metrowa wieża widokowa",
+      "description": "Masyw Śnieżnika, Góry Orlickie, czeska strona. Zdjęcie grupowe, drugie śniadanie.",
+      "placeRef": "jagodna",
+      "time": {
+        "precision": "exact",
+        "start": "12:15"
+      },
+      "priority": "must",
+      "weather": "outdoor"
+    },
+    {
+      "ref": "jagodna-zejscie",
+      "dayRef": "d2",
+      "sortKey": "0080",
+      "kind": "activity",
+      "title": "Zejście tą samą drogą",
+      "placeRef": "jagodna",
+      "time": {
+        "precision": "exact",
+        "start": "13:00"
+      },
+      "durationMin": 75,
+      "weather": "outdoor",
+      "activity": {
+        "distanceKm": 4.2,
+        "descentM": 170,
+        "waymarking": "niebieski",
+        "trackRef": "trasa-jagodna"
+      }
+    },
+    {
+      "ref": "obiad-schronisko",
+      "dayRef": "d2",
+      "sortKey": "0090",
+      "kind": "meal",
+      "title": "Obiad w schronisku PTTK „Jagodna” — nagroda za nockę",
+      "description": "Ciepły obiad na zakończenie.",
+      "placeRef": "schronisko-jagodna",
+      "time": {
+        "precision": "exact",
+        "start": "14:15"
+      },
+      "payment": "cash_only",
+      "notes": [
+        "Menu: „Kto bierze” = gotówka."
+      ]
+    },
+    {
+      "ref": "wyjazd-dom",
+      "dayRef": "d2",
+      "sortKey": "0100",
+      "kind": "transport",
+      "title": "Wyjazd",
+      "placeRef": "parking-spalona",
+      "time": {
+        "precision": "exact",
+        "start": "15:30"
+      },
+      "leg": {
+        "mode": "car",
+        "distanceKm": 130,
+        "instructions": "Ta sama droga co dojazd (dokument podaje tylko wyjazd 15:30 i powrót ok. 18:00).",
+        "fromPlaceRef": "parking-spalona",
+        "toPlaceRef": "wroclaw"
+      }
+    },
+    {
+      "ref": "powrot-wroclaw",
+      "dayRef": "d2",
+      "sortKey": "0110",
+      "kind": "transport",
+      "title": "Powrót do Wrocławia",
+      "placeRef": "wroclaw",
+      "time": {
+        "precision": "approx",
+        "start": "18:00"
+      }
+    },
+    {
+      "ref": "jagodna-skrocona",
+      "dayRef": "d2",
+      "sortKey": "0120",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "replacesRefs": [
+        "jagodna-wejscie",
+        "jagodna-szczyt",
+        "jagodna-zejscie"
+      ],
+      "title": "Mgła: wersja skrócona — godzina w górę i zawracamy",
+      "durationMin": 60,
+      "weather": "outdoor",
+      "activity": {
+        "trackRef": "trasa-jagodna",
+        "waymarking": "niebieski"
+      },
+      "variantRefs": [
+        "war-mgla-skrocona"
+      ]
+    },
+    {
+      "ref": "mgla-obiad-od-razu",
+      "dayRef": "d2",
+      "sortKey": "0130",
+      "kind": "meal",
+      "planStatus": "alternative",
+      "replacesRefs": [
+        "jagodna-wejscie",
+        "jagodna-szczyt",
+        "jagodna-zejscie",
+        "obiad-schronisko"
+      ],
+      "title": "Mgła: od razu obiad w schronisku i jazda do domu",
+      "placeRef": "schronisko-jagodna",
+      "variantRefs": [
+        "war-mgla-obiad"
+      ]
+    },
+    {
+      "ref": "chatka-jagodna-wprost",
+      "area": "Opcje dodatkowe",
+      "kind": "activity",
+      "planStatus": "does_not_fit",
+      "title": "Wariant „z chatki wprost na Jagodną” drogami leśnymi",
+      "description": "Do sprawdzenia na mapie; oznacza niesienie całego bagażu na szczyt, więc z Dzieckiem C3 raczej odpada.",
+      "placeRef": "jagodna"
+    },
+    {
+      "ref": "czerniec-wieza",
+      "area": "Na przyszłość (nie teraz)",
+      "kind": "visit",
+      "planStatus": "does_not_fit",
+      "title": "Czerniec z drewnianą wieżą",
+      "placeRef": "czerniec"
+    },
+    {
+      "ref": "orlica-szczyt",
+      "area": "Na przyszłość (nie teraz)",
+      "kind": "visit",
+      "planStatus": "does_not_fit",
+      "title": "Orlica — kolejny szczyt Korony Gór Polski",
+      "placeRef": "orlica"
+    }
+  ],
+  "legs": [
+    {
+      "ref": "odwrot-plan-b",
+      "fromRef": "chatka",
+      "toRef": "schronisko-jagodna",
+      "mode": "hike",
+      "distanceKm": 2,
+      "instructions": "Odwrót szeroką drogą leśną z powrotem na Przełęcz Spaloną (Plan B)."
+    }
+  ],
+  "variantGroups": [
+    {
+      "ref": "vg-plan-b",
+      "scope": "day",
+      "dayRef": "d1",
+      "title": "Chatka zajęta albo pogoda / samopoczucie dzieci mówi „nie” — Plan B",
+      "conditionKind": "availability",
+      "conditionText": "Chatka zajęta: sprawdzamy, czy da się docisnąć (strych!). Jeśli nie — wracamy 2 km na Przełęcz Spaloną i korzystamy z Planu B. Także gdy pogoda / samopoczucie dzieci powie „nie”. Decyzja najpóźniej o 15:00, żeby wracać za dnia.",
+      "decideBy": {
+        "time": "15:00"
+      },
+      "rationale": "Jedyne realne ryzyko wyjazdu: nikt nie zagwarantuje miejsca w chatce. Odwrót jest łatwy — 2 km szeroką drogą leśną."
+    },
+    {
+      "ref": "vg-deszcz",
+      "scope": "trip",
+      "title": "Deszcz / mokro cały dzień",
+      "conditionKind": "weather",
+      "conditionText": "To nadal jest OK — chatka to suche wnętrze i piec.",
+      "chosenRef": "war-deszcz-bez-zmian",
+      "rationale": "Kluczowe są suche drewno i rozpałka z domu oraz zapasowe suche ubrania w worku foliowym."
+    },
+    {
+      "ref": "vg-ktos-odpada",
+      "scope": "day",
+      "dayRef": "d1",
+      "title": "Ktoś odpada w sobotę",
+      "conditionKind": "wellbeing",
+      "conditionText": "Grupa 2 km od parkingu to komfortowa sytuacja."
+    },
+    {
+      "ref": "vg-mgla",
+      "scope": "day",
+      "dayRef": "d2",
+      "title": "Mgła w niedzielę",
+      "conditionKind": "weather",
+      "conditionText": "Wejście na Jagodną i tak ma sens (szeroka droga), ale widoków z wieży nie będzie."
+    },
+    {
+      "ref": "vg-zapas-sobota",
+      "scope": "item",
+      "dayRef": "d1",
+      "title": "Zapas czasu i sił w sobotę",
+      "conditionKind": "choice",
+      "conditionText": "Zamiast spaceru przy chatce — krótka pętla w kierunku Sasina (Kohlberg), powrót najpóźniej 17:00."
+    }
+  ],
+  "variants": [
+    {
+      "ref": "war-plan-a-chatka",
+      "groupRef": "vg-plan-b",
+      "label": "A · Chatka Sylwestrowa",
+      "recommended": true,
+      "summary": "Plan główny — miejsce zajęte przez szpicę."
+    },
+    {
+      "ref": "war-plan-b-schronisko",
+      "groupRef": "vg-plan-b",
+      "label": "B · Schronisko PTTK „Jagodna”",
+      "summary": "Odwrót 2 km na Przełęcz Spaloną; schronisko czynne cały rok, noclegi i posiłki.",
+      "pros": [
+        "łatwy odwrót szeroką drogą leśną"
+      ],
+      "cons": [
+        "brak wiążącej rezerwacji — wolne miejsca dla 11 osób trzeba sprawdzić telefonicznie przed wyjazdem"
+      ],
+      "excludesRefs": [
+        "praca",
+        "ekipa-drewno",
+        "ekipa-ogien",
+        "ekipa-kuchnia",
+        "ekipa-latryna",
+        "dyzur-piec",
+        "sprzatanie",
+        "zejscie-parking"
+      ]
+    },
+    {
+      "ref": "war-plan-c-rezerwa",
+      "groupRef": "vg-plan-b",
+      "label": "C · Absolutna rezerwa",
+      "summary": "Auta stoją 2 km dalej — w ostateczności nocleg w Bystrzycy Kłodzkiej albo powrót do domu.",
+      "excludesRefs": [
+        "praca",
+        "ekipa-drewno",
+        "ekipa-ogien",
+        "ekipa-kuchnia",
+        "ekipa-latryna",
+        "dyzur-piec",
+        "sprzatanie",
+        "zejscie-parking"
+      ]
+    },
+    {
+      "ref": "war-deszcz-bez-zmian",
+      "groupRef": "vg-deszcz",
+      "label": "Bez zmian — nocka w chatce",
+      "summary": "Suche drewno i rozpałka z domu, zapasowe suche ubrania w worku foliowym."
+    },
+    {
+      "ref": "war-odpada-auto",
+      "groupRef": "vg-ktos-odpada",
+      "label": "Jedno auto zjeżdża"
+    },
+    {
+      "ref": "war-odpada-schronisko",
+      "groupRef": "vg-ktos-odpada",
+      "label": "Ta osoba śpi w schronisku"
+    },
+    {
+      "ref": "war-mgla-pelne",
+      "groupRef": "vg-mgla",
+      "label": "Pełne wejście (i tak ma sens)",
+      "summary": "Szeroka droga, ale bez widoków z wieży."
+    },
+    {
+      "ref": "war-mgla-skrocona",
+      "groupRef": "vg-mgla",
+      "label": "Wersja skrócona — godzina w górę i zawracamy",
+      "excludesRefs": [
+        "jagodna-wejscie",
+        "jagodna-szczyt",
+        "jagodna-zejscie"
+      ]
+    },
+    {
+      "ref": "war-mgla-obiad",
+      "groupRef": "vg-mgla",
+      "label": "Od razu obiad i jazda do domu",
+      "excludesRefs": [
+        "jagodna-wejscie",
+        "jagodna-szczyt",
+        "jagodna-zejscie",
+        "obiad-schronisko"
+      ]
+    },
+    {
+      "ref": "war-zapas-spacer",
+      "groupRef": "vg-zapas-sobota",
+      "label": "Spacer rozpoznawczy przy chatce + skrzynka",
+      "recommended": true
+    },
+    {
+      "ref": "war-zapas-sasin",
+      "groupRef": "vg-zapas-sobota",
+      "label": "Pętla w kierunku Sasina (Kohlberg), 1–1,5 h",
+      "excludesRefs": [
+        "spacer-rozpoznawczy"
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "ref": "c-chatka-14",
+      "kind": "arrive_before",
+      "dayRef": "d1",
+      "itemRef": "grupa-glowna-w-chatce",
+      "time": "14:00",
+      "severity": "soft",
+      "reason": "Twardy cel: być w chatce najpóźniej o 14:00–15:00 w sobotę — chatka bez rezerwacji, kto pierwszy, ten lepszy (dolna granica przedziału)."
+    },
+    {
+      "ref": "c-chatka-15",
+      "kind": "arrive_before",
+      "dayRef": "d1",
+      "itemRef": "grupa-glowna-w-chatce",
+      "time": "15:00",
+      "severity": "hard",
+      "reason": "Być w chatce najpóźniej o 15:00 — zająć prycze, narąbać drewna i rozpalić kozę, zanim zrobi się ciemno (górna granica przedziału 14:00–15:00)."
+    },
+    {
+      "ref": "c-praca-przed-zmrokiem",
+      "kind": "finish_before_sunset",
+      "dayRef": "d1",
+      "itemRef": "praca",
+      "severity": "hard",
+      "reason": "Narąbać drewna na całą noc i rozpalić kozę, zanim zrobi się ciemno (zachód 17:45)."
+    },
+    {
+      "ref": "c-spacer-przed-zmrokiem",
+      "kind": "finish_before_sunset",
+      "dayRef": "d1",
+      "itemRef": "spacer-rozpoznawczy",
+      "severity": "hard",
+      "reason": "Wracamy przed zmrokiem."
+    },
+    {
+      "ref": "c-ciemno-1820",
+      "kind": "other",
+      "dayRef": "d1",
+      "time": "18:20",
+      "severity": "hard",
+      "reason": "Od 18:20 ciemno (koniec zmierzchu cywilnego) — wszyscy w chatce albo w zasięgu wzroku."
+    },
+    {
+      "ref": "c-sasin-17",
+      "kind": "arrive_before",
+      "dayRef": "d1",
+      "itemRef": "petla-sasin",
+      "time": "17:00",
+      "severity": "hard",
+      "reason": "Pętla w kierunku Sasina — powrót najpóźniej 17:00."
+    },
+    {
+      "ref": "c-wyjazd-nie-pozniej",
+      "kind": "latest_start",
+      "dayRef": "d1",
+      "itemRef": "zbiorka-wyjazd",
+      "time": "08:00",
+      "severity": "soft",
+      "reason": "Po dojściu do chatki mamy do zmroku ok. 4 godziny — dokładnie tyle, ile trzeba na drewno, ogień i kolację; dlatego nie przesuwamy wyjazdu na później."
+    }
+  ],
+  "bookings": [
+    {
+      "ref": "nocleg-chatka",
+      "kind": "lodging",
+      "status": "not_required",
+      "title": "Chatka Sylwestrowa — nocleg niekomercyjny",
+      "start": {
+        "date": "2026-10-24",
+        "tz": "Europe/Warsaw"
+      },
+      "end": {
+        "date": "2026-10-25",
+        "tz": "Europe/Warsaw"
+      },
+      "startPlaceRef": "chatka",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 0,
+        "maxMinor": 0,
+        "note": "Bezpłatnie; dobrowolna wrzutka na remont chatki ok. 150 zł na rodzinę (osobna pozycja budżetu)."
+      },
+      "lodging": {
+        "beds": "prycze w dużej izbie + strych do spania; miejsca sporo (relacje mówią o kilkudziesięciu osobach)",
+        "amenities": [
+          "koza (piec)",
+          "stół",
+          "ławy",
+          "prycze",
+          "strych"
+        ],
+        "distanceNote": "ok. 2 km od schroniska na Przełęczy Spalonej"
+      },
+      "cons": [
+        "brak prądu",
+        "brak wody",
+        "brak toalety",
+        "brak gwarancji miejsca"
+      ],
+      "notes": [
+        "Bez rezerwacji — kto pierwszy, ten lepszy."
+      ]
+    },
+    {
+      "ref": "nocleg-schronisko",
+      "kind": "lodging",
+      "status": "idea",
+      "provider": "PTTK",
+      "title": "Schronisko PTTK „Jagodna” — rezerwa na noc 24/25.10 (Plan B)",
+      "startPlaceRef": "schronisko-jagodna",
+      "party": {
+        "adults": 5,
+        "children": 6
+      },
+      "notes": [
+        "Przed wyjazdem zadzwonić i zapytać o wolne miejsca dla 11 osób na 24/25.10 — nawet bez wiążącej rezerwacji warto wiedzieć, czy mają zapas."
+      ]
+    }
+  ],
+  "contacts": [
+    {
+      "ref": "gopr",
+      "name": "GOPR",
+      "role": "emergency",
+      "phone": "601 100 300",
+      "notes": "Aplikacja Ratunek zainstalowana u dorosłych."
+    },
+    {
+      "ref": "numer-112",
+      "name": "Numer alarmowy 112",
+      "role": "emergency",
+      "phone": "112"
+    },
+    {
+      "ref": "kontakt-schronisko",
+      "name": "Schronisko PTTK „Jagodna”",
+      "role": "venue",
+      "bookingRef": "nocleg-schronisko",
+      "notes": "Dokument nie podaje numeru. Zadzwonić: parking (płatny?), posiłki dla 11 osób, woda do napełnienia, wolne miejsca na 24/25.10, aktualne wieści o chatce."
+    }
+  ],
+  "budgetLines": [
+    {
+      "ref": "b-wrzutka-chatka",
+      "category": "lodging",
+      "title": "Dobrowolna wrzutka na remont chatki",
+      "bookingRef": "nocleg-chatka",
+      "status": "estimate",
+      "lowMinor": 15000,
+      "highMinor": 15000,
+      "currency": "PLN",
+      "perPerson": false,
+      "note": "Ok. 150 zł NA RODZINĘ (5 rodzin) — schemat zna tylko „na osobę” albo całość. Gotówka."
+    },
+    {
+      "ref": "b-sprzet",
+      "category": "other",
+      "title": "Sprzęt wspólny (siekiera, palniki, czujnik czadu, baniaki)",
+      "status": "estimate",
+      "lowMinor": 0,
+      "highMinor": 0,
+      "currency": "PLN",
+      "note": "Z domu, bez kosztu. Jeśli czegoś brakuje w grupie, taniej kupić jedną sztukę na wszystkich."
+    }
+  ],
+  "tasks": [
+    {
+      "ref": "u-godzina-zero-auta",
+      "kind": "decision",
+      "title": "Godzina „zero” w sobotę i ostateczny podział na auta",
+      "status": "open",
+      "itemRef": "zbiorka-wyjazd",
+      "body": "Transport: dojazd własny — do ustalenia przed wyprawą."
+    },
+    {
+      "ref": "u-skad-start",
+      "kind": "question",
+      "title": "Skąd dokładnie startujemy — czy wszyscy z Wrocławia",
+      "status": "open",
+      "itemRef": "zbiorka-wyjazd"
+    },
+    {
+      "ref": "u-obiad-schronisko-sobota",
+      "kind": "decision",
+      "title": "Czy robimy obiad / herbatę w schronisku w sobotę",
+      "status": "open",
+      "itemRef": "schronisko-herbata",
+      "body": "Przy 11 osobach lepiej uprzedzić telefonicznie."
+    },
+    {
+      "ref": "u-prowiant",
+      "kind": "decision",
+      "title": "Podział prowiantu: kto bierze zupę, pieczywo, kiełbaski, pianki, owsiankę, wodę",
+      "status": "open",
+      "body": "Lista „kto bierze co” — patrz pakowanie, kategoria Prowiant."
+    },
+    {
+      "ref": "u-sprzet-wspolny",
+      "kind": "decision",
+      "title": "Kto bierze siekierę, piłę, palniki, garnki, czujnik czadu, apteczkę, baniaki",
+      "status": "open"
+    },
+    {
+      "ref": "u-woda",
+      "kind": "decision",
+      "title": "Ile realnie wody niesiemy i kto ile (dorośli po 5 l?)",
+      "status": "open"
+    },
+    {
+      "ref": "u-namiot",
+      "kind": "question",
+      "title": "Czy ktoś ma namiot / plandekę jako absolutną rezerwę",
+      "status": "open",
+      "variantGroupRef": "vg-plan-b"
+    },
+    {
+      "ref": "u-drewno-w-chatce",
+      "kind": "question",
+      "title": "Czy w chatce jest zapas drewna",
+      "status": "open",
+      "body": "Zapytać w schronisku i na grupach przed wyjazdem."
+    },
+    {
+      "ref": "u-sklad-szpicy",
+      "kind": "decision",
+      "title": "Skład szpicy — kto idzie po miejsca",
+      "status": "open",
+      "itemRef": "szpica-wyjscie",
+      "body": "Harmonogram zakłada 2 dorosłych + Dziecko B1 i Dziecko D1; dorośli nie są wskazani."
+    },
+    {
+      "ref": "u-strych",
+      "kind": "decision",
+      "title": "Czy starsze dzieci śpią na strychu (atrakcja) i kto z dorosłych z nimi",
+      "status": "open"
+    },
+    {
+      "ref": "u-opiekunowie",
+      "kind": "decision",
+      "title": "Który dorosły odpowiada za które dziecko (szczególnie Dziecko C3)",
+      "status": "open",
+      "body": "Z sekcji Bezpieczeństwo. guardianRef w uczestnikach ustawiony wg rodzin z tabeli Uczestnicy.",
+      "priority": "high"
+    },
+    {
+      "ref": "u-kontakt-dom",
+      "kind": "decision",
+      "title": "Godzina kontaktu z domem i punkt zbiórki na wypadek rozdzielenia grupy",
+      "status": "open",
+      "body": "Ustalamy jeszcze z parkingu (w rejonie chatki GSM bywa słaby). Punkt zbiórki: chatka, a jeśli nie — schronisko.",
+      "due": {
+        "kind": "on_trip",
+        "dayRef": "d1",
+        "time": "11:30"
+      },
+      "itemRef": "parking-przepakowanie"
+    },
+    {
+      "ref": "u-parking-oplata",
+      "kind": "question",
+      "title": "Parking przy schronisku płatny, przy drodze bezpłatny? — potwierdzić na miejscu",
+      "status": "open",
+      "due": {
+        "kind": "on_trip",
+        "dayRef": "d1",
+        "time": "11:30"
+      },
+      "itemRef": "parking-przepakowanie"
+    },
+    {
+      "ref": "u-dyzury",
+      "kind": "decision",
+      "title": "Grafik dyżurów przy piecu (rotacja dorosłych co ok. 2 h)",
+      "status": "open",
+      "itemRef": "dyzur-piec"
+    },
+    {
+      "ref": "t-telefon-schronisko",
+      "kind": "todo",
+      "title": "Zadzwonić do schroniska PTTK „Jagodna”",
+      "status": "open",
+      "body": "Parking (płatny?), posiłki dla 11 osób, woda do napełnienia, wolne miejsca na 24/25.10 jako Plan B, aktualne wieści o chatce.",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      },
+      "bookingRef": "nocleg-schronisko",
+      "variantGroupRef": "vg-plan-b",
+      "priority": "high"
+    },
+    {
+      "ref": "t-mapa-offline",
+      "kind": "todo",
+      "title": "Pobrać mapę offline (mapy.cz / mapy.com), zapisać punkt Chatki Sylwestrowej i rozesłać ślad grupie",
+      "status": "open",
+      "body": "Minimum 3 osoby muszą go mieć w telefonie.",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      },
+      "priority": "high"
+    },
+    {
+      "ref": "t-opis-dojscia",
+      "kind": "todo",
+      "title": "Zweryfikować opis dojścia na mapie (droga leśna, rozdroża) i wydrukować awaryjną wersję na papierze",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      }
+    },
+    {
+      "ref": "t-czujnik-czadu",
+      "kind": "todo",
+      "title": "Kupić / sprawdzić czujnik czadu i włożyć nowe baterie",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      },
+      "priority": "high"
+    },
+    {
+      "ref": "t-czolowki",
+      "kind": "todo",
+      "title": "Sprawdzić czołówki i baterie u WSZYSTKICH dzieci (i dać zapas)",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      },
+      "priority": "high"
+    },
+    {
+      "ref": "t-drewno-z-domu",
+      "kind": "todo",
+      "title": "Przygotować 2 siatki suchego drewna / brykietu + rozpałkę z domu",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      }
+    },
+    {
+      "ref": "t-siekiera",
+      "kind": "todo",
+      "title": "Naostrzyć siekierę, sprawdzić piłę, dokupić rękawice robocze",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      }
+    },
+    {
+      "ref": "t-gotowanie",
+      "kind": "todo",
+      "title": "Ugotować zupę / chili i przelać do słoików, ugotować jajka",
+      "status": "open",
+      "body": "Piątek wieczór.",
+      "due": {
+        "kind": "absolute",
+        "date": "2026-10-23"
+      }
+    },
+    {
+      "ref": "t-prognoza",
+      "kind": "decision",
+      "title": "Sprawdzić prognozę 2 dni przed i ogłosić decyzję go / no-go",
+      "status": "open",
+      "body": "ICM, mountain-forecast.",
+      "due": {
+        "kind": "before_trip",
+        "days": 2
+      },
+      "priority": "high"
+    },
+    {
+      "ref": "t-whatsapp",
+      "kind": "todo",
+      "title": "Założyć grupę na WhatsApp, wrzucić ten plan, ślad GPX i listę „kto bierze co”",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      }
+    },
+    {
+      "ref": "t-lista-plecaka",
+      "kind": "todo",
+      "title": "Zrobić i rozesłać listę kontrolną plecaka dla dziecka — i sprawdzić plecaki PRZED wyjazdem, nie na parkingu",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      }
+    },
+    {
+      "ref": "t-wskazowka-geocache",
+      "kind": "todo",
+      "title": "Wydrukować wskazówkę do skrzynki geocachingowej OP83LW",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      },
+      "itemRef": "spacer-rozpoznawczy"
+    },
+    {
+      "ref": "t-kasa",
+      "kind": "todo",
+      "title": "Zebrać kasę na paliwo i schronisko",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      }
+    },
+    {
+      "ref": "t-spoznialscy",
+      "kind": "decision",
+      "title": "Ustalić, do której godziny czekamy na spóźnialskich na parkingu",
+      "status": "open",
+      "body": "Propozycja w dokumencie: 12:15 — potem wychodzimy.",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      },
+      "itemRef": "szpica-wyjscie"
+    },
+    {
+      "ref": "t-info-dom",
+      "kind": "todo",
+      "title": "Zostawić komuś w domu informację: gdzie jesteśmy, kto jedzie, kiedy wracamy",
+      "status": "open",
+      "due": {
+        "kind": "before_trip",
+        "days": 1
+      }
+    }
+  ],
+  "packing": [
+    {
+      "ref": "pk-01",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Śpiwór",
+      "scope": "personal",
+      "note": "Komfort min. -5°C; dzieciom cieplejszy + wkładka / polarowy insert."
+    },
+    {
+      "ref": "pk-02",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Karimata",
+      "scope": "personal",
+      "note": "Najlepiej samopompująca (R-value ≥ 2); pianka na pryczy też zadziała, ale podłoga w październiku jest zimna."
+    },
+    {
+      "ref": "pk-03",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Czołówka + zapasowe baterie",
+      "scope": "personal",
+      "note": "Bez tego nie ma wyjazdu, ciemno od 18:20."
+    },
+    {
+      "ref": "pk-04",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Plecak",
+      "scope": "personal",
+      "note": "Dzieci 20–30 l, dorośli 50–65 l."
+    },
+    {
+      "ref": "pk-05",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Buty górskie za kostkę + klapki albo ciepłe buty na zmianę w chatce",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-06",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Kurtka przeciwdeszczowa + polar / puchówka, czapka, rękawiczki, komin",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-07",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Bielizna termoaktywna na noc",
+      "scope": "personal",
+      "note": "Osobna, sucha; nie śpimy w tym, w czym się szło."
+    },
+    {
+      "ref": "pk-08",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Czapka do spania + 2 pary suchych skarpet",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-09",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Kubek, menażka / miska, sztućce",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-10",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Butelka / bidon 1–1,5 l",
+      "scope": "personal",
+      "note": "Każde dziecko ma własną butelkę 1 l."
+    },
+    {
+      "ref": "pk-11",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Ręcznik szybkoschnący, szczoteczka, chusteczki, własne leki",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-12",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Gwizdek (dzieci) + kartka z numerami telefonów w kieszeni",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-13",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Zapasowe suche ubrania w worku foliowym",
+      "scope": "personal",
+      "note": "Z wariantu „deszcz”."
+    },
+    {
+      "ref": "pk-14",
+      "category": "Osobisty (każdy, także każde dziecko)",
+      "title": "Przekąski na szlak",
+      "scope": "personal",
+      "note": "Batony, orzechy, suszone owoce, kabanosy — każdy swoje."
+    },
+    {
+      "ref": "pk-15",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Siekiera / toporek",
+      "scope": "shared",
+      "note": "Rąbanie to połowa wieczoru. Dzieci nie noszą siekiery."
+    },
+    {
+      "ref": "pk-16",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Piła składana (kabłąkowa lub łańcuchowa)",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-17",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Rękawice robocze",
+      "scope": "shared",
+      "quantity": 3,
+      "unit": "szt."
+    },
+    {
+      "ref": "pk-18",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Rozpałka: podpałka, kostki, kora brzozowa, gazety",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-19",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Suche drewno / brykiet z domu",
+      "scope": "shared",
+      "quantity": 2,
+      "unit": "siatki",
+      "note": "W październiku drewno w lesie jest mokre i samo nie zapłonie."
+    },
+    {
+      "ref": "pk-20",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Zapałki w wodoszczelnym pudełku",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-21",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Zapalniczki",
+      "scope": "shared",
+      "quantity": 3,
+      "unit": "szt."
+    },
+    {
+      "ref": "pk-22",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Czujnik czadu (bateryjny)",
+      "scope": "shared",
+      "note": "OBOWIĄZKOWO: koza i 11 osób w jednej izbie."
+    },
+    {
+      "ref": "pk-23",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Palniki gazowe",
+      "scope": "shared",
+      "quantity": 2,
+      "unit": "szt.",
+      "note": "+ wiatrochron"
+    },
+    {
+      "ref": "pk-24",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Kartusze gazowe (mieszanka zimowa)",
+      "scope": "shared",
+      "quantity": 3,
+      "unit": "szt.",
+      "note": "Trzymamy pod kurtką albo w śpiworze — na zimnie gaz traci moc."
+    },
+    {
+      "ref": "pk-25",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Garnek 5 l + garnek 3 l, patelnia, deska, nóż, łyżka cedzakowa",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-26",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Płyn do naczyń, gąbka, ściereczki",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-27",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Worki na śmieci",
+      "scope": "shared",
+      "quantity": 4,
+      "unit": "szt.",
+      "note": "Wszystkie śmieci zabieramy ze sobą."
+    },
+    {
+      "ref": "pk-28",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Baniaki na wodę 5 l",
+      "scope": "shared",
+      "quantity": 3,
+      "unit": "szt.",
+      "note": "Niosą dorośli (po ok. 5 kg). Z butelkami razem ok. 28 l."
+    },
+    {
+      "ref": "pk-29",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Woda",
+      "scope": "shared",
+      "quantity": 28,
+      "unit": "l",
+      "note": "W chatce NIE MA wody. Ok. 2,5 l na osobę na dobę (picie + gotowanie + herbata) × 11 osób. Kupujemy w Bystrzycy Kłodzkiej i/lub napełniamy w schronisku (zapytać o możliwość)."
+    },
+    {
+      "ref": "pk-30",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Apteczka",
+      "scope": "shared",
+      "note": "Plastry, bandaż, opatrunek jałowy, paracetamol / ibuprofen (także dziecięcy), altacet, plastry na odciski, chusteczki dezynfekujące, folia NRC x2, pęseta."
+    },
+    {
+      "ref": "pk-31",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Lampy / lampki LED na stół",
+      "scope": "shared",
+      "quantity": 2,
+      "unit": "szt."
+    },
+    {
+      "ref": "pk-32",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Podgrzewacze",
+      "scope": "shared",
+      "note": "Kilka; ostrożnie — drewniana chatka."
+    },
+    {
+      "ref": "pk-33",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Papier toaletowy",
+      "scope": "shared",
+      "quantity": 2,
+      "unit": "rolki",
+      "note": "Do latryny."
+    },
+    {
+      "ref": "pk-34",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Mokre chusteczki",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-35",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Mała saperka / łopatka",
+      "scope": "shared",
+      "note": "Do latryny."
+    },
+    {
+      "ref": "pk-36",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Mapa papierowa Compass „Ziemia Kłodzka”",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-37",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Telefon z mapą pobraną OFFLINE i punktem chatki",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-38",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Powerbank 20 000 mAh",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-39",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Taśma klejąca",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-40",
+      "category": "Wspólny — do podziału między dorosłych",
+      "title": "Linka 10 m",
+      "scope": "shared",
+      "note": "Sznur na mokre rzeczy nad kozą."
+    },
+    {
+      "ref": "pk-41",
+      "category": "Dodatkowo do zabrania",
+      "title": "Gotówka",
+      "scope": "shared",
+      "note": "Parking, schronisko, dobrowolna wrzutka na remont chatki (ok. 150 zł na rodzinę)."
+    },
+    {
+      "ref": "pk-42",
+      "category": "Dodatkowo do zabrania",
+      "title": "Gry na nockę: karty, Dobble, Story Cubes, kości, kalambury",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-43",
+      "category": "Dodatkowo do zabrania",
+      "title": "Termos z herbatą",
+      "scope": "shared",
+      "note": "Na drogę i na nocny spacer."
+    },
+    {
+      "ref": "pk-44",
+      "category": "Dodatkowo do zabrania",
+      "title": "Wydrukowana wskazówka do skrzynki geocachingowej przy chatce",
+      "scope": "shared",
+      "note": "Zadanie dla dzieci."
+    },
+    {
+      "ref": "pk-45",
+      "category": "Dodatkowo do zabrania",
+      "title": "Aparat / telefon naładowany na zdjęcia z wieży",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-46",
+      "category": "Prowiant",
+      "title": "Zupa gulaszowa / chili ugotowane w domu, w słoikach",
+      "scope": "shared",
+      "note": "Sobota, kolacja. Kto bierze: do ustalenia."
+    },
+    {
+      "ref": "pk-47",
+      "category": "Prowiant",
+      "title": "Pieczywo",
+      "scope": "shared",
+      "note": "Kolacja + kanapki na śniadanie. Kto bierze: do ustalenia."
+    },
+    {
+      "ref": "pk-48",
+      "category": "Prowiant",
+      "title": "Kiełbaski i boczek",
+      "scope": "shared",
+      "note": "Opiekane nad kozą. Kto bierze: do ustalenia."
+    },
+    {
+      "ref": "pk-49",
+      "category": "Prowiant",
+      "title": "Ogórki, pomidory",
+      "scope": "shared",
+      "note": "Kto bierze: do ustalenia."
+    },
+    {
+      "ref": "pk-50",
+      "category": "Prowiant",
+      "title": "Herbata, kakao, kawa",
+      "scope": "shared",
+      "note": "Kto bierze: do ustalenia."
+    },
+    {
+      "ref": "pk-51",
+      "category": "Prowiant",
+      "title": "Pianki do opiekania",
+      "scope": "shared",
+      "note": "Nocka. Kto bierze: do ustalenia."
+    },
+    {
+      "ref": "pk-52",
+      "category": "Prowiant",
+      "title": "Jabłka + cynamon",
+      "scope": "shared",
+      "note": "Pieczone na kozie. Kto bierze: do ustalenia."
+    },
+    {
+      "ref": "pk-53",
+      "category": "Prowiant",
+      "title": "Owsianka + mleko UHT + bakalie",
+      "scope": "shared",
+      "note": "Niedziela, śniadanie. Kto bierze: do ustalenia."
+    },
+    {
+      "ref": "pk-54",
+      "category": "Prowiant",
+      "title": "Jajka na twardo z domu",
+      "scope": "shared",
+      "note": "Niedziela, śniadanie. Kto bierze: do ustalenia."
+    }
+  ],
+  "notes": [
+    {
+      "scope": "trip",
+      "kind": "warning",
+      "body": "Jedyne realne ryzyko wyjazdu: nikt nie zagwarantuje nam miejsca w chatce. Przy 11 osobach trzeba mieć Plan B i zadzwonić do schroniska PTTK „Jagodna” przed wyjazdem.",
+      "ref": "n-ryzyko",
+      "topic": "safety",
+      "title": "UWAGA"
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "body": "Własny prowiant, gotowanie na miejscu. W chatce nie ma prądu, wody ani toalety — wszystko wnosimy i wynosimy.",
+      "topic": "packing"
+    },
+    {
+      "scope": "booking",
+      "targetRef": "nocleg-chatka",
+      "kind": "practical",
+      "topic": "rules",
+      "title": "Zasada chatki",
+      "body": "Zużyte drewno uzupełniamy, żeby następni mieli czym rozpalić, i zostawiamy chatkę czystszą niż była. Wodę wnosimy w całości, latrynę robimy sami, światło to czołówki i lampki LED."
+    },
+    {
+      "scope": "item",
+      "targetRef": "grupa-glowna-w-chatce",
+      "kind": "warning",
+      "topic": "transport",
+      "body": "Chatka nie leży na szlaku pieszym i nie ma jej na każdej mapie — bez punktu w telefonie można jej po prostu nie znaleźć, zwłaszcza po ciemku. Punkt zapisany offline u co najmniej trzech osób."
+    },
+    {
+      "scope": "trip",
+      "kind": "tip",
+      "body": "Bystrzyca Kłodzka to ostatnie miejsce z normalnym sklepem i stacją — tu dokupujemy wodę i to, co zapomniane. Ostatnie kilkanaście km to wąska, kręta droga — w październiku mokre liście; jedziemy spokojnie.",
+      "topic": "transport"
+    },
+    {
+      "scope": "day",
+      "targetRef": "d1",
+      "kind": "info",
+      "topic": "time",
+      "title": "Słońce i Księżyc 24.10",
+      "body": "24.10 (czas letni): wschód 7:31, zachód 17:45; ciemno (koniec zmierzchu cywilnego) ok. 18:20. Księżyc w nocy 24/25.10: tarcza oświetlona ok. 98% (pełnia 26.10). Jasna noc — idealna na spacer bez czołówek, słabsza na gwiazdy."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d1",
+      "kind": "slack_audit",
+      "topic": "time",
+      "slack": "small",
+      "body": "Po dojściu do chatki mamy do zmroku ok. 4 godziny — dokładnie tyle, ile trzeba na drewno, ogień i kolację; dlatego nie przesuwamy wyjazdu na później."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d2",
+      "kind": "warning",
+      "topic": "time",
+      "title": "Zmiana czasu w nocy 24/25.10",
+      "body": "W nocy z 24 na 25 października zmiana czasu na zimowy: 3:00 → 2:00. Dostajemy godzinę nocki (albo snu) w prezencie — i o godzinę wcześniejszy wschód słońca w niedzielę. 25.10: wschód 6:32, zachód 16:43."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "body": "Druga połowa października na wysokości 780–980 m n.p.m.: realnie 5–10°C w dzień, 0 do +4°C w nocy, możliwy przymrozek do -3°C. Duża szansa na mgłę, wilgoć i mokre drewno; może też spaść pierwszy śnieg. Prognozę sprawdzamy 2 dni przed (ICM, mountain-forecast) i wtedy podejmujemy decyzję go / no-go.",
+      "topic": "weather",
+      "title": "Pogoda"
+    },
+    {
+      "scope": "trip",
+      "kind": "safety",
+      "body": "Czujnik czadu włączony na całą noc, szyber nigdy do końca zamknięty, izba przewietrzana przed snem. Przy nieznanym kominie to nie przesada — to warunek nocki.",
+      "topic": "safety",
+      "title": "CZAD"
+    },
+    {
+      "scope": "trip",
+      "kind": "safety",
+      "body": "Nocny dyżur przy piecu (rotacja dorosłych co ~2 h). Śpiwory i plecaki min. 1 m od kozy. Zapas wody przy piecu. Nic do suszenia bezpośrednio na piecu.",
+      "topic": "safety",
+      "title": "OGIEŃ"
+    },
+    {
+      "scope": "trip",
+      "kind": "safety",
+      "body": "Rąbie tylko dorosły albo starsze dziecko pod nadzorem, w rękawicach, w wyznaczonym miejscu, nikogo w promieniu 3 m. Dzieci nie noszą siekiery.",
+      "topic": "safety",
+      "title": "SIEKIERA"
+    },
+    {
+      "scope": "trip",
+      "kind": "safety",
+      "body": "Każde dziecko ma czołówkę i gwizdek, nikt nie wychodzi z chatki sam — minimum w parach i z informacją dla dorosłego. Ustalamy, który dorosły odpowiada za które dziecko (szczególnie Dziecko C3 — tu: 6 lat).",
+      "topic": "safety",
+      "title": "DZIECI"
+    },
+    {
+      "scope": "trip",
+      "kind": "safety",
+      "body": "50+ m od chatki i od cieków wodnych, dołek łopatką, papier zabieramy albo palimy w kozie. Trasa do latryny oznaczona na noc.",
+      "topic": "safety",
+      "title": "LATRYNA"
+    },
+    {
+      "scope": "trip",
+      "kind": "safety",
+      "body": "W rejonie chatki GSM bywa słaby — godzinę kontaktu z domem ustalamy jeszcze z parkingu, podobnie punkt zbiórki na wypadek rozdzielenia grupy (chatka, a jeśli nie — schronisko).",
+      "topic": "safety",
+      "title": "ZASIĘG"
+    },
+    {
+      "scope": "trip",
+      "kind": "safety",
+      "body": "601 100 300 (GOPR) oraz 112; aplikacja Ratunek zainstalowana u dorosłych. Zostawiamy komuś w domu informację: gdzie jesteśmy, kto jedzie, kiedy wracamy.",
+      "topic": "safety",
+      "title": "RATUNEK"
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "body": "Gotujemy jednogarnkowo — im mniej naczyń, tym mniej wody na zmywanie. Wszystkie śmieci zabieramy ze sobą (4 worki) — w kozie palimy tylko drewno i papier. Jedzenie na noc szczelnie zamknięte i podwieszone — myszy. Zmywanie na zewnątrz, resztki jedzenia zabieramy, nie wylewamy pod chatką.",
+      "topic": "rules",
+      "title": "Zasady — prowiant i gotowanie"
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "body": "Woda: ok. 2,5 l na osobę na dobę (picie + gotowanie + herbata) → ok. 28 l na 11 osób. 3 baniaki 5 l niosą dorośli (po ok. 5 kg), każde dziecko ma własną butelkę 1 l. Wodę na herbatę grzejemy na kozie (długo, ale za darmo), gotujemy na palnikach.",
+      "topic": "packing",
+      "title": "Woda — najważniejsza pozycja"
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "body": "Sprzęt (siekiera, palniki, czujnik czadu, baniaki) — z domu, bez kosztu. Jeśli czegoś brakuje w grupie, taniej jest kupić jedną sztukę na wszystkich. (Siekiera ostatnio była, ale nie ma co ryzykować).",
+      "topic": "money"
+    },
+    {
+      "scope": "trip",
+      "kind": "warning",
+      "body": "Opisy dojścia do chatki pochodzą z relacji turystów i mogą być nieaktualne (szlak rowerowy był zmieniany). Stan chatki, zapas drewna i dostępność miejsc — do potwierdzenia bezpośrednio przed wyjazdem.",
+      "topic": "other",
+      "title": "Aktualność danych"
+    }
+  ],
+  "sources": [
+    {
+      "ref": "src-mynaszlaku",
+      "title": "mynaszlaku.pl — Jagodna: szlak z Przełęczy Spalonej, parking, wieża",
+      "url": "https://mynaszlaku.pl/jagodna-schronisko-szczyt-wieza-widokowa/",
+      "appliesToRefs": [
+        "trasa-jagodna",
+        "parking-spalona",
+        "jagodna"
+      ]
+    },
+    {
+      "ref": "src-opencaching",
+      "title": "opencaching.pl — skrzynka „Chatka Sylwestrowa” (OP83LW), 780 m n.p.m.",
+      "url": "https://opencaching.pl/viewcache.php?wp=OP83LW",
+      "appliesToRefs": [
+        "skrzynka-op83lw",
+        "chatka"
+      ]
+    },
+    {
+      "ref": "src-goryponadchmurami",
+      "title": "goryponadchmurami.pl — Pewna chatka w Górach Bystrzyckich",
+      "url": "https://www.goryponadchmurami.pl/2016/10/pewna-chatka-w-gorach-bystrzyckich.html",
+      "appliesToRefs": [
+        "chatka",
+        "trasa-chatka"
+      ]
+    },
+    {
+      "ref": "src-hanys",
+      "title": "hanyswpodrozach.blogspot.com — Jagodna i Chatka Sylwestrowa",
+      "url": "https://hanyswpodrozach.blogspot.com/2026/01/gory-bystrzyckie-neratov-jagodna-chatka.html",
+      "appliesToRefs": [
+        "chatka",
+        "jagodna"
+      ]
+    },
+    {
+      "ref": "src-bikepacking",
+      "title": "bikepacking.com.pl — Chatka Sylwestrowa i Góry Bystrzyckie",
+      "url": "https://bikepacking.com.pl/chatka-sylwestrowa-i-gory-bystrzyckie/",
+      "appliesToRefs": [
+        "chatka",
+        "trasa-chatka"
+      ]
+    },
+    {
+      "ref": "src-sudety",
+      "title": "forum.sudety.it — chatka w Górach Bystrzyckich pod Jagodną",
+      "url": "https://forum.sudety.it/viewtopic.php?t=1047",
+      "appliesToRefs": [
+        "chatka"
+      ]
+    }
+  ],
+  "tracks": [
+    {
+      "ref": "trasa-chatka",
+      "name": "1. Przełęcz Spalona → Chatka Sylwestrowa",
+      "distanceKm": 2,
+      "descentM": 31,
+      "durationMin": 45,
+      "durationMaxMin": 75,
+      "difficulty": "łagodnie, drogami leśnymi",
+      "waymarking": "BRAK szlaku pieszego — dawny niebieski szlak rowerowy; konieczny punkt / ślad w telefonie",
+      "routeNotes": "Wysokość ok. 811 m → 780 m. Czas: 45 min bez bagażu / 1:00–1:15 z pełnymi plecakami i 6-latkiem. Opis dojścia (do zweryfikowania na mapie przed wyjazdem): od schroniska asfaltem na zachód ok. 500 m, potem w lewo w drogę leśną (dawny niebieski szlak rowerowy). Mijamy rozdroże, po ok. 700 m skręcamy w prawo, dalej przez dwa kolejne rozdroża i po ok. 900 m chatka pojawia się po lewej stronie drogi leśnej. Chatka jest zaznaczona na mapy.cz / mapy.com — koniecznie pobrać mapę offline i zapisać punkt u co najmniej trzech osób."
+    },
+    {
+      "ref": "trasa-jagodna",
+      "name": "2. Przełęcz Spalona → Jagodna (977 m) → Przełęcz Spalona",
+      "distanceKm": 8.4,
+      "ascentM": 170,
+      "descentM": 170,
+      "durationMin": 180,
+      "durationMaxMin": 210,
+      "difficulty": "łatwa technicznie — w porządku dla 6-latka bez plecaka",
+      "waymarking": "niebieski, z Przełęczy Spalonej",
+      "routeNotes": "4,2 km w jedną stronę, 8,4 km w obie. Ok. 1:30 w górę, ok. 3 h w obie strony (z przerwami i wieżą — liczmy 3:30). Przewyższenie ok. 170 m, łagodnie, szeroka droga. Atrakcja: 23-metrowa wieża widokowa na szczycie."
+    },
+    {
+      "ref": "trasa-sasin",
+      "name": "3. Krótka pętla przy chatce w kierunku Sasina (Kohlberg)",
+      "durationMin": 60,
+      "durationMaxMin": 90,
+      "routeNotes": "Szerokie drogi leśne, 1–1,5 h."
+    }
+  ]
+}

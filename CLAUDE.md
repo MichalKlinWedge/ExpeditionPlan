@@ -16,13 +16,14 @@ All docs, UI strings and code comments are in **Polish**; identifiers in English
 ## Commands
 
 ```bash
-npm install                 # root; npm workspaces (apps/*, packages/*)
+npm install                 # root; npm workspaces (apps/*, packages/*, tools/*)
 npm run check               # typecheck + lint + test in every workspace
 npm run typecheck           # web runs `next typegen` first (LayoutProps etc. are generated)
 npm test                    # vitest in packages/*
 npm run web                 # next dev
 npm run mobile              # expo start (needs a development build, not Expo Go)
 npm run supabase -- start   # local Supabase via pinned CLI (needs Docker)
+npm run import-plan -- <file.docx|pdf> [--provider CLAUDE] [--out x.json] [--compare fixtures/plans/<p>/plan.json] [--anonymize] [--text-only]
 ```
 
 Single test: `npx vitest run src/__tests__/structured.test.ts` (or `-t "nazwa testu"`) inside `packages/ai` or `packages/core`.
@@ -40,7 +41,7 @@ Mobile: always `npx expo install <pkg>` inside `apps/mobile` (SDK-compatible ver
 
 ## Reference data
 
-`fixtures/plans/<slug>/brief.json` are the user's five real trips as `TripBrief`. `packages/core/src/__tests__/fixtures.test.ts` validates them — a schema change that breaks them is a regression. Gaps/inconsistencies found in the source docs are kept in `notes` on purpose.
+`fixtures/plans/<slug>/brief.json` are the user's five real trips as `TripBrief`; `plan.json` is the full hand-checked `TripDocument` (gold standard for AI import) and `GAPS.md` lists what the schema could not hold. `packages/core/src/__tests__/fixtures.test.ts` validates them — a schema change that breaks them is a regression. Gaps/inconsistencies found in the source docs are kept in `notes` on purpose.
 
 ## Conventions
 

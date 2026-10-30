@@ -1,0 +1,1386 @@
+{
+  "schemaVersion": 1,
+  "trip": {
+    "title": "Barcelona 5–7 grudnia",
+    "subtitle": "Plan wyjazdu",
+    "startDate": "2026-12-05",
+    "endDate": "2026-12-07",
+    "primaryTz": "Europe/Madrid",
+    "homeTz": "Europe/Warsaw",
+    "baseCurrency": "EUR",
+    "fx": []
+  },
+  "travelers": [
+    {
+      "ref": "u1",
+      "name": "Uczestnik 1",
+      "notes": "Skład grupy nie wynika z dokumentu (forma „wy”) — do uzupełnienia."
+    },
+    {
+      "ref": "u2",
+      "name": "Uczestnik 2"
+    }
+  ],
+  "places": [
+    {
+      "ref": "bcn-t2",
+      "name": "Lotnisko Barcelona, terminal T2 (Aeroport T2)",
+      "category": "airport"
+    },
+    {
+      "ref": "lotnisko-wroclaw",
+      "name": "Lotnisko Wrocław",
+      "category": "airport"
+    },
+    {
+      "ref": "passeig-de-gracia",
+      "name": "Passeig de Gràcia (stacja R2 Nord / metro L4)",
+      "category": "station"
+    },
+    {
+      "ref": "jaume-i",
+      "name": "Jaume I (metro L4)",
+      "category": "station"
+    },
+    {
+      "ref": "nocleg",
+      "name": "Nocleg u znajomej (okolice Jaume I)",
+      "category": "lodging",
+      "notes": "Adres nie jest podany w dokumencie."
+    },
+    {
+      "ref": "pl-catalunya",
+      "name": "Plaça de Catalunya",
+      "category": "square",
+      "notes": "Skrytka na bagaż (rezerwowo); przystanek Aerobusu na lotnisko."
+    },
+    {
+      "ref": "gran-vista",
+      "name": "Gran Vista (ostatni przystanek V17)",
+      "category": "bus_stop"
+    },
+    {
+      "ref": "bunkry-del-carmel",
+      "name": "Bunkers del Carmel",
+      "category": "viewpoint"
+    },
+    {
+      "ref": "sant-pau",
+      "name": "Hospital de Sant Pau",
+      "category": "monument"
+    },
+    {
+      "ref": "sagrada-familia",
+      "name": "Sagrada Família",
+      "category": "church"
+    },
+    {
+      "ref": "espanya",
+      "name": "Plaça d’Espanya (metro Espanya)",
+      "category": "station"
+    },
+    {
+      "ref": "mnac",
+      "name": "MNAC — schody i tarasy",
+      "category": "museum",
+      "notes": "Do 18:00 wejście do muzeum jest gratis po rezerwacji online."
+    },
+    {
+      "ref": "arenas",
+      "name": "Arenas de Barcelona (dawna arena byków) — dach",
+      "category": "viewpoint"
+    },
+    {
+      "ref": "font-magica",
+      "name": "Font Màgica",
+      "category": "fountain"
+    },
+    {
+      "ref": "liceu",
+      "name": "Liceu (metro L3)",
+      "category": "station"
+    },
+    {
+      "ref": "barca-store-centrum",
+      "name": "Barça Store — La Rambla albo Portal de l’Àngel",
+      "category": "shop"
+    },
+    {
+      "ref": "lokal-kolegi",
+      "name": "Lokal kolegi (piwo i burgery)",
+      "category": "restaurant",
+      "notes": "Nazwa i adres lokalu nie są podane."
+    },
+    {
+      "ref": "gotyk",
+      "name": "Gotyk (Barri Gòtic)",
+      "category": "district"
+    },
+    {
+      "ref": "katedra",
+      "name": "Katedra w Barcelonie",
+      "category": "church"
+    },
+    {
+      "ref": "fira-santa-llucia",
+      "name": "Fira de Santa Llúcia (jarmark świąteczny przed katedrą)",
+      "category": "market"
+    },
+    {
+      "ref": "sant-felip-neri",
+      "name": "Plaça Sant Felip Neri",
+      "category": "square"
+    },
+    {
+      "ref": "placa-reial",
+      "name": "Plaça Reial",
+      "category": "square"
+    },
+    {
+      "ref": "el-born",
+      "name": "El Born",
+      "category": "district"
+    },
+    {
+      "ref": "santa-maria-del-mar",
+      "name": "Santa Maria del Mar",
+      "category": "church"
+    },
+    {
+      "ref": "barceloneta",
+      "name": "Barceloneta",
+      "category": "beach"
+    },
+    {
+      "ref": "muzeum-picassa",
+      "name": "Muzeum Picassa",
+      "category": "museum"
+    },
+    {
+      "ref": "montjuic",
+      "name": "Montjuïc",
+      "category": "hill"
+    },
+    {
+      "ref": "stadion-olimpijski",
+      "name": "Stadion Olimpijski (Montjuïc)",
+      "category": "stadium",
+      "openingHours": "10–17 (zimą otwarty tylko do 17:00)"
+    },
+    {
+      "ref": "les-corts",
+      "name": "Les Corts albo Palau Reial (metro L3)",
+      "category": "station"
+    },
+    {
+      "ref": "camp-nou",
+      "name": "Camp Nou",
+      "category": "stadium"
+    },
+    {
+      "ref": "barca-store-stadion",
+      "name": "Barça Store przy stadionie",
+      "category": "shop"
+    }
+  ],
+  "days": [
+    {
+      "ref": "d1",
+      "date": "2026-12-05",
+      "title": "Sobota 5.12: Bunkry, Sagrada, Montjuïc",
+      "summary": "Najpierw zostawiacie plecaki, potem widok z Bunkrów i Sagrada w środku, a na zachód słońca (ok. 17:20) jesteście na Montjuïc.",
+      "lodgingRef": "nocleg-znajoma",
+      "tz": "Europe/Madrid",
+      "baseRef": "nocleg"
+    },
+    {
+      "ref": "d2",
+      "date": "2026-12-06",
+      "title": "Niedziela 6.12: Gotyk i mecz",
+      "summary": "Rano spacer pieszo od drzwi noclegu, o 15:00 wyjazd na Camp Nou, mecz o 17:00. Niedziela jest też świętem (Dzień Konstytucji), więc większość sklepów będzie zamknięta. Za to to pierwsza niedziela miesiąca, więc wiele muzeów ma wstęp gratis.",
+      "lodgingRef": "nocleg-znajoma",
+      "tz": "Europe/Madrid",
+      "baseRef": "nocleg"
+    },
+    {
+      "ref": "d3",
+      "date": "2026-12-07",
+      "title": "Poniedziałek 7.12: wylot",
+      "summary": "Wylot jest o 09:45 z T2, więc z pokoju wychodzicie ok. 07:15, dużo przed godziną wymeldowania (11:00).",
+      "tz": "Europe/Madrid",
+      "baseRef": "nocleg"
+    }
+  ],
+  "items": [
+    {
+      "ref": "d1-ladowanie",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Lądowanie na T2",
+      "placeRef": "bcn-t2",
+      "time": {
+        "precision": "exact",
+        "start": "09:00"
+      },
+      "isFixed": true,
+      "bookingRef": "lot-tam",
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d1-pociag-lotnisko",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Pociąg R2 Nord z lotniska do Passeig de Gràcia, potem metro L4 do Jaume I",
+      "leg": {
+        "mode": "train",
+        "line": "R2 Nord",
+        "durationMin": 25,
+        "frequencyMin": 30,
+        "ticketBookingRef": "t-casual",
+        "fromPlaceRef": "bcn-t2",
+        "toPlaceRef": "jaume-i",
+        "instructions": "Pociąg R2 Nord z lotniska do Passeig de Gràcia (ok. 25 min, co ok. 30 min), potem metro L4 do Jaume I albo 20 min pieszo.",
+        "segments": [
+          {
+            "mode": "train",
+            "line": "R2 Nord",
+            "from": "Aeroport T2",
+            "to": "Passeig de Gràcia",
+            "durationMin": 25
+          },
+          {
+            "mode": "metro",
+            "line": "L4",
+            "from": "Passeig de Gràcia",
+            "to": "Jaume I"
+          }
+        ],
+        "alternative": {
+          "mode": "walk",
+          "durationMin": 20,
+          "instructions": "Z Passeig de Gràcia ok. 20 min pieszo zamiast metra L4."
+        }
+      },
+      "placeRef": "bcn-t2",
+      "time": {
+        "precision": "approx",
+        "start": "09:30"
+      },
+      "payment": "prepaid",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d1-plecaki",
+      "dayRef": "d1",
+      "kind": "errand",
+      "title": "Plecaki u znajomej",
+      "placeRef": "nocleg",
+      "time": {
+        "precision": "approx",
+        "start": "10:30"
+      },
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 0,
+        "maxMinor": 0
+      },
+      "payment": "free",
+      "bookingRef": "nocleg-znajoma",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d1-plecaki-skrytka",
+      "dayRef": "d1",
+      "kind": "errand",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "v-plecaki-skrytka"
+      ],
+      "replacesRefs": [
+        "d1-plecaki"
+      ],
+      "title": "Skrytka na plecaki przy Pl. Catalunya",
+      "description": "Jeśli plecaków nie da się zostawić u znajomej.",
+      "placeRef": "pl-catalunya",
+      "time": {
+        "precision": "approx",
+        "start": "10:30"
+      },
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 500,
+        "maxMinor": 800,
+        "note": "Kolumna „Koszt / os.” w dokumencie."
+      },
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d1-autobus-v17",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Autobus V17 do ostatniego przystanku Gran Vista, potem ok. 10 min pieszo na Bunkry del Carmel",
+      "leg": {
+        "mode": "bus",
+        "line": "V17",
+        "ticketBookingRef": "t-casual",
+        "toPlaceRef": "bunkry-del-carmel",
+        "instructions": "Autobus V17 do ostatniego przystanku Gran Vista, potem ok. 10 min pieszo. Najbliższy przystanek sprawdźcie w aplikacji TMB, bo trasa przy Via Laietana bywa zmieniana.",
+        "segments": [
+          {
+            "mode": "bus",
+            "line": "V17",
+            "to": "Gran Vista"
+          },
+          {
+            "mode": "walk",
+            "from": "Gran Vista",
+            "to": "Bunkers del Carmel",
+            "durationMin": 10
+          }
+        ]
+      },
+      "time": {
+        "precision": "approx",
+        "start": "11:00"
+      },
+      "payment": "prepaid",
+      "notes": [
+        "Najbliższy przystanek sprawdźcie w aplikacji TMB, bo trasa przy Via Laietana bywa zmieniana."
+      ],
+      "sortKey": "0050"
+    },
+    {
+      "ref": "d1-bunkry",
+      "dayRef": "d1",
+      "kind": "visit",
+      "title": "Bunkry del Carmel",
+      "description": "Panorama całego miasta.",
+      "placeRef": "bunkry-del-carmel",
+      "time": {
+        "precision": "range",
+        "start": "11:45",
+        "end": "12:45"
+      },
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 0,
+        "maxMinor": 0
+      },
+      "payment": "free",
+      "weather": "outdoor",
+      "notes": [
+        "Na górze wieje, weźcie kurtki."
+      ],
+      "sortKey": "0060"
+    },
+    {
+      "ref": "d1-zejscie-sagrada",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Zejście pieszo do Sagrady, po drodze Hospital Sant Pau z zewnątrz",
+      "leg": {
+        "mode": "walk",
+        "durationMin": 40,
+        "fromPlaceRef": "bunkry-del-carmel",
+        "toPlaceRef": "sagrada-familia",
+        "instructions": "Zejście pieszo do Sagrady (ok. 40 min), po drodze Hospital Sant Pau z zewnątrz.",
+        "price": {
+          "currency": "EUR",
+          "basis": "per_person",
+          "minMinor": 0,
+          "maxMinor": 0
+        }
+      },
+      "placeRef": "sant-pau",
+      "time": {
+        "precision": "approx",
+        "start": "12:45"
+      },
+      "payment": "free",
+      "weather": "outdoor",
+      "sortKey": "0070"
+    },
+    {
+      "ref": "d1-obiad",
+      "dayRef": "d1",
+      "kind": "meal",
+      "title": "Obiad w bocznych uliczkach",
+      "description": "Nie przy samym placu przed Sagradą.",
+      "time": {
+        "precision": "approx",
+        "start": "13:30"
+      },
+      "sortKey": "0080"
+    },
+    {
+      "ref": "d1-sagrada",
+      "dayRef": "d1",
+      "kind": "visit",
+      "title": "Sagrada Família w środku",
+      "description": "Popołudniowe słońce wpada przez witraże.",
+      "placeRef": "sagrada-familia",
+      "time": {
+        "precision": "range",
+        "start": "14:30",
+        "end": "16:00"
+      },
+      "weather": "indoor",
+      "priority": "must",
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 2400,
+        "maxMinor": 2600,
+        "tiers": [
+          {
+            "label": "do 30 lat",
+            "maxAge": 29,
+            "amountMinor": 2400
+          },
+          {
+            "label": "od 30 lat",
+            "minAge": 30,
+            "amountMinor": 2600
+          }
+        ],
+        "note": "26 € (do 30 lat 24 €)."
+      },
+      "sortKey": "0090"
+    },
+    {
+      "ref": "d1-metro-espanya",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Metro L5 do Diagonal, przesiadka na L3 do Espanya",
+      "leg": {
+        "mode": "metro",
+        "durationMin": 25,
+        "ticketBookingRef": "t-casual",
+        "fromPlaceRef": "sagrada-familia",
+        "toPlaceRef": "espanya",
+        "instructions": "Metro L5 do Diagonal, przesiadka na L3 do Espanya (ok. 25 min).",
+        "segments": [
+          {
+            "mode": "metro",
+            "line": "L5",
+            "from": "Sagrada Família",
+            "to": "Diagonal"
+          },
+          {
+            "mode": "metro",
+            "line": "L3",
+            "from": "Diagonal",
+            "to": "Espanya"
+          }
+        ]
+      },
+      "placeRef": "sagrada-familia",
+      "time": {
+        "precision": "approx",
+        "start": "16:00"
+      },
+      "payment": "prepaid",
+      "sortKey": "0100"
+    },
+    {
+      "ref": "d1-mnac",
+      "dayRef": "d1",
+      "kind": "visit",
+      "title": "Schody i tarasy MNAC, zachód słońca ok. 17:20",
+      "placeRef": "mnac",
+      "time": {
+        "precision": "range",
+        "start": "16:30",
+        "end": "17:30"
+      },
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 0,
+        "maxMinor": 0
+      },
+      "payment": "free",
+      "weather": "outdoor",
+      "notes": [
+        "Do 18:00 wejście do muzeum jest gratis po rezerwacji online."
+      ],
+      "sortKey": "0110"
+    },
+    {
+      "ref": "d1-arenas",
+      "dayRef": "d1",
+      "kind": "visit",
+      "title": "Dach Arenas (dawna arena byków)",
+      "description": "Widok na MNAC i plac Espanya.",
+      "placeRef": "arenas",
+      "time": {
+        "precision": "approx",
+        "start": "17:45"
+      },
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 0,
+        "maxMinor": 100,
+        "approx": true,
+        "note": "Ok. 1 € winda, schodami ruchomymi gratis."
+      },
+      "sortKey": "0120"
+    },
+    {
+      "ref": "d1-font-magica",
+      "dayRef": "d1",
+      "kind": "visit",
+      "title": "Font Màgica",
+      "description": "Tylko jeśli tego dnia działa.",
+      "placeRef": "font-magica",
+      "time": {
+        "precision": "approx",
+        "start": "20:00"
+      },
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 0,
+        "maxMinor": 0
+      },
+      "payment": "free",
+      "weather": "outdoor",
+      "sortKey": "0130"
+    },
+    {
+      "ref": "d1-gotyk-kolacja",
+      "dayRef": "d1",
+      "kind": "meal",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "v-font-nie-dziala"
+      ],
+      "replacesRefs": [
+        "d1-font-magica"
+      ],
+      "title": "Od razu powrót na Gotyk, więcej czasu na kolację",
+      "description": "Jeśli fontanny nie działają: po Arenas od razu wracacie na Gotyk.",
+      "placeRef": "gotyk",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "evening"
+      },
+      "sortKey": "0140"
+    },
+    {
+      "ref": "d1-metro-liceu",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Metro L3 z Espanya do Liceu",
+      "leg": {
+        "mode": "metro",
+        "line": "L3",
+        "ticketBookingRef": "t-casual",
+        "fromPlaceRef": "espanya",
+        "toPlaceRef": "liceu",
+        "instructions": "Metro L3 z Espanya do Liceu."
+      },
+      "placeRef": "espanya",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "evening"
+      },
+      "payment": "prepaid",
+      "sortKey": "0150"
+    },
+    {
+      "ref": "d1-zameldowanie",
+      "dayRef": "d1",
+      "kind": "lodging",
+      "title": "Zameldowanie u znajomej",
+      "placeRef": "nocleg",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "evening"
+      },
+      "bookingRef": "nocleg-znajoma",
+      "notes": [
+        "Będziecie wieczorem, więc ustalcie z gospodynią późne wejście albo samodzielne zameldowanie."
+      ],
+      "sortKey": "0160"
+    },
+    {
+      "ref": "d1-barca-store",
+      "dayRef": "d1",
+      "kind": "errand",
+      "title": "Barça Store przy La Rambla albo Portal de l’Àngel",
+      "description": "Koszulki dzień przed meczem.",
+      "placeRef": "barca-store-centrum",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "evening"
+      },
+      "sortKey": "0170"
+    },
+    {
+      "ref": "d1-lokal-kolegi",
+      "dayRef": "d1",
+      "kind": "meal",
+      "title": "Piwo i burgery w lokalu kolegi",
+      "placeRef": "lokal-kolegi",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "evening"
+      },
+      "sortKey": "0180"
+    },
+    {
+      "ref": "p-stadion-olimpijski",
+      "area": "Montjuïc",
+      "kind": "visit",
+      "planStatus": "does_not_fit",
+      "title": "Stadion Olimpijski",
+      "description": "Nie mieści się w sobotę: zimą jest otwarty tylko do 17:00, a Barça już tam nie gra. Jeśli komuś bardzo zależy — niedziela rano (opcja B).",
+      "placeRef": "stadion-olimpijski",
+      "notes": [
+        "Powód „nie mieści się”: zimą otwarty tylko do 17:00, a Barça już tam nie gra."
+      ]
+    },
+    {
+      "ref": "d2-a-katedra",
+      "dayRef": "d2",
+      "kind": "visit",
+      "variantRefs": [
+        "v-opcja-a"
+      ],
+      "title": "Katedra",
+      "placeRef": "katedra",
+      "time": {
+        "precision": "approx",
+        "start": "10:00"
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d2-a-fira",
+      "dayRef": "d2",
+      "kind": "visit",
+      "variantRefs": [
+        "v-opcja-a"
+      ],
+      "title": "Jarmark świąteczny Fira de Santa Llúcia (przed katedrą)",
+      "placeRef": "fira-santa-llucia",
+      "weather": "outdoor",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d2-a-sant-felip-neri",
+      "dayRef": "d2",
+      "kind": "visit",
+      "variantRefs": [
+        "v-opcja-a"
+      ],
+      "title": "Plaça Sant Felip Neri",
+      "placeRef": "sant-felip-neri",
+      "weather": "outdoor",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d2-a-placa-reial",
+      "dayRef": "d2",
+      "kind": "visit",
+      "variantRefs": [
+        "v-opcja-a"
+      ],
+      "title": "Plaça Reial",
+      "placeRef": "placa-reial",
+      "weather": "outdoor",
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d2-a-el-born",
+      "dayRef": "d2",
+      "kind": "visit",
+      "variantRefs": [
+        "v-opcja-a"
+      ],
+      "title": "El Born",
+      "placeRef": "el-born",
+      "weather": "outdoor",
+      "sortKey": "0050"
+    },
+    {
+      "ref": "d2-a-santa-maria",
+      "dayRef": "d2",
+      "kind": "visit",
+      "variantRefs": [
+        "v-opcja-a"
+      ],
+      "title": "Santa Maria del Mar",
+      "placeRef": "santa-maria-del-mar",
+      "sortKey": "0060"
+    },
+    {
+      "ref": "d2-a-barceloneta",
+      "dayRef": "d2",
+      "kind": "visit",
+      "variantRefs": [
+        "v-opcja-a"
+      ],
+      "title": "Barceloneta (10 min do morza)",
+      "placeRef": "barceloneta",
+      "weather": "outdoor",
+      "sortKey": "0070"
+    },
+    {
+      "ref": "d2-a-picasso",
+      "dayRef": "d2",
+      "kind": "visit",
+      "variantRefs": [
+        "v-opcja-a"
+      ],
+      "priority": "optional",
+      "title": "Muzeum Picassa (gratis)",
+      "placeRef": "muzeum-picassa",
+      "weather": "indoor",
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 0,
+        "maxMinor": 0
+      },
+      "payment": "free",
+      "notes": [
+        "Gratis (pierwsza niedziela miesiąca), ale trzeba wcześniej zarezerwować wejście.",
+        "Miejsce w kolejności opcji A nie jest podane — sortKey na końcu opcji A."
+      ],
+      "sortKey": "0080"
+    },
+    {
+      "ref": "d2-b-montjuic",
+      "dayRef": "d2",
+      "kind": "visit",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "v-opcja-b"
+      ],
+      "title": "Montjuïc i Stadion Olimpijski (otwarty 10–17), powrót przed obiadem",
+      "placeRef": "stadion-olimpijski",
+      "time": {
+        "precision": "approx",
+        "start": "10:00"
+      },
+      "weather": "outdoor",
+      "sortKey": "0090"
+    },
+    {
+      "ref": "d2-obiad",
+      "dayRef": "d2",
+      "kind": "meal",
+      "title": "Obiad",
+      "time": {
+        "precision": "approx",
+        "start": "13:00"
+      },
+      "sortKey": "0100"
+    },
+    {
+      "ref": "d2-wyjazd-mecz",
+      "dayRef": "d2",
+      "kind": "transport",
+      "title": "Pieszo na Liceu, metro L3 do Les Corts albo Palau Reial",
+      "leg": {
+        "mode": "metro",
+        "line": "L3",
+        "durationMin": 25,
+        "toPlaceRef": "les-corts",
+        "instructions": "Pieszo na Liceu, metro L3 do Les Corts albo Palau Reial (ok. 25 min). Bramki i kontrola zajmują czas.",
+        "segments": [
+          {
+            "mode": "walk",
+            "to": "Liceu"
+          },
+          {
+            "mode": "metro",
+            "line": "L3",
+            "from": "Liceu",
+            "to": "Les Corts / Palau Reial",
+            "durationMin": 25
+          }
+        ]
+      },
+      "time": {
+        "precision": "approx",
+        "start": "15:00"
+      },
+      "notes": [
+        "Bramki i kontrola zajmują czas."
+      ],
+      "sortKey": "0110"
+    },
+    {
+      "ref": "d2-barca-store-stadion",
+      "dayRef": "d2",
+      "kind": "errand",
+      "planStatus": "alternative",
+      "replacesRefs": [
+        "d1-barca-store"
+      ],
+      "title": "Barça Store przy stadionie",
+      "description": "Jeśli koszulki nie zostały kupione w sobotę.",
+      "placeRef": "barca-store-stadion",
+      "sortKey": "0120"
+    },
+    {
+      "ref": "d2-mecz",
+      "dayRef": "d2",
+      "kind": "activity",
+      "title": "Mecz FC Barcelona – Celta Vigo",
+      "placeRef": "camp-nou",
+      "time": {
+        "precision": "exact",
+        "start": "17:00"
+      },
+      "isFixed": true,
+      "priority": "must",
+      "bookingRef": "mecz",
+      "notes": [
+        "Na stadion weźcie jak najmniej rzeczy: duże torby i plecaki mogą nie przejść przez kontrolę."
+      ],
+      "sortKey": "0130"
+    },
+    {
+      "ref": "d2-powrot",
+      "dayRef": "d2",
+      "kind": "transport",
+      "title": "Powrót metrem L3 (będzie tłok)",
+      "leg": {
+        "mode": "metro",
+        "line": "L3",
+        "fromPlaceRef": "les-corts",
+        "toPlaceRef": "liceu",
+        "instructions": "Powrót metrem L3 (będzie tłok)."
+      },
+      "placeRef": "les-corts",
+      "time": {
+        "precision": "approx",
+        "start": "19:00"
+      },
+      "sortKey": "0140"
+    },
+    {
+      "ref": "d2-kolacja",
+      "dayRef": "d2",
+      "kind": "meal",
+      "title": "Kolacja na Gotyku",
+      "placeRef": "gotyk",
+      "notes": [
+        "Nie siedzieć za długo, bo w poniedziałek wcześnie wstajecie."
+      ],
+      "sortKey": "0150"
+    },
+    {
+      "ref": "d3-wymeldowanie",
+      "dayRef": "d3",
+      "kind": "lodging",
+      "title": "Wymeldowanie (klucze tak, jak ustalicie z gospodynią)",
+      "placeRef": "nocleg",
+      "time": {
+        "precision": "approx",
+        "start": "07:15"
+      },
+      "bookingRef": "nocleg-znajoma",
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d3-metro-l4",
+      "dayRef": "d3",
+      "kind": "transport",
+      "title": "Metro L4 z Jaume I do Passeig de Gràcia",
+      "leg": {
+        "mode": "metro",
+        "line": "L4",
+        "fromPlaceRef": "jaume-i",
+        "toPlaceRef": "passeig-de-gracia",
+        "instructions": "Metro L4 z Jaume I do Passeig de Gràcia."
+      },
+      "placeRef": "jaume-i",
+      "time": {
+        "precision": "approx",
+        "start": "07:15"
+      },
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d3-pociag",
+      "dayRef": "d3",
+      "kind": "transport",
+      "title": "Pociąg R2 Nord do Aeroport T2",
+      "leg": {
+        "mode": "train",
+        "line": "R2 Nord",
+        "durationMin": 25,
+        "frequencyMin": 30,
+        "ticketBookingRef": "t-casual",
+        "fromPlaceRef": "passeig-de-gracia",
+        "toPlaceRef": "bcn-t2",
+        "instructions": "Pociąg R2 Nord do Aeroport T2 (ok. 25 min, w ramach T-casual). Godziny pociągów sprawdźcie dzień wcześniej na rodalies.gencat.cat albo w Google Maps.",
+        "alternative": {
+          "mode": "bus",
+          "line": "Aerobus",
+          "instructions": "Jeśli pociąg ucieknie, następny jest za ok. 30 min albo jedzie się Aerobusem z Pl. Catalunya."
+        },
+        "links": [
+          {
+            "label": "Rodalies — rozkład pociągów",
+            "url": "https://rodalies.gencat.cat/"
+          }
+        ]
+      },
+      "placeRef": "passeig-de-gracia",
+      "time": {
+        "precision": "approx",
+        "start": "07:40"
+      },
+      "payment": "prepaid",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d3-lotnisko",
+      "dayRef": "d3",
+      "kind": "errand",
+      "title": "Lotnisko T2, kontrola bezpieczeństwa",
+      "placeRef": "bcn-t2",
+      "time": {
+        "precision": "approx",
+        "start": "08:10"
+      },
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d3-wylot",
+      "dayRef": "d3",
+      "kind": "transport",
+      "title": "Wylot W6 1812 do Wrocławia",
+      "leg": {
+        "mode": "flight",
+        "line": "W6 1812",
+        "fromPlaceRef": "bcn-t2",
+        "toPlaceRef": "lotnisko-wroclaw"
+      },
+      "placeRef": "bcn-t2",
+      "time": {
+        "precision": "exact",
+        "start": "09:45"
+      },
+      "isFixed": true,
+      "bookingRef": "lot-powrot",
+      "sortKey": "0050"
+    },
+    {
+      "ref": "d3-przylot-wroclaw",
+      "dayRef": "d3",
+      "kind": "transport",
+      "title": "Przylot do Wrocławia",
+      "placeRef": "lotnisko-wroclaw",
+      "time": {
+        "precision": "exact",
+        "start": "12:35",
+        "tz": "Europe/Warsaw"
+      },
+      "isFixed": true,
+      "bookingRef": "lot-powrot",
+      "sortKey": "0060"
+    }
+  ],
+  "legs": [
+    {
+      "ref": "leg-santa-maria-barceloneta",
+      "fromRef": "d2-a-santa-maria",
+      "toRef": "d2-a-barceloneta",
+      "mode": "walk",
+      "durationMin": 10,
+      "instructions": "10 min do morza na Barcelonetę."
+    }
+  ],
+  "variantGroups": [
+    {
+      "ref": "vg-plecaki",
+      "scope": "item",
+      "dayRef": "d1",
+      "title": "Gdzie zostawić plecaki",
+      "conditionKind": "availability",
+      "conditionText": "Plecaki u znajomej, a jeśli się nie da — skrytka przy Pl. Catalunya."
+    },
+    {
+      "ref": "vg-font-magica",
+      "scope": "block",
+      "dayRef": "d1",
+      "title": "Font Màgica albo od razu na Gotyk",
+      "conditionKind": "closure",
+      "conditionText": "Font Màgica tylko jeśli tego dnia działa. Jeśli fontanny nie działają: po Arenas od razu wracacie na Gotyk i macie więcej czasu na kolację."
+    },
+    {
+      "ref": "vg-niedziela-rano",
+      "scope": "block",
+      "dayRef": "d2",
+      "title": "Niedziela rano: opcja A albo B",
+      "conditionKind": "choice",
+      "rationale": "Opcja A (polecam). Opcja B, jeśli komuś bardzo zależy na Stadionie Olimpijskim."
+    }
+  ],
+  "variants": [
+    {
+      "ref": "v-plecaki-nocleg",
+      "groupRef": "vg-plecaki",
+      "label": "U znajomej (0 €)",
+      "recommended": true
+    },
+    {
+      "ref": "v-plecaki-skrytka",
+      "groupRef": "vg-plecaki",
+      "label": "Skrytka przy Pl. Catalunya (5–8 €)",
+      "excludesRefs": [
+        "d1-plecaki"
+      ]
+    },
+    {
+      "ref": "v-font-dziala",
+      "groupRef": "vg-font-magica",
+      "label": "Font Màgica działa — ok. 20:00 pokaz",
+      "recommended": true
+    },
+    {
+      "ref": "v-font-nie-dziala",
+      "groupRef": "vg-font-magica",
+      "label": "Fontanny nie działają — po Arenas od razu na Gotyk",
+      "excludesRefs": [
+        "d1-font-magica"
+      ]
+    },
+    {
+      "ref": "v-opcja-a",
+      "groupRef": "vg-niedziela-rano",
+      "label": "Opcja A · Gotyk, El Born, Barceloneta",
+      "recommended": true,
+      "summary": "Katedra i przed nią jarmark świąteczny Fira de Santa Llúcia, Plaça Sant Felip Neri, Plaça Reial, El Born, Santa Maria del Mar, potem 10 min do morza na Barcelonetę. Muzeum Picassa jest gratis, ale trzeba wcześniej zarezerwować wejście."
+    },
+    {
+      "ref": "v-opcja-b",
+      "groupRef": "vg-niedziela-rano",
+      "label": "Opcja B · Montjuïc i Stadion Olimpijski",
+      "summary": "Montjuïc i Stadion Olimpijski (otwarty 10–17), powrót przed obiadem."
+    }
+  ],
+  "constraints": [
+    {
+      "ref": "c-zachod-montjuic",
+      "kind": "arrive_before",
+      "dayRef": "d1",
+      "itemRef": "d1-mnac",
+      "time": "17:20",
+      "severity": "soft",
+      "reason": "Na zachód słońca (ok. 17:20) jesteście na Montjuïc."
+    },
+    {
+      "ref": "c-stadion-olimpijski",
+      "kind": "must_be_open",
+      "itemRef": "d2-b-montjuic",
+      "reason": "Stadion Olimpijski otwarty 10–17 (zimą tylko do 17:00)."
+    },
+    {
+      "ref": "c-mnac-gratis",
+      "kind": "other",
+      "dayRef": "d1",
+      "itemRef": "d1-mnac",
+      "time": "18:00",
+      "severity": "soft",
+      "reason": "Do 18:00 wejście do muzeum jest gratis po rezerwacji online."
+    },
+    {
+      "ref": "c-wyjscie-d3",
+      "kind": "depart_before",
+      "dayRef": "d3",
+      "itemRef": "d3-wymeldowanie",
+      "time": "07:15",
+      "reason": "Wylot o 09:45 z T2."
+    },
+    {
+      "ref": "c-wymeldowanie",
+      "kind": "depart_before",
+      "dayRef": "d3",
+      "bookingRef": "nocleg-znajoma",
+      "time": "11:00",
+      "reason": "Godzina wymeldowania 11:00."
+    }
+  ],
+  "bookings": [
+    {
+      "ref": "lot-tam",
+      "kind": "flight",
+      "status": "booked",
+      "title": "Przylot do Barcelony (T2)",
+      "end": {
+        "date": "2026-12-05",
+        "time": "09:00",
+        "tz": "Europe/Madrid"
+      },
+      "endPlaceRef": "bcn-t2",
+      "flight": {
+        "toAirport": "BCN T2"
+      },
+      "notes": [
+        "Dokument podaje tylko lądowanie na T2 o 09:00 — lotnisko wylotu, godzina wylotu, przewoźnik i numer lotu nie są podane."
+      ]
+    },
+    {
+      "ref": "lot-powrot",
+      "kind": "flight",
+      "status": "booked",
+      "provider": "Wizz Air",
+      "title": "Wylot W6 1812 Barcelona T2 → Wrocław",
+      "start": {
+        "date": "2026-12-07",
+        "time": "09:45",
+        "tz": "Europe/Madrid"
+      },
+      "end": {
+        "date": "2026-12-07",
+        "time": "12:35",
+        "tz": "Europe/Warsaw"
+      },
+      "startPlaceRef": "bcn-t2",
+      "endPlaceRef": "lotnisko-wroclaw",
+      "flight": {
+        "number": "W6 1812",
+        "fromAirport": "BCN T2",
+        "toAirport": "Wrocław"
+      }
+    },
+    {
+      "ref": "t-casual",
+      "kind": "transit_pass",
+      "status": "unknown",
+      "provider": "TMB",
+      "title": "Bilet T-casual",
+      "notes": [
+        "Pokrywa pociąg R2 Nord z/na lotnisko, metro i autobus V17 (kolumna kosztów: „T-casual”). Cena, liczba sztuk i miejsce zakupu nie są podane."
+      ]
+    },
+    {
+      "ref": "nocleg-znajoma",
+      "kind": "lodging",
+      "status": "booked",
+      "title": "Nocleg u znajomej (okolice Jaume I)",
+      "startPlaceRef": "nocleg",
+      "start": {
+        "date": "2026-12-05",
+        "tz": "Europe/Madrid"
+      },
+      "end": {
+        "date": "2026-12-07",
+        "time": "11:00",
+        "tz": "Europe/Madrid"
+      },
+      "checkOutUntil": "11:00",
+      "notes": [
+        "Zameldowanie wieczorem 5.12 — późne wejście albo samodzielne zameldowanie do ustalenia z gospodynią.",
+        "Plecaki rano 5.12 u gospodyni (ok. 10:30), a jeśli się nie da — skrytka przy Pl. Catalunya.",
+        "Wymeldowanie 7.12 ok. 07:15, klucze tak, jak ustalicie z gospodynią."
+      ]
+    },
+    {
+      "ref": "mecz",
+      "kind": "ticket",
+      "status": "booked",
+      "title": "Mecz FC Barcelona – Celta Vigo",
+      "start": {
+        "date": "2026-12-06",
+        "time": "17:00",
+        "tz": "Europe/Madrid"
+      },
+      "startPlaceRef": "camp-nou",
+      "notes": [
+        "Bramki i kontrola zajmują czas; duże torby i plecaki mogą nie przejść."
+      ]
+    }
+  ],
+  "contacts": [
+    {
+      "ref": "kontakt-gospodyni",
+      "name": "Znajoma (gospodyni noclegu)",
+      "role": "host",
+      "bookingRef": "nocleg-znajoma",
+      "notes": "Telefon nie jest podany w dokumencie. Ustalić późne wejście albo samodzielne zameldowanie, przechowanie plecaków rano 5.12 i oddanie kluczy 7.12."
+    }
+  ],
+  "budgetLines": [],
+  "tasks": [
+    {
+      "ref": "t-zameldowanie",
+      "kind": "todo",
+      "title": "Ustalić z gospodynią późne wejście albo samodzielne zameldowanie",
+      "bookingRef": "nocleg-znajoma",
+      "due": {
+        "kind": "before_booking",
+        "bookingRef": "nocleg-znajoma"
+      },
+      "priority": "high"
+    },
+    {
+      "ref": "t-plecaki",
+      "kind": "question",
+      "title": "Czy można zostawić plecaki u gospodyni rano 5.12?",
+      "body": "Jeśli się nie da — skrytka przy Pl. Catalunya (5–8 €).",
+      "variantGroupRef": "vg-plecaki",
+      "itemRef": "d1-plecaki"
+    },
+    {
+      "ref": "t-klucze",
+      "kind": "todo",
+      "title": "Ustalić z gospodynią oddanie kluczy przy wyjściu 7.12 ok. 07:15",
+      "bookingRef": "nocleg-znajoma",
+      "itemRef": "d3-wymeldowanie"
+    },
+    {
+      "ref": "t-picasso",
+      "kind": "todo",
+      "title": "Zarezerwować wcześniej wejście do Muzeum Picassa (gratis w pierwszą niedzielę)",
+      "itemRef": "d2-a-picasso",
+      "due": {
+        "kind": "before_item",
+        "itemRef": "d2-a-picasso",
+        "days": 1
+      }
+    },
+    {
+      "ref": "t-v17-przystanek",
+      "kind": "todo",
+      "title": "Sprawdzić w aplikacji TMB najbliższy przystanek V17",
+      "body": "Trasa przy Via Laietana bywa zmieniana.",
+      "itemRef": "d1-autobus-v17",
+      "due": {
+        "kind": "on_trip",
+        "dayRef": "d1"
+      }
+    },
+    {
+      "ref": "t-pociagi",
+      "kind": "todo",
+      "title": "Sprawdzić godziny pociągów R2 Nord na lotnisko",
+      "body": "Dzień wcześniej na rodalies.gencat.cat albo w Google Maps.",
+      "itemRef": "d3-pociag",
+      "due": {
+        "kind": "before_item",
+        "itemRef": "d3-pociag",
+        "days": 1
+      }
+    }
+  ],
+  "packing": [],
+  "notes": [
+    {
+      "scope": "day",
+      "targetRef": "d2",
+      "kind": "warning",
+      "topic": "culture",
+      "title": "Święto",
+      "body": "Niedziela 6.12 jest świętem (Dzień Konstytucji), więc większość sklepów będzie zamknięta."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d2",
+      "kind": "tip",
+      "topic": "money",
+      "title": "Pierwsza niedziela miesiąca",
+      "body": "To pierwsza niedziela miesiąca, więc wiele muzeów ma wstęp gratis. Muzeum Picassa jest gratis, ale trzeba wcześniej zarezerwować wejście."
+    },
+    {
+      "scope": "item",
+      "targetRef": "p-stadion-olimpijski",
+      "kind": "rationale",
+      "body": "Stadion Olimpijski się nie mieści: zimą jest otwarty tylko do 17:00, a Barça już tam nie gra. Jeśli komuś bardzo zależy, można go zobaczyć w niedzielę rano (opcja B)."
+    },
+    {
+      "scope": "variant_group",
+      "targetRef": "vg-font-magica",
+      "kind": "tip",
+      "body": "Jeśli fontanny nie działają: po Arenas od razu wracacie na Gotyk i macie więcej czasu na kolację."
+    },
+    {
+      "scope": "booking",
+      "targetRef": "nocleg-znajoma",
+      "kind": "practical",
+      "topic": "time",
+      "body": "Zameldowanie: będziecie wieczorem, więc ustalcie z gospodynią późne wejście albo samodzielne zameldowanie."
+    },
+    {
+      "scope": "item",
+      "targetRef": "d2-mecz",
+      "kind": "warning",
+      "topic": "rules",
+      "body": "Na stadion weźcie jak najmniej rzeczy: duże torby i plecaki mogą nie przejść przez kontrolę."
+    },
+    {
+      "scope": "item",
+      "targetRef": "d1-bunkry",
+      "kind": "tip",
+      "topic": "weather",
+      "body": "Na górze wieje, weźcie kurtki."
+    },
+    {
+      "scope": "item",
+      "targetRef": "d1-autobus-v17",
+      "kind": "practical",
+      "topic": "transport",
+      "body": "Najbliższy przystanek V17 sprawdźcie w aplikacji TMB, bo trasa przy Via Laietana bywa zmieniana."
+    },
+    {
+      "scope": "item",
+      "targetRef": "d1-obiad",
+      "kind": "tip",
+      "topic": "other",
+      "body": "Obiad w bocznych uliczkach, nie przy samym placu przed Sagradą."
+    },
+    {
+      "scope": "item",
+      "targetRef": "d1-barca-store",
+      "kind": "tip",
+      "topic": "other",
+      "body": "Koszulki dzień przed meczem. Jeśli nie zostaną kupione w sobotę — Barça Store przy stadionie w niedzielę."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d2",
+      "kind": "tip",
+      "topic": "time",
+      "body": "Kolacja na Gotyku: nie siedzieć za długo, bo w poniedziałek wcześnie wstajecie."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d3",
+      "kind": "practical",
+      "topic": "transport",
+      "body": "Godziny pociągów sprawdźcie dzień wcześniej na rodalies.gencat.cat albo w Google Maps. Jeśli pociąg ucieknie, następny jest za ok. 30 min albo jedzie się Aerobusem z Pl. Catalunya."
+    }
+  ],
+  "sources": [
+    {
+      "ref": "src-rodalies",
+      "title": "Rodalies de Catalunya — rozkład pociągów",
+      "url": "https://rodalies.gencat.cat/",
+      "note": "Godziny pociągów R2 Nord sprawdzić dzień wcześniej (albo w Google Maps).",
+      "appliesToRefs": [
+        "d3-pociag"
+      ]
+    },
+    {
+      "ref": "src-tmb",
+      "title": "Aplikacja TMB",
+      "note": "Najbliższy przystanek V17 (trasa przy Via Laietana bywa zmieniana).",
+      "appliesToRefs": [
+        "d1-autobus-v17"
+      ]
+    }
+  ],
+  "tracks": []
+}

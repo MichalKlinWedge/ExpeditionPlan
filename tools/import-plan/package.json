@@ -1,0 +1,23 @@
+{
+  "name": "@expeditionplan/import-plan",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "import": "node --env-file-if-exists=../../.env.local src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@expeditionplan/ai": "*",
+    "@expeditionplan/core": "*",
+    "mammoth": "^1.13.0",
+    "unpdf": "^2.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}

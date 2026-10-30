@@ -1,0 +1,1152 @@
+{
+  "schemaVersion": 1,
+  "trip": {
+    "title": "Dinara 1831 m n.p.m.",
+    "goal": "Zdobycie najwyższego szczytu Chorwacji (Korona Europy). Eksplorować maksymalnie dużo w jak najkrótszym czasie 😀.",
+    "startDate": "2026-04-24",
+    "endDate": "2026-04-26",
+    "primaryTz": "Europe/Zagreb",
+    "homeTz": "Europe/Warsaw",
+    "baseCurrency": "PLN"
+  },
+  "travelers": [
+    {
+      "ref": "uczestnik-1",
+      "name": "Uczestnik 1"
+    },
+    {
+      "ref": "uczestnik-2",
+      "name": "Uczestnik 2"
+    },
+    {
+      "ref": "uczestnik-3",
+      "name": "Uczestnik 3"
+    },
+    {
+      "ref": "uczestnik-4",
+      "name": "Uczestnik 4"
+    },
+    {
+      "ref": "uczestnik-5",
+      "name": "Uczestnik 5"
+    }
+  ],
+  "places": [
+    {
+      "ref": "lotnisko-wroclaw",
+      "name": "Wrocław Airport",
+      "category": "airport",
+      "notes": "Dojazd na lotnisko we własnym zakresie."
+    },
+    {
+      "ref": "lotnisko-zadar",
+      "name": "Lotnisko Zadar",
+      "category": "airport"
+    },
+    {
+      "ref": "sklep-woda",
+      "name": "Zakup wody (na trasie)",
+      "category": "shop",
+      "links": [
+        {
+          "label": "Google Maps — zakup wody",
+          "url": "https://maps.app.goo.gl/vgk64SnJNxm86EpG9"
+        }
+      ]
+    },
+    {
+      "ref": "tulove-grede",
+      "name": "Tulove Grede",
+      "category": "trailhead",
+      "notes": "W dokumencie raz „Tulove Grede”, raz „Tulove Grade”."
+    },
+    {
+      "ref": "cikola",
+      "name": "Via ferrata Čikola",
+      "category": "trailhead",
+      "notes": "W dokumencie „Cikola”."
+    },
+    {
+      "ref": "szybenik",
+      "name": "Szybenik (Šibenik)",
+      "category": "city"
+    },
+    {
+      "ref": "kwatera-szybenik",
+      "name": "Kwatera w okolicy Szybenika",
+      "category": "lodging",
+      "notes": "Ok. 15 min do centrum Szybenika. Konkretny obiekt nieustalony (kandydat z Booking)."
+    },
+    {
+      "ref": "dinara-start",
+      "name": "Start trasy na Dinarę",
+      "category": "trailhead",
+      "links": [
+        {
+          "label": "Google Maps — start trasy na Dinarę",
+          "url": "https://maps.app.goo.gl/KxCnAWYx7Ufa4FGv5"
+        }
+      ]
+    },
+    {
+      "ref": "dinara",
+      "name": "Dinara (1831 m n.p.m.)",
+      "category": "peak",
+      "elevationM": 1831,
+      "notes": "Najwyższy szczyt Chorwacji (Korona Europy)."
+    },
+    {
+      "ref": "zadar",
+      "name": "Zadar",
+      "category": "city"
+    }
+  ],
+  "days": [
+    {
+      "ref": "d1",
+      "date": "2026-04-24",
+      "tz": "Europe/Zagreb",
+      "title": "Piątek — przelot, Tulove Grede, ferrata Čikola",
+      "baseRef": "szybenik",
+      "dayStart": "09:30",
+      "lodgingRef": "nocleg-szybenik"
+    },
+    {
+      "ref": "d2",
+      "date": "2026-04-25",
+      "tz": "Europe/Zagreb",
+      "title": "Sobota — Dinara",
+      "baseRef": "szybenik",
+      "lodgingRef": "nocleg-szybenik"
+    },
+    {
+      "ref": "d3",
+      "date": "2026-04-26",
+      "tz": "Europe/Zagreb",
+      "title": "Niedziela — Zadar i powrót",
+      "summary": "Godzina „zero” w niedzielę — do ustalenia (dokument nie używa jej w harmonogramie)."
+    }
+  ],
+  "items": [
+    {
+      "ref": "zbiorka-lotnisko",
+      "dayRef": "d1",
+      "sortKey": "0010",
+      "kind": "meetup",
+      "title": "Zbiórka na lotnisku",
+      "placeRef": "lotnisko-wroclaw",
+      "time": {
+        "precision": "exact",
+        "start": "09:30",
+        "tz": "Europe/Warsaw"
+      },
+      "isFixed": true
+    },
+    {
+      "ref": "nadanie-bagazu-wro",
+      "dayRef": "d1",
+      "sortKey": "0020",
+      "kind": "errand",
+      "title": "Przepakowanie i nadanie bagażu pod pokład",
+      "placeRef": "lotnisko-wroclaw"
+    },
+    {
+      "ref": "wylot-wro",
+      "dayRef": "d1",
+      "sortKey": "0030",
+      "kind": "transport",
+      "title": "Wylot Wrocław → Zadar (Ryanair)",
+      "placeRef": "lotnisko-wroclaw",
+      "bookingRef": "lot-tam",
+      "time": {
+        "precision": "exact",
+        "start": "11:20",
+        "tz": "Europe/Warsaw"
+      },
+      "isFixed": true,
+      "priority": "must",
+      "leg": {
+        "mode": "flight",
+        "durationMin": 95,
+        "fromPlaceRef": "lotnisko-wroclaw",
+        "toPlaceRef": "lotnisko-zadar",
+        "ticketBookingRef": "lot-tam"
+      }
+    },
+    {
+      "ref": "ladowanie-zadar",
+      "dayRef": "d1",
+      "sortKey": "0040",
+      "kind": "transport",
+      "title": "Lądowanie w Zadarze",
+      "placeRef": "lotnisko-zadar",
+      "bookingRef": "lot-tam",
+      "time": {
+        "precision": "exact",
+        "start": "12:55"
+      },
+      "isFixed": true
+    },
+    {
+      "ref": "odbior-bagazu",
+      "dayRef": "d1",
+      "sortKey": "0050",
+      "kind": "errand",
+      "title": "Odbiór bagażu",
+      "placeRef": "lotnisko-zadar"
+    },
+    {
+      "ref": "odbior-auta",
+      "dayRef": "d1",
+      "sortKey": "0060",
+      "kind": "errand",
+      "title": "Odbiór auta",
+      "placeRef": "lotnisko-zadar",
+      "bookingRef": "auto",
+      "time": {
+        "precision": "exact",
+        "start": "13:30"
+      },
+      "isFixed": true
+    },
+    {
+      "ref": "zakup-wody",
+      "dayRef": "d1",
+      "sortKey": "0070",
+      "kind": "errand",
+      "title": "Zakup wody (na trasie)",
+      "placeRef": "sklep-woda"
+    },
+    {
+      "ref": "przejazd-tulove",
+      "dayRef": "d1",
+      "sortKey": "0080",
+      "kind": "transport",
+      "title": "Przejazd pod Tulove Grede",
+      "placeRef": "tulove-grede",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 90,
+        "distanceKm": 60,
+        "instructions": "Zadar – Tulove Grede (około 1,5 h), 60 km.",
+        "fromPlaceRef": "lotnisko-zadar",
+        "toPlaceRef": "tulove-grede",
+        "links": [
+          {
+            "label": "Google Maps — dojazd pod Tulove Grede",
+            "url": "https://maps.app.goo.gl/sf3z5n1wYHWk6PWv5"
+          }
+        ]
+      }
+    },
+    {
+      "ref": "tulove-trasa",
+      "dayRef": "d1",
+      "sortKey": "0090",
+      "kind": "activity",
+      "title": "Tulove Grede — trasa",
+      "placeRef": "tulove-grede",
+      "time": {
+        "precision": "exact",
+        "start": "15:00"
+      },
+      "weather": "outdoor",
+      "activity": {
+        "trackRef": "trasa-tulove"
+      }
+    },
+    {
+      "ref": "przejazd-cikola",
+      "dayRef": "d1",
+      "sortKey": "0100",
+      "kind": "transport",
+      "title": "Powrót i dalsza droga — przejazd pod ferratę Čikola",
+      "placeRef": "cikola",
+      "time": {
+        "precision": "exact",
+        "start": "16:30"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 100,
+        "distanceKm": 130,
+        "instructions": "Tulove – Čikola (1:40), 130 km.",
+        "fromPlaceRef": "tulove-grede",
+        "toPlaceRef": "cikola",
+        "links": [
+          {
+            "label": "Google Maps — dojazd pod ferratę Čikola",
+            "url": "https://maps.app.goo.gl/rDKwkFFwMg7M3Ncq8"
+          }
+        ]
+      }
+    },
+    {
+      "ref": "cikola-ferrata",
+      "dayRef": "d1",
+      "sortKey": "0110",
+      "kind": "activity",
+      "title": "Trasa via ferrata Čikola",
+      "placeRef": "cikola",
+      "time": {
+        "precision": "exact",
+        "start": "18:00",
+        "end": "20:30"
+      },
+      "weather": "outdoor",
+      "activity": {
+        "difficulty": "via ferrata",
+        "trackRef": "trasa-cikola"
+      },
+      "notes": [
+        "20:30 — powrót do auta (koniecznie czołówki). Zachód słońca 19:50 — powrót po zmroku."
+      ]
+    },
+    {
+      "ref": "przejazd-szybenik",
+      "dayRef": "d1",
+      "sortKey": "0120",
+      "kind": "transport",
+      "title": "Przejazd do Szybenika na kwaterę",
+      "placeRef": "kwatera-szybenik",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 30,
+        "distanceKm": 30,
+        "instructions": "Čikola – Szybenik (30 min), 30 km.",
+        "fromPlaceRef": "cikola",
+        "toPlaceRef": "kwatera-szybenik"
+      }
+    },
+    {
+      "ref": "meldunek",
+      "dayRef": "d1",
+      "sortKey": "0130",
+      "kind": "lodging",
+      "title": "Szybenik, meldunek",
+      "placeRef": "kwatera-szybenik",
+      "bookingRef": "nocleg-szybenik",
+      "time": {
+        "precision": "exact",
+        "start": "21:00"
+      }
+    },
+    {
+      "ref": "kolacja-piatek",
+      "dayRef": "d1",
+      "sortKey": "0140",
+      "kind": "meal",
+      "title": "Miasto, kolacja, zakupy",
+      "placeRef": "szybenik",
+      "time": {
+        "precision": "exact",
+        "start": "21:30"
+      }
+    },
+    {
+      "ref": "sniadanie-sobota",
+      "dayRef": "d2",
+      "sortKey": "0010",
+      "kind": "meal",
+      "title": "Śniadanie",
+      "placeRef": "kwatera-szybenik",
+      "time": {
+        "precision": "exact",
+        "start": "05:30"
+      }
+    },
+    {
+      "ref": "wyjazd-szybenik",
+      "dayRef": "d2",
+      "sortKey": "0020",
+      "kind": "transport",
+      "title": "Wyjazd z Szybenika",
+      "placeRef": "kwatera-szybenik",
+      "time": {
+        "precision": "relative",
+        "offsetMin": 0,
+        "from": "anchor"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 75,
+        "distanceKm": 70,
+        "instructions": "Szybenik – Dinara (1:15), 70 km.",
+        "fromPlaceRef": "kwatera-szybenik",
+        "toPlaceRef": "dinara-start",
+        "links": [
+          {
+            "label": "Google Maps — Szybenik → start trasy na Dinarę",
+            "url": "https://maps.app.goo.gl/KxCnAWYx7Ufa4FGv5"
+          }
+        ]
+      },
+      "notes": [
+        "W dokumencie: „0:00 Wyjazd z Szybenika (do ustalenia co oznacza 0:00)”."
+      ]
+    },
+    {
+      "ref": "dinara-wyjscie",
+      "dayRef": "d2",
+      "sortKey": "0030",
+      "kind": "activity",
+      "title": "Wyjście na trasę",
+      "placeRef": "dinara-start",
+      "time": {
+        "precision": "relative",
+        "offsetMin": 80,
+        "from": "previous"
+      },
+      "weather": "outdoor"
+    },
+    {
+      "ref": "dinara-ferrata",
+      "dayRef": "d2",
+      "sortKey": "0040",
+      "kind": "activity",
+      "title": "Trasa ferrata Dinara (9 h)",
+      "placeRef": "dinara",
+      "priority": "must",
+      "weather": "outdoor",
+      "durationMin": 540,
+      "activity": {
+        "difficulty": "via ferrata",
+        "trackRef": "trasa-dinara-ferrata"
+      }
+    },
+    {
+      "ref": "dinara-bez-ferraty",
+      "dayRef": "d2",
+      "sortKey": "0050",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "title": "Dinara — wersja bez ferraty",
+      "placeRef": "dinara",
+      "weather": "outdoor",
+      "activity": {
+        "trackRef": "trasa-dinara-bez-ferraty"
+      },
+      "variantRefs": [
+        "war-dinara-bez-ferraty"
+      ],
+      "replacesRefs": [
+        "dinara-ferrata"
+      ]
+    },
+    {
+      "ref": "powrot-auto-dinara",
+      "dayRef": "d2",
+      "sortKey": "0060",
+      "kind": "activity",
+      "title": "Powrót do auta",
+      "placeRef": "dinara-start",
+      "time": {
+        "precision": "relative",
+        "offsetMin": 540,
+        "from": "previous"
+      }
+    },
+    {
+      "ref": "przejazd-nocleg",
+      "dayRef": "d2",
+      "sortKey": "0070",
+      "kind": "transport",
+      "title": "Przejazd na nocleg",
+      "leg": {
+        "mode": "rental_car",
+        "fromPlaceRef": "dinara-start",
+        "instructions": "+1:30 do Szybenika albo +2:00 do Zadaru."
+      }
+    },
+    {
+      "ref": "przyjazd-szybenik",
+      "dayRef": "d2",
+      "sortKey": "0080",
+      "kind": "lodging",
+      "title": "Szybenik",
+      "placeRef": "kwatera-szybenik",
+      "bookingRef": "nocleg-szybenik",
+      "time": {
+        "precision": "relative",
+        "offsetMin": 90,
+        "from": "previous"
+      }
+    },
+    {
+      "ref": "przyjazd-zadar",
+      "dayRef": "d2",
+      "sortKey": "0090",
+      "kind": "lodging",
+      "planStatus": "alternative",
+      "title": "Zadar",
+      "placeRef": "zadar",
+      "time": {
+        "precision": "relative",
+        "offsetMin": 120,
+        "from": "previous"
+      },
+      "variantRefs": [
+        "war-nocleg2-zadar"
+      ],
+      "replacesRefs": [
+        "przyjazd-szybenik"
+      ]
+    },
+    {
+      "ref": "kolacja-sobota",
+      "dayRef": "d2",
+      "sortKey": "0100",
+      "kind": "meal",
+      "title": "Kolacja i czas wolny 🙂, zakupy",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "evening"
+      }
+    },
+    {
+      "ref": "sniadanie-niedziela",
+      "dayRef": "d3",
+      "sortKey": "0010",
+      "kind": "meal",
+      "title": "Śniadanie",
+      "placeRef": "kwatera-szybenik"
+    },
+    {
+      "ref": "wymeldowanie",
+      "dayRef": "d3",
+      "sortKey": "0020",
+      "kind": "lodging",
+      "title": "Wymeldowanie",
+      "placeRef": "kwatera-szybenik",
+      "bookingRef": "nocleg-szybenik"
+    },
+    {
+      "ref": "przejazd-zadar",
+      "dayRef": "d3",
+      "sortKey": "0030",
+      "kind": "transport",
+      "title": "Przejazd do Zadaru",
+      "placeRef": "zadar",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 120,
+        "distanceKm": 130,
+        "instructions": "Szybenik – Zadar (2 h), 130 km.",
+        "fromPlaceRef": "kwatera-szybenik",
+        "toPlaceRef": "zadar"
+      }
+    },
+    {
+      "ref": "zwiedzanie-zadar",
+      "dayRef": "d3",
+      "sortKey": "0040",
+      "kind": "visit",
+      "title": "Zwiedzanie Zadaru",
+      "placeRef": "zadar"
+    },
+    {
+      "ref": "tankowanie",
+      "dayRef": "d3",
+      "sortKey": "0050",
+      "kind": "errand",
+      "title": "Tankowanie przed oddaniem auta",
+      "bookingRef": "auto"
+    },
+    {
+      "ref": "oddanie-auta",
+      "dayRef": "d3",
+      "sortKey": "0060",
+      "kind": "errand",
+      "title": "Oddanie auta",
+      "bookingRef": "auto",
+      "time": {
+        "precision": "exact",
+        "start": "12:30"
+      },
+      "isFixed": true
+    },
+    {
+      "ref": "nadanie-bagazu-zadar",
+      "dayRef": "d3",
+      "sortKey": "0070",
+      "kind": "errand",
+      "title": "Lotnisko — nadanie bagażu",
+      "placeRef": "lotnisko-zadar",
+      "time": {
+        "precision": "exact",
+        "start": "13:00"
+      },
+      "isFixed": true
+    },
+    {
+      "ref": "wylot-zadar",
+      "dayRef": "d3",
+      "sortKey": "0080",
+      "kind": "transport",
+      "title": "Wylot z Zadaru",
+      "placeRef": "lotnisko-zadar",
+      "bookingRef": "lot-powrot",
+      "time": {
+        "precision": "exact",
+        "start": "14:40"
+      },
+      "isFixed": true,
+      "priority": "must",
+      "leg": {
+        "mode": "flight",
+        "durationMin": 95,
+        "fromPlaceRef": "lotnisko-zadar",
+        "toPlaceRef": "lotnisko-wroclaw",
+        "ticketBookingRef": "lot-powrot"
+      }
+    },
+    {
+      "ref": "przylot-wroclaw",
+      "dayRef": "d3",
+      "sortKey": "0090",
+      "kind": "transport",
+      "title": "Przylot do Wrocławia",
+      "placeRef": "lotnisko-wroclaw",
+      "bookingRef": "lot-powrot",
+      "time": {
+        "precision": "exact",
+        "start": "16:15",
+        "tz": "Europe/Warsaw"
+      },
+      "isFixed": true
+    }
+  ],
+  "legs": [],
+  "variantGroups": [
+    {
+      "ref": "vg-dinara-trasa",
+      "scope": "item",
+      "dayRef": "d2",
+      "title": "Dinara: ferrata czy wersja bez ferraty",
+      "conditionKind": "choice",
+      "conditionText": "Dokument podaje dwie trasy na Dinarę bez warunku wyboru; TODO: „sprawdzenie i potwierdzenie ferraty na Dinarę”."
+    },
+    {
+      "ref": "vg-nocleg-sobota",
+      "scope": "day",
+      "dayRef": "d2",
+      "title": "Sobota po Dinarze: nocleg w Szybeniku czy w Zadarze",
+      "conditionKind": "choice",
+      "conditionText": "Dokument: „Przejazd na nocleg +1:30 Szybenik + 2:00 Zadar” — bez rozstrzygnięcia. Zakwaterowanie mówi o 2 noclegach w okolicy Szybenika, a niedziela zaczyna się od wymeldowania i przejazdu do Zadaru."
+    }
+  ],
+  "variants": [
+    {
+      "ref": "war-dinara-ferrata",
+      "groupRef": "vg-dinara-trasa",
+      "label": "Ferrata Dinara (9 h)",
+      "recommended": true
+    },
+    {
+      "ref": "war-dinara-bez-ferraty",
+      "groupRef": "vg-dinara-trasa",
+      "label": "Dinara bez ferraty",
+      "excludesRefs": [
+        "dinara-ferrata"
+      ]
+    },
+    {
+      "ref": "war-nocleg2-szybenik",
+      "groupRef": "vg-nocleg-sobota",
+      "label": "Szybenik (+1:30)",
+      "recommended": true
+    },
+    {
+      "ref": "war-nocleg2-zadar",
+      "groupRef": "vg-nocleg-sobota",
+      "label": "Zadar (+2:00)",
+      "excludesRefs": [
+        "przyjazd-szybenik"
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "ref": "c-lotnisko-wro",
+      "kind": "arrive_before",
+      "dayRef": "d1",
+      "itemRef": "zbiorka-lotnisko",
+      "time": "09:30",
+      "tz": "Europe/Warsaw",
+      "severity": "hard",
+      "reason": "9:30 lotnisko — nadanie bagażu przed wylotem 11:20."
+    },
+    {
+      "ref": "c-oddanie-auta",
+      "kind": "arrive_before",
+      "dayRef": "d3",
+      "itemRef": "oddanie-auta",
+      "bookingRef": "auto",
+      "time": "12:30",
+      "severity": "hard",
+      "reason": "Oddanie auta 12:30 (po tankowaniu)."
+    },
+    {
+      "ref": "c-lotnisko-zad",
+      "kind": "arrive_before",
+      "dayRef": "d3",
+      "itemRef": "nadanie-bagazu-zadar",
+      "time": "13:00",
+      "severity": "hard",
+      "reason": "13:00 lotnisko — nadanie bagażu przed wylotem 14:40."
+    }
+  ],
+  "bookings": [
+    {
+      "ref": "lot-tam",
+      "kind": "flight",
+      "status": "unknown",
+      "provider": "Ryanair",
+      "title": "Lot Wrocław → Zadar",
+      "start": {
+        "date": "2026-04-24",
+        "time": "11:20",
+        "tz": "Europe/Warsaw"
+      },
+      "end": {
+        "date": "2026-04-24",
+        "time": "12:55",
+        "tz": "Europe/Zagreb"
+      },
+      "startPlaceRef": "lotnisko-wroclaw",
+      "endPlaceRef": "lotnisko-zadar",
+      "party": {
+        "adults": 5,
+        "children": 0
+      },
+      "flight": {
+        "fromAirport": "Wrocław",
+        "toAirport": "Zadar",
+        "baggage": "Bagaż podręczny 40 x 30 x 20 cm; bagaż nadany 10 kg w obie strony — w TODO."
+      },
+      "notes": [
+        "Dokument nie mówi, czy bilety są kupione."
+      ]
+    },
+    {
+      "ref": "lot-powrot",
+      "kind": "flight",
+      "status": "unknown",
+      "provider": "Ryanair",
+      "title": "Lot Zadar → Wrocław",
+      "start": {
+        "date": "2026-04-26",
+        "time": "14:40",
+        "tz": "Europe/Zagreb"
+      },
+      "end": {
+        "date": "2026-04-26",
+        "time": "16:15",
+        "tz": "Europe/Warsaw"
+      },
+      "startPlaceRef": "lotnisko-zadar",
+      "endPlaceRef": "lotnisko-wroclaw",
+      "party": {
+        "adults": 5,
+        "children": 0
+      },
+      "flight": {
+        "fromAirport": "Zadar",
+        "toAirport": "Wrocław",
+        "baggage": "Bagaż podręczny 40 x 30 x 20 cm; bagaż nadany 10 kg w obie strony — w TODO."
+      },
+      "notes": [
+        "Dokument nie mówi, czy bilety są kupione.",
+        "Przewoźnik nie jest podany dla lotu powrotnego — przyjęto Ryanair jak w sekcji Transport („Wrocław - Zadar: Ryanair”)."
+      ]
+    },
+    {
+      "ref": "bagaz-nadany",
+      "kind": "luggage",
+      "status": "to_book",
+      "provider": "Ryanair",
+      "title": "Bagaż nadany 10 kg w obie strony"
+    },
+    {
+      "ref": "auto",
+      "kind": "car_rental",
+      "status": "unknown",
+      "title": "Wynajem auta Zadar",
+      "start": {
+        "date": "2026-04-24",
+        "time": "13:30",
+        "tz": "Europe/Zagreb"
+      },
+      "end": {
+        "date": "2026-04-26",
+        "time": "12:30",
+        "tz": "Europe/Zagreb"
+      },
+      "startPlaceRef": "lotnisko-zadar",
+      "endPlaceRef": "lotnisko-zadar",
+      "car": {
+        "fuelPolicy": "tankowanie przed oddaniem auta"
+      },
+      "notes": [
+        "W dokumencie jest voucher (link do Google Drive) — prywatny, pominięty.",
+        "Sprzeczność: voucher sugeruje rezerwację, a „wynajem auta” jest nadal na liście TODO — status „unknown”.",
+        "Miejsce odbioru/zwrotu nie jest podane wprost — przyjęto lotnisko Zadar (odbiór 35 min po lądowaniu, zwrot 30 min przed nadaniem bagażu)."
+      ]
+    },
+    {
+      "ref": "nocleg-szybenik",
+      "kind": "lodging",
+      "status": "candidate",
+      "title": "2 noclegi w okolicy Szybenika",
+      "start": {
+        "date": "2026-04-24",
+        "tz": "Europe/Zagreb"
+      },
+      "end": {
+        "date": "2026-04-26",
+        "tz": "Europe/Zagreb"
+      },
+      "startPlaceRef": "kwatera-szybenik",
+      "party": {
+        "adults": 5,
+        "children": 0
+      },
+      "lodging": {
+        "distanceNote": "15 min do centrum"
+      },
+      "notes": [
+        "Na liście TODO nadal „zabookowania noclegów”. Meldunek wg harmonogramu 21:00.",
+        "W oryginale link „share” do Booking.com — pominięty jako prywatny."
+      ]
+    },
+    {
+      "ref": "esim-bosnia",
+      "kind": "esim",
+      "status": "to_book",
+      "title": "eSIM na Bośnię"
+    }
+  ],
+  "contacts": [],
+  "budgetLines": [
+    {
+      "ref": "b-samolot",
+      "category": "flights",
+      "title": "Samolot",
+      "status": "estimate",
+      "lowMinor": 40000,
+      "highMinor": 40000,
+      "currency": "PLN",
+      "perPerson": true,
+      "note": "„samolot - 400/os.” — waluta niepodana (przyjęto PLN); obie strony."
+    },
+    {
+      "ref": "b-bagaz",
+      "category": "luggage",
+      "title": "Bagaż do nadania",
+      "bookingRef": "bagaz-nadany",
+      "status": "estimate",
+      "lowMinor": 14000,
+      "highMinor": 14000,
+      "currency": "PLN",
+      "note": "„bagaż do nadania - 140” — nie wiadomo, czy na osobę, na sztukę, czy na grupę."
+    },
+    {
+      "ref": "b-auto",
+      "category": "car",
+      "title": "Wynajem auta",
+      "bookingRef": "auto",
+      "status": "estimate",
+      "lowMinor": 20000,
+      "highMinor": 20000,
+      "currency": "PLN",
+      "note": "„wynajem auta - 200” — nie wiadomo, czy na osobę, czy na grupę."
+    },
+    {
+      "ref": "b-paliwo",
+      "category": "fuel",
+      "title": "Paliwo + autostrady",
+      "status": "estimate",
+      "lowMinor": 40000,
+      "highMinor": 40000,
+      "currency": "PLN",
+      "note": "„paliwo + autostrady - 400” — jedna kwota na dwie kategorie (fuel + tolls_parking); nie wiadomo, czy na osobę."
+    },
+    {
+      "ref": "b-noclegi",
+      "category": "lodging",
+      "title": "Noclegi",
+      "bookingRef": "nocleg-szybenik",
+      "status": "estimate",
+      "lowMinor": 60000,
+      "highMinor": 60000,
+      "currency": "PLN",
+      "note": "„noclegi - 600” — nie wiadomo, czy na osobę, czy na grupę."
+    }
+  ],
+  "tasks": [
+    {
+      "ref": "u-zero-sobota",
+      "kind": "decision",
+      "title": "Godzina „zero” w sobotę",
+      "status": "open",
+      "itemRef": "wyjazd-szybenik",
+      "priority": "high",
+      "body": "Kotwica dla godzin względnych dnia d2."
+    },
+    {
+      "ref": "u-zero-niedziela",
+      "kind": "decision",
+      "title": "Godzina „zero” w niedzielę",
+      "status": "open"
+    },
+    {
+      "ref": "u-zywienie",
+      "kind": "question",
+      "title": "Żywienie",
+      "status": "open"
+    },
+    {
+      "ref": "u-wspolny-bagaz",
+      "kind": "question",
+      "title": "Wspólny bagaż",
+      "status": "open"
+    },
+    {
+      "ref": "u-noz",
+      "kind": "question",
+      "title": "Nóż",
+      "status": "open",
+      "body": "Kto bierze — patrz pakowanie."
+    },
+    {
+      "ref": "u-apteczka",
+      "kind": "question",
+      "title": "Apteczka — podstawowe rzeczy",
+      "status": "open",
+      "body": "Kto bierze — patrz pakowanie."
+    },
+    {
+      "ref": "u-waga",
+      "kind": "question",
+      "title": "Waga turystyczna",
+      "status": "open",
+      "body": "Kto bierze — patrz pakowanie."
+    },
+    {
+      "ref": "u-pakowanie-wspolny",
+      "kind": "question",
+      "title": "Pakowanie — wspólny bagaż",
+      "status": "open"
+    },
+    {
+      "ref": "u-pakowanie-niezbedniki",
+      "kind": "question",
+      "title": "Pakowanie — niezbędniki",
+      "status": "open"
+    },
+    {
+      "ref": "t-bagaz",
+      "kind": "todo",
+      "title": "Bagaż nadany 10 kg w obie strony",
+      "status": "open",
+      "bookingRef": "bagaz-nadany"
+    },
+    {
+      "ref": "t-auto",
+      "kind": "todo",
+      "title": "Wynajem auta",
+      "status": "open",
+      "bookingRef": "auto",
+      "body": "Sprzeczne z voucherem w sekcji Samochód — do wyjaśnienia, czy już zrobione."
+    },
+    {
+      "ref": "t-noclegi",
+      "kind": "todo",
+      "title": "Zabookowanie noclegów",
+      "status": "open",
+      "bookingRef": "nocleg-szybenik"
+    },
+    {
+      "ref": "t-ferrata",
+      "kind": "todo",
+      "title": "Sprawdzenie i potwierdzenie ferraty na Dinarę",
+      "status": "open",
+      "itemRef": "dinara-ferrata",
+      "variantGroupRef": "vg-dinara-trasa"
+    },
+    {
+      "ref": "t-miasta",
+      "kind": "todo",
+      "title": "Plan na zwiedzanie miast",
+      "status": "open",
+      "itemRef": "zwiedzanie-zadar"
+    },
+    {
+      "ref": "t-knajpki",
+      "kind": "todo",
+      "title": "Knajpki na kolacje",
+      "status": "open"
+    },
+    {
+      "ref": "t-esim",
+      "kind": "todo",
+      "title": "eSIM na Bośnię",
+      "status": "open",
+      "bookingRef": "esim-bosnia"
+    }
+  ],
+  "packing": [
+    {
+      "ref": "pk-01",
+      "category": "Sprzęt",
+      "title": "Czołówka",
+      "scope": "personal",
+      "note": "Koniecznie na powrót z ferraty Čikola (20:30)."
+    },
+    {
+      "ref": "pk-02",
+      "category": "Sprzęt ferratowy",
+      "title": "Uprząż",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-03",
+      "category": "Sprzęt ferratowy",
+      "title": "Lonża",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-04",
+      "category": "Sprzęt ferratowy",
+      "title": "Kask",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-05",
+      "category": "Sprzęt ferratowy",
+      "title": "Rękawiczki",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-06",
+      "category": "Sprzęt",
+      "title": "Plecak",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-07",
+      "category": "Sprzęt",
+      "title": "Bukłak na wodę",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-08",
+      "category": "Sprzęt",
+      "title": "Buty górskie",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-09",
+      "category": "Dodatkowo do zabrania",
+      "title": "Trochę gotówki w euro",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-10",
+      "category": "Wspólny bagaż (do ustalenia)",
+      "title": "Nóż",
+      "scope": "shared",
+      "note": "Do ustalenia, kto bierze."
+    },
+    {
+      "ref": "pk-11",
+      "category": "Wspólny bagaż (do ustalenia)",
+      "title": "Apteczka — podstawowe rzeczy",
+      "scope": "shared",
+      "note": "Do ustalenia, kto bierze."
+    },
+    {
+      "ref": "pk-12",
+      "category": "Wspólny bagaż (do ustalenia)",
+      "title": "Waga turystyczna",
+      "scope": "shared",
+      "note": "Do ustalenia, kto bierze. Bagaż nadany 10 kg."
+    }
+  ],
+  "notes": [
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "transport",
+      "body": "Do Wrocław Airport: we własnym zakresie. Wrocław – Zadar: Ryanair. Zadar – Szybenik – Dinara: wynajem auta."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "time",
+      "title": "Słońce",
+      "body": "Wschód słońca: 6:00. Zachód słońca: 19:50. (Dokument nie podaje, dla którego dnia i miejsca.)"
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "weather",
+      "title": "Pogoda",
+      "body": "Pogoda w Chorwacji w kwietniu jest wiosenna i zmienna, z rosnącymi temperaturami (średnio 10–20°C w dzień, chłodniej w nocy), dużą ilością słońca (około 17 słonecznych dni), ale też możliwymi chłodniejszymi dniami i opadami."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "other",
+      "title": "Inne trasy",
+      "body": "W dokumencie jest link do prywatnego Google Docs „inne trasy” — pominięty (prywatny)."
+    },
+    {
+      "scope": "booking",
+      "targetRef": "auto",
+      "kind": "info",
+      "topic": "documents",
+      "title": "Voucher",
+      "body": "Voucher wynajmu auta w dokumencie jako link do Google Drive — prywatny, pominięty. Docelowo: załącznik w sejfie (documents)."
+    },
+    {
+      "scope": "item",
+      "targetRef": "cikola-ferrata",
+      "kind": "warning",
+      "topic": "safety",
+      "body": "Powrót do auta o 20:30 — po zachodzie słońca (19:50). Koniecznie czołówki."
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "topic": "documents",
+      "body": "eSIM na Bośnię (w TODO) — trasa na Dinarę biegnie przy granicy z Bośnią i Hercegowiną."
+    }
+  ],
+  "sources": [],
+  "tracks": [
+    {
+      "ref": "trasa-tulove",
+      "name": "Tulove Grede",
+      "url": "https://mapy.com/s/jedutajacu"
+    },
+    {
+      "ref": "trasa-cikola",
+      "name": "Čikola — via ferrata",
+      "difficulty": "via ferrata",
+      "url": "https://mapy.com/s/kebasefago"
+    },
+    {
+      "ref": "trasa-dinara-ferrata",
+      "name": "Dinara — ferrata",
+      "difficulty": "via ferrata",
+      "durationMin": 540,
+      "url": "https://mapy.com/s/pemapunanu"
+    },
+    {
+      "ref": "trasa-dinara-bez-ferraty",
+      "name": "Dinara (wersja bez ferraty)",
+      "url": "https://mapy.com/s/nedanobuho"
+    }
+  ]
+}

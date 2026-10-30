@@ -1,0 +1,4440 @@
+{
+  "schemaVersion": 1,
+  "trip": {
+    "title": "Maroko w cztery noce",
+    "subtitle": "26–30 grudnia 2026 · 4 noce · 3 dorosłych i dwoje dzieci, 16 i 10 lat · Ryanair z Wrocławia",
+    "goal": "Noc w medynie Marakeszu, noc w namiocie na pustyni Agafay, noc na wydmach w Sidi Kaouki i ostatnia nad oceanem w Anzie. Cztery noce, cztery różne miejsca i żaden dzień dłuższy niż trzy godziny za kierownicą.",
+    "summary": "Loty dla 5 osób: 3 775 zł (755 zł od osoby). Za kierownicą: 710 km, najdłuższy dzień 3 h 30. Całość: ok. 11 400 zł, z czego 7 519 zł już zapłacone. Układ nocy: Marakesz, pustynia, wydmy, ocean — jazda rozłożona na wszystkie dni.",
+    "startDate": "2026-12-26",
+    "endDate": "2026-12-30",
+    "primaryTz": "Africa/Casablanca",
+    "homeTz": "Europe/Warsaw",
+    "baseCurrency": "PLN",
+    "fx": [
+      {
+        "currency": "MAD",
+        "rateToBase": 0.43
+      },
+      {
+        "currency": "EUR",
+        "rateToBase": 4.3
+      },
+      {
+        "currency": "USD",
+        "rateToBase": 3.65
+      }
+    ]
+  },
+  "travelers": [
+    {
+      "ref": "dorosly-1",
+      "name": "Dorosły 1",
+      "household": "rodzina",
+      "isDriver": true,
+      "notes": "Jedyny kierowca w planie; drugi kierowca do ewentualnego dopisania do umowy najmu."
+    },
+    {
+      "ref": "dorosly-2",
+      "name": "Dorosły 2",
+      "household": "rodzina"
+    },
+    {
+      "ref": "dorosly-3",
+      "name": "Dorosły 3",
+      "household": "rodzina"
+    },
+    {
+      "ref": "nastolatek",
+      "name": "Nastolatek",
+      "age": 16,
+      "household": "rodzina",
+      "notes": "U operatora pakietu na pustyni i u przewoźnika liczony jako dorosły (od 13 / od 12 lat)."
+    },
+    {
+      "ref": "dziecko",
+      "name": "Dziecko",
+      "age": 10,
+      "household": "rodzina",
+      "heightCm": 152,
+      "notes": "152 cm — bez podkładki w aucie. Na quadzie jako pasażer."
+    }
+  ],
+  "places": [
+    {
+      "ref": "p-wro",
+      "name": "Lotnisko Wrocław",
+      "category": "airport"
+    },
+    {
+      "ref": "p-aga",
+      "name": "Lotnisko Agadir Al Massira",
+      "category": "airport"
+    },
+    {
+      "ref": "p-sixt-aga",
+      "name": "Sixt — biuro w terminalu, lotnisko Agadir",
+      "category": "car_rental",
+      "openingHours": "07:00–01:00, 7 dni w tygodniu",
+      "website": "https://www.sixt.com/"
+    },
+    {
+      "ref": "p-marakesz",
+      "name": "Marakesz",
+      "category": "city"
+    },
+    {
+      "ref": "p-riad",
+      "name": "Riad Lakhdar",
+      "category": "lodging",
+      "address": "Marakesz, medyna",
+      "notes": "Autem pod riad nie dojedziecie — riad przysyła kogoś z wózkiem po bagaże."
+    },
+    {
+      "ref": "p-parking-marakesz",
+      "name": "Parking strzeżony przy medynie Marakeszu",
+      "category": "parking",
+      "notes": "Konkretny parking do ustalenia z riadem („Riad podpowie najbliższy”). Ok. 20–30 MAD za dobę."
+    },
+    {
+      "ref": "p-jemaa",
+      "name": "Dżami al-Fna",
+      "category": "square"
+    },
+    {
+      "ref": "p-suki",
+      "name": "Suki Marakeszu",
+      "category": "market"
+    },
+    {
+      "ref": "p-kutubijja",
+      "name": "Minaret Kutubijji",
+      "category": "landmark",
+      "notes": "Wnętrze niedostępne dla niemuzułmanów."
+    },
+    {
+      "ref": "p-medersa",
+      "name": "Medersa Ben Youssefa",
+      "category": "monument",
+      "openingHours": "09:00–19:00",
+      "website": "https://medersabenyoussef.ma/"
+    },
+    {
+      "ref": "p-bahia",
+      "name": "Pałac Bahia",
+      "category": "monument",
+      "openingHours": "09:00–17:00"
+    },
+    {
+      "ref": "p-el-badi",
+      "name": "Pałac El Badi",
+      "category": "monument"
+    },
+    {
+      "ref": "p-saadyci",
+      "name": "Grobowce Saadytów",
+      "category": "monument"
+    },
+    {
+      "ref": "p-majorelle",
+      "name": "Ogród Majorelle i muzeum YSL",
+      "category": "garden",
+      "notes": "Poza medyną; bilety na konkretną godzinę."
+    },
+    {
+      "ref": "p-agafay",
+      "name": "Obóz na pustyni Agafay",
+      "category": "lodging",
+      "notes": "40 km od Marakeszu; ostatnie kilometry drogą gruntową. Dokładna lokalizacja do potwierdzenia u organizatora."
+    },
+    {
+      "ref": "p-essaouira",
+      "name": "Essaouira",
+      "category": "city",
+      "notes": "Parking przed murami, w medynie aut nie ma."
+    },
+    {
+      "ref": "p-skala-ville",
+      "name": "Mury Skala de la Ville",
+      "category": "monument"
+    },
+    {
+      "ref": "p-port-essaouira",
+      "name": "Port rybacki w Essaouirze",
+      "category": "harbour"
+    },
+    {
+      "ref": "p-medyna-essaouira",
+      "name": "Medyna Essaouiry (UNESCO)",
+      "category": "old_town"
+    },
+    {
+      "ref": "p-skala-port",
+      "name": "Skala du Port",
+      "category": "viewpoint"
+    },
+    {
+      "ref": "p-warsztaty-tui",
+      "name": "Warsztaty stolarzy od drewna tui",
+      "category": "craft"
+    },
+    {
+      "ref": "p-plaza-essaouira",
+      "name": "Plaża w Essaouirze",
+      "category": "beach"
+    },
+    {
+      "ref": "p-sidi-kaouki",
+      "name": "Sidi Kaouki",
+      "category": "village",
+      "notes": "27 km na południe od Essaouiry."
+    },
+    {
+      "ref": "p-perla",
+      "name": "Sidi Kaouki Perla",
+      "category": "lodging",
+      "address": "Sidi Kaouki"
+    },
+    {
+      "ref": "p-wydmy-sk",
+      "name": "Wydmy w Sidi Kaouki",
+      "category": "dunes"
+    },
+    {
+      "ref": "p-marabut",
+      "name": "Plaża Sidi Kaouki i ruiny marabutu",
+      "category": "beach",
+      "notes": "Osiem kilometrów piasku."
+    },
+    {
+      "ref": "p-imsouane",
+      "name": "Imsouane",
+      "category": "village"
+    },
+    {
+      "ref": "p-tamri",
+      "name": "Plaża Tamri",
+      "category": "beach"
+    },
+    {
+      "ref": "p-taghazout",
+      "name": "Taghazout",
+      "category": "village"
+    },
+    {
+      "ref": "p-paradise",
+      "name": "Paradise Valley",
+      "category": "valley",
+      "notes": "35 km w głąb lądu od Taghazout, 54 min w jedną stronę."
+    },
+    {
+      "ref": "p-lineup",
+      "name": "Line Up Surf House",
+      "category": "lodging",
+      "address": "Anza, północny Agadir",
+      "notes": "Przy plaży w Anzie, ok. 12 km za Taghazout; 44 minuty od lotniska."
+    }
+  ],
+  "days": [
+    {
+      "ref": "d1",
+      "date": "2026-12-26",
+      "tz": "Africa/Casablanca",
+      "title": "Przylot i zjazd do Marakeszu",
+      "summary": "Nocleg: riad w medynie, Marakesz — jedyna noc w mieście.",
+      "baseRef": "p-riad",
+      "lodgingRef": "nocleg-riad",
+      "statedDriving": {
+        "distanceKm": 246,
+        "durationMin": 172
+      }
+    },
+    {
+      "ref": "d2",
+      "date": "2026-12-27",
+      "tz": "Africa/Casablanca",
+      "title": "Marakesz do lunchu, wieczór na pustyni",
+      "summary": "Nocleg: namiot w obozie na pustyni Agafay — 40 km od Marakeszu.",
+      "baseRef": "p-agafay",
+      "lodgingRef": "nocleg-agafay",
+      "statedDriving": {
+        "distanceKm": 40,
+        "durationMin": 45
+      }
+    },
+    {
+      "ref": "d3",
+      "date": "2026-12-28",
+      "tz": "Africa/Casablanca",
+      "title": "Z pustyni przez Essaouirę na wydmy",
+      "summary": "Nocleg: Sidi Kaouki — wydmy, ocean i cisza, 27 km od Essaouiry.",
+      "baseRef": "p-perla",
+      "lodgingRef": "nocleg-perla",
+      "statedDriving": {
+        "distanceKm": 199,
+        "durationMin": 180
+      }
+    },
+    {
+      "ref": "d4",
+      "date": "2026-12-29",
+      "tz": "Africa/Casablanca",
+      "title": "Poranek na wydmach, droga nadmorska",
+      "summary": "Nocleg: Line Up Surf House, Anza — 44 minuty od lotniska.",
+      "baseRef": "p-lineup",
+      "lodgingRef": "nocleg-lineup",
+      "statedDriving": {
+        "distanceKm": 190,
+        "durationMin": 210
+      }
+    },
+    {
+      "ref": "d5",
+      "date": "2026-12-30",
+      "tz": "Africa/Casablanca",
+      "title": "Powrót",
+      "statedDriving": {
+        "durationMin": 44
+      }
+    }
+  ],
+  "items": [
+    {
+      "ref": "d1-lotnisko-wro",
+      "dayRef": "d1",
+      "sortKey": "0010",
+      "kind": "errand",
+      "title": "Lotnisko Wrocław — odprawa",
+      "description": "Ryanair zamyka odprawę 40 minut przed odlotem, a w święta kolejki do kontroli bywają długie.",
+      "placeRef": "p-wro",
+      "time": {
+        "precision": "exact",
+        "start": "04:10",
+        "tz": "Europe/Warsaw"
+      },
+      "bookingRef": "lot-tam",
+      "notes": [
+        "Sam lot (06:10 → 09:55) nie ma w dokumencie własnego wiersza — jest odcinkiem niejawnym w `legs`."
+      ]
+    },
+    {
+      "ref": "d1-przylot",
+      "dayRef": "d1",
+      "sortKey": "0020",
+      "kind": "transport",
+      "title": "Lądowanie w Agadirze",
+      "description": "Kontrola paszportowa przy pełnym samolocie to 30–60 minut, do tego jedna walizka z taśmy.",
+      "placeRef": "p-aga",
+      "time": {
+        "precision": "exact",
+        "start": "09:55"
+      },
+      "isFixed": true,
+      "durationMin": 30,
+      "durationMaxMin": 60,
+      "bookingRef": "lot-tam"
+    },
+    {
+      "ref": "d1-bankomat",
+      "dayRef": "d1",
+      "sortKey": "0030",
+      "kind": "errand",
+      "title": "Bankomat na lotnisku — dirhamy od razu",
+      "description": "Bramki na autostradzie, kasy przy zabytkach, obozy i wszystkie atrakcje na plaży biorą wyłącznie gotówkę.",
+      "placeRef": "p-aga",
+      "time": {
+        "precision": "exact",
+        "start": "11:00"
+      }
+    },
+    {
+      "ref": "d1-odbior-auta",
+      "dayRef": "d1",
+      "sortKey": "0040",
+      "kind": "errand",
+      "title": "Odbiór auta",
+      "description": "Przy Meet & Greet przedstawiciel czeka w hali przylotów; na formalności i film karoserii zarezerwujcie pół godziny.",
+      "placeRef": "p-aga",
+      "time": {
+        "precision": "exact",
+        "start": "11:30"
+      },
+      "durationMin": 30,
+      "bookingRef": "auto",
+      "notes": [
+        "Auto nie jest jeszcze zarezerwowane — bookingRef wskazuje grupę kandydatów (rekomendacja: Sixt, Škoda Octavia)."
+      ]
+    },
+    {
+      "ref": "d1-a7",
+      "dayRef": "d1",
+      "sortKey": "0050",
+      "kind": "transport",
+      "title": "Autostradą A7 na północ",
+      "description": "Droga szybka i nudna, z jednym postojem na kawę w połowie. Bramki ok. 70–90 MAD, gotówką.",
+      "time": {
+        "precision": "exact",
+        "start": "11:45"
+      },
+      "payment": "cash_only",
+      "leg": {
+        "mode": "rental_car",
+        "distanceKm": 246,
+        "durationMin": 172,
+        "fromPlaceRef": "p-aga",
+        "toPlaceRef": "p-parking-marakesz",
+        "instructions": "Autostrada A7 Agadir–Marakesz. Czas z Map Google bez postojów (dystans i czas = nagłówek dnia); postój na kawę w połowie obowiązkowy.",
+        "price": {
+          "currency": "MAD",
+          "basis": "per_group",
+          "minMinor": 7000,
+          "maxMinor": 9000,
+          "approx": true,
+          "note": "Bramki na A7 Agadir–Marakesz, za przejazd, wyłącznie gotówką w dirhamach."
+        }
+      }
+    },
+    {
+      "ref": "d1-marakesz",
+      "dayRef": "d1",
+      "sortKey": "0060",
+      "kind": "errand",
+      "title": "Marakesz — parking i bagaże do riadu",
+      "description": "Pod riad w medynie nie dojedziecie — auto zostaje na parkingu strzeżonym, a riad przysyła kogoś z wózkiem po bagaże. Umówcie to mailem przy rezerwacji. Auto stoi tam do niedzieli po lunchu.",
+      "placeRef": "p-parking-marakesz",
+      "area": "Marakesz",
+      "time": {
+        "precision": "exact",
+        "start": "14:45"
+      },
+      "bookingRef": "nocleg-riad",
+      "price": {
+        "currency": "MAD",
+        "basis": "per_day",
+        "minMinor": 2000,
+        "maxMinor": 3000,
+        "approx": true,
+        "note": "Parking strzeżony, od soboty po południu do niedzielnego lunchu."
+      },
+      "payment": "cash_only"
+    },
+    {
+      "ref": "d1-suki",
+      "dayRef": "d1",
+      "sortKey": "0070",
+      "area": "Marakesz",
+      "kind": "visit",
+      "title": "Pierwsze wejście w suki",
+      "description": "Póki jest jasno. Minaret Kutubijji jako punkt orientacyjny — widzicie go z połowy medyny i po nim wracacie, kiedy zgubicie kierunek.",
+      "placeRef": "p-suki",
+      "time": {
+        "precision": "exact",
+        "start": "16:00"
+      },
+      "priority": "optional",
+      "cutRank": 1,
+      "payment": "free",
+      "weather": "outdoor",
+      "notes": [
+        "Pula: „Suki, dwa razy: wieczorem i w dzień” — W PLANIE, 2–3 h łącznie na oba wejścia, bezpłatnie.",
+        "Jeśli wyjazd z lotniska po 12:30 — odpuścić (suki są też w niedzielę rano)."
+      ]
+    },
+    {
+      "ref": "d1-kutubijja",
+      "dayRef": "d1",
+      "sortKey": "0080",
+      "area": "Marakesz",
+      "kind": "visit",
+      "title": "Minaret Kutubijji z zewnątrz",
+      "description": "Wnętrze niedostępne dla niemuzułmanów.",
+      "placeRef": "p-kutubijja",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "afternoon"
+      },
+      "durationMin": 15,
+      "payment": "free",
+      "weather": "outdoor",
+      "notes": [
+        "W puli W PLANIE, ale w osi dnia nie ma osobnego wiersza — tylko wzmianka przy suki o 16:00."
+      ]
+    },
+    {
+      "ref": "d1-jemaa",
+      "dayRef": "d1",
+      "sortKey": "0090",
+      "area": "Marakesz",
+      "kind": "visit",
+      "title": "Dżami al-Fna o zmierzchu",
+      "description": "Plac rozkręca się przed zmierzchem i zamienia w jadłodajnię pod gołym niebem. Słońce zachodzi ok. 18:35, więc macie godzinę najlepszego światła i jeszcze dwie po ciemku.",
+      "placeRef": "p-jemaa",
+      "time": {
+        "precision": "exact",
+        "start": "17:30"
+      },
+      "durationMin": 120,
+      "priority": "must",
+      "payment": "free",
+      "weather": "outdoor",
+      "notes": [
+        "„Dżami al-Fna o zmierzchu jest tym, po co tu przyjechaliście” — nie ciąć."
+      ]
+    },
+    {
+      "ref": "d1-kolacja",
+      "dayRef": "d1",
+      "sortKey": "0100",
+      "area": "Marakesz",
+      "kind": "meal",
+      "title": "Kolacja przy straganach albo na tarasie z widokiem na plac",
+      "placeRef": "p-jemaa",
+      "time": {
+        "precision": "exact",
+        "start": "19:30"
+      }
+    },
+    {
+      "ref": "d2-wyjscie",
+      "dayRef": "d2",
+      "sortKey": "0010",
+      "kind": "transport",
+      "title": "Wyjście z riadu",
+      "description": "Żeby ten poranek się spiął, trzeba wyjść przed dziewiątą.",
+      "placeRef": "p-riad",
+      "time": {
+        "precision": "exact",
+        "start": "08:45"
+      }
+    },
+    {
+      "ref": "d2-medersa",
+      "dayRef": "d2",
+      "sortKey": "0020",
+      "area": "Marakesz",
+      "kind": "visit",
+      "title": "Medersa Ben Youssefa",
+      "description": "Zaraz po otwarciu — najpiękniejsze wnętrze w mieście i o tej godzinie jeszcze puste. Szesnastolatek płaci pełną stawkę.",
+      "placeRef": "p-medersa",
+      "time": {
+        "precision": "exact",
+        "start": "09:00"
+      },
+      "durationMin": 60,
+      "priority": "should",
+      "weather": "indoor",
+      "payment": "cash_only",
+      "price": {
+        "currency": "MAD",
+        "basis": "per_person",
+        "minMinor": 1000,
+        "maxMinor": 5000,
+        "tiers": [
+          {
+            "label": "dorosły (od 12 lat)",
+            "minAge": 12,
+            "amountMinor": 5000
+          },
+          {
+            "label": "dziecko poniżej 12 lat",
+            "maxAge": 11,
+            "amountMinor": 1000
+          }
+        ],
+        "note": "Dla piątki 210 MAD (4 × 50 + 10), ok. 90 zł. Gotówką przy wejściu."
+      },
+      "notes": [
+        "Cięcie nr 1 dnia: jeden zabytek zamiast dwóch — wariant „Tylko Bahia” wyrzuca medresę. Medersa ma piękniejsze wnętrze."
+      ]
+    },
+    {
+      "ref": "d2-do-bahii",
+      "dayRef": "d2",
+      "sortKey": "0030",
+      "area": "Marakesz",
+      "kind": "transport",
+      "title": "Przejście przez suki do Pałacu Bahia",
+      "description": "Ok. 25 minut pieszo. Na ulicach medyny nie ma samochodów, ale są skutery i wózki — trzeba uważać.",
+      "time": {
+        "precision": "exact",
+        "start": "10:00"
+      },
+      "leg": {
+        "mode": "walk",
+        "durationMin": 25,
+        "fromPlaceRef": "p-medersa",
+        "toPlaceRef": "p-bahia",
+        "instructions": "Przez suki, ok. 25 minut. Skutery i wózki — uważać."
+      }
+    },
+    {
+      "ref": "d2-bahia",
+      "dayRef": "d2",
+      "sortKey": "0040",
+      "area": "Marakesz",
+      "kind": "visit",
+      "title": "Pałac Bahia",
+      "description": "Dziedzińce, stiuki i malowane stropy. Zniżka obejmuje dziesięciolatka, ale nie szesnastolatka.",
+      "placeRef": "p-bahia",
+      "time": {
+        "precision": "exact",
+        "start": "10:30"
+      },
+      "durationMin": 60,
+      "priority": "should",
+      "weather": "any",
+      "price": {
+        "currency": "MAD",
+        "basis": "per_person",
+        "minMinor": 5000,
+        "maxMinor": 10000,
+        "tiers": [
+          {
+            "label": "dorosły",
+            "minAge": 14,
+            "amountMinor": 10000
+          },
+          {
+            "label": "dziecko 7–13 lat",
+            "minAge": 7,
+            "maxAge": 13,
+            "amountMinor": 5000
+          }
+        ],
+        "note": "Dla piątki 450 MAD (4 × 100 + 50), ok. 195 zł. Cena dla dzieci poniżej 7 lat nie podana."
+      },
+      "notes": [
+        "Cięcie nr 1 dnia: jeden zabytek zamiast dwóch — wariant „Tylko medersa” wyrzuca Bahię i przejście. Bahia jest większa i ciekawsza dla dziecka."
+      ]
+    },
+    {
+      "ref": "d2-suki-dzien",
+      "dayRef": "d2",
+      "sortKey": "0050",
+      "area": "Marakesz",
+      "kind": "visit",
+      "title": "Suki bez planu i Dżami al-Fna w dziennym świetle",
+      "description": "Ten sam plac, zupełnie inne życie niż wieczorem. Dziecku dajcie zadanie: znaleźć drogę z powrotem na plac.",
+      "placeRef": "p-jemaa",
+      "time": {
+        "precision": "exact",
+        "start": "11:30"
+      },
+      "payment": "free",
+      "weather": "outdoor",
+      "notes": [
+        "Zostaje także w cięciu radykalnym („tylko suki i plac w dziennym świetle”)."
+      ]
+    },
+    {
+      "ref": "d2-lunch",
+      "dayRef": "d2",
+      "sortKey": "0060",
+      "area": "Marakesz",
+      "kind": "meal",
+      "title": "Lunch, wymeldowanie, bagaże na parking",
+      "description": "Riady zwykle przechowują walizki po godzinie wymeldowania, więc rano nie trzeba się spieszyć z pakowaniem.",
+      "time": {
+        "precision": "exact",
+        "start": "12:45"
+      },
+      "bookingRef": "nocleg-riad"
+    },
+    {
+      "ref": "d2-radykalny-wyjazd",
+      "dayRef": "d2",
+      "sortKey": "0070",
+      "kind": "transport",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "d2-v-radykalny"
+      ],
+      "replacesRefs": [
+        "d2-wyjazd"
+      ],
+      "title": "Wyjazd do obozu o 13:00 (cięcie radykalne)",
+      "placeRef": "p-parking-marakesz",
+      "time": {
+        "precision": "exact",
+        "start": "13:00"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "distanceKm": 40,
+        "fromPlaceRef": "p-parking-marakesz",
+        "toPlaceRef": "p-agafay"
+      },
+      "notes": [
+        "W dokumencie lunch jest o 12:45, a cięcie radykalne każe wyjechać o 13:00 — nie wiadomo, czy lunch zostaje."
+      ]
+    },
+    {
+      "ref": "d2-wyjazd",
+      "dayRef": "d2",
+      "sortKey": "0080",
+      "kind": "transport",
+      "title": "Wyjazd na południowy zachód, do obozu",
+      "description": "Czterdzieści kilometrów i miasto się kończy: najpierw asfalt, na końcu kilka kilometrów drogi gruntowej do obozu.",
+      "placeRef": "p-parking-marakesz",
+      "time": {
+        "precision": "exact",
+        "start": "14:30"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "distanceKm": 40,
+        "durationMin": 45,
+        "fromPlaceRef": "p-parking-marakesz",
+        "toPlaceRef": "p-agafay",
+        "instructions": "Najpierw asfalt, na końcu kilka kilometrów drogi gruntowej do obozu — powoli i nie po ciemku."
+      }
+    },
+    {
+      "ref": "d2-radykalny-oboz",
+      "dayRef": "d2",
+      "sortKey": "0090",
+      "area": "Agafay",
+      "kind": "lodging",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "d2-v-radykalny"
+      ],
+      "replacesRefs": [
+        "d2-zameldowanie"
+      ],
+      "title": "W obozie o 13:50 (cięcie radykalne)",
+      "description": "Quady mieszczą się przed wielbłądami zupełnie bez pośpiechu.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "13:50"
+      },
+      "bookingRef": "nocleg-agafay",
+      "notes": [
+        "13:50 jest przed przyjmowaniem gości (14:00) i przed startem pakietu (15:00)."
+      ]
+    },
+    {
+      "ref": "d2-zameldowanie",
+      "dayRef": "d2",
+      "sortKey": "0100",
+      "area": "Agafay",
+      "kind": "lodging",
+      "title": "Zameldowanie w obozie",
+      "description": "Obozy przyjmują od 14:00, czyli wcześniej i tak nie da się wejść — to właśnie dlatego poranek zostaje dla Marakeszu.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "15:15"
+      },
+      "bookingRef": "nocleg-agafay"
+    },
+    {
+      "ref": "d2-quady",
+      "dayRef": "d2",
+      "sortKey": "0110",
+      "area": "Agafay",
+      "kind": "activity",
+      "title": "Quady albo buggy",
+      "description": "Zwykle godzina. Dziesięciolatek jedzie jako pasażer, więc realnie potrzebujecie czterech maszyn.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "15:45"
+      },
+      "durationMin": 60,
+      "weather": "outdoor",
+      "payment": "included",
+      "bookingRef": "nocleg-agafay",
+      "notes": [
+        "Pula: W PAKIECIE — potwierdźcie liczbę maszyn.",
+        "Wiersz osi dnia mówi jeszcze „dogaduje się je na miejscu” — sprzeczne z pakietem."
+      ]
+    },
+    {
+      "ref": "d2-wielblady",
+      "dayRef": "d2",
+      "sortKey": "0120",
+      "area": "Agafay",
+      "kind": "activity",
+      "title": "Wielbłądy w ostatniej godzinie światła",
+      "description": "Zachód ok. 18:30 — to ta godzina, dla której ludzie tu przyjeżdżają.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "17:15"
+      },
+      "durationMin": 60,
+      "weather": "outdoor",
+      "payment": "included",
+      "bookingRef": "nocleg-agafay"
+    },
+    {
+      "ref": "d2-kolacja",
+      "dayRef": "d2",
+      "sortKey": "0130",
+      "area": "Agafay",
+      "kind": "meal",
+      "title": "Kolacja pod gwiazdami",
+      "description": "Pod gołym niebem, zwykle przy ognisku i bębnach. Potem gwiazdy: do najbliższych świateł miasta jest czterdzieści kilometrów.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "19:30"
+      },
+      "durationMin": 120,
+      "payment": "included",
+      "bookingRef": "nocleg-agafay",
+      "notes": [
+        "Wiersz osi dnia: „Zwykle płatna osobno” — nieaktualne, kolacja jest w pakiecie GetYourGuide."
+      ]
+    },
+    {
+      "ref": "d3-wschod",
+      "dayRef": "d3",
+      "sortKey": "0010",
+      "area": "Agafay",
+      "kind": "visit",
+      "title": "Wschód słońca nad pustynią",
+      "description": "Nad kamienistymi wzgórzami, z ośnieżonym Atlasem na horyzoncie. W grudniu słońce wstaje dopiero o wpół do dziewiątej, więc nikt nie musi zrywać się po ciemku.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "08:30"
+      },
+      "durationMin": 30,
+      "payment": "free",
+      "weather": "outdoor"
+    },
+    {
+      "ref": "d3-sniadanie",
+      "dayRef": "d3",
+      "sortKey": "0020",
+      "area": "Agafay",
+      "kind": "meal",
+      "title": "Śniadanie w obozie",
+      "description": "Zwykle jedyny posiłek wliczony w cenę.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "09:00"
+      },
+      "bookingRef": "nocleg-agafay",
+      "notes": [
+        "Pakiet GetYourGuide nie wymienia śniadania w „includes”; zdanie „jedyny posiłek wliczony” sprzed rezerwacji pakietu z kolacją."
+      ]
+    },
+    {
+      "ref": "d3-wyjazd",
+      "dayRef": "d3",
+      "sortKey": "0030",
+      "kind": "transport",
+      "title": "Wyjazd na zachód",
+      "description": "Przez równinę Haouz i lasy arganowe. Droga płaska, bez serpentyn. Wymeldowanie macie do 11:00, więc jest margines.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "10:00"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "fromPlaceRef": "p-agafay",
+        "toPlaceRef": "p-essaouira",
+        "instructions": "Na zachód przez równinę Haouz i lasy arganowe. Droga płaska, bez serpentyn."
+      }
+    },
+    {
+      "ref": "d3-wyjazd-1100",
+      "dayRef": "d3",
+      "sortKey": "0040",
+      "kind": "transport",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "d3-v-1100"
+      ],
+      "replacesRefs": [
+        "d3-wyjazd"
+      ],
+      "title": "Wyjazd o 11:00 (dłuższy sen)",
+      "description": "Dokładnie o godzinie wymeldowania; nadal zostawia trzy godziny w Essaouirze i spokojny dojazd przed zachodem.",
+      "placeRef": "p-agafay",
+      "time": {
+        "precision": "exact",
+        "start": "11:00"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "fromPlaceRef": "p-agafay",
+        "toPlaceRef": "p-essaouira",
+        "instructions": "Na zachód przez równinę Haouz i lasy arganowe. Droga płaska, bez serpentyn."
+      }
+    },
+    {
+      "ref": "d3-essaouira",
+      "dayRef": "d3",
+      "sortKey": "0050",
+      "area": "Essaouira",
+      "kind": "errand",
+      "title": "Essaouira — parking przed murami",
+      "description": "Parkujecie przed murami i wchodzicie pieszo — w medynie aut nie ma.",
+      "placeRef": "p-essaouira",
+      "time": {
+        "precision": "exact",
+        "start": "12:25"
+      }
+    },
+    {
+      "ref": "d3-lunch-port",
+      "dayRef": "d3",
+      "sortKey": "0060",
+      "area": "Essaouira",
+      "kind": "meal",
+      "title": "Lunch w porcie: ryba z lodu grillowana na nabrzeżu",
+      "description": "Wybieracie rybę z lodu przy nabrzeżu, grillują ją na miejscu. Prawdopodobnie najlepszy posiłek wyjazdu, za ułamek ceny restauracji.",
+      "placeRef": "p-port-essaouira",
+      "time": {
+        "precision": "exact",
+        "start": "12:45"
+      },
+      "durationMin": 90,
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 50000,
+        "maxMinor": 75000,
+        "approx": true,
+        "note": "Lunch dla piątki."
+      },
+      "notes": [
+        "Pula: „Port rybacki i grille na nabrzeżu” — W PLANIE, 1,5 h."
+      ]
+    },
+    {
+      "ref": "d3-skala-ville",
+      "dayRef": "d3",
+      "sortKey": "0070",
+      "area": "Essaouira",
+      "kind": "visit",
+      "title": "Mury Skala de la Ville z armatami i port rybacki",
+      "description": "Mury z rzędem armat i widokiem na rozbijające się fale, port rybacki z niebieskimi łodziami.",
+      "placeRef": "p-skala-ville",
+      "time": {
+        "precision": "exact",
+        "start": "14:00"
+      },
+      "durationMin": 60,
+      "payment": "free",
+      "weather": "outdoor",
+      "notes": [
+        "Wiersz 14:00 obejmuje mury, port i spacer po medynie; rozbity na dwa punkty, bo pula wycenia je osobno.",
+        "Przy silnym wietrze medyna osłania, a mury nie."
+      ]
+    },
+    {
+      "ref": "d3-medyna",
+      "dayRef": "d3",
+      "sortKey": "0080",
+      "area": "Essaouira",
+      "kind": "visit",
+      "title": "Spacer po medynie Essaouiry (lista UNESCO)",
+      "description": "Zbudowana na planie prostokątnej siatki, więc po Marakeszu to odpoczynek dla nerwów.",
+      "placeRef": "p-medyna-essaouira",
+      "durationMin": 90,
+      "payment": "free"
+    },
+    {
+      "ref": "d3-wyjazd-sk",
+      "dayRef": "d3",
+      "sortKey": "0090",
+      "kind": "transport",
+      "title": "Do Sidi Kaouki wzdłuż wybrzeża",
+      "description": "Dwadzieścia siedem kilometrów na południe wzdłuż wybrzeża.",
+      "placeRef": "p-essaouira",
+      "time": {
+        "precision": "exact",
+        "start": "17:00"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "distanceKm": 27,
+        "fromPlaceRef": "p-essaouira",
+        "toPlaceRef": "p-perla",
+        "instructions": "Na południe wzdłuż wybrzeża."
+      }
+    },
+    {
+      "ref": "d3-sk-zameldowanie",
+      "dayRef": "d3",
+      "sortKey": "0100",
+      "area": "Sidi Kaouki",
+      "kind": "lodging",
+      "title": "Sidi Kaouki, zameldowanie",
+      "description": "Rzucacie bagaże i wychodzicie prosto na wydmy — są tuż za progiem.",
+      "placeRef": "p-perla",
+      "time": {
+        "precision": "exact",
+        "start": "17:30"
+      },
+      "bookingRef": "nocleg-perla"
+    },
+    {
+      "ref": "d3-wydmy",
+      "dayRef": "d3",
+      "sortKey": "0110",
+      "area": "Sidi Kaouki",
+      "kind": "visit",
+      "title": "Zachód słońca z grzbietu wydmy nad Atlantykiem",
+      "description": "Po kamienistym Agafay to ten sam motyw zagrany na piasku, tym razem z oceanem w tle — i to jedyny układ planu, w którym macie oba.",
+      "placeRef": "p-wydmy-sk",
+      "time": {
+        "precision": "exact",
+        "start": "18:40"
+      },
+      "durationMin": 60,
+      "payment": "free",
+      "weather": "outdoor"
+    },
+    {
+      "ref": "d4-plaza",
+      "dayRef": "d4",
+      "sortKey": "0010",
+      "area": "Sidi Kaouki",
+      "kind": "visit",
+      "title": "Poranek na plaży i ruiny marabutu",
+      "description": "Osiem kilometrów piasku, zwykle pustych, i ruiny marabutu, od którego wioska wzięła nazwę.",
+      "placeRef": "p-marabut",
+      "time": {
+        "precision": "exact",
+        "start": "08:45"
+      },
+      "durationMin": 60,
+      "payment": "free",
+      "weather": "outdoor"
+    },
+    {
+      "ref": "d4-sandboard",
+      "dayRef": "d4",
+      "sortKey": "0020",
+      "area": "Sidi Kaouki",
+      "kind": "activity",
+      "title": "Sandboard na wydmach",
+      "description": "Sprzęt w cenie, dziesięciolatek da sobie radę od razu. Zostawcie na to dwie godziny.",
+      "placeRef": "p-wydmy-sk",
+      "time": {
+        "precision": "exact",
+        "start": "09:30"
+      },
+      "durationMin": 120,
+      "weather": "outdoor",
+      "price": {
+        "currency": "EUR",
+        "basis": "per_group",
+        "minMinor": 10000,
+        "maxMinor": 10000,
+        "approx": true,
+        "note": "Ok. €100 za piątkę, sprzęt w cenie; €150 z kolacją w jaskini. Rezerwować rano na miejscu, nie z góry."
+      },
+      "notes": [
+        "Najlepszy stosunek wrażeń do ceny na liście atrakcji."
+      ]
+    },
+    {
+      "ref": "d4-wyjazd",
+      "dayRef": "d4",
+      "sortKey": "0030",
+      "kind": "transport",
+      "title": "Wyjazd na południe drogą N1",
+      "description": "Kręta i wolna, ale prowadzi klifami nad Atlantykiem.",
+      "placeRef": "p-perla",
+      "time": {
+        "precision": "exact",
+        "start": "11:30"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "fromPlaceRef": "p-perla",
+        "instructions": "Droga N1 — kręta i wolna, klifami nad Atlantykiem. Zasięg bywa dziurawy (mapy offline)."
+      }
+    },
+    {
+      "ref": "d4b-wyjazd",
+      "dayRef": "d4",
+      "sortKey": "0040",
+      "kind": "transport",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "d4-v-b"
+      ],
+      "replacesRefs": [
+        "d4-wyjazd"
+      ],
+      "title": "Wyjazd z Sidi Kaouki o 09:00 (wersja B)",
+      "description": "Kozy w przelocie, Imsouane odpuszczone.",
+      "placeRef": "p-perla",
+      "time": {
+        "precision": "exact",
+        "start": "09:00"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "fromPlaceRef": "p-perla",
+        "toPlaceRef": "p-paradise",
+        "instructions": "N1 na południe, kozy w przelocie, bez Imsouane; od Taghazout 35 km w głąb lądu."
+      }
+    },
+    {
+      "ref": "d4-kozy",
+      "dayRef": "d4",
+      "sortKey": "0050",
+      "area": "Droga N1",
+      "kind": "visit",
+      "title": "Kozy na drzewach arganowych",
+      "description": "Uwaga: część stad jest wstawiana dla turystów i ktoś podejdzie po napiwek.",
+      "time": {
+        "precision": "exact",
+        "start": "12:30"
+      },
+      "durationMin": 20,
+      "weather": "outdoor",
+      "payment": "cash_only",
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 2000,
+        "maxMinor": 5000,
+        "approx": true,
+        "note": "Napiwek."
+      },
+      "notes": [
+        "Punkt wspólny dla obu wersji; godzina 12:30 pochodzi z wersji A — w B kozy są „w przelocie”, bez podanej godziny."
+      ]
+    },
+    {
+      "ref": "d4-kooperatywa",
+      "dayRef": "d4",
+      "sortKey": "0060",
+      "area": "Droga N1",
+      "kind": "visit",
+      "title": "Kooperatywa arganowa",
+      "description": "Kobiece spółdzielnie tłoczą olej ręcznie. Dobre miejsce na prezenty.",
+      "durationMin": 30,
+      "payment": "free",
+      "notes": [
+        "Wstęp bezpłatny; olej od ok. 100 MAD.",
+        "Wiersz 12:30 łączy kozy i kooperatywę; pula wycenia je osobno."
+      ]
+    },
+    {
+      "ref": "d4-imsouane",
+      "dayRef": "d4",
+      "sortKey": "0070",
+      "area": "Droga N1",
+      "kind": "meal",
+      "title": "Imsouane — lunch nad wodą",
+      "description": "Rybacka wioska w zatoce, znana z najdłuższej prawej fali w Afryce. Lunch nad wodą i popatrzenie na surferów.",
+      "placeRef": "p-imsouane",
+      "time": {
+        "precision": "exact",
+        "start": "13:30"
+      },
+      "durationMin": 90,
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 50000,
+        "maxMinor": 50000,
+        "approx": true,
+        "note": "Lunch dla piątki."
+      },
+      "notes": [
+        "Objazd przez Imsouane kosztuje tylko 16 km i 19 minut względem jazdy prosto."
+      ]
+    },
+    {
+      "ref": "d4-paradise",
+      "dayRef": "d4",
+      "sortKey": "0080",
+      "area": "Taghazout",
+      "kind": "visit",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "d4-v-b"
+      ],
+      "replacesRefs": [
+        "d4-plaza",
+        "d4-sandboard"
+      ],
+      "title": "Paradise Valley",
+      "description": "Spacer między palmami i kawa przy wodzie, nie kąpiel — w grudniu woda jest lodowata. Poziom wody zależy od deszczu, a po suchych latach bywa niski.",
+      "placeRef": "p-paradise",
+      "time": {
+        "precision": "range",
+        "start": "13:00",
+        "end": "17:00"
+      },
+      "durationMin": 120,
+      "weather": "outdoor",
+      "payment": "cash_only",
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 5000,
+        "maxMinor": 5000,
+        "approx": true,
+        "note": "Wstęp bezpłatny; parking i napiwek ok. 50 MAD."
+      },
+      "notes": [
+        "Pula: „TYLKO ZAMIAST PORANKA W SIDI KAOUKI”, pół dnia — zastępuje plażę i sandboard.",
+        "Minimum dwie godziny na miejscu. Doliczcie 70 km do limitu w umowie najmu."
+      ]
+    },
+    {
+      "ref": "d4-taghazout",
+      "dayRef": "d4",
+      "sortKey": "0090",
+      "area": "Taghazout",
+      "kind": "visit",
+      "title": "Taghazout — wioska, deptak i kawa nad wodą",
+      "description": "Nie nocujecie tu, ale leży dokładnie po drodze — godzina na wioskę, deptak i kawę nad wodą, zanim ruszycie dalej.",
+      "placeRef": "p-taghazout",
+      "time": {
+        "precision": "exact",
+        "start": "16:15"
+      },
+      "durationMin": 60,
+      "payment": "free",
+      "notes": [
+        "Pula: „Wioska i zachód słońca na plaży” — W PLANIE, 2 h; w osi dnia godzina, a zachód już w Anzie."
+      ]
+    },
+    {
+      "ref": "d4-anza",
+      "dayRef": "d4",
+      "sortKey": "0100",
+      "area": "Taghazout",
+      "kind": "lodging",
+      "title": "Anza, zameldowanie i zachód słońca z plaży",
+      "description": "Dwanaście kilometrów dalej. Zameldowanie od 14:00, więc żadnego pośpiechu. Zachód słońca ok. 18:40 z plaży pod domem — po trzech dniach jazdy to wieczór, którego się nie planuje.",
+      "placeRef": "p-lineup",
+      "time": {
+        "precision": "exact",
+        "start": "17:30"
+      },
+      "bookingRef": "nocleg-lineup"
+    },
+    {
+      "ref": "d5-wyjazd",
+      "dayRef": "d5",
+      "sortKey": "0010",
+      "kind": "transport",
+      "title": "Wyjazd z Anzy, tankowanie do pełna po drodze",
+      "description": "Umowa jest pełny-do-pełnego, a stacja tuż przy lotnisku zawsze jest droższa.",
+      "placeRef": "p-lineup",
+      "time": {
+        "precision": "exact",
+        "start": "07:30"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 44,
+        "fromPlaceRef": "p-lineup",
+        "toPlaceRef": "p-sixt-aga",
+        "instructions": "Po drodze tankowanie do pełna, nie na stacji przy terminalu."
+      }
+    },
+    {
+      "ref": "d5-wyjazd-0715",
+      "dayRef": "d5",
+      "sortKey": "0020",
+      "kind": "transport",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "d5-v-0715"
+      ],
+      "replacesRefs": [
+        "d5-wyjazd"
+      ],
+      "title": "Wyjazd z Anzy o 07:15",
+      "description": "Jeśli ktoś nie lubi biec przez lotnisko.",
+      "placeRef": "p-lineup",
+      "time": {
+        "precision": "exact",
+        "start": "07:15"
+      },
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 44,
+        "fromPlaceRef": "p-lineup",
+        "toPlaceRef": "p-sixt-aga",
+        "instructions": "Po drodze tankowanie do pełna, nie na stacji przy terminalu."
+      }
+    },
+    {
+      "ref": "d5-zwrot",
+      "dayRef": "d5",
+      "sortKey": "0030",
+      "kind": "errand",
+      "title": "Zwrot auta",
+      "description": "Film karoserii przy oddawaniu, tak samo jak przy odbiorze.",
+      "placeRef": "p-sixt-aga",
+      "time": {
+        "precision": "exact",
+        "start": "08:15"
+      },
+      "bookingRef": "auto"
+    },
+    {
+      "ref": "d5-odprawa",
+      "dayRef": "d5",
+      "sortKey": "0040",
+      "kind": "errand",
+      "title": "Odprawa i kontrola",
+      "description": "Ryanair zamyka stanowisko o 09:35.",
+      "placeRef": "p-aga",
+      "time": {
+        "precision": "exact",
+        "start": "08:45"
+      },
+      "bookingRef": "lot-powrot"
+    },
+    {
+      "ref": "d5-wylot",
+      "dayRef": "d5",
+      "sortKey": "0050",
+      "kind": "transport",
+      "title": "Wylot do Wrocławia",
+      "placeRef": "p-aga",
+      "time": {
+        "precision": "exact",
+        "start": "10:15"
+      },
+      "isFixed": true,
+      "priority": "must",
+      "bookingRef": "lot-powrot",
+      "leg": {
+        "mode": "flight",
+        "durationMin": 275,
+        "fromPlaceRef": "p-aga",
+        "toPlaceRef": "p-wro",
+        "ticketBookingRef": "lot-powrot",
+        "instructions": "Ryanair, bez przesiadek, 4 h 35 min (10:15 Africa/Casablanca → 15:50 Europe/Warsaw)."
+      }
+    },
+    {
+      "ref": "d5-wroclaw",
+      "dayRef": "d5",
+      "sortKey": "0060",
+      "kind": "transport",
+      "title": "Przylot do Wrocławia",
+      "placeRef": "p-wro",
+      "time": {
+        "precision": "exact",
+        "start": "15:50",
+        "tz": "Europe/Warsaw"
+      },
+      "isFixed": true,
+      "bookingRef": "lot-powrot",
+      "notes": [
+        "Koniec przejazdu z punktu „Wylot” — punkt przylotu nie ma własnego `leg`."
+      ]
+    },
+    {
+      "ref": "pula-el-badi",
+      "area": "Marakesz",
+      "kind": "visit",
+      "planStatus": "alternative",
+      "title": "Pałac El Badi, bociany na murach",
+      "placeRef": "p-el-badi",
+      "durationMin": 60,
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 35000,
+        "maxMinor": 35000,
+        "approx": true,
+        "note": "Dla piątki."
+      }
+    },
+    {
+      "ref": "pula-saadyci",
+      "area": "Marakesz",
+      "kind": "visit",
+      "planStatus": "alternative",
+      "title": "Grobowce Saadytów",
+      "placeRef": "p-saadyci",
+      "durationMin": 45,
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 35000,
+        "maxMinor": 35000,
+        "approx": true,
+        "note": "Dla piątki."
+      },
+      "notes": [
+        "Przy wariancie A układu nocy wypada (razem z Majorelle)."
+      ]
+    },
+    {
+      "ref": "pula-majorelle",
+      "area": "Marakesz",
+      "kind": "visit",
+      "planStatus": "does_not_fit",
+      "title": "Ogród Majorelle i muzeum YSL",
+      "description": "Bilety na konkretną godzinę, poza medyną.",
+      "placeRef": "p-majorelle",
+      "durationMin": 90,
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 85000,
+        "maxMinor": 85000,
+        "from": true,
+        "approx": true,
+        "note": "Od ok. 850 MAD dla piątki."
+      },
+      "notes": [
+        "Czas: 1,5 h + dojazd (dojazd bez liczby).",
+        "Dochodzi w wariancie B układu nocy."
+      ]
+    },
+    {
+      "ref": "pula-hammam",
+      "area": "Marakesz",
+      "kind": "activity",
+      "planStatus": "does_not_fit",
+      "title": "Hammam",
+      "durationMin": 90,
+      "weather": "indoor",
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 75000,
+        "maxMinor": 75000,
+        "from": true,
+        "approx": true,
+        "note": "Od ok. 750 MAD dla piątki."
+      }
+    },
+    {
+      "ref": "pula-basen-oboz",
+      "area": "Agafay",
+      "kind": "activity",
+      "planStatus": "candidate",
+      "title": "Basen w obozie",
+      "description": "W cenie noclegu, ale w grudniu lodowaty.",
+      "placeRef": "p-agafay",
+      "payment": "included",
+      "bookingRef": "nocleg-agafay",
+      "notes": [
+        "W puli bez znacznika statusu; w cenie noclegu (pakiet)."
+      ]
+    },
+    {
+      "ref": "pula-skala-port",
+      "area": "Essaouira",
+      "kind": "visit",
+      "planStatus": "candidate",
+      "title": "Skala du Port, wieża z widokiem",
+      "description": "Za osobnym biletem.",
+      "placeRef": "p-skala-port",
+      "durationMin": 30,
+      "price": {
+        "currency": "MAD",
+        "basis": "per_group",
+        "minMinor": 35000,
+        "maxMinor": 35000,
+        "approx": true,
+        "note": "Dla piątki."
+      },
+      "notes": [
+        "Znacznik w puli: MIEŚCI SIĘ."
+      ]
+    },
+    {
+      "ref": "pula-warsztaty-tui",
+      "area": "Essaouira",
+      "kind": "visit",
+      "planStatus": "candidate",
+      "title": "Warsztaty stolarzy od drewna tui",
+      "description": "Pod murami.",
+      "placeRef": "p-warsztaty-tui",
+      "durationMin": 30,
+      "payment": "free",
+      "notes": [
+        "Znacznik w puli: MIEŚCI SIĘ."
+      ]
+    },
+    {
+      "ref": "pula-plaza-essaouira",
+      "area": "Essaouira",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "title": "Plaża: wielbłądy i quady na piasku",
+      "placeRef": "p-plaza-essaouira",
+      "durationMin": 60,
+      "weather": "outdoor",
+      "price": {
+        "currency": "MAD",
+        "basis": "per_person",
+        "minMinor": 10000,
+        "maxMinor": 10000,
+        "from": true,
+        "approx": true
+      },
+      "notes": [
+        "Wielbłądy zostawcie w Agafay, nie na plaży w Essaouirze — ta sama atrakcja, ale o zachodzie na pustyni, a nie w kolejce przy deptaku."
+      ]
+    },
+    {
+      "ref": "pula-targ-rybny",
+      "area": "Essaouira",
+      "kind": "visit",
+      "planStatus": "candidate",
+      "title": "Targ rybny",
+      "placeRef": "p-port-essaouira",
+      "notes": [
+        "Wymieniony tylko w audycie zapasu dnia 3, nie ma go w tabeli puli."
+      ]
+    },
+    {
+      "ref": "pula-quady-wydmy",
+      "area": "Sidi Kaouki",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "replacesRefs": [
+        "d4-sandboard"
+      ],
+      "title": "Quady po wydmach",
+      "placeRef": "p-wydmy-sk",
+      "durationMin": 60,
+      "durationMaxMin": 120,
+      "weather": "outdoor",
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 3000,
+        "maxMinor": 3000,
+        "from": true,
+        "approx": true
+      },
+      "notes": [
+        "Znacznik w puli: ZAMIAST SANDBOARDU."
+      ]
+    },
+    {
+      "ref": "pula-surfing-sk",
+      "area": "Sidi Kaouki",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "title": "Surfing: deska na dzień albo lekcja",
+      "description": "Zima to najlepszy sezon.",
+      "placeRef": "p-marabut",
+      "durationMin": 120,
+      "durationMaxMin": 180,
+      "weather": "outdoor",
+      "price": {
+        "currency": "EUR",
+        "basis": "per_unit",
+        "minMinor": 1500,
+        "maxMinor": 2000,
+        "approx": true,
+        "note": "Deska na dzień €15–20; lekcja od €30/os."
+      },
+      "notes": [
+        "Dziesięciolatkowi w grudniowym oceanie raczej się nie spodoba, nastolatkowi zwykle tak — jeśli coś dokupić ponad plan, to to."
+      ]
+    },
+    {
+      "ref": "pula-konie",
+      "area": "Sidi Kaouki",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "title": "Konie po plaży i wydmach",
+      "placeRef": "p-marabut",
+      "durationMin": 180,
+      "durationMaxMin": 240,
+      "weather": "outdoor",
+      "price": {
+        "currency": "EUR",
+        "basis": "per_group",
+        "minMinor": 50000,
+        "maxMinor": 80000,
+        "approx": true,
+        "note": "€100–160 od osoby."
+      },
+      "notes": [
+        "Znacznik w puli: DROGO — więcej niż nocleg i auto razem wzięte."
+      ]
+    },
+    {
+      "ref": "pula-tamri",
+      "area": "Droga N1",
+      "kind": "visit",
+      "planStatus": "alternative",
+      "title": "Plaża Tamri",
+      "placeRef": "p-tamri",
+      "durationMin": 30,
+      "payment": "free",
+      "weather": "outdoor"
+    },
+    {
+      "ref": "pula-surfing-taghazout",
+      "area": "Taghazout",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "title": "Surfing w Taghazout",
+      "placeRef": "p-taghazout",
+      "durationMin": 120,
+      "durationMaxMin": 180,
+      "weather": "outdoor",
+      "price": {
+        "currency": "EUR",
+        "basis": "per_person",
+        "minMinor": 3000,
+        "maxMinor": 3000,
+        "from": true,
+        "approx": true
+      }
+    },
+    {
+      "ref": "pula-agadir",
+      "area": "Agadir",
+      "kind": "visit",
+      "planStatus": "does_not_fit",
+      "title": "Agadir: Kasba Oufella, plaża i suk El Had",
+      "description": "Pół dnia, a wylot o 10:15 — przy tym locie nie ma na to miejsca.",
+      "notes": [
+        "Wymienione tylko w audycie dnia 5; czas „pół dnia” bez liczby."
+      ]
+    }
+  ],
+  "legs": [
+    {
+      "fromRef": "d1-lotnisko-wro",
+      "toRef": "d1-przylot",
+      "mode": "flight",
+      "durationMin": 285,
+      "ticketBookingRef": "lot-tam",
+      "instructions": "Ryanair, bez przesiadek, 4 h 45 min (06:10 Europe/Warsaw → 09:55 Africa/Casablanca). Sam wylot nie ma wiersza w osi dnia."
+    },
+    {
+      "fromRef": "d4-kooperatywa",
+      "toRef": "d4-imsouane",
+      "mode": "rental_car",
+      "instructions": "Objazd przez Imsouane: +16 km i +19 min względem jazdy prosto N1."
+    },
+    {
+      "fromRef": "d4-imsouane",
+      "toRef": "d4-taghazout",
+      "mode": "rental_car"
+    },
+    {
+      "fromRef": "d4-taghazout",
+      "toRef": "d4-anza",
+      "mode": "rental_car",
+      "distanceKm": 12
+    },
+    {
+      "fromRef": "p-taghazout",
+      "toRef": "p-paradise",
+      "mode": "rental_car",
+      "distanceKm": 35,
+      "durationMin": 54,
+      "roundTrip": true,
+      "instructions": "W głąb lądu; 54 min w jedną stronę. Wersja B dokłada łącznie 70 km do limitu najmu."
+    }
+  ],
+  "variantGroups": [
+    {
+      "ref": "uklad-nocy",
+      "scope": "trip",
+      "title": "Układ nocy: pustynia drugiej, nie trzeciej",
+      "conditionKind": "choice",
+      "conditionText": "Czy zostawić dwie noce w Marakeszu i pojechać do Agafay rano trzeciego dnia. Obozy przyjmują od 14:00, a wymeldowanie jest do 11:00 — „pełny dzień w Agafay” nie istnieje.",
+      "chosenRef": "uklad-a",
+      "rationale": "Czas w obozie jest identyczny we wszystkich trzech. Wszystko, co w Agafay ciekawe — quady, wielbłądy o zachodzie, kolacja pod gwiazdami, wschód słońca — dzieje się między 15:00 a 9:00. Wcześniejszy przyjazd nie kupuje ani jednej atrakcji więcej.\n\nA kupuje cztery godziny w Essaouirze i wydmy w Sidi Kaouki. W B na Essaouirę zostaje godzina i pół na lunch, w C nie ma jej wcale. Przy A macie w jednym wyjeździe obie pustynie: kamienistą w Agafay i piaszczystą nad oceanem.\n\nA likwiduje jedyny ciężki dzień. Pięć godzin i kwadrans za kierownicą we wtorek, z dzieckiem i czworgiem dorosłych w aucie, to ten dzień, który pamięta się z niewłaściwych powodów. W A żaden dzień nie przekracza trzech godzin.\n\nMarakesz nie wypada tak bardzo, jak to wygląda na papierze. W sobotę jesteście w medynie od 15:00 i łapiecie Dżami al-Fna o zmierzchu. W niedzielę macie cały ranek. Razem kilkanaście godzin w mieście, w dwóch różnych światłach. Cięcie dotyka Ogrodu Majorelle i Grobowców Saadytów; medresa, Bahia, suki i plac dwa razy zostają.\n\nPieniądze się nie zmieniają. Noc w riadzie i noc w Sidi Kaouki kosztują tyle samo, €86, więc A i B wychodzą na to samo. Cała różnica to €9 za przesunięcie obozu z 28 na 27 grudnia i jakieś 20 zł paliwa.\n\nCzego nie da się zrobić: dwie noce w Marakeszu, obóz i nocleg nad oceanem naraz. Na to trzeba piątej nocy, a ta koliduje z sylwestrem w domu.",
+      "comparison": {
+        "columns": [
+          "Dzień 2",
+          "Dzień 3",
+          "Dzień 4",
+          "Najdłuższy dzień"
+        ],
+        "rows": [
+          {
+            "variantRef": "uklad-a",
+            "values": [
+              "Marakesz do lunchu, 40 km, popołudnie i wieczór w obozie",
+              "199 km: Essaouira na cztery godziny i wydmy w Sidi Kaouki",
+              "139 km wybrzeżem do Taghazout, z Imsouane po drodze",
+              "ok. 3 h"
+            ]
+          },
+          {
+            "variantRef": "uklad-b",
+            "values": [
+              "cały dzień w Marakeszu",
+              "40 km, obóz i tak od 14:00",
+              "324 km, Essaouira w przelocie na lunch",
+              "5 h 14"
+            ]
+          },
+          {
+            "variantRef": "uklad-c",
+            "values": [
+              "cały dzień w Marakeszu",
+              "40 km, obóz i tak od 14:00",
+              "256 km autostradą, bez Essaouiry i bez wydm",
+              "3 h 12"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "ref": "d1-start",
+      "scope": "day",
+      "dayRef": "d1",
+      "title": "Poślizg na lotnisku w Agadirze",
+      "conditionKind": "schedule_slip",
+      "conditionText": "Jeśli ruszycie z lotniska po 12:30 — odpuśćcie suki i jedźcie prosto na plac.",
+      "decideBy": {
+        "time": "12:30"
+      },
+      "chosenRef": "d1-v-plan"
+    },
+    {
+      "ref": "d2-ciecia",
+      "scope": "day",
+      "dayRef": "d2",
+      "title": "Cięcia najciaśniejszego poranka",
+      "conditionKind": "schedule_slip",
+      "conditionText": "Ktoś zaśpi albo kolejka do medresy będzie długa.",
+      "chosenRef": "d2-v-pelny",
+      "rationale": "Czego nie przesuwajcie: wyjazdu po 15:00. Ostatnie kilometry do obozu to droga gruntowa, a po zmroku to zupełnie inna jazda."
+    },
+    {
+      "ref": "d3-wyjazd-z-obozu",
+      "scope": "item",
+      "dayRef": "d3",
+      "title": "Godzina wyjazdu z Agafay",
+      "conditionKind": "wellbeing",
+      "conditionText": "Jeśli wolicie pospać.",
+      "chosenRef": "d3-v-1000"
+    },
+    {
+      "ref": "d4-wariant",
+      "scope": "day",
+      "dayRef": "d4",
+      "title": "Wydmy czy Paradise Valley",
+      "conditionKind": "choice",
+      "conditionText": "Oba się nie mieszczą. B tylko wtedy, gdy sadzawki w Paradise Valley są pełne (poziom wody zależy od deszczu) — zapytać w Taghazout. B dokłada 70 km do limitu kilometrów w umowie najmu.",
+      "decideBy": {
+        "time": "09:00"
+      },
+      "chosenRef": "d4-v-a",
+      "rationale": "Przejazd z Imsouane i Taghazout po drodze to 190 km i 3 h 30 min samej jazdy; z kozami i lunchem robi się ponad pięć godzin. Paradise Valley leży 35 km od Taghazout, 54 minuty w jedną stronę, i potrzebuje minimum dwóch godzin na miejscu. To się nie mieści i nie ma sensu udawać, że tak."
+    },
+    {
+      "ref": "d5-wyjazd-z-anzy",
+      "scope": "item",
+      "dayRef": "d5",
+      "title": "Godzina wyjazdu na lotnisko",
+      "conditionKind": "wellbeing",
+      "conditionText": "Jeśli ktoś nie lubi biec przez lotnisko.",
+      "chosenRef": "d5-v-0730"
+    },
+    {
+      "ref": "auto",
+      "scope": "booking",
+      "title": "Wynajem auta na lotnisku w Agadirze",
+      "conditionKind": "availability",
+      "conditionText": "Warunki brzegowe: pełne ubezpieczenie, umowa bezpośrednio z wynajmującym bez pośrednika, i żeby było pewne. Alternatywy wchodzą, gdyby kaucja Sixta okazała się problemem.",
+      "rationale": "Rekomendacja: Sixt, biuro w terminalu, Škoda Octavia automat + Smart Protection = $348, ok. 1 270 zł za cztery doby z zerowym udziałem własnym. Rezerwacja na sixt.com, umowa z Sixt Maroc — to nie jest pośrednik. Ocena 4,7 z 341 opinii w Mapach Google; lokalne wypożyczalnie mają po 4,9–5,0 przy 80–290 opiniach, co zwykle znaczy opinie zbierane wybiórczo. Godziny 07:00–01:00 — zwrot ok. 08:15 przy locie o 10:15 jest bezpieczny. Octavia to jedyna pozycja opisana jako gwarantowany model; bagażnik ok. 600 l wystarcza na jedną walizkę 20 kg i pięć toreb, a automat na marokańskich rondach to komfort wart dopłaty.",
+      "comparison": {
+        "columns": [
+          "Auto",
+          "Miejsca i bagaż",
+          "4 doby"
+        ],
+        "rows": [
+          {
+            "variantRef": "v-auto-sixt-picanto",
+            "values": [
+              "Kia Picanto, automat mini",
+              "5 osób · 2 sztuki bagażu",
+              "$167"
+            ]
+          },
+          {
+            "variantRef": "v-auto-sixt-corsa",
+            "values": [
+              "Opel Corsa, manual",
+              "5 osób · 2 sztuki",
+              "$191"
+            ]
+          },
+          {
+            "variantRef": "v-auto-sixt-octavia",
+            "values": [
+              "Škoda Octavia, automat — WYBÓR, gwarantowany model",
+              "5 osób · 1 walizka + 2 torby",
+              "$252"
+            ]
+          },
+          {
+            "variantRef": "v-auto-sixt-arona",
+            "values": [
+              "Seat Arona, automat SUV kompaktowy",
+              "5 osób · 3 sztuki",
+              "$281"
+            ]
+          },
+          {
+            "variantRef": "v-auto-sixt-troc",
+            "values": [
+              "VW T-Roc, automat",
+              "5 osób · 2 sztuki",
+              "$336"
+            ]
+          },
+          {
+            "variantRef": "v-auto-sixt-tiguan",
+            "values": [
+              "VW Tiguan, automat SUV full-size",
+              "5 osób · 4 sztuki",
+              "$396"
+            ]
+          },
+          {
+            "variantRef": "v-auto-sixt-traveller",
+            "values": [
+              "Peugeot Traveller, automat bus",
+              "9 osób · 5 sztuk",
+              "$565"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "variants": [
+    {
+      "ref": "uklad-a",
+      "groupRef": "uklad-nocy",
+      "label": "A · pustynia drugiej nocy",
+      "recommended": true,
+      "summary": "Marakesz, pustynia, wydmy, ocean — w planie.",
+      "pros": [
+        "Cztery godziny w Essaouirze i wydmy w Sidi Kaouki",
+        "Obie pustynie: kamienista i piaszczysta",
+        "Żaden dzień nie przekracza trzech godzin za kierownicą"
+      ],
+      "cons": [
+        "Wypadają Ogród Majorelle i Grobowce Saadytów"
+      ],
+      "metrics": {
+        "longestDriveMin": 180,
+        "day4Km": 139
+      }
+    },
+    {
+      "ref": "uklad-b",
+      "groupRef": "uklad-nocy",
+      "label": "B · dwie noce w Marakeszu",
+      "summary": "B, jeśli Marakesz jest celem wyjazdu i pół dnia to dla was za mało.",
+      "pros": [
+        "Dochodzi Majorelle",
+        "Spokojny, bezsamochodowy dzień w środku wyjazdu"
+      ],
+      "cons": [
+        "Jeden wtorek pięć godzin za kierownicą",
+        "Essaouira ścięta do postoju na rybę (1,5 h)"
+      ],
+      "metrics": {
+        "longestDriveMin": 314,
+        "day4Km": 324
+      }
+    },
+    {
+      "ref": "uklad-c",
+      "groupRef": "uklad-nocy",
+      "label": "C · dwie noce i powrót autostradą",
+      "summary": "C, jeśli chcecie pełnego dnia w Marakeszu i żadnej długiej jazdy. Z Agafay autostradą prosto do Taghazout to 256 km i 3 h 12.",
+      "pros": [
+        "Pełny dzień w Marakeszu",
+        "Brak długiej jazdy"
+      ],
+      "cons": [
+        "Całe wybrzeże wypada z planu — żadnej Essaouiry, żadnych wydm, żadnych kóz na drzewach",
+        "Dochodzą opłaty za bramki"
+      ],
+      "metrics": {
+        "longestDriveMin": 192,
+        "day4Km": 256
+      }
+    },
+    {
+      "ref": "d1-v-plan",
+      "groupRef": "d1-start",
+      "label": "Wg planu: suki o 16:00, potem plac",
+      "recommended": true
+    },
+    {
+      "ref": "d1-v-pozno",
+      "groupRef": "d1-start",
+      "label": "Start po 12:30: bez suków, prosto na Dżami al-Fna",
+      "summary": "Dżami al-Fna o zmierzchu jest tym, po co tu przyjechaliście; suki macie w niedzielę rano.",
+      "excludesRefs": [
+        "d1-suki"
+      ]
+    },
+    {
+      "ref": "d2-v-pelny",
+      "groupRef": "d2-ciecia",
+      "label": "Pełny poranek: medersa i Bahia",
+      "recommended": true,
+      "summary": "Dwa zabytki, suki, lunch i wymeldowanie przed 14:30 — bez minuty luzu."
+    },
+    {
+      "ref": "d2-v-tylko-medersa",
+      "groupRef": "d2-ciecia",
+      "label": "Najprostsze cięcie: tylko medersa",
+      "summary": "Jeden zabytek zamiast dwóch. Medersa ma piękniejsze wnętrze. Zyskujecie godzinę i spokojny lunch.",
+      "metrics": {
+        "savedMin": 60
+      },
+      "excludesRefs": [
+        "d2-do-bahii",
+        "d2-bahia"
+      ]
+    },
+    {
+      "ref": "d2-v-tylko-bahia",
+      "groupRef": "d2-ciecia",
+      "label": "Najprostsze cięcie: tylko Bahia",
+      "summary": "Jeden zabytek zamiast dwóch. Bahia jest większa i ciekawsza dla dziecka. Zyskujecie godzinę i spokojny lunch.",
+      "metrics": {
+        "savedMin": 60
+      },
+      "excludesRefs": [
+        "d2-medersa"
+      ],
+      "cons": [
+        "Przejście 10:00 zaczyna się wtedy od riadu, nie od medresy — dokument nie podaje tego odcinka."
+      ]
+    },
+    {
+      "ref": "d2-v-radykalny",
+      "groupRef": "d2-ciecia",
+      "label": "Cięcie radykalne: żadnych biletów",
+      "summary": "Tylko suki i plac w dziennym świetle. Wyjazd o 13:00, w obozie o 13:50 — i wtedy quady mieszczą się przed wielbłądami zupełnie bez pośpiechu.",
+      "excludesRefs": [
+        "d2-medersa",
+        "d2-do-bahii",
+        "d2-bahia",
+        "d2-wyjazd",
+        "d2-zameldowanie"
+      ]
+    },
+    {
+      "ref": "d3-v-1000",
+      "groupRef": "d3-wyjazd-z-obozu",
+      "label": "Wyjazd o 10:00",
+      "recommended": true,
+      "summary": "Ponad cztery godziny w Essaouirze."
+    },
+    {
+      "ref": "d3-v-1100",
+      "groupRef": "d3-wyjazd-z-obozu",
+      "label": "Wyjazd o 11:00 — dłuższy sen",
+      "summary": "Nadal trzy godziny w Essaouirze i spokojny dojazd przed zachodem.",
+      "excludesRefs": [
+        "d3-wyjazd"
+      ]
+    },
+    {
+      "ref": "d4-v-a",
+      "groupRef": "d4-wariant",
+      "label": "Wersja A, ta w planie: wydmy",
+      "recommended": true,
+      "summary": "Sandboard rano, Imsouane na lunch, Taghazout po 16:00, wieczór na plaży.",
+      "metrics": {
+        "distanceKm": 190,
+        "drivingMin": 210
+      }
+    },
+    {
+      "ref": "d4-v-b",
+      "groupRef": "d4-wariant",
+      "label": "Wersja B: Paradise Valley",
+      "summary": "Wyjazd z Sidi Kaouki o 09:00, kozy w przelocie, Imsouane odpuszczone, dolina 13:00–17:00, do Anzy na wieczór.",
+      "cons": [
+        "Płacicie porankiem na wydmach",
+        "+70 km do limitu kilometrów w umowie najmu",
+        "W grudniu woda lodowata — spacer, nie kąpiel"
+      ],
+      "metrics": {
+        "extraKm": 70
+      },
+      "excludesRefs": [
+        "d4-plaza",
+        "d4-sandboard",
+        "d4-wyjazd",
+        "d4-imsouane",
+        "d4-taghazout"
+      ]
+    },
+    {
+      "ref": "d5-v-0730",
+      "groupRef": "d5-wyjazd-z-anzy",
+      "label": "Wyjazd 07:30",
+      "recommended": true,
+      "summary": "Zapas ok. pół godziny."
+    },
+    {
+      "ref": "d5-v-0715",
+      "groupRef": "d5-wyjazd-z-anzy",
+      "label": "Wyjazd 07:15",
+      "excludesRefs": [
+        "d5-wyjazd"
+      ]
+    },
+    {
+      "ref": "v-auto-sixt-picanto",
+      "groupRef": "auto",
+      "label": "Sixt · Kia Picanto, automat, mini"
+    },
+    {
+      "ref": "v-auto-sixt-corsa",
+      "groupRef": "auto",
+      "label": "Sixt · Opel Corsa, manual"
+    },
+    {
+      "ref": "v-auto-sixt-octavia",
+      "groupRef": "auto",
+      "label": "Sixt · Škoda Octavia, automat — WYBÓR",
+      "recommended": true,
+      "summary": "Gwarantowany model, nie „lub podobne”. Z Smart Protection $348, ok. 1 270 zł za cztery doby."
+    },
+    {
+      "ref": "v-auto-sixt-arona",
+      "groupRef": "auto",
+      "label": "Sixt · Seat Arona, automat, SUV kompaktowy"
+    },
+    {
+      "ref": "v-auto-sixt-troc",
+      "groupRef": "auto",
+      "label": "Sixt · VW T-Roc, automat"
+    },
+    {
+      "ref": "v-auto-sixt-tiguan",
+      "groupRef": "auto",
+      "label": "Sixt · VW Tiguan, automat, SUV full-size"
+    },
+    {
+      "ref": "v-auto-sixt-traveller",
+      "groupRef": "auto",
+      "label": "Sixt · Peugeot Traveller, automat, bus"
+    },
+    {
+      "ref": "v-auto-avis",
+      "groupRef": "auto",
+      "label": "Avis — biuro na lotnisku",
+      "summary": "Alternatywa, gdyby kaucja Sixta okazała się problemem."
+    },
+    {
+      "ref": "v-auto-lokalne",
+      "groupRef": "auto",
+      "label": "Lokalne wypożyczalnie z lotniska",
+      "summary": "Pełne ubezpieczenie bez kaucji, bywa o połowę taniej; słabsza ścieżka reklamacyjna."
+    }
+  ],
+  "constraints": [
+    {
+      "kind": "no_driving_after_dark",
+      "severity": "hard",
+      "reason": "Nie planujcie jazdy po zmroku poza miastami: nieoświetlone drogi, zwierzęta i piesi na poboczu. W tym planie każdy dojazd kończy się przed zachodem, z zapasem."
+    },
+    {
+      "kind": "arrive_before",
+      "dayRef": "d1",
+      "itemRef": "d1-lotnisko-wro",
+      "bookingRef": "lot-tam",
+      "time": "05:30",
+      "tz": "Europe/Warsaw",
+      "severity": "hard",
+      "reason": "Ryanair zamyka odprawę 40 minut przed odlotem (06:10)."
+    },
+    {
+      "kind": "other",
+      "dayRef": "d1",
+      "itemRef": "d1-a7",
+      "severity": "hard",
+      "reason": "Postój na kawę w połowie trasy nie jest opcjonalny — kierowca wstaje o 02:30, leci blisko pięć godzin i siada za kierownicą na trzy."
+    },
+    {
+      "kind": "latest_start",
+      "dayRef": "d1",
+      "itemRef": "d1-a7",
+      "time": "12:30",
+      "severity": "soft",
+      "reason": "Po 12:30 odpuścić suki i jechać prosto na plac."
+    },
+    {
+      "kind": "latest_start",
+      "dayRef": "d2",
+      "itemRef": "d2-wyjscie",
+      "time": "09:00",
+      "severity": "soft",
+      "reason": "Żeby poranek się spiął, trzeba wyjść z riadu przed dziewiątą."
+    },
+    {
+      "kind": "must_be_open",
+      "dayRef": "d2",
+      "itemRef": "d2-medersa",
+      "severity": "hard",
+      "reason": "Czynna 09:00–19:00; potwierdzić dzień wcześniej, że jest otwarta."
+    },
+    {
+      "kind": "must_be_open",
+      "dayRef": "d2",
+      "itemRef": "d2-bahia",
+      "severity": "hard",
+      "reason": "Czynny 09:00–17:00."
+    },
+    {
+      "kind": "latest_start",
+      "dayRef": "d2",
+      "itemRef": "d2-wyjazd",
+      "time": "15:00",
+      "severity": "hard",
+      "reason": "Czego nie przesuwajcie: wyjazdu po 15:00. Ostatnie kilometry do obozu to droga gruntowa, a po zmroku to zupełnie inna jazda."
+    },
+    {
+      "kind": "depart_before",
+      "dayRef": "d3",
+      "itemRef": "d3-wyjazd",
+      "bookingRef": "nocleg-agafay",
+      "time": "11:00",
+      "severity": "hard",
+      "reason": "Wymeldowanie z obozu do 11:00."
+    },
+    {
+      "kind": "min_time_at",
+      "dayRef": "d4",
+      "itemRef": "d4-paradise",
+      "minutes": 120,
+      "severity": "hard",
+      "reason": "Paradise Valley potrzebuje minimum dwóch godzin na miejscu."
+    },
+    {
+      "kind": "office_open_at",
+      "dayRef": "d5",
+      "itemRef": "d5-zwrot",
+      "time": "08:15",
+      "severity": "hard",
+      "reason": "Biuro Sixta otwiera o 07:00, więc zwrot o 08:15 jest bezpieczny. Przy innej wypożyczalni sprawdzić godzinę otwarcia przed rezerwacją."
+    },
+    {
+      "kind": "arrive_before",
+      "dayRef": "d5",
+      "itemRef": "d5-odprawa",
+      "bookingRef": "lot-powrot",
+      "time": "09:35",
+      "severity": "hard",
+      "reason": "Ryanair zamyka stanowisko o 09:35."
+    }
+  ],
+  "bookings": [
+    {
+      "ref": "lot-tam",
+      "kind": "flight",
+      "status": "paid",
+      "provider": "Ryanair",
+      "title": "Lot Wrocław → Agadir",
+      "start": {
+        "date": "2026-12-26",
+        "time": "06:10",
+        "tz": "Europe/Warsaw"
+      },
+      "end": {
+        "date": "2026-12-26",
+        "time": "09:55",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-wro",
+      "endPlaceRef": "p-aga",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 377500,
+        "maxMinor": 377500,
+        "note": "Obie strony, 5 osób, z podatkami, bez bagażu rejestrowanego; 755 zł od osoby.",
+        "checkedAt": "2026-10-10"
+      },
+      "paid": {
+        "amountMinor": 377500,
+        "currency": "PLN"
+      },
+      "party": {
+        "adults": 4,
+        "children": 1,
+        "note": "Wyceniane jako cztery bilety dorosłe i jeden dziecięcy — taryfa dorosła od 12 lat, szesnastolatek liczy się jak dorosły."
+      },
+      "flight": {
+        "fromAirport": "Wrocław",
+        "toAirport": "Agadir Al Massira",
+        "baggage": "Bez bagażu rejestrowanego. Darmowa tylko mała torba pod fotel, jedna na osobę (40 × 30 × 20 cm — sprawdzić aktualny wymiar). Jeden bagaż 20 kg do dokupienia."
+      },
+      "notes": [
+        "Bez przesiadek, 4 h 45 min.",
+        "Na lotnisku we Wrocławiu trzeba być około 04:10, więc wyjazd z domu w nocy.",
+        "Numer lotu i kod rezerwacji nie są podane w dokumencie."
+      ]
+    },
+    {
+      "ref": "lot-powrot",
+      "kind": "flight",
+      "status": "paid",
+      "provider": "Ryanair",
+      "title": "Lot Agadir → Wrocław",
+      "start": {
+        "date": "2026-12-30",
+        "time": "10:15",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "15:50",
+        "tz": "Europe/Warsaw"
+      },
+      "startPlaceRef": "p-aga",
+      "endPlaceRef": "p-wro",
+      "flight": {
+        "fromAirport": "Agadir Al Massira",
+        "toAirport": "Wrocław",
+        "baggage": "Jak w locie tam."
+      },
+      "notes": [
+        "Bez przesiadek, 4 h 35 min.",
+        "Cena w pozycji lotu tam.",
+        "Ryanair zamyka stanowisko o 09:35."
+      ]
+    },
+    {
+      "ref": "bagaz-20kg",
+      "kind": "luggage",
+      "status": "unknown",
+      "provider": "Ryanair",
+      "title": "Jeden bagaż rejestrowany 20 kg, w obie strony",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 30000,
+        "maxMinor": 40000,
+        "approx": true,
+        "note": "Szacunek z budżetu. Przy bramce ta sama sztuka kosztuje 200–250 zł."
+      },
+      "notes": [
+        "Dokument: „dokupić, jeśli jeszcze nie jest dokupiony” — nie wiadomo, czy kupiony.",
+        "Płyny tylko w tym bagażu — w torbach pod fotel limit 100 ml na opakowanie.",
+        "Walizka kabinowa 55 × 40 × 20 do 10 kg nie jest darmowa — tylko z Priority, kupowanym osobno dla każdej osoby; pięć razy Priority wyjdzie drożej niż drugi bagaż rejestrowany."
+      ]
+    },
+    {
+      "ref": "nocleg-riad",
+      "kind": "lodging",
+      "status": "paid",
+      "title": "Noc 1 · 26–27 grudnia · Riad Lakhdar, Marakesz (medyna)",
+      "start": {
+        "date": "2026-12-26",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-27",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-riad",
+      "endPlaceRef": "p-riad",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 87800,
+        "maxMinor": 87800
+      },
+      "paid": {
+        "amountMinor": 87800,
+        "currency": "PLN"
+      },
+      "refundable": false,
+      "party": {
+        "adults": 3,
+        "children": 2,
+        "note": "Sprawdzić, czy wpisane są faktyczne wieki 16 i 10 lat — najpilniej tu, bo rezerwacja bezzwrotna."
+      },
+      "lodging": {
+        "rooms": 2,
+        "amenities": [],
+        "distanceNote": "W medynie — autem nie dojedziecie; parking strzeżony, bagaże wózkiem."
+      },
+      "notes": [
+        "Oferta bezzwrotna — tej nocy nie da się już przesunąć.",
+        "Mail: parking strzeżony i transport bagażu przez medynę.",
+        "Riady zwykle przechowują walizki po godzinie wymeldowania.",
+        "Godziny zameldowania i wymeldowania nie są podane w dokumencie."
+      ]
+    },
+    {
+      "ref": "nocleg-agafay",
+      "kind": "package",
+      "status": "paid",
+      "provider": "GetYourGuide",
+      "title": "Obóz na pustyni Agafay — nocleg, quad, wielbłąd i kolacja",
+      "confirmationCode": "ANON-GYG-0001",
+      "start": {
+        "date": "2026-12-27",
+        "time": "15:00",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-28",
+        "time": "10:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-agafay",
+      "endPlaceRef": "p-agafay",
+      "checkOutUntil": "11:00",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 371281,
+        "maxMinor": 371281,
+        "note": "Cena przed rabatem."
+      },
+      "paid": {
+        "amountMinor": 211630,
+        "currency": "PLN"
+      },
+      "paymentMethod": "online",
+      "payWhen": "prepaid",
+      "party": {
+        "adults": 4,
+        "children": 1,
+        "note": "Operator: dorosły 13–99, dziecko 0–12 — szesnastolatek zgłoszony jako dorosły. Skład poprawny."
+      },
+      "includes": [
+        "nocleg w namiocie na pustyni",
+        "jazda quadem",
+        "przejażdżka na wielbłądzie",
+        "kolacja"
+      ],
+      "language": "en",
+      "lodging": {
+        "amenities": [
+          "basen (w grudniu lodowaty)"
+        ],
+        "distanceNote": "40 km od Marakeszu, ostatnie kilometry drogą gruntową."
+      },
+      "pros": [
+        "Kolacja w cenie — na własną rękę w Agafay nie było noclegu z kolacją dla pięciu osób; dopłata na miejscu €95–165.",
+        "Quad i wielbłądy w cenie — osobno €130–195 za piątkę.",
+        "Start 15:00 pasuje do planu co do kwadransa.",
+        "Koniec ok. 10:00 w poniedziałek — spokojny wyjazd nad ocean.",
+        "Złożone osobno (obóz, kolacja, quady, wielbłądy): 2 050–2 625 zł; pakiet za 2 116 zł w dolnej połowie przedziału i bez dogadywania na miejscu."
+      ],
+      "cons": [
+        "Pakiet po angielsku — dziesięciolatek nie skorzysta z części opowiadanej bez tłumaczenia."
+      ],
+      "notes": [
+        "Czas trwania 19 godzin, czyli do ok. 10:00 w poniedziałek (godzina końca przybliżona).",
+        "Ogrzewanie: noce 5–10°C, czasem bliżej zera — pytać, czy piecyk działa całą noc.",
+        "Dojazd zwykłym autem: poprosić o dokładną lokalizację; część obozów wysyła terenówkę, zwykle bezpłatnie, ale trzeba uprzedzić o godzinie.",
+        "Quady: 4 maszyny (dziesięciolatek jako pasażer); samodzielna jazda zwykle od 16 albo 18 lat, pasażer od 8 lat.",
+        "Do namiotu tylko małe torby — walizka zostaje w aucie. W Agafay może nie być zasięgu."
+      ]
+    },
+    {
+      "ref": "nocleg-perla",
+      "kind": "lodging",
+      "status": "paid",
+      "title": "Noc 3 · 28–29 grudnia · Sidi Kaouki Perla",
+      "start": {
+        "date": "2026-12-28",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-29",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-perla",
+      "endPlaceRef": "p-perla",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 36100,
+        "maxMinor": 36100
+      },
+      "paid": {
+        "amountMinor": 36100,
+        "currency": "PLN"
+      },
+      "refundable": true,
+      "party": {
+        "adults": 3,
+        "children": 2,
+        "note": "Sprawdzić, czy wpisane są faktyczne wieki 16 i 10 lat."
+      },
+      "lodging": {
+        "rooms": 2,
+        "amenities": [],
+        "distanceNote": "Wydmy tuż za progiem; 27 km od Essaouiry."
+      },
+      "notes": [
+        "Bezpłatne odwołanie (termin nie podany)."
+      ]
+    },
+    {
+      "ref": "nocleg-lineup",
+      "kind": "lodging",
+      "status": "paid",
+      "title": "Noc 4 · 29–30 grudnia · Line Up Surf House, Anza",
+      "start": {
+        "date": "2026-12-29",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-lineup",
+      "endPlaceRef": "p-lineup",
+      "checkInFrom": "14:00",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 38900,
+        "maxMinor": 38900
+      },
+      "paid": {
+        "amountMinor": 38900,
+        "currency": "PLN"
+      },
+      "refundable": true,
+      "party": {
+        "adults": 3,
+        "children": 2,
+        "note": "Sprawdzić, czy wpisane są faktyczne wieki 16 i 10 lat."
+      },
+      "lodging": {
+        "rooms": 2,
+        "amenities": [],
+        "distanceNote": "Przy plaży w Anzie, na północnym skraju Agadiru, ok. 12 km za Taghazout; 44 minuty od lotniska (z Taghazout 57)."
+      },
+      "rating": {
+        "score": 9.6,
+        "scale": 10
+      },
+      "notes": [
+        "Bezpłatne odwołanie (termin nie podany).",
+        "Ostatnia noc jest w Anzie, nie w Taghazout — czwarty dzień wydłuża się do 3 h 30 min jazdy, a ostatni poranek skraca."
+      ]
+    },
+    {
+      "ref": "auto-sixt-picanto",
+      "kind": "car_rental",
+      "provider": "Sixt Maroc",
+      "status": "candidate",
+      "variantGroupRef": "auto",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-sixt-aga",
+      "endPlaceRef": "p-sixt-aga",
+      "paymentMethod": "credit_card_only",
+      "rating": {
+        "score": 4.7,
+        "scale": 5,
+        "count": 341
+      },
+      "addons": [
+        {
+          "title": "Basic (w cenie najmu)",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "W cenie najmu."
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 2000000,
+            "maxMinor": 2000000,
+            "note": "Udział własny do 20 000 MAD (ok. $2 050)."
+          }
+        },
+        {
+          "title": "Smart Protection",
+          "kind": "insurance",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 2397,
+            "maxMinor": 2397,
+            "note": "$96 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "BIERZCIE TO. Obejmuje szyby, opony, wnętrze, NNW i assistance.",
+            "Działa u wynajmującego — przy szkodzie nie płacicie najpierw z własnej kieszeni."
+          ]
+        },
+        {
+          "title": "All Inclusive",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 3007,
+            "maxMinor": 3007,
+            "note": "$120 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "Identyczna lista składników jak Smart — dopłata $24 bez widocznego pokrycia."
+          ]
+        },
+        {
+          "title": "Pakiet bez limitu kilometrów",
+          "kind": "km_package",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 1262,
+            "maxMinor": 1262,
+            "note": "$50 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "notes": [
+            "Przy trasie ok. 710 km i limicie 680 km warto; w budżecie w scenariuszu „wygodnie”."
+          ]
+        }
+      ],
+      "links": [
+        {
+          "label": "sixt.com",
+          "url": "https://www.sixt.com/"
+        }
+      ],
+      "variantRef": "v-auto-sixt-picanto",
+      "title": "Sixt — Kia Picanto",
+      "price": {
+        "currency": "USD",
+        "basis": "per_group",
+        "minMinor": 16700,
+        "maxMinor": 16700,
+        "note": "4 doby, 26.12 11:30 → 30.12 09:00, sixt.com.",
+        "checkedAt": "2026-10-16"
+      },
+      "car": {
+        "carClass": "mini",
+        "model": "Kia Picanto",
+        "guaranteedModel": false,
+        "transmission": "automatic",
+        "seats": 5,
+        "luggage": "2 sztuki bagażu",
+        "officeHours": "07:00–01:00, 7 dni w tygodniu",
+        "fuelPolicy": "pełny do pełnego"
+      },
+      "notes": [
+        "„Lub podobne” — loteria przy ladzie. Limit km, kaucja i wiek kierowcy podane w dokumencie tylko dla klasy Octavii.",
+        "Pakiety ochrony i pakiet km: dokument podaje jedną tabelę dla Sixta, bez rozróżnienia klasy auta."
+      ]
+    },
+    {
+      "ref": "auto-sixt-corsa",
+      "kind": "car_rental",
+      "provider": "Sixt Maroc",
+      "status": "candidate",
+      "variantGroupRef": "auto",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-sixt-aga",
+      "endPlaceRef": "p-sixt-aga",
+      "paymentMethod": "credit_card_only",
+      "rating": {
+        "score": 4.7,
+        "scale": 5,
+        "count": 341
+      },
+      "addons": [
+        {
+          "title": "Basic (w cenie najmu)",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "W cenie najmu."
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 2000000,
+            "maxMinor": 2000000,
+            "note": "Udział własny do 20 000 MAD (ok. $2 050)."
+          }
+        },
+        {
+          "title": "Smart Protection",
+          "kind": "insurance",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 2397,
+            "maxMinor": 2397,
+            "note": "$96 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "BIERZCIE TO. Obejmuje szyby, opony, wnętrze, NNW i assistance.",
+            "Działa u wynajmującego — przy szkodzie nie płacicie najpierw z własnej kieszeni."
+          ]
+        },
+        {
+          "title": "All Inclusive",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 3007,
+            "maxMinor": 3007,
+            "note": "$120 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "Identyczna lista składników jak Smart — dopłata $24 bez widocznego pokrycia."
+          ]
+        },
+        {
+          "title": "Pakiet bez limitu kilometrów",
+          "kind": "km_package",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 1262,
+            "maxMinor": 1262,
+            "note": "$50 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "notes": [
+            "Przy trasie ok. 710 km i limicie 680 km warto; w budżecie w scenariuszu „wygodnie”."
+          ]
+        }
+      ],
+      "links": [
+        {
+          "label": "sixt.com",
+          "url": "https://www.sixt.com/"
+        }
+      ],
+      "variantRef": "v-auto-sixt-corsa",
+      "title": "Sixt — Opel Corsa",
+      "price": {
+        "currency": "USD",
+        "basis": "per_group",
+        "minMinor": 19100,
+        "maxMinor": 19100,
+        "note": "4 doby, 26.12 11:30 → 30.12 09:00, sixt.com.",
+        "checkedAt": "2026-10-16"
+      },
+      "car": {
+        "model": "Opel Corsa",
+        "guaranteedModel": false,
+        "transmission": "manual",
+        "seats": 5,
+        "luggage": "2 sztuki",
+        "officeHours": "07:00–01:00, 7 dni w tygodniu",
+        "fuelPolicy": "pełny do pełnego"
+      },
+      "notes": [
+        "„Lub podobne” — loteria przy ladzie. Limit km, kaucja i wiek kierowcy podane w dokumencie tylko dla klasy Octavii.",
+        "Pakiety ochrony i pakiet km: dokument podaje jedną tabelę dla Sixta, bez rozróżnienia klasy auta."
+      ]
+    },
+    {
+      "ref": "auto-sixt-octavia",
+      "kind": "car_rental",
+      "provider": "Sixt Maroc",
+      "status": "to_book",
+      "variantGroupRef": "auto",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-sixt-aga",
+      "endPlaceRef": "p-sixt-aga",
+      "paymentMethod": "credit_card_only",
+      "rating": {
+        "score": 4.7,
+        "scale": 5,
+        "count": 341
+      },
+      "addons": [
+        {
+          "title": "Basic (w cenie najmu)",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "W cenie najmu."
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 2000000,
+            "maxMinor": 2000000,
+            "note": "Udział własny do 20 000 MAD (ok. $2 050)."
+          }
+        },
+        {
+          "title": "Smart Protection",
+          "kind": "insurance",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 2397,
+            "maxMinor": 2397,
+            "note": "$96 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "BIERZCIE TO. Obejmuje szyby, opony, wnętrze, NNW i assistance.",
+            "Działa u wynajmującego — przy szkodzie nie płacicie najpierw z własnej kieszeni."
+          ]
+        },
+        {
+          "title": "All Inclusive",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 3007,
+            "maxMinor": 3007,
+            "note": "$120 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "Identyczna lista składników jak Smart — dopłata $24 bez widocznego pokrycia."
+          ]
+        },
+        {
+          "title": "Pakiet bez limitu kilometrów",
+          "kind": "km_package",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 1262,
+            "maxMinor": 1262,
+            "note": "$50 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "notes": [
+            "Przy trasie ok. 710 km i limicie 680 km warto; w budżecie w scenariuszu „wygodnie”."
+          ]
+        }
+      ],
+      "links": [
+        {
+          "label": "sixt.com",
+          "url": "https://www.sixt.com/"
+        }
+      ],
+      "variantRef": "v-auto-sixt-octavia",
+      "title": "Sixt — Škoda Octavia",
+      "price": {
+        "currency": "USD",
+        "basis": "per_group",
+        "minMinor": 25200,
+        "maxMinor": 25200,
+        "note": "4 doby, 26.12 11:30 → 30.12 09:00, sixt.com.",
+        "checkedAt": "2026-10-16"
+      },
+      "car": {
+        "carClass": "IDAR",
+        "model": "Škoda Octavia",
+        "guaranteedModel": true,
+        "transmission": "automatic",
+        "seats": 5,
+        "luggage": "1 walizka + 2 torby (bagażnik ok. 600 l)",
+        "kmLimit": 680,
+        "extraKmPrice": {
+          "currency": "USD",
+          "basis": "per_unit",
+          "minMinor": 22,
+          "maxMinor": 22,
+          "note": "Za każdy km ponad limit."
+        },
+        "deposit": {
+          "currency": "MAD",
+          "basis": "per_group",
+          "minMinor": 2000000,
+          "maxMinor": 2000000,
+          "note": "Blokada na karcie kredytowej, ok. 8 000 zł wolnego limitu. Czy Smart Protection ją obniża — do zapytania."
+        },
+        "insurance": "Basic w cenie (udział własny do 20 000 MAD); rekomendowane Smart Protection (zero udziału).",
+        "fuelPolicy": "pełny do pełnego",
+        "minDriverAge": 24,
+        "officeHours": "07:00–01:00, 7 dni w tygodniu"
+      },
+      "notes": [
+        "REKOMENDACJA (WYBÓR): Octavia + Smart Protection = $348, ok. 1 270 zł za cztery doby.",
+        "Limit 680 km w cenie, każdy kolejny $0,22. Trasa ok. 710 km (+70 km w wariancie B). Pakiet bez limitu: +$12,62/doba, $50 — przy tej trasie warto.",
+        "Tylko karta kredytowa na nazwisko kierowcy; debetowe, prepaid i Diners odrzucane. Przy odbiorze może być wymagany PIN.",
+        "Kierowca: min. 24 lata i prawo jazdy od co najmniej 2 lat (dla najmniejszych aut 21 lat).",
+        "Klauzula 4%: przy zwrocie zwracane 96% kaucji — dotyczy najmów ponad 28 dni, gdzie kaucja jest pobierana; przy 4 dobach to blokada. Do potwierdzenia mailem.",
+        "Film auta przy odbiorze i przy zwrocie, dookoła, z datą.",
+        "Rozliczane jako 4 doby; godziny odbioru i zwrotu przybliżone (ok. 11:30 / ok. 09:00)."
+      ],
+      "recommended": true,
+      "pros": [
+        "Jedyny gwarantowany model, nie „lub podobne”",
+        "Automat — komfort na marokańskich rondach",
+        "Bagażnik ok. 600 l grubo wystarcza"
+      ]
+    },
+    {
+      "ref": "auto-sixt-arona",
+      "kind": "car_rental",
+      "provider": "Sixt Maroc",
+      "status": "candidate",
+      "variantGroupRef": "auto",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-sixt-aga",
+      "endPlaceRef": "p-sixt-aga",
+      "paymentMethod": "credit_card_only",
+      "rating": {
+        "score": 4.7,
+        "scale": 5,
+        "count": 341
+      },
+      "addons": [
+        {
+          "title": "Basic (w cenie najmu)",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "W cenie najmu."
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 2000000,
+            "maxMinor": 2000000,
+            "note": "Udział własny do 20 000 MAD (ok. $2 050)."
+          }
+        },
+        {
+          "title": "Smart Protection",
+          "kind": "insurance",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 2397,
+            "maxMinor": 2397,
+            "note": "$96 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "BIERZCIE TO. Obejmuje szyby, opony, wnętrze, NNW i assistance.",
+            "Działa u wynajmującego — przy szkodzie nie płacicie najpierw z własnej kieszeni."
+          ]
+        },
+        {
+          "title": "All Inclusive",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 3007,
+            "maxMinor": 3007,
+            "note": "$120 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "Identyczna lista składników jak Smart — dopłata $24 bez widocznego pokrycia."
+          ]
+        },
+        {
+          "title": "Pakiet bez limitu kilometrów",
+          "kind": "km_package",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 1262,
+            "maxMinor": 1262,
+            "note": "$50 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "notes": [
+            "Przy trasie ok. 710 km i limicie 680 km warto; w budżecie w scenariuszu „wygodnie”."
+          ]
+        }
+      ],
+      "links": [
+        {
+          "label": "sixt.com",
+          "url": "https://www.sixt.com/"
+        }
+      ],
+      "variantRef": "v-auto-sixt-arona",
+      "title": "Sixt — Seat Arona",
+      "price": {
+        "currency": "USD",
+        "basis": "per_group",
+        "minMinor": 28100,
+        "maxMinor": 28100,
+        "note": "4 doby, 26.12 11:30 → 30.12 09:00, sixt.com.",
+        "checkedAt": "2026-10-16"
+      },
+      "car": {
+        "carClass": "SUV kompaktowy",
+        "model": "Seat Arona",
+        "guaranteedModel": false,
+        "transmission": "automatic",
+        "seats": 5,
+        "luggage": "3 sztuki",
+        "officeHours": "07:00–01:00, 7 dni w tygodniu",
+        "fuelPolicy": "pełny do pełnego"
+      },
+      "notes": [
+        "„Lub podobne” — loteria przy ladzie. Limit km, kaucja i wiek kierowcy podane w dokumencie tylko dla klasy Octavii.",
+        "Pakiety ochrony i pakiet km: dokument podaje jedną tabelę dla Sixta, bez rozróżnienia klasy auta."
+      ]
+    },
+    {
+      "ref": "auto-sixt-troc",
+      "kind": "car_rental",
+      "provider": "Sixt Maroc",
+      "status": "candidate",
+      "variantGroupRef": "auto",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-sixt-aga",
+      "endPlaceRef": "p-sixt-aga",
+      "paymentMethod": "credit_card_only",
+      "rating": {
+        "score": 4.7,
+        "scale": 5,
+        "count": 341
+      },
+      "addons": [
+        {
+          "title": "Basic (w cenie najmu)",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "W cenie najmu."
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 2000000,
+            "maxMinor": 2000000,
+            "note": "Udział własny do 20 000 MAD (ok. $2 050)."
+          }
+        },
+        {
+          "title": "Smart Protection",
+          "kind": "insurance",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 2397,
+            "maxMinor": 2397,
+            "note": "$96 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "BIERZCIE TO. Obejmuje szyby, opony, wnętrze, NNW i assistance.",
+            "Działa u wynajmującego — przy szkodzie nie płacicie najpierw z własnej kieszeni."
+          ]
+        },
+        {
+          "title": "All Inclusive",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 3007,
+            "maxMinor": 3007,
+            "note": "$120 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "Identyczna lista składników jak Smart — dopłata $24 bez widocznego pokrycia."
+          ]
+        },
+        {
+          "title": "Pakiet bez limitu kilometrów",
+          "kind": "km_package",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 1262,
+            "maxMinor": 1262,
+            "note": "$50 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "notes": [
+            "Przy trasie ok. 710 km i limicie 680 km warto; w budżecie w scenariuszu „wygodnie”."
+          ]
+        }
+      ],
+      "links": [
+        {
+          "label": "sixt.com",
+          "url": "https://www.sixt.com/"
+        }
+      ],
+      "variantRef": "v-auto-sixt-troc",
+      "title": "Sixt — VW T-Roc",
+      "price": {
+        "currency": "USD",
+        "basis": "per_group",
+        "minMinor": 33600,
+        "maxMinor": 33600,
+        "note": "4 doby, 26.12 11:30 → 30.12 09:00, sixt.com.",
+        "checkedAt": "2026-10-16"
+      },
+      "car": {
+        "model": "VW T-Roc",
+        "guaranteedModel": false,
+        "transmission": "automatic",
+        "seats": 5,
+        "luggage": "2 sztuki",
+        "officeHours": "07:00–01:00, 7 dni w tygodniu",
+        "fuelPolicy": "pełny do pełnego"
+      },
+      "notes": [
+        "„Lub podobne” — loteria przy ladzie. Limit km, kaucja i wiek kierowcy podane w dokumencie tylko dla klasy Octavii.",
+        "Pakiety ochrony i pakiet km: dokument podaje jedną tabelę dla Sixta, bez rozróżnienia klasy auta."
+      ]
+    },
+    {
+      "ref": "auto-sixt-tiguan",
+      "kind": "car_rental",
+      "provider": "Sixt Maroc",
+      "status": "candidate",
+      "variantGroupRef": "auto",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-sixt-aga",
+      "endPlaceRef": "p-sixt-aga",
+      "paymentMethod": "credit_card_only",
+      "rating": {
+        "score": 4.7,
+        "scale": 5,
+        "count": 341
+      },
+      "addons": [
+        {
+          "title": "Basic (w cenie najmu)",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "W cenie najmu."
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 2000000,
+            "maxMinor": 2000000,
+            "note": "Udział własny do 20 000 MAD (ok. $2 050)."
+          }
+        },
+        {
+          "title": "Smart Protection",
+          "kind": "insurance",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 2397,
+            "maxMinor": 2397,
+            "note": "$96 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "BIERZCIE TO. Obejmuje szyby, opony, wnętrze, NNW i assistance.",
+            "Działa u wynajmującego — przy szkodzie nie płacicie najpierw z własnej kieszeni."
+          ]
+        },
+        {
+          "title": "All Inclusive",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 3007,
+            "maxMinor": 3007,
+            "note": "$120 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "Identyczna lista składników jak Smart — dopłata $24 bez widocznego pokrycia."
+          ]
+        },
+        {
+          "title": "Pakiet bez limitu kilometrów",
+          "kind": "km_package",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 1262,
+            "maxMinor": 1262,
+            "note": "$50 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "notes": [
+            "Przy trasie ok. 710 km i limicie 680 km warto; w budżecie w scenariuszu „wygodnie”."
+          ]
+        }
+      ],
+      "links": [
+        {
+          "label": "sixt.com",
+          "url": "https://www.sixt.com/"
+        }
+      ],
+      "variantRef": "v-auto-sixt-tiguan",
+      "title": "Sixt — VW Tiguan",
+      "price": {
+        "currency": "USD",
+        "basis": "per_group",
+        "minMinor": 39600,
+        "maxMinor": 39600,
+        "note": "4 doby, 26.12 11:30 → 30.12 09:00, sixt.com.",
+        "checkedAt": "2026-10-16"
+      },
+      "car": {
+        "carClass": "SUV full-size",
+        "model": "VW Tiguan",
+        "guaranteedModel": false,
+        "transmission": "automatic",
+        "seats": 5,
+        "luggage": "4 sztuki",
+        "officeHours": "07:00–01:00, 7 dni w tygodniu",
+        "fuelPolicy": "pełny do pełnego"
+      },
+      "notes": [
+        "„Lub podobne” — loteria przy ladzie. Limit km, kaucja i wiek kierowcy podane w dokumencie tylko dla klasy Octavii.",
+        "Pakiety ochrony i pakiet km: dokument podaje jedną tabelę dla Sixta, bez rozróżnienia klasy auta."
+      ]
+    },
+    {
+      "ref": "auto-sixt-traveller",
+      "kind": "car_rental",
+      "provider": "Sixt Maroc",
+      "status": "candidate",
+      "variantGroupRef": "auto",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-sixt-aga",
+      "endPlaceRef": "p-sixt-aga",
+      "paymentMethod": "credit_card_only",
+      "rating": {
+        "score": 4.7,
+        "scale": 5,
+        "count": 341
+      },
+      "addons": [
+        {
+          "title": "Basic (w cenie najmu)",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "W cenie najmu."
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 2000000,
+            "maxMinor": 2000000,
+            "note": "Udział własny do 20 000 MAD (ok. $2 050)."
+          }
+        },
+        {
+          "title": "Smart Protection",
+          "kind": "insurance",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 2397,
+            "maxMinor": 2397,
+            "note": "$96 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "BIERZCIE TO. Obejmuje szyby, opony, wnętrze, NNW i assistance.",
+            "Działa u wynajmującego — przy szkodzie nie płacicie najpierw z własnej kieszeni."
+          ]
+        },
+        {
+          "title": "All Inclusive",
+          "kind": "insurance",
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 3007,
+            "maxMinor": 3007,
+            "note": "$120 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "excess": {
+            "currency": "MAD",
+            "basis": "per_group",
+            "minMinor": 0,
+            "maxMinor": 0,
+            "note": "Zero udziału własnego."
+          },
+          "notes": [
+            "Identyczna lista składników jak Smart — dopłata $24 bez widocznego pokrycia."
+          ]
+        },
+        {
+          "title": "Pakiet bez limitu kilometrów",
+          "kind": "km_package",
+          "recommended": true,
+          "price": {
+            "currency": "USD",
+            "basis": "per_day",
+            "minMinor": 1262,
+            "maxMinor": 1262,
+            "note": "$50 za 4 doby.",
+            "checkedAt": "2026-10-16"
+          },
+          "notes": [
+            "Przy trasie ok. 710 km i limicie 680 km warto; w budżecie w scenariuszu „wygodnie”."
+          ]
+        }
+      ],
+      "links": [
+        {
+          "label": "sixt.com",
+          "url": "https://www.sixt.com/"
+        }
+      ],
+      "variantRef": "v-auto-sixt-traveller",
+      "title": "Sixt — Peugeot Traveller",
+      "price": {
+        "currency": "USD",
+        "basis": "per_group",
+        "minMinor": 56500,
+        "maxMinor": 56500,
+        "note": "4 doby, 26.12 11:30 → 30.12 09:00, sixt.com.",
+        "checkedAt": "2026-10-16"
+      },
+      "car": {
+        "carClass": "bus",
+        "model": "Peugeot Traveller",
+        "guaranteedModel": false,
+        "transmission": "automatic",
+        "seats": 9,
+        "luggage": "5 sztuk",
+        "officeHours": "07:00–01:00, 7 dni w tygodniu",
+        "fuelPolicy": "pełny do pełnego"
+      },
+      "notes": [
+        "„Lub podobne” — loteria przy ladzie. Limit km, kaucja i wiek kierowcy podane w dokumencie tylko dla klasy Octavii.",
+        "Pakiety ochrony i pakiet km: dokument podaje jedną tabelę dla Sixta, bez rozróżnienia klasy auta."
+      ]
+    },
+    {
+      "ref": "auto-avis",
+      "kind": "car_rental",
+      "status": "candidate",
+      "variantGroupRef": "auto",
+      "variantRef": "v-auto-avis",
+      "provider": "Avis",
+      "title": "Avis — biuro na lotnisku w Agadirze",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-aga",
+      "endPlaceRef": "p-aga",
+      "car": {
+        "officeHours": "zamyka o 23:00; godzina otwarcia rano do potwierdzenia"
+      },
+      "notes": [
+        "Alternatywa, gdyby kaucja Sixta okazała się problemem. Rezerwacja bezpośrednio na stronie Avisu.",
+        "Przy zwrocie o 08:15 godzina otwarcia jest kluczowa."
+      ]
+    },
+    {
+      "ref": "auto-lokalne",
+      "kind": "car_rental",
+      "status": "candidate",
+      "variantGroupRef": "auto",
+      "variantRef": "v-auto-lokalne",
+      "provider": "Grey Cars / AMO Drive / Carzio / Euromotion / Safe Rent",
+      "title": "Lokalne wypożyczalnie z lotniska w Agadirze",
+      "start": {
+        "date": "2026-12-26",
+        "time": "11:30",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "end": {
+        "date": "2026-12-30",
+        "time": "09:00",
+        "precision": "approx",
+        "tz": "Africa/Casablanca"
+      },
+      "startPlaceRef": "p-aga",
+      "endPlaceRef": "p-aga",
+      "car": {
+        "insurance": "reklamują pełne ubezpieczenie bez kaucji",
+        "officeHours": "całą dobę"
+      },
+      "pros": [
+        "Brak blokady ok. 8 000 zł na karcie",
+        "Bywa o połowę taniej"
+      ],
+      "cons": [
+        "Brak ścieżki reklamacyjnej wyżej niż właściciel firmy",
+        "Oceny 4,9–5,0 przy 80–290 opiniach — trudno im zaufać"
+      ],
+      "notes": [
+        "Jeśli tą drogą — żądać na piśmie: zerowa franszyza, zakres szyb i opon, brak kaucji, polityka paliwowa."
+      ]
+    }
+  ],
+  "contacts": [
+    {
+      "ref": "k-sixt",
+      "name": "Sixt Agadir (biuro w terminalu)",
+      "role": "rental",
+      "bookingRef": "auto-sixt-octavia",
+      "notes": "Kontakt mailowy przed rezerwacją (kaucja, klauzula 4%). Dane kontaktowe nie są podane w dokumencie."
+    },
+    {
+      "ref": "k-riad",
+      "name": "Riad Lakhdar",
+      "role": "host",
+      "bookingRef": "nocleg-riad",
+      "notes": "Mail: parking strzeżony i osoba z wózkiem po bagaże. Dane kontaktowe nie są podane w dokumencie."
+    },
+    {
+      "ref": "k-oboz",
+      "name": "Organizator obozu Agafay (pakiet GetYourGuide)",
+      "role": "operator",
+      "bookingRef": "nocleg-agafay",
+      "notes": "Mail: ogrzewanie, dokładna lokalizacja, dojazd osobowym, liczba quadów. Dane kontaktowe nie są podane w dokumencie."
+    }
+  ],
+  "budgetLines": [
+    {
+      "ref": "b-loty",
+      "category": "flights",
+      "title": "Loty, 5 osób, Wrocław–Agadir w obie strony",
+      "status": "paid",
+      "lowMinor": 377500,
+      "highMinor": 377500,
+      "currency": "PLN",
+      "bookingRef": "lot-tam"
+    },
+    {
+      "ref": "b-riad",
+      "category": "lodging",
+      "title": "Riad Lakhdar, noc 1, bezzwrotne",
+      "status": "paid",
+      "lowMinor": 87800,
+      "highMinor": 87800,
+      "currency": "PLN",
+      "bookingRef": "nocleg-riad"
+    },
+    {
+      "ref": "b-agafay",
+      "category": "lodging",
+      "title": "Obóz Agafay z quadem, wielbłądami i kolacją, noc 2",
+      "status": "paid",
+      "lowMinor": 211630,
+      "highMinor": 211630,
+      "currency": "PLN",
+      "bookingRef": "nocleg-agafay"
+    },
+    {
+      "ref": "b-perla",
+      "category": "lodging",
+      "title": "Sidi Kaouki Perla, noc 3",
+      "status": "paid",
+      "lowMinor": 36100,
+      "highMinor": 36100,
+      "currency": "PLN",
+      "bookingRef": "nocleg-perla"
+    },
+    {
+      "ref": "b-lineup",
+      "category": "lodging",
+      "title": "Line Up Surf House, noc 4",
+      "status": "paid",
+      "lowMinor": 38900,
+      "highMinor": 38900,
+      "currency": "PLN",
+      "bookingRef": "nocleg-lineup"
+    },
+    {
+      "ref": "b-auto",
+      "category": "car",
+      "title": "Auto: Škoda Octavia + Smart Protection",
+      "status": "estimate",
+      "lowMinor": 127000,
+      "highMinor": 146000,
+      "currency": "PLN",
+      "bookingRef": "auto-sixt-octavia",
+      "note": "Wygodnie = z limitem km bez ograniczeń."
+    },
+    {
+      "ref": "b-paliwo",
+      "category": "fuel",
+      "title": "Paliwo, ok. 710 km",
+      "status": "estimate",
+      "lowMinor": 38000,
+      "highMinor": 38000,
+      "currency": "PLN",
+      "note": "Olej napędowy ok. 16 MAD/l (początek października 2026)."
+    },
+    {
+      "ref": "b-bagaz",
+      "category": "luggage",
+      "title": "Jeden bagaż 20 kg, w obie strony",
+      "status": "estimate",
+      "lowMinor": 30000,
+      "highMinor": 40000,
+      "currency": "PLN",
+      "bookingRef": "bagaz-20kg",
+      "note": "SZAC."
+    },
+    {
+      "ref": "b-wstepy",
+      "category": "tickets",
+      "title": "Wstępy: medersa i Bahia",
+      "status": "estimate",
+      "lowMinor": 28500,
+      "highMinor": 28500,
+      "currency": "PLN",
+      "note": "660 MAD dla piątki (210 + 450). Jedna linia na dwa punkty: d2-medersa i d2-bahia."
+    },
+    {
+      "ref": "b-sandboard",
+      "category": "activities",
+      "title": "Sandboarding w Sidi Kaouki",
+      "status": "estimate",
+      "lowMinor": 43000,
+      "highMinor": 43000,
+      "currency": "PLN",
+      "itemRef": "d4-sandboard"
+    },
+    {
+      "ref": "b-pozostale",
+      "category": "activities",
+      "title": "Pozostałe atrakcje: Skala du Port, quady, Majorelle",
+      "status": "estimate",
+      "lowMinor": 0,
+      "highMinor": 90000,
+      "currency": "PLN",
+      "note": "SZAC. W scenariuszu oszczędnym „—”."
+    },
+    {
+      "ref": "b-jedzenie",
+      "category": "food",
+      "title": "Jedzenie, bez kolacji na pustyni",
+      "status": "estimate",
+      "lowMinor": 115000,
+      "highMinor": 160000,
+      "currency": "PLN",
+      "note": "SZAC."
+    },
+    {
+      "ref": "b-bramki",
+      "category": "tolls_parking",
+      "title": "Bramki, parkingi, napiwki",
+      "status": "estimate",
+      "lowMinor": 10000,
+      "highMinor": 10000,
+      "currency": "PLN",
+      "note": "SZAC."
+    }
+  ],
+  "tasks": [
+    {
+      "ref": "t-auto",
+      "kind": "todo",
+      "title": "Zarezerwować auto — jedyna otwarta rezerwacja",
+      "priority": "high",
+      "bookingRef": "auto-sixt-octavia",
+      "variantGroupRef": "auto",
+      "body": "Zanim klikniecie, wyślijcie jeden mail do Sixt Agadir z dwoma pytaniami (kaucja i blokada/pobranie). Rekomendacja: Octavia + Smart Protection, najlepiej z pakietem bez limitu km."
+    },
+    {
+      "ref": "t-sixt-kaucja",
+      "kind": "question",
+      "title": "Sixt: czy Smart Protection obniża kaucję 20 000 MAD?",
+      "priority": "high",
+      "bookingRef": "auto-sixt-octavia",
+      "due": {
+        "kind": "before_booking",
+        "bookingRef": "auto-sixt-octavia"
+      },
+      "body": "W części krajów Sixt ją obniża, dla Maroka strona tego nie precyzuje. To jedno pytanie może zdecydować o wyborze firmy."
+    },
+    {
+      "ref": "t-sixt-blokada",
+      "kind": "question",
+      "title": "Sixt: czy przy czterodniowym najmie kaucja jest blokowana, czy pobierana (klauzula 4%)?",
+      "priority": "high",
+      "bookingRef": "auto-sixt-octavia",
+      "due": {
+        "kind": "before_booking",
+        "bookingRef": "auto-sixt-octavia"
+      },
+      "body": "4% z 20 000 MAD — w dokumencie „800 zł”."
+    },
+    {
+      "ref": "t-wieki",
+      "kind": "todo",
+      "title": "Sprawdzić wieki w rezerwacjach noclegowych",
+      "priority": "high",
+      "bookingRef": "nocleg-riad",
+      "body": "Czy wpisane są faktyczne 16 i 10 lat, a nie wartości domyślne — obiekty wyceniają nastolatka inaczej niż dziesięciolatka. Trzy noclegi (riad, Perla, Line Up); przy Riad Lakhdar najpilniej, bo rezerwacja jest bezzwrotna."
+    },
+    {
+      "ref": "t-paszporty",
+      "kind": "todo",
+      "title": "Paszporty — sprawdzić dziś",
+      "priority": "high",
+      "body": "Pięć sztuk, w tym osobny dla dziecka, ważne przez cały pobyt. Jedyna rzecz, której nie da się załatwić na ostatnią chwilę."
+    },
+    {
+      "ref": "t-bagaz",
+      "kind": "todo",
+      "title": "Dokupić bagaż 20 kg do lotu",
+      "bookingRef": "bagaz-20kg",
+      "due": {
+        "kind": "before_booking",
+        "bookingRef": "bagaz-20kg"
+      },
+      "body": "Jeśli jeszcze nie jest dokupiony. Przy bramce ta sama sztuka kosztuje 200–250 zł."
+    },
+    {
+      "ref": "t-mail-oboz",
+      "kind": "todo",
+      "title": "Mail do obozu w Agafay",
+      "bookingRef": "nocleg-agafay",
+      "body": "Ogrzewanie w namiocie, dokładna lokalizacja i to, czy dojedziecie osobowym."
+    },
+    {
+      "ref": "t-oboz-ogrzewanie",
+      "kind": "question",
+      "title": "Obóz: czy ogrzewanie w namiocie działa całą noc?",
+      "bookingRef": "nocleg-agafay",
+      "body": "W części obozów piecyk gaszony jest po kolacji. Noce 5–10°C, czasem bliżej zera."
+    },
+    {
+      "ref": "t-oboz-dojazd",
+      "kind": "question",
+      "title": "Obóz: dokładna lokalizacja i czy dojedziemy osobowym?",
+      "bookingRef": "nocleg-agafay",
+      "body": "Część obozów wysyła po gości terenówkę, zwykle bezpłatnie, ale trzeba uprzedzić o godzinie."
+    },
+    {
+      "ref": "t-oboz-quady",
+      "kind": "question",
+      "title": "Obóz: ile quadów i na ile czasu obejmuje pakiet?",
+      "bookingRef": "nocleg-agafay",
+      "itemRef": "d2-quady",
+      "body": "Dziesięciolatek jedzie jako pasażer, więc przy pięciu osobach potrzeba czterech maszyn."
+    },
+    {
+      "ref": "t-oboz-wiek-quad",
+      "kind": "question",
+      "title": "Obóz: czy szesnastolatek może sam prowadzić quada?",
+      "bookingRef": "nocleg-agafay",
+      "itemRef": "d2-quady",
+      "due": {
+        "kind": "before_item",
+        "itemRef": "d2-quady",
+        "days": 1
+      },
+      "body": "Operatorzy zwykle dopuszczają samodzielną jazdę od 16 albo 18 lat, pasażera od 8 lat. Od tego zależy liczba maszyn — ustalić przed przyjazdem, nie przy quadach."
+    },
+    {
+      "ref": "t-mail-riad",
+      "kind": "todo",
+      "title": "Mail do Riad Lakhdar: parking strzeżony i transport bagażu przez medynę",
+      "bookingRef": "nocleg-riad",
+      "body": "Pod riad autem nie dojedziecie."
+    },
+    {
+      "ref": "t-medersa",
+      "kind": "todo",
+      "title": "Medersa Ben Youssefa — potwierdzić, że jest otwarta",
+      "itemRef": "d2-medersa",
+      "due": {
+        "kind": "before_item",
+        "itemRef": "d2-medersa",
+        "days": 1
+      },
+      "body": "W niedzielnym poranku to główny punkt programu."
+    },
+    {
+      "ref": "t-atrakcje",
+      "kind": "decision",
+      "title": "Atrakcji nie rezerwować z góry",
+      "status": "done",
+      "answer": "Sandboard w Sidi Kaouki dogada się rano na miejscu, zwykle taniej niż przez internet.",
+      "itemRef": "d4-sandboard"
+    },
+    {
+      "ref": "t-paradise",
+      "kind": "question",
+      "title": "Czy sadzawki w Paradise Valley są pełne?",
+      "variantGroupRef": "d4-wariant",
+      "itemRef": "d4-paradise",
+      "due": {
+        "kind": "on_trip",
+        "dayRef": "d4"
+      },
+      "body": "Zapytać w Taghazout, zanim wybierzecie wariant B. Poziom wody zależy od deszczu, a po suchych latach bywa niski."
+    },
+    {
+      "ref": "t-drugi-kierowca",
+      "kind": "decision",
+      "title": "Dopisać drugiego kierowcę do umowy najmu?",
+      "priority": "low",
+      "bookingRef": "auto-sixt-octavia",
+      "body": "Jeśli tak — dzień 1 jest tym, w którym się przyda (kierowca wstaje o 02:30)."
+    },
+    {
+      "ref": "t-ryanair-wymiar",
+      "kind": "todo",
+      "title": "Sprawdzić aktualny wymiar torby pod fotel na ryanair.com",
+      "bookingRef": "lot-tam",
+      "body": "Podawane 40 × 30 × 20 cm, część źródeł pisze 40 × 20 × 25 — przed kupnem plecaków."
+    },
+    {
+      "ref": "t-podreczny",
+      "kind": "question",
+      "title": "Czy „reszta w podręcznym” oznacza walizki kabinowe?",
+      "bookingRef": "lot-tam",
+      "body": "Jeśli tak — wymaga Priority dla każdej osoby; pięć razy Priority wyjdzie drożej niż drugi bagaż rejestrowany. Przeliczyć przy rezerwacji."
+    },
+    {
+      "ref": "t-msz",
+      "kind": "todo",
+      "title": "Potwierdzić wymogi wjazdowe na stronie MSZ przed wylotem",
+      "body": "Polacy nie potrzebują wizy na pobyt turystyczny — wystarczy paszport, osobny dla każdego dziecka."
+    }
+  ],
+  "packing": [
+    {
+      "ref": "pk-paszporty",
+      "category": "Dokumenty i pieniądze",
+      "title": "Paszport",
+      "scope": "personal",
+      "note": "Pięć paszportów, ważnych przez cały pobyt, w tym osobne dla obojga dzieci."
+    },
+    {
+      "ref": "pk-prawo-jazdy",
+      "category": "Dokumenty i pieniądze",
+      "title": "Prawo jazdy",
+      "scope": "shared",
+      "assigneeRef": "dorosly-1",
+      "note": "Polskie wystarcza; międzynarodowe kosztuje kilkanaście złotych i zdejmuje temat ze stołu."
+    },
+    {
+      "ref": "pk-karta-kredytowa",
+      "category": "Dokumenty i pieniądze",
+      "title": "Karta kredytowa na nazwisko kierowcy",
+      "scope": "shared",
+      "assigneeRef": "dorosly-1",
+      "note": "Bez niej nie wydadzą auta, a karty innej osoby nie są akceptowane. Ok. 8 000 zł wolnego limitu na kaucję."
+    },
+    {
+      "ref": "pk-rezerwacje-offline",
+      "category": "Dokumenty i pieniądze",
+      "title": "Rezerwacje offline w telefonie: lot, auto i cztery noclegi",
+      "scope": "shared",
+      "note": "W Agafay zasięgu może nie być."
+    },
+    {
+      "ref": "pk-ubezpieczenie",
+      "category": "Dokumenty i pieniądze",
+      "title": "Ubezpieczenie z kosztami leczenia",
+      "scope": "personal",
+      "note": "EKUZ w Maroku nie działa."
+    },
+    {
+      "ref": "pk-gotowka",
+      "category": "Dokumenty i pieniądze",
+      "title": "Euro jako zapas gotówki",
+      "scope": "shared",
+      "note": "Dirhamów nie kupicie w Polsce, to waluta zamknięta. Bankomat na lotnisku po przylocie."
+    },
+    {
+      "ref": "pk-koszulki",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Koszulki, lekkie spodnie",
+      "scope": "personal",
+      "note": "Dzień 17–20°C w słońcu."
+    },
+    {
+      "ref": "pk-polar",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Polar albo bluza na wieczory",
+      "scope": "personal",
+      "note": "Nad oceanem i w Marakeszu po zmroku robi się chłodno."
+    },
+    {
+      "ref": "pk-kurtka",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Kurtka przeciwwiatrowa",
+      "scope": "personal",
+      "note": "Ważniejsza niż ciepła. Sidi Kaouki i Essaouira to stolice kitesurfingu nie bez powodu."
+    },
+    {
+      "ref": "pk-czapka",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Czapka i coś na szyję",
+      "scope": "personal",
+      "note": "Na poranek nad wodą."
+    },
+    {
+      "ref": "pk-bluza-skarpety",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Ciepła bluza i grube skarpety na noc w namiocie",
+      "scope": "personal",
+      "note": "Nocą w Agafay bywa 5°C, a piecyk nie w każdym obozie grzeje do rana."
+    },
+    {
+      "ref": "pk-buty",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Wygodne buty na medynę",
+      "scope": "personal",
+      "note": "Nierówny bruk, kilkanaście tysięcy kroków dziennie."
+    },
+    {
+      "ref": "pk-klapki",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Klapki na plażę i wydmy",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-zakryte",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Ubranie zakrywające ramiona i kolana",
+      "scope": "personal",
+      "note": "Przy zabytkach i w konserwatywniejszych dzielnicach."
+    },
+    {
+      "ref": "pk-stroj",
+      "category": "Ubrania na dwie pory roku",
+      "title": "Strój kąpielowy",
+      "scope": "personal",
+      "note": "Ocean jest zimny, ale riady i domy w Taghazout miewają baseny."
+    },
+    {
+      "ref": "pk-okulary",
+      "category": "Na wydmy i plażę",
+      "title": "Okulary przeciwsłoneczne",
+      "scope": "personal",
+      "note": "Przy wietrze to ochrona przed piaskiem, nie przed słońcem."
+    },
+    {
+      "ref": "pk-chusta",
+      "category": "Na wydmy i plażę",
+      "title": "Chusta albo komin na twarz",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-krem",
+      "category": "Na wydmy i plażę",
+      "title": "Krem z filtrem",
+      "scope": "shared",
+      "note": "Grudniowe słońce w Maroku jest mocniejsze, niż się wydaje. Płyny tylko w bagażu rejestrowanym."
+    },
+    {
+      "ref": "pk-recznik",
+      "category": "Na wydmy i plażę",
+      "title": "Ręcznik szybkoschnący",
+      "scope": "personal",
+      "note": "Nie każdy nocleg daje plażowy."
+    },
+    {
+      "ref": "pk-woreczek",
+      "category": "Na wydmy i plażę",
+      "title": "Woreczek strunowy na telefon",
+      "scope": "personal",
+      "note": "Piasek w Sidi Kaouki wchodzi dosłownie wszędzie."
+    },
+    {
+      "ref": "pk-podkladka",
+      "category": "Auto i nawigacja",
+      "title": "Podkładka dla dziecka — NIE brać",
+      "scope": "shared",
+      "note": "Przy 152 cm i skończonych 10 latach nie jest w Maroku wymagana. Pozycja negatywna — schemat nie ma na to pola."
+    },
+    {
+      "ref": "pk-uchwyt",
+      "category": "Auto i nawigacja",
+      "title": "Uchwyt na telefon i ładowarka samochodowa",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-mapy",
+      "category": "Auto i nawigacja",
+      "title": "Mapy offline na całe Maroko",
+      "scope": "shared",
+      "note": "Na N1 wzdłuż oceanu zasięg bywa dziurawy."
+    },
+    {
+      "ref": "pk-powerbank",
+      "category": "Auto i nawigacja",
+      "title": "Powerbank",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-drobne",
+      "category": "Auto i nawigacja",
+      "title": "Drobne banknoty na bramki, parkingi i napiwki",
+      "scope": "shared",
+      "note": "Wszędzie tylko gotówka."
+    },
+    {
+      "ref": "pk-leki",
+      "category": "Apteczka",
+      "title": "Leki własne w oryginalnych opakowaniach",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-zoladek",
+      "category": "Apteczka",
+      "title": "Coś na żołądek i elektrolity",
+      "scope": "shared",
+      "note": "Zmiana wody i jedzenia daje się we znaki."
+    },
+    {
+      "ref": "pk-plastry",
+      "category": "Apteczka",
+      "title": "Plastry, ibuprofen, coś na przeziębienie",
+      "scope": "shared"
+    },
+    {
+      "ref": "pk-przejsciowka",
+      "category": "Drobiazgi",
+      "title": "Przejściówka C/E",
+      "scope": "shared",
+      "note": "Jeśli macie wtyczki z uziemieniem. Napięcie 220 V jak w Polsce; płaskie wtyczki euro pasują wprost."
+    },
+    {
+      "ref": "pk-plecak",
+      "category": "Drobiazgi",
+      "title": "Mały plecak na dzień",
+      "scope": "personal"
+    },
+    {
+      "ref": "pk-czolowka",
+      "category": "Drobiazgi",
+      "title": "Czołówka albo latarka",
+      "scope": "shared",
+      "note": "Wioski nad oceanem są słabo oświetlone."
+    },
+    {
+      "ref": "pk-worek",
+      "category": "Drobiazgi",
+      "title": "Worek na brudne i zapiaszczone rzeczy",
+      "scope": "shared"
+    }
+  ],
+  "notes": [
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "other",
+      "title": "Dzień po dniu",
+      "body": "Układ nocy: Marakesz, pustynia, wydmy, ocean — cztery różne noce. Najdłuższy dzień za kierownicą ma niespełna trzy godziny, a jazda rozkłada się na wszystkie cztery dni zamiast kumulować się w jednym. Godziny przejazdów są z Map Google, bez postojów. Każdy dzień ma pod spodem uczciwy audyt czasu: ile zostaje zapasu i co wyciąć, gdyby się sypało. Dwa dni są ciasne, dwa luźne, jeden zależy od kolejki na lotnisku."
+    },
+    {
+      "scope": "trip",
+      "kind": "warning",
+      "topic": "time",
+      "title": "Poprawka, która przesuwa cały grafik o godzinę",
+      "body": "Maroko jest cały rok na UTC+1 (Africa/Casablanca), więc pod koniec grudnia słońce wschodzi ok. 08:30, a zachodzi ok. 18:35 — nad oceanem nawet 18:40. Wcześniejsze wersje tego planu zakładały zachód o 17:40, czyli o godzinę za wcześnie; to pokutuje po starych przewodnikach sprzed 2018 roku, kiedy Maroko zimą wracało na UTC+0. Macie o blisko godzinę więcej światła każdego popołudnia."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d1",
+      "kind": "slack_audit",
+      "slack": "small",
+      "title": "Zapas czasu: zależy wyłącznie od lotniska",
+      "body": "Ryzyko nie leży w drodze, tylko w Agadirze. Paszporty, walizka z taśmy i formalności w wypożyczalni potrafią zjeść dwie godziny zamiast jednej. Dlatego w planie jest 11:30, a nie 11:00. Jeśli ruszycie po 12:30 — odpuśćcie suki i jedźcie prosto na plac. Dżami al-Fna o zmierzchu jest tym, po co tu przyjechaliście; suki macie w niedzielę rano. Kierowca wstaje o 02:30, leci blisko pięć godzin i siada za kierownicą na trzy. Postój na kawę w połowie trasy nie jest opcjonalny. Jeśli dopiszecie drugiego kierowcę do umowy, to jest ten dzień, w którym się przyda."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d2",
+      "kind": "slack_audit",
+      "slack": "none",
+      "title": "Zapas czasu: żaden — to najciaśniejszy poranek planu",
+      "body": "Dwa zabytki, suki, lunch i wymeldowanie przed 14:30 spinają się bez minuty luzu. Wystarczy, że ktoś zaśpi albo kolejka do medresy będzie długa, i posypie się reszta. Najprostsze cięcie: jeden zabytek zamiast dwóch — zyskujecie godzinę i spokojny lunch. Cięcie radykalne: żadnych biletów, tylko suki i plac w dziennym świetle; wyjazd o 13:00, w obozie o 13:50. Czego nie przesuwajcie: wyjazdu po 15:00 — ostatnie kilometry do obozu to droga gruntowa, a po zmroku to zupełnie inna jazda."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d3",
+      "kind": "slack_audit",
+      "slack": "large",
+      "title": "Zapas czasu: duży — to najluźniejszy dzień wyjazdu",
+      "body": "Essaouira dostaje ponad cztery godziny i jest czym je wypełnić: Skala du Port za osobnym biletem, warsztaty stolarzy od drewna tui pod murami, targ rybny, plaża z wielbłądami i quadami. Jeśli wolicie pospać — wyjazd o 11:00, czyli dokładnie o godzinie wymeldowania, nadal zostawia trzy godziny w Essaouirze i spokojny dojazd przed zachodem. To jest dzień na nadrobienie, gdyby coś wypadło z niedzieli. Jeśli odpuściliście zabytki w Marakeszu, tu macie margines, żeby nigdzie nie biec."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d3",
+      "kind": "tip",
+      "topic": "weather",
+      "title": "Wiatr w Essaouirze",
+      "body": "Jeśli wieje mocno, a nad Essaouirą wieje często, medyna osłania, a mury nie. Kurtka przeciwwiatrowa i coś na twarz; to miasto nie bez powodu jest stolicą kitesurfingu."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d4",
+      "kind": "slack_audit",
+      "slack": "none",
+      "title": "Zapas czasu: zero, jeśli chcecie jeszcze Paradise Valley",
+      "body": "Tu plan się nie dopina i trzeba wybrać. Przejazd z Imsouane i Taghazout po drodze to 190 km i 3 h 30 min samej jazdy; z kozami i lunchem robi się ponad pięć godzin. Paradise Valley leży 35 km od Taghazout, 54 minuty w jedną stronę, i potrzebuje minimum dwóch godzin na miejscu. To się nie mieści i nie ma sensu udawać, że tak. Wersja A (w planie): wydmy. Wersja B: Paradise Valley — płacicie porankiem na wydmach i doliczcie 70 km do limitu kilometrów. Zanim wybierzecie B, zapytajcie w Taghazout, czy sadzawki są pełne."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d5",
+      "kind": "slack_audit",
+      "slack": "small",
+      "title": "Zapas czasu: około pół godziny",
+      "body": "Z Anzy jest bliżej niż było z Taghazout — 44 minuty zamiast 57, więc ten poranek jest luźniejszy, niż zakładał wcześniejszy plan. Wyjazd 07:15 zamiast 07:30, jeśli ktoś nie lubi biec przez lotnisko. Biuro Sixta otwiera o 07:00, więc zwrot o 08:15 jest bezpieczny. Przy innej wypożyczalni sprawdźcie godzinę otwarcia, zanim zarezerwujecie — to najczęstszy sposób na spóźnienie się na poranny lot. Na Agadir nie ma miejsca przy tym locie: Kasba Oufella, plaża i suk El Had to pół dnia, a wy startujecie o 10:15."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d2",
+      "kind": "info",
+      "topic": "other",
+      "title": "Agafay to pustynia kamienista",
+      "body": "Lokalnie reg: skaliste wzgórza i suche doliny z widokiem na ośnieżony Atlas. Piasku tam nie ma — prawdziwe wydmy macie następnego dnia w Sidi Kaouki, i to jedyny układ tego planu, w którym widzicie obie pustynie."
+    },
+    {
+      "scope": "booking",
+      "targetRef": "nocleg-agafay",
+      "kind": "warning",
+      "topic": "culture",
+      "title": "Pakiet jest po angielsku",
+      "body": "Przy quadach, wielbłądach i kolacji to bez znaczenia, ale jeśli w programie jest cokolwiek opowiadane — o pustyni, o gwiazdach, o Berberach — dziesięciolatek z tego nie skorzysta bez tłumaczenia. Warto wiedzieć z góry, żeby nikt nie był rozczarowany."
+    },
+    {
+      "scope": "trip",
+      "kind": "tip",
+      "topic": "money",
+      "title": "Co z tego naprawdę warto, przy piątce i czterech dniach",
+      "body": "Najlepszy stosunek wrażeń do ceny: sandboarding w Sidi Kaouki (ok. €100 za wszystkich). Konie na tej samej plaży to €500–800, więcej niż nocleg i auto razem. Szesnastolatek zmienia kalkulację przy atrakcjach wodnych — lekcja surfingu (od €30) to pozycja do dokupienia ponad plan. Wieki przy kasach są różne: w medresie zniżka kończy się na 12 latach, w Bahii na 13, u operatorów quadów samodzielna jazda zwykle od 16 lub 18 lat. Wielbłądy zostawcie w Agafay. Dwa zabytki w Marakeszu to maksimum przy jednym poranku (660 MAD dla piątki); Majorelle się nie spina. Trzy najdroższe pozycje odpadły przy rezerwacji pakietu Agafay — zostaje sandboarding i dwa bilety, ok. 715 zł na całą piątkę."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "rules",
+      "title": "Skład osobowy w rezerwacjach",
+      "body": "W noclegach troje dorosłych i dwoje dzieci, w pakiecie na pustyni czworo dorosłych i jedno dziecko — bo tam granica dorosłości leży na trzynastu latach. Przewoźnik stosuje taryfę dorosłą od dwunastego roku życia."
+    },
+    {
+      "scope": "variant_group",
+      "targetRef": "auto",
+      "kind": "rationale",
+      "topic": "money",
+      "title": "Pakiet ochrony: bierzcie Smart",
+      "body": "Smart i All Inclusive mają na stronie Sixta identyczną listę składników — oba znoszą udział własny do zera i oba obejmują szyby, opony, wnętrze, NNW i assistance. Dopłata $24 za wyższy pakiet nie ma widocznego pokrycia; jeśli przy rezerwacji w szczegółach pokaże się różnica, warto ją przeczytać, ale domyślnie bierzcie Smart. Octavia + Smart Protection = $348, czyli ok. 1 270 zł za cztery doby z zerowym udziałem własnym."
+    },
+    {
+      "scope": "variant_group",
+      "targetRef": "auto",
+      "kind": "warning",
+      "topic": "money",
+      "title": "Czego nie robić",
+      "body": "Nie dokupujcie ubezpieczenia u pośrednika. To osobna polisa — przy szkodzie najpierw płacicie wypożyczalni, a pieniądze odzyskujecie tygodniami. Smart Protection u Sixta działa odwrotnie i dokładnie o to wam chodziło."
+    },
+    {
+      "scope": "variant_group",
+      "targetRef": "auto",
+      "kind": "tip",
+      "topic": "transport",
+      "title": "Film auta",
+      "body": "Film auta przy odbiorze i przy zwrocie, dookoła, z datą. To najczęstszy punkt sporny w opiniach o marokańskich wypożyczalniach — także tych dużych."
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "topic": "rules",
+      "title": "Podkładka dla dziecka nie jest potrzebna",
+      "body": "Marokańskie przepisy wymagają fotelika albo podkładki dla dzieci poniżej 10 lat i poniżej 135 cm — przy skończonej dziesiątce i 152 cm dziecko jest poza obiema granicami i jedzie na zwykłych pasach. Warunek: pas ma leżeć na barku i biodrach, nie na szyi i brzuchu."
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "topic": "money",
+      "title": "Gotówka i dirhamy",
+      "body": "Dirham to waluta zamknięta — nie kupicie go w Polsce. Bankomat na lotnisku po przylocie, euro jako zapas. Bramki na autostradzie, kasy przy zabytkach, obozy i wszystkie atrakcje na plaży biorą wyłącznie gotówkę. Autostrada A7 Agadir–Marakesz to rząd 70–90 MAD za przejazd, płatne wyłącznie gotówką w dirhamach."
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "topic": "transport",
+      "title": "Auto: parking i paliwo",
+      "body": "Auto stoi na parkingu strzeżonym w Marakeszu od soboty po południu do niedzielnego lunchu, ok. 20–30 MAD za dobę; riad podpowie najbliższy. Przez pozostałe trzy noce stoi przy noclegu. Pełny do pełnego: tankowanie po drodze na lotnisko, nie na stacji przy terminalu — tam zawsze jest drożej. Olej napędowy ok. 16 MAD/l (początek października 2026)."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "weather",
+      "title": "Zima i drogi",
+      "body": "Ta trasa nie ma wąskiego gardła pogodowego. Żadnej górskiej przełęczy, która mogłaby zostać zasypana, i żaden dzień nie jest na styk."
+    },
+    {
+      "scope": "trip",
+      "kind": "warning",
+      "topic": "weather",
+      "title": "Nad oceanem wieje",
+      "body": "Nad oceanem wieje i jest chłodno wieczorami. Sidi Kaouki i Essaouira to stolice kitesurfingu nie bez powodu. Wiatrówka, czapka i okulary przeciwsłoneczne przeciw piaskowi."
+    },
+    {
+      "scope": "day",
+      "targetRef": "d2",
+      "kind": "warning",
+      "topic": "weather",
+      "title": "Najzimniejsza noc wyjazdu to ta w namiocie",
+      "body": "Pustynia oddaje ciepło po zachodzie bardzo szybko: w dzień 18–20°C, nocą 5–10°C, czasem bliżej zera. Bluza i grube skarpety do spania, nawet jeśli obóz obiecuje ogrzewanie."
+    },
+    {
+      "scope": "trip",
+      "kind": "safety",
+      "topic": "safety",
+      "title": "Nie jeździć po zmroku poza miastami",
+      "body": "Nieoświetlone drogi, zwierzęta i piesi na poboczu. W tym planie każdy dojazd kończy się przed zachodem, z zapasem."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "transport",
+      "title": "N1 i droga do obozu",
+      "body": "Droga N1 wzdłuż oceanu jest kręta i wolna. Dwie i pół godziny na 139 km to nie pomyłka. Ostatnie kilometry do obozu w Agafay to z kolei droga gruntowa — do przejechania zwykłym autem, ale powoli i nie po ciemku."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "weather",
+      "title": "Temperatury w dzień",
+      "body": "Dni są przyjemne — w Marakeszu zwykle 17–20°C w słońcu, nad oceanem podobnie, ale z wiatrem odczuwalnie chłodniej."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "culture",
+      "title": "Święta i ramadan",
+      "body": "Święta i koniec roku to w Maroku dni robocze. Zabytki, suki i restauracje działają normalnie. Ramadan wypada w lutym 2027, więc tego wyjazdu nie dotyczy."
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "topic": "documents",
+      "title": "Wiza i paszporty",
+      "body": "Polacy nie potrzebują wizy na pobyt turystyczny — wystarczy paszport, także osobny dla każdego z dzieci. Aktualne wymogi warto potwierdzić na stronie MSZ przed wylotem."
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "topic": "health",
+      "title": "Woda",
+      "body": "Wodę pijcie butelkowaną, a przy wrażliwych żołądkach myjcie nią też zęby."
+    },
+    {
+      "scope": "trip",
+      "kind": "practical",
+      "topic": "packing",
+      "title": "Co spakować",
+      "body": "Lista pod ten konkretny wyjazd i pod wasz bagaż: jedna walizka 20 kg na piątkę plus torby pod fotel. Pakowaniem rządzą trzy rzeczy: duża różnica między dniem a nocą, wiatr nad oceanem i to, że przez cztery doby wozicie wszystko w aucie."
+    },
+    {
+      "scope": "booking",
+      "targetRef": "bagaz-20kg",
+      "kind": "practical",
+      "topic": "packing",
+      "title": "Jeden bagaż na piątkę: na co uważać u Ryanaira",
+      "body": "Darmowa jest wyłącznie mała torba pod fotel — jedna na osobę. Podawane wymiary to 40 × 30 × 20 cm, choć część źródeł pisze o 40 × 20 × 25; limitu wagi nie ma. Normalna walizka kabinowa 55 × 40 × 20 do 10 kg nie jest darmowa — tylko w pakiecie Priority. Jeden bagaż 20 kg dokupcie od razu przy rezerwacji. Płyny tylko w bagażu rejestrowanym (w torbach pod fotel limit 100 ml na opakowanie). Jeden bagaż na cztery noce jest realny: domy w Sidi Kaouki i Taghazout zwykle dopiorą albo wskażą pralnię. Do namiotu w Agafay weźcie tylko małe torby — walizka zostaje w aucie."
+    },
+    {
+      "scope": "trip",
+      "kind": "rationale",
+      "topic": "money",
+      "title": "Budżet: skąd wzrost",
+      "body": "Dwie trzecie budżetu jest już zamknięte, a jedyna duża otwarta pozycja to auto. Względem pierwszych szacunków całość urosła z ok. 9 800 zł do 11 400 zł: pakiet na pustyni z kolacją i atrakcjami kosztuje 2 116 zł zamiast samego noclegu za ok. 1 080 zł, a auto z zerowym udziałem własnym u wynajmującego kosztuje dwa razy więcej niż wcześniejszy szacunek z pośrednika. Razem: oszczędnie ~11 400 zł (2 280 zł na osobę), wygodnie ~13 100 zł (2 620 zł na osobę). Do wydania: ~3 915 / ~5 555 zł."
+    },
+    {
+      "scope": "trip",
+      "kind": "warning",
+      "topic": "other",
+      "title": "Aktualność danych",
+      "body": "Ceny atrakcji w Sidi Kaouki i w Agafay, opisy pustyni, temperatury nocne oraz ceny wstępów i opłat drogowych pochodzą z przewodników, stron operatorów i platform rezerwacyjnych, nie z oficjalnych cenników — traktujcie je jako rząd wielkości. Ceny lotów, aut i noclegów zmieniają się z dnia na dzień; przed rezerwacją sprawdźcie aktualne stawki."
+    }
+  ],
+  "sources": [
+    {
+      "ref": "src-google-flights",
+      "title": "Google Flights — ceny lotów",
+      "url": "https://www.google.com/travel/flights",
+      "checkedAt": "2026-10-10",
+      "note": "W obie strony, z podatkami, bez bagażu rejestrowanego. Cztery bilety dorosłe i jeden dziecięcy.",
+      "appliesToRefs": [
+        "lot-tam",
+        "lot-powrot",
+        "b-loty"
+      ]
+    },
+    {
+      "ref": "src-sixt",
+      "title": "sixt.com — ceny i warunki najmu",
+      "url": "https://www.sixt.com/",
+      "checkedAt": "2026-10-16",
+      "note": "Dla 26.12 11:30 – 30.12 09:00, cztery doby.",
+      "appliesToRefs": [
+        "auto-sixt-picanto",
+        "auto-sixt-corsa",
+        "auto-sixt-octavia",
+        "auto-sixt-arona",
+        "auto-sixt-troc",
+        "auto-sixt-tiguan",
+        "auto-sixt-traveller",
+        "b-auto"
+      ]
+    },
+    {
+      "ref": "src-sixt-rental-info",
+      "title": "Sixt „Rental Information Morocco”",
+      "checkedAt": "2026-10-16",
+      "note": "Kaucje, progi wiekowe kierowcy, zasady płatności, klauzula 4%.",
+      "appliesToRefs": [
+        "auto-sixt-octavia"
+      ]
+    },
+    {
+      "ref": "src-google-maps-oceny",
+      "title": "Mapy Google — oceny wypożyczalni na lotnisku w Agadirze",
+      "checkedAt": "2026-10-16",
+      "appliesToRefs": [
+        "auto-sixt-octavia",
+        "auto-lokalne"
+      ]
+    },
+    {
+      "ref": "src-potwierdzenia",
+      "title": "Potwierdzenia rezerwacji noclegów przekazane przez uczestników",
+      "note": "Październik 2026 (bez dnia).",
+      "appliesToRefs": [
+        "nocleg-riad",
+        "nocleg-agafay",
+        "nocleg-perla",
+        "nocleg-lineup"
+      ]
+    },
+    {
+      "ref": "src-booking-lineup",
+      "title": "Booking.com — położenie Line Up Surf House i godziny zameldowania",
+      "url": "https://www.booking.com/",
+      "appliesToRefs": [
+        "nocleg-lineup",
+        "p-lineup"
+      ]
+    },
+    {
+      "ref": "src-booking-agafay",
+      "title": "Booking.com — godziny zameldowania w obozach Agafay i brak obozów z kolacją w cenie",
+      "url": "https://www.booking.com/",
+      "checkedAt": "2026-10-12",
+      "note": "Dla tych dat i pięciu osób — przy innej liczbie gości wynik może być inny.",
+      "appliesToRefs": [
+        "d2-zameldowanie",
+        "nocleg-agafay"
+      ]
+    },
+    {
+      "ref": "src-mapy-google",
+      "title": "Mapy Google — odległości i czasy przejazdów",
+      "note": "Bez postojów.",
+      "appliesToRefs": [
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "uklad-nocy"
+      ]
+    },
+    {
+      "ref": "src-medersa",
+      "title": "medersabenyoussef.ma i przewodniki — godziny i ceny wstępu do medresy Ben Youssefa i Pałacu Bahia",
+      "url": "https://medersabenyoussef.ma/",
+      "note": "Stan na październik 2026 (bez dnia).",
+      "appliesToRefs": [
+        "d2-medersa",
+        "d2-bahia",
+        "p-medersa",
+        "p-bahia"
+      ]
+    },
+    {
+      "ref": "src-astro",
+      "title": "Wschody i zachody słońca — wyliczenia astronomiczne dla Marakeszu",
+      "note": "Zgodne z Africa/Casablanca (UTC+1)."
+    },
+    {
+      "ref": "src-paliwo",
+      "title": "Cena oleju napędowego w Maroku",
+      "note": "Ok. 16 MAD/l, stan na początek października 2026.",
+      "appliesToRefs": [
+        "b-paliwo"
+      ]
+    },
+    {
+      "ref": "src-przewodniki",
+      "title": "Przewodniki turystyczne, strony operatorów i platformy rezerwacyjne",
+      "note": "Ceny atrakcji w Sidi Kaouki i w Agafay, opisy pustyni, temperatury nocne, ceny wstępów i opłat drogowych — rząd wielkości, nie oficjalne cenniki.",
+      "appliesToRefs": [
+        "d4-sandboard",
+        "pula-quady-wydmy",
+        "pula-konie",
+        "pula-surfing-sk",
+        "d1-a7"
+      ]
+    },
+    {
+      "ref": "src-gyg",
+      "title": "GetYourGuide — rezerwacja pakietu w Agafay",
+      "url": "https://www.getyourguide.com/",
+      "appliesToRefs": [
+        "nocleg-agafay"
+      ]
+    },
+    {
+      "ref": "src-ryanair",
+      "title": "ryanair.com — wymiary bagażu pod fotel",
+      "url": "https://www.ryanair.com/",
+      "note": "Do sprawdzenia przed kupnem plecaków.",
+      "appliesToRefs": [
+        "bagaz-20kg",
+        "t-ryanair-wymiar"
+      ]
+    }
+  ],
+  "tracks": []
+}

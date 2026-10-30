@@ -1,0 +1,2086 @@
+{
+  "schemaVersion": 1,
+  "trip": {
+    "title": "Gruzja 2027",
+    "subtitle": "Plan dzień po dniu",
+    "summary": "4–15 sierpnia 2027 · 5 osób · Zugdidi → Mestia (góry) → Szekwetili (morze i basen)",
+    "startDate": "2027-08-04",
+    "endDate": "2027-08-15",
+    "primaryTz": "Asia/Tbilisi",
+    "homeTz": "Europe/Warsaw",
+    "baseCurrency": "PLN",
+    "fx": [],
+    "version": "v4"
+  },
+  "travelers": [
+    {
+      "ref": "u1",
+      "name": "Uczestnik 1",
+      "notes": "Dokument mówi o 5 osobach, ceny liczone dla 5 dorosłych, ale wspomina łóżka dla dzieci i plac zabaw — wieki do uzupełnienia."
+    },
+    {
+      "ref": "u2",
+      "name": "Uczestnik 2"
+    },
+    {
+      "ref": "u3",
+      "name": "Uczestnik 3"
+    },
+    {
+      "ref": "u4",
+      "name": "Uczestnik 4"
+    },
+    {
+      "ref": "u5",
+      "name": "Uczestnik 5"
+    }
+  ],
+  "places": [
+    {
+      "ref": "lotnisko-wroclaw",
+      "name": "Lotnisko Wrocław",
+      "category": "airport"
+    },
+    {
+      "ref": "lotnisko-kutaisi",
+      "name": "Lotnisko Kutaisi",
+      "category": "airport"
+    },
+    {
+      "ref": "zugdidi",
+      "name": "Zugdidi",
+      "category": "city"
+    },
+    {
+      "ref": "mestia",
+      "name": "Mestia",
+      "category": "town"
+    },
+    {
+      "ref": "szekwetili",
+      "name": "Szekwetili",
+      "category": "resort"
+    },
+    {
+      "ref": "ureki",
+      "name": "Ureki",
+      "category": "resort"
+    },
+    {
+      "ref": "kobuleti",
+      "name": "Kobuleti",
+      "category": "resort"
+    },
+    {
+      "ref": "zapora-inguri",
+      "name": "Zapora Inguri",
+      "category": "viewpoint"
+    },
+    {
+      "ref": "hacwali",
+      "name": "Kolejka na Hacwali",
+      "category": "cable_car"
+    },
+    {
+      "ref": "lodowiec-czalaadi",
+      "name": "Lodowiec Czalaadi",
+      "category": "glacier"
+    },
+    {
+      "ref": "muzeum-swanetii",
+      "name": "Muzeum Swanetii",
+      "category": "museum"
+    },
+    {
+      "ref": "wieze-mestia",
+      "name": "Wieże obronne (Mestia)",
+      "category": "monument"
+    },
+    {
+      "ref": "uszguli",
+      "name": "Uszguli",
+      "category": "village"
+    },
+    {
+      "ref": "lodowiec-szchara",
+      "name": "Lodowiec Szchara",
+      "category": "glacier"
+    },
+    {
+      "ref": "jeziora-koruldi",
+      "name": "Jeziora Koruldi",
+      "category": "lake"
+    },
+    {
+      "ref": "mazeri",
+      "name": "Mazeri",
+      "category": "village"
+    },
+    {
+      "ref": "wodospad-uszba",
+      "name": "Wodospad Uszba",
+      "category": "waterfall"
+    },
+    {
+      "ref": "tetnuldi",
+      "name": "Kolejka Tetnuldi",
+      "category": "cable_car"
+    },
+    {
+      "ref": "kanion-martwili",
+      "name": "Kanion Martwili",
+      "category": "canyon",
+      "notes": "Rejs łódką po kanionie."
+    },
+    {
+      "ref": "tsitsinatela",
+      "name": "Park rozrywki Tsitsinatela",
+      "category": "amusement_park"
+    },
+    {
+      "ref": "park-dendrologiczny",
+      "name": "Park dendrologiczny",
+      "category": "park",
+      "notes": "Dokument nie podaje pełnej nazwy ani lokalizacji (okolice Szekwetili)."
+    },
+    {
+      "ref": "poti",
+      "name": "Poti",
+      "category": "city"
+    },
+    {
+      "ref": "park-kolchidy",
+      "name": "Park Narodowy Kolchidy",
+      "category": "national_park",
+      "notes": "Rejs łodzią po jeziorze Paliastomi i rzece Pichori."
+    },
+    {
+      "ref": "ogrod-botaniczny-batumi",
+      "name": "Ogród botaniczny (Batumi)",
+      "category": "garden",
+      "notes": "Bez wjazdu do centrum Batumi."
+    },
+    {
+      "ref": "twierdza-gonio",
+      "name": "Twierdza Gonio",
+      "category": "fortress"
+    },
+    {
+      "ref": "kwariati",
+      "name": "Kwariati",
+      "category": "beach",
+      "notes": "Nurkowanie z maską."
+    },
+    {
+      "ref": "rzeka-aczariscchali",
+      "name": "Rzeka Aczariscchali (rafting)",
+      "category": "river"
+    },
+    {
+      "ref": "wodospad-machuncety",
+      "name": "Wodospad Machuncety",
+      "category": "waterfall"
+    },
+    {
+      "ref": "jaskinia-prometeusza",
+      "name": "Jaskinia Prometeusza",
+      "category": "cave"
+    },
+    {
+      "ref": "kutaisi",
+      "name": "Kutaisi",
+      "category": "city"
+    },
+    {
+      "ref": "katedra-bagrati",
+      "name": "Katedra Bagrati",
+      "category": "church"
+    },
+    {
+      "ref": "bb-cottages-mestia",
+      "name": "B&B Cottages Mestia",
+      "category": "lodging"
+    },
+    {
+      "ref": "winterfell-mestia",
+      "name": "Winterfell Mestia",
+      "category": "lodging"
+    },
+    {
+      "ref": "deltahotel-ureki",
+      "name": "DeltaHotel (Ureki)",
+      "category": "lodging"
+    },
+    {
+      "ref": "majestic-kobuleti",
+      "name": "Majestic (Kobuleti)",
+      "category": "lodging"
+    },
+    {
+      "ref": "golden-fleece-ureki",
+      "name": "Golden Fleece (Ureki)",
+      "category": "lodging"
+    }
+  ],
+  "days": [
+    {
+      "ref": "d1",
+      "date": "2027-08-04",
+      "title": "Przylot",
+      "summary": "Nocleg: Zugdidi, 1 noc. Przejazd: lotnisko Kutaisi → Zugdidi, ok. 1 h 20 min. Przylot. Wrocław 15:40 → Kutaisi 21:10. Odbiór auta ok. 21:45, zameldowanie ok. 23:15.",
+      "statedDriving": {
+        "durationMin": 80
+      },
+      "tz": "Asia/Tbilisi",
+      "baseRef": "zugdidi"
+    },
+    {
+      "ref": "d2",
+      "date": "2027-08-05",
+      "title": "Wjazd w góry",
+      "summary": "Nocleg: Mestia, noc 1/5. Przejazd: Zugdidi → Mestia, ok. 3 h. Postój przy zaporze Inguri. W Mestii ok. 13:00, od razu kolejka na Hacwali, zameldowanie od 15:00, wieczorem spacer po Mestii.",
+      "statedDriving": {
+        "durationMin": 180
+      },
+      "tz": "Asia/Tbilisi",
+      "baseRef": "mestia",
+      "lodgingRef": "vg-nocleg-mestia"
+    },
+    {
+      "ref": "d3",
+      "date": "2027-08-06",
+      "title": "Lodowiec Czalaadi",
+      "summary": "Nocleg: Mestia, noc 2/5. Przejazd: ok. 20 min autem do szlaku. Łatwy szlak na rozgrzewkę, 3–4 h w obie strony. Po południu Muzeum Swanetii i wieże obronne.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "mestia",
+      "lodgingRef": "vg-nocleg-mestia"
+    },
+    {
+      "ref": "d4",
+      "date": "2027-08-07",
+      "title": "Uszguli",
+      "summary": "Nocleg: Mestia, noc 3/5. Przejazd: terenówka z kierowcą, ok. 2–2,5 h w jedną stronę. Cały dzień, spacer w stronę lodowca Szchara.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "mestia",
+      "lodgingRef": "vg-nocleg-mestia"
+    },
+    {
+      "ref": "d5",
+      "date": "2027-08-08",
+      "title": "Jeziora Koruldi",
+      "summary": "Nocleg: Mestia, noc 4/5. Przejazd: pieszo z Mestii albo terenówką. Główny trekking, 6–8 h, ok. 1100 m w górę. Wersja lżejsza: terenówką na górę, pieszo w dół.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "mestia",
+      "lodgingRef": "vg-nocleg-mestia"
+    },
+    {
+      "ref": "d6",
+      "date": "2027-08-09",
+      "title": "Wodospad Uszba albo kolejka Tetnuldi",
+      "summary": "Nocleg: Mestia, noc 5/5. Przejazd: ok. 1 h do Mazeri albo ok. 40 min do Tetnuldi. Wieczorem pożegnalna kolacja swańska (kubdari).",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "mestia",
+      "lodgingRef": "vg-nocleg-mestia"
+    },
+    {
+      "ref": "d7",
+      "date": "2027-08-10",
+      "title": "Kanion Martwili po drodze nad morze",
+      "dayStart": "08:30",
+      "summary": "Nocleg: Szekwetili, noc 1/5. Przejazd: Mestia → Zugdidi 3 h → Martwili 1 h → Szekwetili 1,5 h. Wyjazd o 8:30, kanion z rejsem łódką ok. 12:30–14:30. Zameldowanie ok. 16:30, basen albo plaża.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "szekwetili",
+      "lodgingRef": "vg-nocleg-morze"
+    },
+    {
+      "ref": "d8",
+      "date": "2027-08-11",
+      "title": "Odpoczynek po górach",
+      "summary": "Nocleg: Szekwetili, noc 2/5. Przejazd: na miejscu. Basen i plaża, po południu park rozrywki Tsitsinatela albo park dendrologiczny.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "szekwetili",
+      "lodgingRef": "vg-nocleg-morze"
+    },
+    {
+      "ref": "d9",
+      "date": "2027-08-12",
+      "title": "Park Narodowy Kolchidy",
+      "summary": "Nocleg: Szekwetili, noc 3/5. Przejazd: ok. 20–30 min do Poti. Rejs łodzią po jeziorze Paliastomi i rzece Pichori. Po południu basen albo plaża.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "szekwetili",
+      "lodgingRef": "vg-nocleg-morze"
+    },
+    {
+      "ref": "d10",
+      "date": "2027-08-13",
+      "title": "Adżaria bez wielkiego miasta",
+      "summary": "Nocleg: Szekwetili, noc 4/5. Przejazd: ok. 1–1,5 h. Ogród botaniczny (bez wjazdu do centrum Batumi), twierdza Gonio, nurkowanie z maską w Kwariati.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "szekwetili",
+      "lodgingRef": "vg-nocleg-morze"
+    },
+    {
+      "ref": "d11",
+      "date": "2027-08-14",
+      "title": "Dzień wolny albo rafting",
+      "summary": "Nocleg: Szekwetili, noc 5/5. Przejazd: ok. 1,5 h do raftingu. Basen i plaża. Dla chętnych rafting na rzece Aczariscchali i wodospad Machuncety.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "szekwetili",
+      "lodgingRef": "vg-nocleg-morze"
+    },
+    {
+      "ref": "d12",
+      "date": "2027-08-15",
+      "title": "Jaskinia Prometeusza, Kutaisi i powrót",
+      "summary": "Wylot, wymeldowanie rano. Przejazd: Szekwetili → jaskinia 1,5 h → Kutaisi 30 min → lotnisko 25 min. Rano ostatnia kąpiel, wyjazd ok. 12:00. Jaskinia, potem Kutaisi: katedra Bagrati i obiad. 19:00 zwrot auta, wylot Kutaisi 21:45 → Wrocław 23:30.",
+      "tz": "Asia/Tbilisi",
+      "baseRef": "szekwetili"
+    }
+  ],
+  "items": [
+    {
+      "ref": "d1-wylot",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Wylot Wrocław 15:40 → Kutaisi 21:10",
+      "leg": {
+        "mode": "flight",
+        "fromPlaceRef": "lotnisko-wroclaw",
+        "toPlaceRef": "lotnisko-kutaisi"
+      },
+      "placeRef": "lotnisko-wroclaw",
+      "time": {
+        "precision": "exact",
+        "start": "15:40",
+        "tz": "Europe/Warsaw"
+      },
+      "isFixed": true,
+      "bookingRef": "lot-tam",
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d1-przylot",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Przylot do Kutaisi",
+      "placeRef": "lotnisko-kutaisi",
+      "time": {
+        "precision": "exact",
+        "start": "21:10"
+      },
+      "isFixed": true,
+      "bookingRef": "lot-tam",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d1-odbior-auta",
+      "dayRef": "d1",
+      "kind": "errand",
+      "title": "Odbiór auta",
+      "placeRef": "lotnisko-kutaisi",
+      "time": {
+        "precision": "approx",
+        "start": "21:45"
+      },
+      "bookingRef": "minivan",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d1-dojazd-zugdidi",
+      "dayRef": "d1",
+      "kind": "transport",
+      "title": "Lotnisko Kutaisi → Zugdidi",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 80,
+        "fromPlaceRef": "lotnisko-kutaisi",
+        "toPlaceRef": "zugdidi",
+        "instructions": "Lotnisko Kutaisi → Zugdidi, ok. 1 h 20 min."
+      },
+      "bookingRef": "minivan",
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d1-zameldowanie",
+      "dayRef": "d1",
+      "kind": "lodging",
+      "title": "Zameldowanie w Zugdidi",
+      "placeRef": "zugdidi",
+      "time": {
+        "precision": "approx",
+        "start": "23:15"
+      },
+      "notes": [
+        "Dokument nie wskazuje noclegu w Zugdidi."
+      ],
+      "sortKey": "0050"
+    },
+    {
+      "ref": "d2-dojazd-mestia",
+      "dayRef": "d2",
+      "kind": "transport",
+      "title": "Zugdidi → Mestia",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 180,
+        "fromPlaceRef": "zugdidi",
+        "toPlaceRef": "mestia",
+        "instructions": "Zugdidi → Mestia, ok. 3 h; po drodze postój przy zaporze Inguri."
+      },
+      "bookingRef": "minivan",
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d2-zapora-inguri",
+      "dayRef": "d2",
+      "kind": "visit",
+      "title": "Postój przy zaporze Inguri",
+      "placeRef": "zapora-inguri",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d2-hacwali",
+      "dayRef": "d2",
+      "kind": "activity",
+      "title": "Kolejka na Hacwali",
+      "placeRef": "hacwali",
+      "time": {
+        "precision": "approx",
+        "start": "13:00"
+      },
+      "weather": "outdoor",
+      "notes": [
+        "W Mestii ok. 13:00, od razu kolejka."
+      ],
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d2-zameldowanie",
+      "dayRef": "d2",
+      "kind": "lodging",
+      "title": "Zameldowanie w Mestii (od 15:00)",
+      "placeRef": "mestia",
+      "time": {
+        "precision": "approx",
+        "start": "15:00"
+      },
+      "bookingRef": "vg-nocleg-mestia",
+      "notes": [
+        "„Zameldowanie od 15:00” — najwcześniejsza godzina, nie planowana."
+      ],
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d2-spacer-mestia",
+      "dayRef": "d2",
+      "kind": "visit",
+      "title": "Spacer po Mestii",
+      "placeRef": "mestia",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "evening"
+      },
+      "weather": "outdoor",
+      "sortKey": "0050"
+    },
+    {
+      "ref": "d3-dojazd-czalaadi",
+      "dayRef": "d3",
+      "kind": "transport",
+      "title": "Dojazd do szlaku na lodowiec Czalaadi",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 20,
+        "fromPlaceRef": "mestia",
+        "toPlaceRef": "lodowiec-czalaadi",
+        "instructions": "Ok. 20 min autem do szlaku."
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d3-czalaadi",
+      "dayRef": "d3",
+      "kind": "activity",
+      "title": "Lodowiec Czalaadi",
+      "description": "Łatwy szlak na rozgrzewkę, 3–4 h w obie strony.",
+      "placeRef": "lodowiec-czalaadi",
+      "time": {
+        "precision": "day"
+      },
+      "durationMin": 180,
+      "durationMaxMin": 240,
+      "weather": "outdoor",
+      "activity": {
+        "difficulty": "łatwy"
+      },
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d3-muzeum-swanetii",
+      "dayRef": "d3",
+      "kind": "visit",
+      "title": "Muzeum Swanetii",
+      "placeRef": "muzeum-swanetii",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "afternoon"
+      },
+      "weather": "indoor",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d3-wieze",
+      "dayRef": "d3",
+      "kind": "visit",
+      "title": "Wieże obronne",
+      "placeRef": "wieze-mestia",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "afternoon"
+      },
+      "weather": "outdoor",
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d4-dojazd-uszguli",
+      "dayRef": "d4",
+      "kind": "transport",
+      "title": "Terenówką z kierowcą do Uszguli",
+      "leg": {
+        "mode": "hired_driver",
+        "durationMin": 120,
+        "durationMaxMin": 150,
+        "roundTrip": true,
+        "fromPlaceRef": "mestia",
+        "toPlaceRef": "uszguli",
+        "instructions": "Terenówka z kierowcą, ok. 2–2,5 h w jedną stronę."
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d4-uszguli",
+      "dayRef": "d4",
+      "kind": "visit",
+      "title": "Uszguli",
+      "description": "Cały dzień.",
+      "placeRef": "uszguli",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d4-szchara",
+      "dayRef": "d4",
+      "kind": "activity",
+      "title": "Spacer w stronę lodowca Szchara",
+      "placeRef": "lodowiec-szchara",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d5-dojscie-koruldi",
+      "dayRef": "d5",
+      "kind": "transport",
+      "title": "Pieszo z Mestii albo terenówką",
+      "leg": {
+        "mode": "hike",
+        "fromPlaceRef": "mestia",
+        "toPlaceRef": "jeziora-koruldi",
+        "instructions": "Pieszo z Mestii (trekking 6–8 h łącznie, ok. 1100 m w górę).",
+        "alternative": {
+          "instructions": "Terenówką na górę, pieszo w dół (wersja lżejsza)."
+        }
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d5-koruldi",
+      "dayRef": "d5",
+      "kind": "activity",
+      "title": "Jeziora Koruldi — główny trekking",
+      "description": "Pieszo z Mestii, 6–8 h, ok. 1100 m w górę.",
+      "placeRef": "jeziora-koruldi",
+      "time": {
+        "precision": "day"
+      },
+      "durationMin": 360,
+      "durationMaxMin": 480,
+      "weather": "outdoor",
+      "activity": {
+        "ascentM": 1100
+      },
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d5-koruldi-lzejsza",
+      "dayRef": "d5",
+      "kind": "activity",
+      "planStatus": "alternative",
+      "variantRefs": [
+        "v-koruldi-lzejsza"
+      ],
+      "replacesRefs": [
+        "d5-koruldi"
+      ],
+      "title": "Jeziora Koruldi — wersja lżejsza",
+      "description": "Terenówką na górę, pieszo w dół.",
+      "placeRef": "jeziora-koruldi",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d6-dojazd-mazeri",
+      "dayRef": "d6",
+      "kind": "transport",
+      "title": "Dojazd do Mazeri (wodospad Uszba)",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 60,
+        "fromPlaceRef": "mestia",
+        "toPlaceRef": "mazeri",
+        "instructions": "Ok. 1 h do Mazeri."
+      },
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-uszba"
+      ],
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d6-wodospad-uszba",
+      "dayRef": "d6",
+      "kind": "activity",
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-uszba"
+      ],
+      "title": "Wodospad Uszba",
+      "placeRef": "wodospad-uszba",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d6-dojazd-tetnuldi",
+      "dayRef": "d6",
+      "kind": "transport",
+      "title": "Dojazd do Tetnuldi",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 40,
+        "fromPlaceRef": "mestia",
+        "toPlaceRef": "tetnuldi",
+        "instructions": "Ok. 40 min do Tetnuldi."
+      },
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-tetnuldi"
+      ],
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d6-tetnuldi",
+      "dayRef": "d6",
+      "kind": "activity",
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-tetnuldi"
+      ],
+      "title": "Kolejka Tetnuldi",
+      "placeRef": "tetnuldi",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d6-kolacja",
+      "dayRef": "d6",
+      "kind": "meal",
+      "title": "Pożegnalna kolacja swańska (kubdari)",
+      "placeRef": "mestia",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "evening"
+      },
+      "sortKey": "0050"
+    },
+    {
+      "ref": "d7-mestia-zugdidi",
+      "dayRef": "d7",
+      "kind": "transport",
+      "title": "Mestia → Zugdidi",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 180,
+        "fromPlaceRef": "mestia",
+        "toPlaceRef": "zugdidi",
+        "instructions": "Mestia → Zugdidi, 3 h."
+      },
+      "placeRef": "mestia",
+      "time": {
+        "precision": "exact",
+        "start": "08:30"
+      },
+      "bookingRef": "minivan",
+      "notes": [
+        "Wyjazd o 8:30."
+      ],
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d7-zugdidi-martwili",
+      "dayRef": "d7",
+      "kind": "transport",
+      "title": "Zugdidi → Martwili",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 60,
+        "fromPlaceRef": "zugdidi",
+        "toPlaceRef": "kanion-martwili",
+        "instructions": "Zugdidi → Martwili, 1 h."
+      },
+      "bookingRef": "minivan",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d7-martwili",
+      "dayRef": "d7",
+      "kind": "activity",
+      "title": "Kanion Martwili z rejsem łódką",
+      "placeRef": "kanion-martwili",
+      "time": {
+        "precision": "approx",
+        "start": "12:30",
+        "end": "14:30"
+      },
+      "weather": "outdoor",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d7-martwili-szekwetili",
+      "dayRef": "d7",
+      "kind": "transport",
+      "title": "Martwili → Szekwetili",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 90,
+        "fromPlaceRef": "kanion-martwili",
+        "toPlaceRef": "szekwetili",
+        "instructions": "Martwili → Szekwetili, 1,5 h."
+      },
+      "bookingRef": "minivan",
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d7-zameldowanie",
+      "dayRef": "d7",
+      "kind": "lodging",
+      "title": "Zameldowanie nad morzem",
+      "placeRef": "szekwetili",
+      "time": {
+        "precision": "approx",
+        "start": "16:30"
+      },
+      "bookingRef": "vg-nocleg-morze",
+      "sortKey": "0050"
+    },
+    {
+      "ref": "d7-basen-plaza",
+      "dayRef": "d7",
+      "kind": "free",
+      "title": "Basen albo plaża",
+      "placeRef": "szekwetili",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "afternoon"
+      },
+      "sortKey": "0060"
+    },
+    {
+      "ref": "d8-basen-plaza",
+      "dayRef": "d8",
+      "kind": "free",
+      "title": "Basen i plaża",
+      "placeRef": "szekwetili",
+      "time": {
+        "precision": "day"
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d8-tsitsinatela",
+      "dayRef": "d8",
+      "kind": "activity",
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-tsitsinatela"
+      ],
+      "title": "Park rozrywki Tsitsinatela",
+      "placeRef": "tsitsinatela",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "afternoon"
+      },
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d8-park-dendrologiczny",
+      "dayRef": "d8",
+      "kind": "visit",
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-park-dendrologiczny"
+      ],
+      "title": "Park dendrologiczny",
+      "placeRef": "park-dendrologiczny",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "afternoon"
+      },
+      "weather": "outdoor",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d9-dojazd-poti",
+      "dayRef": "d9",
+      "kind": "transport",
+      "title": "Dojazd do Poti",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 20,
+        "durationMaxMin": 30,
+        "fromPlaceRef": "szekwetili",
+        "toPlaceRef": "poti",
+        "instructions": "Ok. 20–30 min do Poti."
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d9-kolchida",
+      "dayRef": "d9",
+      "kind": "activity",
+      "title": "Park Narodowy Kolchidy — rejs łodzią",
+      "description": "Rejs łodzią po jeziorze Paliastomi i rzece Pichori.",
+      "placeRef": "park-kolchidy",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d9-basen-plaza",
+      "dayRef": "d9",
+      "kind": "free",
+      "title": "Basen albo plaża",
+      "placeRef": "szekwetili",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "afternoon"
+      },
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d10-dojazd-adzaria",
+      "dayRef": "d10",
+      "kind": "transport",
+      "title": "Dojazd do Adżarii",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 60,
+        "durationMaxMin": 90,
+        "fromPlaceRef": "szekwetili",
+        "toPlaceRef": "ogrod-botaniczny-batumi",
+        "instructions": "Ok. 1–1,5 h. Bez wjazdu do centrum Batumi."
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d10-ogrod-botaniczny",
+      "dayRef": "d10",
+      "kind": "visit",
+      "title": "Ogród botaniczny (bez wjazdu do centrum Batumi)",
+      "placeRef": "ogrod-botaniczny-batumi",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d10-gonio",
+      "dayRef": "d10",
+      "kind": "visit",
+      "title": "Twierdza Gonio",
+      "placeRef": "twierdza-gonio",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d10-kwariati",
+      "dayRef": "d10",
+      "kind": "activity",
+      "title": "Nurkowanie z maską w Kwariati",
+      "placeRef": "kwariati",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d11-basen-plaza",
+      "dayRef": "d11",
+      "kind": "free",
+      "variantRefs": [
+        "v-d11-wolny"
+      ],
+      "title": "Basen i plaża",
+      "placeRef": "szekwetili",
+      "time": {
+        "precision": "day"
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d11-dojazd-rafting",
+      "dayRef": "d11",
+      "kind": "transport",
+      "title": "Dojazd na rafting",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 90,
+        "fromPlaceRef": "szekwetili",
+        "toPlaceRef": "rzeka-aczariscchali",
+        "instructions": "Ok. 1,5 h do raftingu."
+      },
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-d11-rafting"
+      ],
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d11-rafting",
+      "dayRef": "d11",
+      "kind": "activity",
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-d11-rafting"
+      ],
+      "priority": "optional",
+      "title": "Rafting na rzece Aczariscchali (dla chętnych)",
+      "placeRef": "rzeka-aczariscchali",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "notes": [
+        "Dla chętnych — dokument nie mówi, kto jedzie."
+      ],
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d11-machuncety",
+      "dayRef": "d11",
+      "kind": "visit",
+      "planStatus": "candidate",
+      "variantRefs": [
+        "v-d11-rafting"
+      ],
+      "priority": "optional",
+      "title": "Wodospad Machuncety (dla chętnych)",
+      "placeRef": "wodospad-machuncety",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "outdoor",
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d12-kapiel",
+      "dayRef": "d12",
+      "kind": "free",
+      "title": "Ostatnia kąpiel",
+      "placeRef": "szekwetili",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "morning"
+      },
+      "sortKey": "0010"
+    },
+    {
+      "ref": "d12-wymeldowanie",
+      "dayRef": "d12",
+      "kind": "lodging",
+      "title": "Wymeldowanie",
+      "placeRef": "szekwetili",
+      "time": {
+        "precision": "part_of_day",
+        "partOfDay": "morning"
+      },
+      "bookingRef": "vg-nocleg-morze",
+      "sortKey": "0020"
+    },
+    {
+      "ref": "d12-szekwetili-jaskinia",
+      "dayRef": "d12",
+      "kind": "transport",
+      "title": "Szekwetili → Jaskinia Prometeusza",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 90,
+        "fromPlaceRef": "szekwetili",
+        "toPlaceRef": "jaskinia-prometeusza",
+        "instructions": "Szekwetili → jaskinia, 1,5 h."
+      },
+      "placeRef": "szekwetili",
+      "time": {
+        "precision": "approx",
+        "start": "12:00"
+      },
+      "bookingRef": "minivan",
+      "notes": [
+        "Wyjazd ok. 12:00."
+      ],
+      "sortKey": "0030"
+    },
+    {
+      "ref": "d12-jaskinia",
+      "dayRef": "d12",
+      "kind": "visit",
+      "title": "Jaskinia Prometeusza",
+      "placeRef": "jaskinia-prometeusza",
+      "time": {
+        "precision": "day"
+      },
+      "weather": "indoor",
+      "sortKey": "0040"
+    },
+    {
+      "ref": "d12-jaskinia-kutaisi",
+      "dayRef": "d12",
+      "kind": "transport",
+      "title": "Jaskinia → Kutaisi",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 30,
+        "fromPlaceRef": "jaskinia-prometeusza",
+        "toPlaceRef": "kutaisi",
+        "instructions": "Jaskinia → Kutaisi, 30 min."
+      },
+      "bookingRef": "minivan",
+      "sortKey": "0050"
+    },
+    {
+      "ref": "d12-bagrati",
+      "dayRef": "d12",
+      "kind": "visit",
+      "title": "Katedra Bagrati",
+      "placeRef": "katedra-bagrati",
+      "time": {
+        "precision": "day"
+      },
+      "sortKey": "0060"
+    },
+    {
+      "ref": "d12-obiad",
+      "dayRef": "d12",
+      "kind": "meal",
+      "title": "Obiad w Kutaisi",
+      "placeRef": "kutaisi",
+      "time": {
+        "precision": "day"
+      },
+      "sortKey": "0070"
+    },
+    {
+      "ref": "d12-kutaisi-lotnisko",
+      "dayRef": "d12",
+      "kind": "transport",
+      "title": "Kutaisi → lotnisko",
+      "leg": {
+        "mode": "rental_car",
+        "durationMin": 25,
+        "fromPlaceRef": "kutaisi",
+        "toPlaceRef": "lotnisko-kutaisi",
+        "instructions": "Kutaisi → lotnisko, 25 min."
+      },
+      "bookingRef": "minivan",
+      "sortKey": "0080"
+    },
+    {
+      "ref": "d12-zwrot-auta",
+      "dayRef": "d12",
+      "kind": "errand",
+      "title": "Zwrot auta",
+      "placeRef": "lotnisko-kutaisi",
+      "time": {
+        "precision": "exact",
+        "start": "19:00"
+      },
+      "isFixed": true,
+      "bookingRef": "minivan",
+      "sortKey": "0090"
+    },
+    {
+      "ref": "d12-wylot",
+      "dayRef": "d12",
+      "kind": "transport",
+      "title": "Wylot Kutaisi 21:45 → Wrocław 23:30",
+      "leg": {
+        "mode": "flight",
+        "fromPlaceRef": "lotnisko-kutaisi",
+        "toPlaceRef": "lotnisko-wroclaw"
+      },
+      "placeRef": "lotnisko-kutaisi",
+      "time": {
+        "precision": "exact",
+        "start": "21:45"
+      },
+      "isFixed": true,
+      "bookingRef": "lot-powrot",
+      "sortKey": "0100"
+    },
+    {
+      "ref": "d12-przylot-wroclaw",
+      "dayRef": "d12",
+      "kind": "transport",
+      "title": "Przylot do Wrocławia",
+      "placeRef": "lotnisko-wroclaw",
+      "time": {
+        "precision": "exact",
+        "start": "23:30",
+        "tz": "Europe/Warsaw"
+      },
+      "isFixed": true,
+      "bookingRef": "lot-powrot",
+      "sortKey": "0110"
+    }
+  ],
+  "legs": [],
+  "variantGroups": [
+    {
+      "ref": "vg-nocleg-mestia",
+      "scope": "booking",
+      "title": "Noclegi w Mestii · 5–10.08 · 2 propozycje",
+      "conditionKind": "choice",
+      "rationale": "Rekomendacja: B&B Cottages (śniadanie).",
+      "comparison": {
+        "columns": [
+          "Cena 5 nocy",
+          "Domek",
+          "Łóżka",
+          "Łazienki",
+          "Ocena",
+          "Odwołanie",
+          "Płatność",
+          "Plusy",
+          "Minusy"
+        ],
+        "rows": [
+          {
+            "variantRef": "v-bb-cottages",
+            "values": [
+              "3 185 zł + śniadanie 46 zł/os./dzień (razem ok. 4 335 zł)",
+              "Willa z 2 sypialniami, 80 m², cała dla nas",
+              "1 podwójne + 3 pojedyncze + sofa",
+              "1",
+              "8,8 (59 opinii)",
+              "Bezpłatne do 4.08.2027",
+              "Tylko gotówka, przed przyjazdem",
+              "Śniadanie, osobne łóżka dla dzieci, sauna, grill",
+              "Jedna łazienka, ok. 1,5 km od centrum"
+            ]
+          },
+          {
+            "variantRef": "v-winterfell",
+            "values": [
+              "3 078 zł, bez śniadania",
+              "Domek z 2 sypialniami, 112–120 m², cały dla nas",
+              "Głównie podwójne + sofa (zależnie od domku)",
+              "2 (w domku 120 m²)",
+              "9,2 (282 opinie)",
+              "Bezpłatne tylko do 6.07.2027",
+              "Tylko gotówka, na miejscu",
+              "Najlepsze opinie, dużo miejsca, jacuzzi i sauna w kompleksie",
+              "Bez śniadania, na te daty ostatnie domki"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "ref": "vg-nocleg-morze",
+      "scope": "booking",
+      "title": "Noclegi nad morzem · 10–15.08 · 3 propozycje",
+      "conditionKind": "choice",
+      "rationale": "Rekomendacja: DeltaHotel (odkryty basen).",
+      "comparison": {
+        "columns": [
+          "Cena 5 nocy",
+          "Pokój",
+          "Łóżka",
+          "Basen",
+          "Śniadanie",
+          "Do plaży",
+          "Ocena",
+          "Odwołanie",
+          "Płatność",
+          "Plusy",
+          "Minusy"
+        ],
+        "rows": [
+          {
+            "variantRef": "v-deltahotel",
+            "values": [
+              "3 649 zł",
+              "Apartament z 2 sypialniami, 44 m²",
+              "3 pojedyncze + 1 podwójne",
+              "Odkryty",
+              "Bufet, w cenie",
+              "Kilka minut wg gości (Booking: 1,5 km)",
+              "9,0 (3 opinie)",
+              "Bezpłatne do 5.08.2027",
+              "Tylko gotówka, na miejscu",
+              "2 sypialnie, plac zabaw, wymeldowanie o dowolnej porze",
+              "Mało opinii, sprawdzić odległość na mapie"
+            ]
+          },
+          {
+            "variantRef": "v-majestic",
+            "values": [
+              "2 011 zł (ok. 2 870 zł za 2 pokoje)",
+              "Apartament dla 5 os., 32 m²",
+              "1 podwójne + rozkładana sofa",
+              "Odkryty, duży, do 23:00",
+              "Bufet, w cenie",
+              "300 m",
+              "8,7 (138 opinii), 4*",
+              "Bezpłatne do 7.08.2027",
+              "Na miejscu",
+              "Najtaniej, najlepsze opinie, restauracje obok",
+              "Poza odcinkiem Ureki–Szekwetili, piasek ze żwirem, ok. 2 h na lotnisko"
+            ]
+          },
+          {
+            "variantRef": "v-golden-fleece",
+            "values": [
+              "4 409 zł",
+              "2 pokoje trzyosobowe, po 22 m²",
+              "2 × 3 łóżka",
+              "Kryty",
+              "W cenie",
+              "100 m",
+              "8,4 (76 opinii)",
+              "Bezpłatne do 9.08.2027",
+              "Tylko karta, na miejscu",
+              "Przy samej plaży, chwalona kuchnia",
+              "Kryty basen, najdroższy"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "ref": "vg-koruldi",
+      "scope": "item",
+      "dayRef": "d5",
+      "title": "Jeziora Koruldi: pełny trekking albo wersja lżejsza",
+      "conditionKind": "wellbeing",
+      "conditionText": "Wersja lżejsza: terenówką na górę, pieszo w dół."
+    },
+    {
+      "ref": "vg-d6",
+      "scope": "block",
+      "dayRef": "d6",
+      "title": "Wodospad Uszba albo kolejka Tetnuldi",
+      "conditionKind": "choice"
+    },
+    {
+      "ref": "vg-d8",
+      "scope": "block",
+      "dayRef": "d8",
+      "title": "Po południu: park rozrywki Tsitsinatela albo park dendrologiczny",
+      "conditionKind": "choice"
+    },
+    {
+      "ref": "vg-d11",
+      "scope": "day",
+      "dayRef": "d11",
+      "title": "Dzień wolny albo rafting",
+      "conditionKind": "choice",
+      "conditionText": "Rafting na rzece Aczariscchali i wodospad Machuncety dla chętnych."
+    },
+    {
+      "ref": "vg-gory-pogoda",
+      "scope": "trip",
+      "title": "Kolejność dni w górach (6–9.08) według pogody",
+      "conditionKind": "weather",
+      "conditionText": "Dni w górach (6–9.08) zamieniać wg pogody."
+    }
+  ],
+  "variants": [
+    {
+      "ref": "v-bb-cottages",
+      "groupRef": "vg-nocleg-mestia",
+      "label": "B&B Cottages Mestia",
+      "recommended": true,
+      "summary": "Willa z 2 sypialniami, 80 m², cała dla nas.",
+      "pros": [
+        "Śniadanie",
+        "Osobne łóżka dla dzieci",
+        "Sauna",
+        "Grill"
+      ],
+      "cons": [
+        "Jedna łazienka",
+        "Ok. 1,5 km od centrum"
+      ],
+      "metrics": {
+        "cenaPln": 3185,
+        "cenaZeSniadaniemPln": 4335,
+        "ocena": 8.8,
+        "opinie": 59,
+        "lazienki": 1
+      }
+    },
+    {
+      "ref": "v-winterfell",
+      "groupRef": "vg-nocleg-mestia",
+      "label": "Winterfell Mestia",
+      "summary": "Domek z 2 sypialniami, 112–120 m², cały dla nas.",
+      "pros": [
+        "Najlepsze opinie",
+        "Dużo miejsca",
+        "Jacuzzi i sauna w kompleksie"
+      ],
+      "cons": [
+        "Bez śniadania",
+        "Na te daty ostatnie domki"
+      ],
+      "metrics": {
+        "cenaPln": 3078,
+        "ocena": 9.2,
+        "opinie": 282,
+        "lazienki": 2
+      }
+    },
+    {
+      "ref": "v-deltahotel",
+      "groupRef": "vg-nocleg-morze",
+      "label": "DeltaHotel · Ureki",
+      "recommended": true,
+      "summary": "Apartament z 2 sypialniami, 44 m², basen odkryty.",
+      "pros": [
+        "2 sypialnie",
+        "Plac zabaw",
+        "Wymeldowanie o dowolnej porze"
+      ],
+      "cons": [
+        "Mało opinii",
+        "Sprawdzić odległość na mapie"
+      ],
+      "metrics": {
+        "cenaPln": 3649,
+        "ocena": 9,
+        "opinie": 3
+      }
+    },
+    {
+      "ref": "v-majestic",
+      "groupRef": "vg-nocleg-morze",
+      "label": "Majestic · Kobuleti",
+      "summary": "Apartament dla 5 os., 32 m², basen odkryty, duży, do 23:00.",
+      "pros": [
+        "Najtaniej",
+        "Najlepsze opinie",
+        "Restauracje obok"
+      ],
+      "cons": [
+        "Poza odcinkiem Ureki–Szekwetili",
+        "Piasek ze żwirem",
+        "Ok. 2 h na lotnisko"
+      ],
+      "metrics": {
+        "cenaPln": 2011,
+        "cena2PokojePln": 2870,
+        "ocena": 8.7,
+        "opinie": 138,
+        "gwiazdki": 4
+      }
+    },
+    {
+      "ref": "v-golden-fleece",
+      "groupRef": "vg-nocleg-morze",
+      "label": "Golden Fleece · Ureki",
+      "summary": "2 pokoje trzyosobowe, po 22 m², basen kryty.",
+      "pros": [
+        "Przy samej plaży",
+        "Chwalona kuchnia"
+      ],
+      "cons": [
+        "Kryty basen",
+        "Najdroższy"
+      ],
+      "metrics": {
+        "cenaPln": 4409,
+        "ocena": 8.4,
+        "opinie": 76
+      }
+    },
+    {
+      "ref": "v-koruldi-pelna",
+      "groupRef": "vg-koruldi",
+      "label": "Pieszo z Mestii (6–8 h, ok. 1100 m w górę)",
+      "recommended": true
+    },
+    {
+      "ref": "v-koruldi-lzejsza",
+      "groupRef": "vg-koruldi",
+      "label": "Wersja lżejsza: terenówką na górę, pieszo w dół",
+      "excludesRefs": [
+        "d5-koruldi"
+      ]
+    },
+    {
+      "ref": "v-uszba",
+      "groupRef": "vg-d6",
+      "label": "Wodospad Uszba",
+      "summary": "Ok. 1 h autem do Mazeri."
+    },
+    {
+      "ref": "v-tetnuldi",
+      "groupRef": "vg-d6",
+      "label": "Kolejka Tetnuldi",
+      "summary": "Ok. 40 min autem do Tetnuldi."
+    },
+    {
+      "ref": "v-tsitsinatela",
+      "groupRef": "vg-d8",
+      "label": "Park rozrywki Tsitsinatela"
+    },
+    {
+      "ref": "v-park-dendrologiczny",
+      "groupRef": "vg-d8",
+      "label": "Park dendrologiczny"
+    },
+    {
+      "ref": "v-d11-wolny",
+      "groupRef": "vg-d11",
+      "label": "Dzień wolny: basen i plaża"
+    },
+    {
+      "ref": "v-d11-rafting",
+      "groupRef": "vg-d11",
+      "label": "Rafting na rzece Aczariscchali i wodospad Machuncety (dla chętnych)",
+      "summary": "Ok. 1,5 h do raftingu."
+    }
+  ],
+  "constraints": [
+    {
+      "ref": "c-poniedzialki",
+      "kind": "other",
+      "dayRef": "d6",
+      "severity": "soft",
+      "reason": "W poniedziałki jaskinie, kaniony i muzea zwykle zamknięte (9.08 to poniedziałek)."
+    },
+    {
+      "ref": "c-bez-batumi",
+      "kind": "other",
+      "dayRef": "d10",
+      "itemRef": "d10-ogrod-botaniczny",
+      "severity": "soft",
+      "reason": "Bez wjazdu do centrum Batumi."
+    },
+    {
+      "ref": "c-zameldowanie-mestia",
+      "kind": "other",
+      "dayRef": "d2",
+      "itemRef": "d2-zameldowanie",
+      "time": "15:00",
+      "reason": "Zameldowanie w Mestii od 15:00."
+    },
+    {
+      "ref": "c-odbior-auta",
+      "kind": "arrive_before",
+      "dayRef": "d1",
+      "bookingRef": "minivan",
+      "time": "21:30",
+      "severity": "soft",
+      "reason": "Minivan z odbiorem na lotnisku ok. 21:30 (w planie dnia: odbiór ok. 21:45)."
+    },
+    {
+      "ref": "c-zwrot-auta",
+      "kind": "arrive_before",
+      "dayRef": "d12",
+      "itemRef": "d12-zwrot-auta",
+      "bookingRef": "minivan",
+      "time": "19:00",
+      "reason": "Zwrot auta 19:00, wylot 21:45."
+    }
+  ],
+  "bookings": [
+    {
+      "ref": "lot-tam",
+      "kind": "flight",
+      "status": "unknown",
+      "provider": "Wizz Air",
+      "title": "Lot Wrocław → Kutaisi",
+      "start": {
+        "date": "2027-08-04",
+        "time": "15:40",
+        "tz": "Europe/Warsaw"
+      },
+      "end": {
+        "date": "2027-08-04",
+        "time": "21:10",
+        "tz": "Asia/Tbilisi"
+      },
+      "startPlaceRef": "lotnisko-wroclaw",
+      "endPlaceRef": "lotnisko-kutaisi",
+      "flight": {
+        "fromAirport": "Wrocław",
+        "toAirport": "Kutaisi"
+      },
+      "notes": [
+        "Status rezerwacji nie wynika z dokumentu.",
+        "Godziny lokalne, Gruzja = Polska +2 h."
+      ]
+    },
+    {
+      "ref": "lot-powrot",
+      "kind": "flight",
+      "status": "unknown",
+      "provider": "Wizz Air",
+      "title": "Lot Kutaisi → Wrocław",
+      "start": {
+        "date": "2027-08-15",
+        "time": "21:45",
+        "tz": "Asia/Tbilisi"
+      },
+      "end": {
+        "date": "2027-08-15",
+        "time": "23:30",
+        "tz": "Europe/Warsaw"
+      },
+      "startPlaceRef": "lotnisko-kutaisi",
+      "endPlaceRef": "lotnisko-wroclaw",
+      "flight": {
+        "fromAirport": "Kutaisi",
+        "toAirport": "Wrocław"
+      },
+      "notes": [
+        "Status rezerwacji nie wynika z dokumentu."
+      ]
+    },
+    {
+      "ref": "minivan",
+      "kind": "car_rental",
+      "status": "to_book",
+      "title": "Minivan 7-os.",
+      "start": {
+        "date": "2027-08-04",
+        "time": "21:30",
+        "precision": "approx",
+        "tz": "Asia/Tbilisi"
+      },
+      "end": {
+        "date": "2027-08-15",
+        "time": "19:00",
+        "tz": "Asia/Tbilisi"
+      },
+      "startPlaceRef": "lotnisko-kutaisi",
+      "endPlaceRef": "lotnisko-kutaisi",
+      "car": {
+        "seats": 7
+      },
+      "notes": [
+        "Do ustalenia: minivan 7-os. z odbiorem na lotnisku ok. 21:30.",
+        "Plan dnia 4.08 podaje odbiór ok. 21:45, a zwrot 15.08 o 19:00."
+      ]
+    },
+    {
+      "ref": "nocleg-bb-cottages",
+      "kind": "lodging",
+      "status": "candidate",
+      "variantGroupRef": "vg-nocleg-mestia",
+      "variantRef": "v-bb-cottages",
+      "provider": "Booking.com",
+      "title": "B&B Cottages Mestia — willa z 2 sypialniami, 5 nocy",
+      "startPlaceRef": "bb-cottages-mestia",
+      "start": {
+        "date": "2027-08-05",
+        "tz": "Asia/Tbilisi"
+      },
+      "end": {
+        "date": "2027-08-10",
+        "tz": "Asia/Tbilisi"
+      },
+      "refundable": true,
+      "party": {
+        "adults": 5,
+        "children": 0,
+        "note": "Ceny dla 5 dorosłych za 5 nocy (Booking.com)."
+      },
+      "recommended": true,
+      "addons": [
+        {
+          "title": "Śniadanie",
+          "kind": "other",
+          "price": {
+            "currency": "PLN",
+            "basis": "per_person",
+            "minMinor": 4600,
+            "maxMinor": 4600,
+            "checkedAt": "2026-10-28",
+            "note": "46 zł/os./dzień; dla 5 osób × 5 dni razem 1 150 zł (cena z noclegiem ok. 4 335 zł)."
+          }
+        }
+      ],
+      "checkInFrom": "15:00",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 318500,
+        "maxMinor": 318500,
+        "checkedAt": "2026-10-28",
+        "note": "+ śniadanie 46 zł/os./dzień (razem ok. 4 335 zł). Cena dla 5 dorosłych za 5 nocy, może się zmienić."
+      },
+      "paymentMethod": "cash",
+      "payWhen": "before_arrival",
+      "freeCancellationUntil": "2027-08-04",
+      "lodging": {
+        "rooms": 2,
+        "beds": "1 podwójne + 3 pojedyncze + sofa",
+        "bathrooms": 1,
+        "areaM2": 80,
+        "breakfast": "Dopłata 46 zł/os./dzień",
+        "amenities": [
+          "sauna",
+          "grill",
+          "osobne łóżka dla dzieci",
+          "cała willa dla nas"
+        ],
+        "distanceNote": "Ok. 1,5 km od centrum"
+      },
+      "pros": [
+        "Śniadanie",
+        "Osobne łóżka dla dzieci",
+        "Sauna",
+        "Grill"
+      ],
+      "cons": [
+        "Jedna łazienka",
+        "Ok. 1,5 km od centrum"
+      ],
+      "rating": {
+        "score": 8.8,
+        "scale": 10,
+        "count": 59
+      },
+      "notes": [
+        "Wymeldowanie 10.08 — godzina nie podana.",
+        "Płatność: tylko gotówka, przed przyjazdem.",
+        "Zameldowanie od 15:00 — z planu dnia 5.08."
+      ]
+    },
+    {
+      "ref": "nocleg-winterfell",
+      "kind": "lodging",
+      "status": "candidate",
+      "variantGroupRef": "vg-nocleg-mestia",
+      "variantRef": "v-winterfell",
+      "provider": "Booking.com",
+      "title": "Winterfell Mestia — domek z 2 sypialniami, 5 nocy",
+      "startPlaceRef": "winterfell-mestia",
+      "start": {
+        "date": "2027-08-05",
+        "tz": "Asia/Tbilisi"
+      },
+      "end": {
+        "date": "2027-08-10",
+        "tz": "Asia/Tbilisi"
+      },
+      "refundable": true,
+      "party": {
+        "adults": 5,
+        "children": 0,
+        "note": "Ceny dla 5 dorosłych za 5 nocy (Booking.com)."
+      },
+      "checkInFrom": "15:00",
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 307800,
+        "maxMinor": 307800,
+        "checkedAt": "2026-10-28",
+        "note": "Bez śniadania. Cena dla 5 dorosłych za 5 nocy, może się zmienić."
+      },
+      "paymentMethod": "cash",
+      "payWhen": "on_site",
+      "freeCancellationUntil": "2027-07-06",
+      "lodging": {
+        "rooms": 2,
+        "beds": "Głównie podwójne + sofa (zależnie od domku)",
+        "bathrooms": 2,
+        "areaM2": 112,
+        "breakfast": "Brak",
+        "amenities": [
+          "jacuzzi w kompleksie",
+          "sauna w kompleksie",
+          "cały domek dla nas"
+        ]
+      },
+      "pros": [
+        "Najlepsze opinie",
+        "Dużo miejsca",
+        "Jacuzzi i sauna w kompleksie"
+      ],
+      "cons": [
+        "Bez śniadania",
+        "Na te daty ostatnie domki"
+      ],
+      "rating": {
+        "score": 9.2,
+        "scale": 10,
+        "count": 282
+      },
+      "notes": [
+        "Wymeldowanie 10.08 — godzina nie podana.",
+        "Powierzchnia 112–120 m² zależnie od domku; 2 łazienki tylko w domku 120 m².",
+        "Bezpłatne odwołanie tylko do 6.07.2027.",
+        "Zameldowanie od 15:00 — z planu dnia 5.08."
+      ]
+    },
+    {
+      "ref": "nocleg-deltahotel",
+      "kind": "lodging",
+      "status": "candidate",
+      "variantGroupRef": "vg-nocleg-morze",
+      "variantRef": "v-deltahotel",
+      "provider": "Booking.com",
+      "title": "DeltaHotel · Ureki — apartament z 2 sypialniami, 5 nocy",
+      "startPlaceRef": "deltahotel-ureki",
+      "start": {
+        "date": "2027-08-10",
+        "tz": "Asia/Tbilisi"
+      },
+      "end": {
+        "date": "2027-08-15",
+        "tz": "Asia/Tbilisi"
+      },
+      "refundable": true,
+      "party": {
+        "adults": 5,
+        "children": 0,
+        "note": "Ceny dla 5 dorosłych za 5 nocy (Booking.com)."
+      },
+      "recommended": true,
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 364900,
+        "maxMinor": 364900,
+        "checkedAt": "2026-10-28",
+        "note": "Cena dla 5 dorosłych za 5 nocy, może się zmienić."
+      },
+      "paymentMethod": "cash",
+      "payWhen": "on_site",
+      "freeCancellationUntil": "2027-08-05",
+      "lodging": {
+        "rooms": 2,
+        "beds": "3 pojedyncze + 1 podwójne",
+        "areaM2": 44,
+        "breakfast": "Bufet, w cenie",
+        "amenities": [
+          "basen odkryty",
+          "plac zabaw",
+          "wymeldowanie o dowolnej porze"
+        ],
+        "distanceNote": "Do plaży kilka minut wg gości (Booking: 1,5 km)"
+      },
+      "includes": [
+        "śniadanie (bufet)"
+      ],
+      "pros": [
+        "2 sypialnie",
+        "Plac zabaw",
+        "Wymeldowanie o dowolnej porze"
+      ],
+      "cons": [
+        "Mało opinii",
+        "Sprawdzić odległość na mapie"
+      ],
+      "rating": {
+        "score": 9,
+        "scale": 10,
+        "count": 3
+      },
+      "notes": [
+        "Planowane zameldowanie ok. 16:30 (z planu dnia 10.08); godzina z oferty nie podana."
+      ]
+    },
+    {
+      "ref": "nocleg-majestic",
+      "kind": "lodging",
+      "status": "candidate",
+      "variantGroupRef": "vg-nocleg-morze",
+      "variantRef": "v-majestic",
+      "provider": "Booking.com",
+      "title": "Majestic · Kobuleti — apartament dla 5 os., 5 nocy",
+      "startPlaceRef": "majestic-kobuleti",
+      "start": {
+        "date": "2027-08-10",
+        "tz": "Asia/Tbilisi"
+      },
+      "end": {
+        "date": "2027-08-15",
+        "tz": "Asia/Tbilisi"
+      },
+      "refundable": true,
+      "party": {
+        "adults": 5,
+        "children": 0,
+        "note": "Ceny dla 5 dorosłych za 5 nocy (Booking.com)."
+      },
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 201100,
+        "maxMinor": 201100,
+        "checkedAt": "2026-10-28",
+        "note": "Ok. 2 870 zł za 2 pokoje. Cena dla 5 dorosłych za 5 nocy, może się zmienić."
+      },
+      "payWhen": "on_site",
+      "freeCancellationUntil": "2027-08-07",
+      "lodging": {
+        "beds": "1 podwójne + rozkładana sofa",
+        "areaM2": 32,
+        "breakfast": "Bufet, w cenie",
+        "amenities": [
+          "basen odkryty, duży, do 23:00",
+          "hotel 4*",
+          "restauracje obok"
+        ],
+        "distanceNote": "300 m do plaży"
+      },
+      "includes": [
+        "śniadanie (bufet)"
+      ],
+      "pros": [
+        "Najtaniej",
+        "Najlepsze opinie",
+        "Restauracje obok"
+      ],
+      "cons": [
+        "Poza odcinkiem Ureki–Szekwetili",
+        "Piasek ze żwirem",
+        "Ok. 2 h na lotnisko"
+      ],
+      "rating": {
+        "score": 8.7,
+        "scale": 10,
+        "count": 138
+      },
+      "notes": [
+        "Hotel 4*.",
+        "Płatność „na miejscu” — metoda nie podana."
+      ]
+    },
+    {
+      "ref": "nocleg-golden-fleece",
+      "kind": "lodging",
+      "status": "candidate",
+      "variantGroupRef": "vg-nocleg-morze",
+      "variantRef": "v-golden-fleece",
+      "provider": "Booking.com",
+      "title": "Golden Fleece · Ureki — 2 pokoje trzyosobowe, 5 nocy",
+      "startPlaceRef": "golden-fleece-ureki",
+      "start": {
+        "date": "2027-08-10",
+        "tz": "Asia/Tbilisi"
+      },
+      "end": {
+        "date": "2027-08-15",
+        "tz": "Asia/Tbilisi"
+      },
+      "refundable": true,
+      "party": {
+        "adults": 5,
+        "children": 0,
+        "note": "Ceny dla 5 dorosłych za 5 nocy (Booking.com)."
+      },
+      "price": {
+        "currency": "PLN",
+        "basis": "per_group",
+        "minMinor": 440900,
+        "maxMinor": 440900,
+        "checkedAt": "2026-10-28",
+        "note": "Cena dla 5 dorosłych za 5 nocy, może się zmienić."
+      },
+      "paymentMethod": "card",
+      "payWhen": "on_site",
+      "freeCancellationUntil": "2027-08-09",
+      "lodging": {
+        "rooms": 2,
+        "beds": "2 × 3 łóżka",
+        "breakfast": "W cenie",
+        "amenities": [
+          "basen kryty"
+        ],
+        "distanceNote": "100 m do plaży"
+      },
+      "includes": [
+        "śniadanie"
+      ],
+      "pros": [
+        "Przy samej plaży",
+        "Chwalona kuchnia"
+      ],
+      "cons": [
+        "Kryty basen",
+        "Najdroższy"
+      ],
+      "rating": {
+        "score": 8.4,
+        "scale": 10,
+        "count": 76
+      },
+      "notes": [
+        "2 pokoje po 22 m².",
+        "Płatność: tylko karta, na miejscu."
+      ]
+    }
+  ],
+  "contacts": [],
+  "budgetLines": [],
+  "tasks": [
+    {
+      "ref": "t-apartament-morze",
+      "kind": "todo",
+      "title": "Zarezerwować apartament z basenem w Szekwetili",
+      "body": "Rezerwować zimą (szczyt sezonu).",
+      "variantGroupRef": "vg-nocleg-morze",
+      "priority": "high"
+    },
+    {
+      "ref": "t-minivan",
+      "kind": "todo",
+      "title": "Minivan 7-os. z odbiorem na lotnisku ok. 21:30",
+      "bookingRef": "minivan",
+      "due": {
+        "kind": "before_booking",
+        "bookingRef": "minivan"
+      }
+    },
+    {
+      "ref": "t-poniedzialki",
+      "kind": "question",
+      "title": "W poniedziałki jaskinie, kaniony i muzea zwykle zamknięte",
+      "body": "Sprawdzić plan poniedziałku 9.08."
+    },
+    {
+      "ref": "t-gory-pogoda",
+      "kind": "decision",
+      "title": "Dni w górach (6–9.08) zamieniać wg pogody",
+      "variantGroupRef": "vg-gory-pogoda",
+      "due": {
+        "kind": "on_trip",
+        "dayRef": "d3"
+      }
+    },
+    {
+      "ref": "t-delta-odleglosc",
+      "kind": "question",
+      "title": "DeltaHotel: sprawdzić odległość do plaży na mapie",
+      "body": "Kilka minut wg gości, Booking podaje 1,5 km.",
+      "bookingRef": "nocleg-deltahotel"
+    }
+  ],
+  "packing": [],
+  "notes": [
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "other",
+      "title": "Noclegi",
+      "body": "Noclegi: 1 (Zugdidi) + 5 (Mestia) + 5 (Szekwetili) = 11 nocy."
+    },
+    {
+      "scope": "trip",
+      "kind": "info",
+      "topic": "time",
+      "title": "Strefy czasowe",
+      "body": "Loty Wizz Air: śr 4.08 Wrocław 15:40 → Kutaisi 21:10; nd 15.08 Kutaisi 21:45 → Wrocław 23:30 (godziny lokalne, Gruzja = Polska +2 h)."
+    },
+    {
+      "scope": "trip",
+      "kind": "tip",
+      "topic": "weather",
+      "title": "Dni w górach",
+      "body": "Dni w górach (6–9.08) zamieniać wg pogody."
+    },
+    {
+      "scope": "trip",
+      "kind": "warning",
+      "topic": "time",
+      "title": "Poniedziałki",
+      "body": "W poniedziałki jaskinie, kaniony i muzea zwykle zamknięte."
+    },
+    {
+      "scope": "variant_group",
+      "targetRef": "vg-nocleg-morze",
+      "kind": "warning",
+      "topic": "other",
+      "body": "Apartament z basenem w Szekwetili rezerwować zimą (szczyt sezonu)."
+    },
+    {
+      "scope": "variant_group",
+      "targetRef": "vg-nocleg-mestia",
+      "kind": "rationale",
+      "body": "Rekomendacja: B&B Cottages (śniadanie)."
+    },
+    {
+      "scope": "variant_group",
+      "targetRef": "vg-nocleg-morze",
+      "kind": "rationale",
+      "body": "Rekomendacja: DeltaHotel (odkryty basen)."
+    }
+  ],
+  "sources": [
+    {
+      "ref": "src-booking",
+      "title": "Booking.com",
+      "checkedAt": "2026-10-28",
+      "note": "Ceny dla 5 dorosłych za 5 nocy, Booking.com 28.10.2026, mogą się zmienić.",
+      "appliesToRefs": [
+        "nocleg-bb-cottages",
+        "nocleg-winterfell",
+        "nocleg-deltahotel",
+        "nocleg-majestic",
+        "nocleg-golden-fleece"
+      ]
+    }
+  ],
+  "tracks": []
+}

@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "tools/*"
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
@@ -12,7 +13,8 @@
     "check": "npm run typecheck && npm run lint && npm run test",
     "web": "npm run dev --workspace apps/web",
     "mobile": "npm run start --workspace apps/mobile",
-    "supabase": "npx --yes supabase@2.122.0"
+    "supabase": "npx --yes supabase@2.122.0",
+    "import-plan": "npm run import --workspace tools/import-plan --"
   },
   "engines": {
     "node": ">=22"
