@@ -1,28 +1,44 @@
-import { TripBrief } from "@expeditionplan/core";
+import Link from "next/link";
+import { Suspense } from "react";
 
-/**
- * Strona zastępcza z Etapu 0. Sprawdza tylko, że web widzi wspólny pakiet `@expeditionplan/core`
- * z monorepo — kreator i edytor planu przyjdą w MVP-2 i MVP-3.
- */
-const check = TripBrief.safeParse({
-  title: "Test",
-  goal: "Sprawdzić, że pakiet core działa na webie",
-  location: { kind: "city", countries: ["PL"], places: ["Wrocław"] },
-  dates: { kind: "fixed", start: "2026-11-01", end: "2026-11-02" },
-  profiles: ["sightseeing"],
-  travelers: [{ name: "Ala" }],
-  transport: ["walk"],
-  budget: { level: "low", currency: "PLN" },
-});
+import { Loading, Shell } from "@/components/shell";
+import { requireUser } from "@/lib/auth";
+import { ROLE, tripDates } from "@/lib/labels";
 
+/** Lista moich wyjazdów z moją rolą (widok `my_trips`). */
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-4 px-4 py-16">
-      <h1 className="text-3xl font-semibold tracking-tight">ExpeditionPlan</h1>
-      <p className="text-lg text-zinc-600 dark:text-zinc-400">Planner Hub</p>
-      <p className="rounded-lg bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-900">
-        Pakiet @expeditionplan/core: {check.success ? "działa" : "błąd walidacji"}
-      </p>
-    </main>
+    <Shell>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Wyjazdy</h1>
+        <Link href="/trips/new" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
+          Nowy wyjazd
+        </Link>
+      </div>
+      <Suspense fallback={<Loading />}>
+        <TripList />
+      </Suspense>
+    </Shell>
+  );
+}
+
+async function TripList() {
+  const { supabase } = await requireUser("/");
+  const { data, error } = await supabase.from("my_trips").select("*").order("start_date");
+  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (data.length === 0) return <p className="text-zinc-600 dark:text-zinc-400">Nie masz jeszcze wyjazdów.</p>;
+  return (
+    <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
+      {data.map((trip) => (
+        <li key={trip.id}>
+          <Link href={`/trips/${trip.id}`} className="flex items-baseline justify-between gap-4 py-3 hover:opacity-80">
+            <span className="font-medium">{trip.title}</span>
+            <span className="text-right text-sm text-zinc-500">
+              {tripDates(trip.start_date!, trip.end_date!)} · {ROLE[trip.role!]}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }

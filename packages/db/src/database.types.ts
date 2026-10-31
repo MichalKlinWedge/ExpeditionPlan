@@ -21,6 +21,12 @@ export type Database = {
       foreignKeyName: "activity_log_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "activity_log_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -47,6 +53,12 @@ isOneToOne: false
       foreignKeyName: "ai_messages_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ai_messages_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -68,6 +80,12 @@ isOneToOne: false
       columns: ["parent_run_id"]
 isOneToOne: false
       referencedRelation: "ai_runs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ai_runs_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "ai_runs_trip_id_fkey"
@@ -100,6 +118,12 @@ isOneToOne: false
       columns: ["place_id"]
 isOneToOne: false
       referencedRelation: "places"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "audio_guides_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "audio_guides_trip_id_fkey"
@@ -138,6 +162,12 @@ isOneToOne: false
       columns: ["start_place_id"]
 isOneToOne: false
       referencedRelation: "places"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bookings_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "bookings_trip_id_fkey"
@@ -187,6 +217,12 @@ isOneToOne: false
       foreignKeyName: "budget_lines_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "budget_lines_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -225,6 +261,12 @@ isOneToOne: false
       foreignKeyName: "constraints_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "constraints_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -246,6 +288,12 @@ isOneToOne: false
       columns: ["booking_id"]
 isOneToOne: false
       referencedRelation: "bookings"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "contacts_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "contacts_trip_id_fkey"
@@ -289,6 +337,12 @@ isOneToOne: false
       foreignKeyName: "days_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "days_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -321,6 +375,12 @@ isOneToOne: false
       foreignKeyName: "documents_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documents_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -348,6 +408,12 @@ isOneToOne: false
       columns: ["traveler_id"]
 isOneToOne: false
       referencedRelation: "travelers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "expense_splits_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "expense_splits_trip_id_fkey"
@@ -398,6 +464,12 @@ isOneToOne: false
       columns: ["receipt_document_id"]
 isOneToOne: false
       referencedRelation: "documents"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "expenses_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "expenses_trip_id_fkey"
@@ -459,6 +531,12 @@ isOneToOne: false
       foreignKeyName: "items_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "items_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -509,6 +587,12 @@ isOneToOne: false
       foreignKeyName: "legs_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "legs_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -526,6 +610,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "notes_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "notes_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
@@ -561,6 +651,12 @@ isOneToOne: false
       foreignKeyName: "packing_checks_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "packing_checks_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -587,6 +683,12 @@ isOneToOne: false
       foreignKeyName: "packing_items_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "packing_items_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -607,6 +709,12 @@ isOneToOne: false
       foreignKeyName: "places_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "places_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -624,6 +732,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "plan_snapshots_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "plan_snapshots_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
@@ -661,6 +775,12 @@ isOneToOne: false
       foreignKeyName: "public_shares_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: true
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "public_shares_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: true
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -688,6 +808,12 @@ isOneToOne: false
       columns: ["item_id"]
 isOneToOne: false
       referencedRelation: "items"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_events_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "schedule_events_trip_id_fkey"
@@ -725,6 +851,12 @@ isOneToOne: false
       foreignKeyName: "settlements_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "settlements_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -742,6 +874,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "sources_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "sources_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
@@ -777,6 +915,12 @@ isOneToOne: false
       foreignKeyName: "tasks_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     },{
@@ -800,6 +944,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "tracks_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "tracks_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
@@ -829,6 +979,12 @@ isOneToOne: false
       foreignKeyName: "travelers_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "travelers_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -846,6 +1002,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "trip_brief_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: true
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "trip_brief_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: true
@@ -869,6 +1031,12 @@ isOneToOne: true
       foreignKeyName: "trip_invites_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trip_invites_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -886,6 +1054,18 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "trip_members_profile_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trip_members_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "trip_members_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
@@ -935,6 +1115,12 @@ isOneToOne: false
       foreignKeyName: "variant_groups_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "variant_groups_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -956,6 +1142,12 @@ isOneToOne: false
       columns: ["group_id"]
 isOneToOne: false
       referencedRelation: "variant_groups"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "variants_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "variants_trip_id_fkey"
@@ -993,6 +1185,12 @@ isOneToOne: false
       foreignKeyName: "vehicles_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "vehicles_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -1019,6 +1217,12 @@ isOneToOne: false
       foreignKeyName: "weather_snapshots_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "weather_snapshots_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
       referencedRelation: "trips"
       referencedColumns: ["id"]
     }
@@ -1026,7 +1230,15 @@ isOneToOne: false
                 }
           }
           Views: {
-            [_ in never]: never
+            "my_trips": {
+                  Row: {
+                    "base_currency": string,"can_add_expenses": boolean,"end_date": string,"id": string,"primary_tz": string,"role": string,"start_date": string,"status": string,"subtitle": string | null,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                }
           }
           Functions: {
             "accept_invite":

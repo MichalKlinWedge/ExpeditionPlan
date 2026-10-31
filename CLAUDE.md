@@ -20,7 +20,8 @@ npm install                 # root; npm workspaces (apps/*, packages/*, tools/*)
 npm run check               # typecheck + lint + test in every workspace
 npm run typecheck           # web runs `next typegen` first (LayoutProps etc. are generated)
 npm test                    # vitest in packages/*
-npm run web                 # next dev
+npm run web                 # next dev against the cloud project (root .env.local → apps/*/.env.local via scripts/sync-env.mjs)
+npm run web:local           # next dev against LOCAL Supabase (magic links land in Mailpit http://127.0.0.1:54324)
 npm run mobile              # expo start (needs a development build, not Expo Go)
 npm run ota --workspace apps/mobile   # OTA update (JS only) to the `preview` channel; the app checks on start/foreground and offers a restart. Native changes (new module, app.json plugins/permissions) need a new APK: `npx eas-cli@latest build --platform android --profile preview`
 npm run supabase -- start   # local Supabase via pinned CLI (needs Docker)
