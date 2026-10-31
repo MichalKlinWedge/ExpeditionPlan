@@ -100,6 +100,8 @@ Zakres MVP = wszystkie punkty **M** ze specyfikacji. Schemat bazy obejmuje od ra
 - Etap 2: pula, harmonogram, warianty w dniu, ograniczenia, priorytety i audyt zapasu → podgląd draftu (dni + pula + mapa) → akceptacja → zapis.
 - „Przelicz dzień z poleceniem” (uproszczony Etap 3: regeneracja jednego dnia z zachowaniem punktów `user_locked`).
 
+**Stan (31.10.2026):** część bez AI — kreator briefu na webie (`/trips/[id]/brief`, pięć kroków, zapis do `trip_brief` przez `TripBrief`) i pełny parser OSM `opening_hours` w silniku (`engine/opening-hours.ts`: dni, sezony, daty, przerwy, przez północ, PH, słońce; zapis OSM daje twarde ostrzeżenie „zamknięte”, opis spoza OSM — miękkie). Czeka na D8: Edge Functions AI.
+
 **Kryterium odbioru:** z formularza do zaakceptowanego planu 4-dniowego w < 3 min, z mapą, godzinami, pulą i audytem zapasu każdego dnia, bez ręcznego poprawiania JSON-a. Dla briefu Maroka AI proponuje co najmniej dwa układy nocy z metrykami.
 
 ### MVP-3 — Edytor planu, rezerwacje, budżet, zadania (web) (≈ 7–10 dni)

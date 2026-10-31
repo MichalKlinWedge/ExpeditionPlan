@@ -1,6 +1,7 @@
 import type { TripDocument } from '../schemas/trip-document.ts';
 import { dstChange, instantToZoned, MINUTE, minutesOfDay, zonedToInstant } from './time.ts';
 import { moonIllumination, type SunTimes, sunTimes } from './sun.ts';
+import { type DayOpening, formatInterval, minutesOutside, type OpeningContext, openingOn, parseOpeningHours } from './opening-hours.ts';
 
 /**
  * Silnik harmonogramu dnia (SPECYFIKACJA §7). Liczy godziny punktów z kolejności, czasów trwania,
@@ -30,6 +31,8 @@ export type ScheduleOptions = {
   skipRefs?: string[];
   /** Współrzędne dla słońca, gdy baza dnia ich nie ma. */
   coordinates?: { lat: number; lng: number };
+  /** Czy dzień jest świętem w kraju celu (Nager.Date) — dla `PH` w godzinach otwarcia. Brak = nie wiadomo. */
+  publicHoliday?: boolean;
 };
 
 export type ScheduledItem = {
@@ -171,18 +174,19 @@ function durationOf(item: Item, scenario: Scenario): number {
 }
 
 /**
- * „09:00–19:00” → [540, 1140]; „12:00–01:00” (przez północ) → [720, 1500]. Z zapisu OSM z dniami
- * tygodnia i sezonami („Mo-Sa 09:00-18:00; Su 10:30-18:00”) bierze pierwszy przedział i oznacza
- * wynik jako przybliżony — pełny parser `opening_hours` przychodzi w MVP-2.
+ * Godziny otwarcia miejsca w dniu planu. Składnia OSM idzie przez pełny parser
+ * (`opening-hours.ts`); tekst spoza niej („09:00–19:00, zimą do 17:00”) daje pierwszy przedział
+ * jako przybliżony — dokument mówi coś więcej, czego nie umiemy policzyć.
  */
-function openingWindow(raw: string | undefined): { open: number; close: number; approximate: boolean } | null {
+function openingFor(raw: string | undefined, date: string, ctx: OpeningContext): DayOpening | null {
+  const hours = parseOpeningHours(raw);
+  if (hours !== null) return openingOn(hours, date, ctx);
   const match = /(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/.exec(raw ?? '');
   if (match === null) return null;
   const open = Number(match[1]) * 60 + Number(match[2]);
   let close = Number(match[3]) * 60 + Number(match[4]);
   if (close <= open) close += 24 * 60;
-  const approximate = /;|\b(Mo|Tu|We|Th|Fr|Sa|Su|PH|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/.test(raw ?? '');
-  return { open, close, approximate };
+  return { intervals: [[open, close]], approximate: true };
 }
 
 export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions = {}): DaySchedule {
@@ -198,6 +202,12 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
 
   const coords = dayCoordinates(doc, day, items, options);
   const sun = coords === undefined ? null : sunTimes(day.date, coords.lat, coords.lng);
+  const midnight = at('00:00');
+  const sunMinutes = (instant: number | null | undefined) => (instant == null ? undefined : (instant - midnight) / MINUTE);
+  const openingContext: OpeningContext = {
+    publicHoliday: options.publicHoliday,
+    sun: sun === null ? undefined : { sunrise: sunMinutes(sun.sunrise), sunset: sunMinutes(sun.sunset), dawn: sunMinutes(sun.civilDawn), dusk: sunMinutes(sun.civilDusk) },
+  };
   const facts: DayFacts = {
     sun,
     moon: moonIllumination(zonedToInstant(day.date, '23:59', tz)),
@@ -334,18 +344,21 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
       }
     }
 
-    const opening = openingWindow(item.placeRef === undefined ? undefined : places.get(item.placeRef)?.openingHours);
+    const opening = openingFor(item.placeRef === undefined ? undefined : places.get(item.placeRef)?.openingHours, day.date, openingContext);
     // Przejście do stacji nie „wychodzi poza godziny otwarcia” stacji — sprawdzamy tylko pobyt w miejscu.
     if (opening !== null && durationMin > 0 && item.kind !== 'transport') {
-      const opens = at(`${String(Math.floor(opening.open / 60)).padStart(2, '0')}:${String(opening.open % 60).padStart(2, '0')}`);
-      const closes = opens + (opening.close - opening.open) * MINUTE;
-      if (start < opens || end > closes) {
+      const outside = minutesOutside(opening, (start - midnight) / MINUTE, (end - midnight) / MINUTE);
+      if (outside > 0) {
+        const hours = opening.intervals.map(formatInterval).join(', ');
         warnings.push({
           kind: 'closed',
           itemRef: item.ref,
           severity: opening.approximate ? 'soft' : 'hard',
-          minutes: Math.round(Math.max(opens - start, end - closes) / MINUTE),
-          message: `„${item.title}” wychodzi poza godziny otwarcia (${local(opens).time}–${local(closes).time}).`,
+          minutes: Math.round(outside),
+          message:
+            opening.intervals.length === 0
+              ? `„${item.title}” — miejsce jest tego dnia zamknięte.`
+              : `„${item.title}” wychodzi poza godziny otwarcia (${hours}).`,
         });
       }
     }

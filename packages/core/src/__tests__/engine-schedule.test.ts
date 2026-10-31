@@ -78,7 +78,7 @@ describe('scheduleDay — podstawy', () => {
     expect(schedule.warnings).toContainEqual(expect.objectContaining({ kind: 'closed', itemRef: 'bahia', minutes: 30 }));
   });
 
-  it('godziny przez północ są otwarte do rana, a zapis OSM z dniami tygodnia daje tylko miękkie ostrzeżenie', () => {
+  it('godziny przez północ są otwarte do rana, zapis OSM liczony dokładnie, opis spoza OSM — przybliżony', () => {
     const at = (openingHours: string, start: string) =>
       scheduleDay(
         doc(
@@ -89,7 +89,8 @@ describe('scheduleDay — podstawy', () => {
       ).warnings.filter((warning) => warning.kind === 'closed');
 
     expect(at('12:00–01:00', '21:00')).toEqual([]);
-    expect(at('Mo-Sa 09:00-18:00; Su 10:30-18:00', '17:00')).toEqual([expect.objectContaining({ severity: 'soft' })]);
+    expect(at('Mo-Sa 09:00-18:00; Su 10:30-18:00', '17:00')).toEqual([expect.objectContaining({ severity: 'hard', minutes: 30 })]);
+    expect(at('09:00–19:00, zimą do 17:00', '18:00')).toEqual([expect.objectContaining({ severity: 'soft' })]);
   });
 
   it('bez jazdy po zmroku: dojazd kończący się po zmierzchu cywilnym łamie ograniczenie', () => {

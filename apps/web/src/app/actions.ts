@@ -1,6 +1,7 @@
 "use server";
 
-import { Currency, IsoDate, TimeZone, TripDocument } from "@expeditionplan/core";
+import { Currency, IsoDate, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
+import type { Json } from "@expeditionplan/db";
 import { importTrip, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
@@ -89,6 +90,64 @@ export async function createInvite(tripId: string, _prev: FormState, form: FormD
   if (error) return { error: message(error) };
   return { token: data };
 }
+
+/**
+ * Brief wyjazdu z kreatora (SPECYFIKACJA M2). Daty i uczestnicy pochodzą z wyjazdu — kreator ich
+ * nie dubluje — a całość przechodzi przez `TripBrief` z packages/core, ten sam, który dostanie AI.
+ */
+export async function saveBrief(tripId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/brief`);
+  const [trip, travelers, existing] = await Promise.all([
+    supabase.from("trips").select("title, start_date, end_date, home_tz, base_currency").eq("id", tripId).single(),
+    supabase.from("travelers").select("name, nickname, age, household, is_driver, notes").eq("trip_id", tripId).is("deleted_at", null).order("sort_key"),
+    supabase.from("trip_brief").select("id").eq("trip_id", tripId).maybeSingle(),
+  ]);
+  if (trip.error) return { error: message(trip.error) };
+  let draft: Record<string, unknown>;
+  try {
+    draft = JSON.parse(String(form.get("brief") ?? "{}"));
+  } catch {
+    return { error: "Nie udało się odczytać formularza." };
+  }
+  const people = travelers.data ?? [];
+  const parsed = TripBrief.safeParse({
+    ...draft,
+    title: trip.data.title,
+    dates: { kind: "fixed", start: trip.data.start_date, end: trip.data.end_date },
+    homeTz: trip.data.home_tz,
+    travelers: people.map((person) => ({
+      name: person.name,
+      nickname: person.nickname ?? undefined,
+      age: person.age ?? undefined,
+      household: person.household ?? undefined,
+      isDriver: person.is_driver ?? undefined,
+      notes: person.notes ?? undefined,
+    })),
+  });
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]!;
+    if (issue.path[0] === "travelers") return { error: "Dodaj najpierw uczestników wyjazdu (na stronie wyjazdu)." };
+    return { error: `${BRIEF_FIELDS[String(issue.path[0])] ?? issue.path.join(".")}: ${issue.message}` };
+  }
+  const row = { trip_id: tripId, brief: parsed.data as unknown as NonNullable<Json> };
+  const { error } = existing.data
+    ? await supabase.from("trip_brief").update(row).eq("id", existing.data.id)
+    : await supabase.from("trip_brief").insert({ id: uuidv7(), ...row });
+  if (error) return { error: message(error) };
+  refresh();
+  return { ok: "Zapisano brief wyjazdu." };
+}
+
+/** Nazwy pól briefu w komunikatach walidacji. */
+const BRIEF_FIELDS: Record<string, string> = {
+  goal: "Cel wyjazdu",
+  location: "Miejsce",
+  profiles: "Charakter wyjazdu",
+  transport: "Transport",
+  budget: "Budżet",
+  constraints: "Ograniczenia",
+  fixed: "Już ustalone",
+};
 
 /** Pięć planów wzorcowych na moje konto; pomija te, które już mam (po tytule). */
 export async function importSamples(): Promise<FormState> {
