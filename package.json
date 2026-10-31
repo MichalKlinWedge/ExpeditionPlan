@@ -14,7 +14,9 @@
     "web": "npm run dev --workspace apps/web",
     "mobile": "npm run start --workspace apps/mobile",
     "supabase": "npx --yes supabase@2.122.0",
-    "import-plan": "npm run import --workspace tools/import-plan --"
+    "import-plan": "npm run import --workspace tools/import-plan --",
+    "test:sync": "npm run test:integration --workspace packages/sync",
+    "test:db": "npx --yes supabase@2.122.0 test db"
   },
   "engines": {
     "node": ">=22"

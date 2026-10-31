@@ -162,3 +162,37 @@ Zasady, które wyszły z danych:
 - **Godziny otwarcia** rozumie tylko w postaci „09:00–19:00”; reszta (dni tygodnia, sezon) czeka na dane z Geoapify/OSM.
 - **Limit km Maroka:** silnik liczy 675 km z sum dni (dzień 5 nie ma km w planie), plan podaje 710 — różnica to brakujący odcinek na lotnisko, nie błąd liczenia.
 - Święta i nakładanie się punktu z poprzednim przy `from: previous` — do dopisania przy MVP-3.
+
+---
+
+## PoC-4 — Synchronizacja Supabase ↔ SQLite (31.10.2026)
+
+**Werdykt: GO — wariant własny, bez PowerSync.** Wszystkie trzy scenariusze przechodzą powtarzalnie na lokalnym Supabase (Docker), z `node:sqlite` w roli SQLite telefonu: [`sync.integration.test.ts`](packages/sync/src/__tests__/sync.integration.test.ts), uruchomienie `npm run test:sync`. RLS i wersjonowanie: 22 testy pgTAP w [`supabase/tests/poc4_sync.test.sql`](supabase/tests/poc4_sync.test.sql) (`npm run test:db`).
+
+| Scenariusz | Wynik |
+|---|---|
+| 1. Zmiana na webie widoczna na telefonie < 3 s | **ok. 0,5 s** (5 pomiarów: 480–610 ms) — Realtime → pobranie przyrostowe → SQLite |
+| 2. Telefon offline: 3 opóźnienia + 2 wydatki, w tym czasie web zmienia czas punktu, dodaje punkt i usuwa inny | po powrocie sieci 5/5 wysłane, zmiany z webu na telefonie, **harmonogram wszystkich dni w obu scenariuszach identyczny** na webie i telefonie (z opóźnieniami) |
+| 3a. Awaria po wysłaniu partii, a przed potwierdzeniem w SQLite (3 powtórzenia) | brak duplikatów, nic nie zginęło |
+| 3b. Prawdziwe zabicie procesu (`SIGKILL`) w losowym momencie wysyłki 30 zdarzeń, 10 rund | 30/30 na serwerze, zero duplikatów; w każdej rundzie zabicie trafiało w okno „serwer już ma, telefon jeszcze nie potwierdził” |
+
+### Co powstało
+
+- Migracja [`20261031120000_poc4_sync.sql`](supabase/migrations/20261031120000_poc4_sync.sql): `trips`, `trip_members`, `days`, `items`, `schedule_events`, `expenses`; RLS owner/editor/viewer (widz czyta, wydatki dodaje tylko z `can_add_expenses`, poprawia tylko własne); zdarzenia dnia tylko dopisywane; brak twardego `DELETE`.
+- **Wersje zamiast znaczników czasu.** Trigger przy każdym zapisie podbija `trips.sync_version` i stempluje nim wiersz (`row_version`); `plan_version` rośnie tylko przy zmianach planu. Blokada wiersza wyjazdu szereguje zapisy, więc wersje są w kolejności zatwierdzania — `updated_at > last_sync` z v0.3 gubiłby zmiany z transakcji zatwierdzonej później niż nowsza.
+- RPC `pull_changes(trip, since)`: wszystko po wersji w jednym zapytaniu (jedna migawka, jedno żądanie z telefonu), z RLS jak zwykły SELECT.
+- [`packages/sync`](packages/sync/src/index.ts): `LocalDb` (synchroniczny interfejs: expo-sqlite / `node:sqlite`), outbox (wiersz lokalny + wpis w jednej transakcji, wysyłka partiami w kolejności, wiele poprawek tego samego wydatku → jedna wysyłka), `pullChanges` / `syncTrip` (najpierw outbox, potem pobranie; starsze pobranie nie nadpisze nowszego, wiersz czekający w outboxie zostaje lokalny), `watchTrip` (Realtime na wierszu wyjazdu), `serialPuller`, `uuidv7`, `documentFromRows` / `stateFromLocal` / `stateFromPayload` — ten sam kod składa `TripDocument` i wejście silnika na obu urządzeniach.
+
+### Wnioski i decyzje
+
+- **Realtime po zimnym starcie gubi pierwszy sygnał** (pierwsze uruchomienie po `supabase start`: Realtime zakłada slot replikacji przy pierwszej subskrypcji). Poprawka: po komunikacie „Subscribed to PostgreSQL” (także po ponownym połączeniu) telefon robi dodatkowe pobranie. Sprawdzone restartem kontenera Realtime.
+- Duplikat zdarzenia (`ON CONFLICT DO NOTHING`) i tak podbija licznik wyjazdu — trigger BEFORE INSERT działa przed wykryciem konfliktu. Nieszkodliwe (luka w wersjach, dodatkowy sygnał Realtime).
+- Wydatki: last-write-wins po stronie serwera; poprawka z telefonu wysłana po poprawce z webu wygrywa. Na MVP wystarczy (wydatki dopisuje głównie telefon), `activity_log` pokaże historię.
+
+### Do zrobienia w MVP-1 (świadome skróty PoC)
+
+- Pola dnia i punktu leżą w `content jsonb`, reszta dokumentu w `trips.doc_rest` — w MVP-1 rozbicie na kolumny i tabele z §5 (`documentFromRows` zostaje jedynym miejscem mapowania).
+- `ref` jako klucz dokumentu obok `id` (unikalny w wyjeździe) — warto zostawić: łapki AI i importu odwołują się do `ref`.
+- `pull_changes` bez stronicowania (pełna migawka Maroka to kilkadziesiąt kB); przy dużych wyjazdach — strony po `row_version`.
+- Odrzucenie trwałe (np. utrata prawa do wydatków) zatrzymuje outbox — trzeba je odróżnić od braku sieci i pokazać użytkownikowi.
+- Na telefonie: adapter expo-sqlite dla `LocalDb`, polyfill `crypto.getRandomValues` (expo-crypto) dla `uuidv7`, sprawdzenie na urządzeniu razem z PoC-2/3.

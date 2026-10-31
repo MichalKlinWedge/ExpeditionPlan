@@ -332,7 +332,8 @@ Operacje łatki (Etap 3):
 ### Konwencje (od pierwszej migracji)
 - `id uuid` generowany **na kliencie** (UUIDv7), żeby obiekty tworzone offline miały stały identyfikator.
 - Każda tabela wyjazdu ma `trip_id`: proste RLS i proste wycinanie pakietu offline.
-- `created_at`, `updated_at` (trigger), `updated_by`, `deleted_at` (miękkie usuwanie, potrzebne do synchronizacji).
+- `created_at`, `updated_at` (trigger), `updated_by`, `deleted_at` (miękkie usuwanie, potrzebne do synchronizacji; twarde `DELETE` odebrane rolom klienta).
+- `row_version bigint` (trigger): każdy zapis w wyjeździe podbija `trips.sync_version` i stempluje nim wiersz — po tym telefon pobiera zmiany (§6, sprawdzone w PoC-4).
 - `trips.plan_version` podbijany triggerem przy każdej zmianie planu.
 - **Pieniądze w rozliczeniach:** `amount_minor bigint` + `currency char(3)`. Nigdy float.
 - **Ceny w planie:** pole `price jsonb` o schemacie `Price` (Zod):
@@ -434,7 +435,7 @@ Kluczowa obserwacja: **planowanie odbywa się online (web), a podróż offline (
 
 | Klasa danych | Kierunek | Strategia konfliktów |
 |---|---|---|
-| Plan (days, items, legs, variants, constraints, bookings, places, notes, contacts, tracks, audio) | serwer → telefon | migawka z `plan_version`, aktualizacja przyrostowa po `updated_at > last_sync`, miękkie usunięcia |
+| Plan (days, items, legs, variants, constraints, bookings, places, notes, contacts, tracks, audio) | serwer → telefon | migawka, potem aktualizacja przyrostowa po `row_version > ostatnia widziana` jednym wywołaniem `pull_changes` (jedna migawka bazy), miękkie usunięcia |
 | Zdarzenia dnia (`schedule_events`: opóźnienia, pominięcia, wybór wariantu, punkt z puli) | telefon ↔ serwer | **tylko dopisywane**, bez konfliktów. Harmonogram = plan + zdarzenia, liczony w `packages/core` identycznie wszędzie |
 | Wydatki, odhaczenia zadań i pakowania, notatki, zdjęcia paragonów | telefon ↔ serwer | dopisywanie bez konfliktów. Edycja: last-write-wins per wiersz (`updated_at` serwera) + wpis w `activity_log` |
 | Edycja planu z telefonu (S) | telefon → serwer | tylko online w MVP. Później outbox z kontrolą `version` (odrzucenie, gdy wiersz zmienił się w międzyczasie, z pokazaniem obu wersji) |
@@ -443,7 +444,9 @@ Mechanizm na telefonie:
 - **Outbox** w SQLite: każda lokalna zmiana to wiersz w kolejce, wysyłany w kolejności, idempotentny (UUID z klienta, `upsert`).
 - Po powrocie sieci: wyślij outbox → pobierz zmiany → przelicz harmonogram → przeplanuj powiadomienia.
 - Online: Realtime (zmiany w `trip_id`) wyzwala pobranie przyrostowe zamiast stosowania payloadów bezpośrednio (prostsze, odporne na zgubione komunikaty).
-- PoC-4 weryfikuje to podejście. Alternatywa, jeśli się nie sprawdzi: PowerSync (gotowa synchronizacja Postgres ↔ SQLite, kompatybilna z Supabase).
+- **Dlaczego `row_version`, a nie `updated_at > last_sync`:** znacznik czasu nadaje się w chwili zapisu, a transakcja może zatwierdzić się później niż inna z nowszym znacznikiem — wtedy jej zmiana przepada. Licznik wyjazdu podbijany w triggerze bierze blokadę wiersza `trips` do końca transakcji, więc zapisy jednego wyjazdu dostają wersje w kolejności zatwierdzania.
+- Realtime: telefon subskrybuje tylko wiersz swojego wyjazdu (zmienia się przy każdym zapisie) i po sygnale gotowości subskrypcji robi dodatkowe pobranie — bez tego zmiana z chwili łączenia (zimny start Realtime) potrafi przepaść.
+- Kod: `packages/sync` (outbox, pobieranie, składanie `TripDocument` z wierszy — ten sam na webie i na telefonie). PoC-4: GO, wariant własny zamiast PowerSync ([POC_WYNIKI.md](POC_WYNIKI.md)).
 
 ---
 

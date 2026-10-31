@@ -23,6 +23,8 @@ npm test                    # vitest in packages/*
 npm run web                 # next dev
 npm run mobile              # expo start (needs a development build, not Expo Go)
 npm run supabase -- start   # local Supabase via pinned CLI (needs Docker)
+npm run test:db             # pgTAP tests in supabase/tests (RLS, row versions) — needs local Supabase
+npm run test:sync           # packages/sync against local Supabase (PoC-4 scenarios); not part of `check`
 npm run import-plan -- <file.docx|pdf> [--provider CLAUDE] [--out x.json] [--compare fixtures/plans/<p>/plan.json] [--anonymize] [--text-only]
 ```
 
@@ -38,6 +40,7 @@ Mobile: always `npx expo install <pkg>` inside `apps/mobile` (SDK-compatible ver
 - Time in plans = **local date/time + IANA zone** (`LocalDateTime` + `TimeZone`), never UTC instants. Real events (expenses, delays) use timestamptz. Money = integer minor units + ISO currency; plan prices use the `Price` schema (ranges, "from", age tiers).
 - `packages/ai`: one client (`createAiClient`) over Claude/Gemini/OpenAI; keys come from config/env (server-side only — never in the browser or APK). Use `askStructured(client, schema, prompt)` for anything that becomes data: it validates with Zod and gets exactly one repair attempt. Model names are never guessed — `listModels()` is the source.
 - AI produces **drafts and patches, never silent overwrites**; user-edited items are `user_locked`.
+- `packages/sync` (PoC-4): phone ↔ Supabase sync. Every write in a trip bumps `trips.sync_version` and stamps the row's `row_version` (trigger, serialized by the trip row lock); clients pull `row_version > last` via the `pull_changes` RPC (one snapshot). Phone writes (`schedule_events` append-only, `expenses`) go through a SQLite outbox: local row + outbox entry in one transaction, idempotent upsert with client UUIDv7. No hard deletes — `deleted_at`. `LocalDb` is a sync interface (expo-sqlite in the app, `node:sqlite` in tests). PoC shortcut: day/item fields live in `content jsonb`, rest of the document in `trips.doc_rest` — MVP-1 splits them into §5 columns.
 - `packages/core/src/engine/`: the schedule engine (§7) — `scheduleDay`, `proposeCuts`, `checkCarKmLimit`, `priceForGroup`, sun/moon, zoned time via `Intl` (no date libs). Computes on UTC instants, displays local time. Plan times are "not earlier than"; `relative` + `from: previous` counts from the START of the previous item. The `bramka PoC-5` test keeps all five fixture plans within ±15 min — keep it green.
 
 ## Reference data
