@@ -29,7 +29,7 @@ export default function HomeScreen() {
         <ThemedText type="title" style={styles.center}>
           ExpeditionPlan
         </ThemedText>
-        <ThemedText style={styles.center}>Pocket Guide</ThemedText>
+        <ThemedText style={styles.center}>Pocket Guide · testy PoC-2 i PoC-3</ThemedText>
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="small">
             Pakiet @expeditionplan/core: {check.success ? 'działa' : 'błąd walidacji'}
