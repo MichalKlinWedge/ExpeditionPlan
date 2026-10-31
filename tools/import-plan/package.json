@@ -6,11 +6,13 @@
   "scripts": {
     "import": "node --env-file-if-exists=../../.env.local src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "batch": "node --env-file-if-exists=../../.env.local src/batch.ts"
   },
   "dependencies": {
     "@expeditionplan/ai": "*",
     "@expeditionplan/core": "*",
+    "@expeditionplan/plan-ai": "*",
     "mammoth": "^1.13.0",
     "unpdf": "^2.1.0",
     "zod": "^4.6.7"

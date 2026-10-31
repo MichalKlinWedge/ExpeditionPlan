@@ -55,7 +55,9 @@ export function claudeCodeClient(model: string, effort: 'low' | 'medium' | 'high
     try {
       const stdout = await new Promise<string>((resolve, reject) => {
         // Na Windows `claude` to skrypt npm (.cmd) — wymaga powłoki; argumenty są stałe albo w cudzysłowie.
-        const child = spawn(args.join(' '), { cwd: dir, env: cleanEnv(), shell: true, stdio: ['pipe', 'pipe', 'pipe'] });
+        // Limit długości odpowiedzi Claude Code ustawia zmienną środowiska, nie flagą (import planu to dziesiątki tysięcy tokenów).
+        const env = { ...cleanEnv(), ...(request.maxTokens ? { CLAUDE_CODE_MAX_OUTPUT_TOKENS: String(request.maxTokens) } : {}) };
+        const child = spawn(args.join(' '), { cwd: dir, env, shell: true, stdio: ['pipe', 'pipe', 'pipe'] });
         let out = '';
         let err = '';
         // Na Windows `kill()` zabija tylko powłokę, a `claude` trzyma potoki i proces wisi bez końca.

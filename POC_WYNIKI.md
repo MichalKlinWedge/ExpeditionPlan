@@ -13,7 +13,7 @@ Dokument bramki decyzyjnej z [PLAN_ETAPOWY.md](PLAN_ETAPOWY.md). Każdy eksperym
 - [`packages/core/src/schemas/trip-document.ts`](packages/core/src/schemas/trip-document.ts) — schemat całego wyjazdu (§5) z kontrolą spójności odwołań.
 - `fixtures/plans/<plan>/plan.json` — wzorcowe dokumenty, zanonimizowane (role zamiast imion, kody rezerwacji `ANON-…`, bez prywatnych linków), sprawdzone testem `fixtures.test.ts`.
 - `fixtures/plans/<plan>/GAPS.md` — luki, niespójności w dokumentach i ocena per plan.
-- [`tools/import-plan`](tools/import-plan/src/cli.ts) — CLI importu DOCX/PDF przez AI z porównaniem do wzorca. **Nie uruchomione** — brak klucza AI w `.env.local`. To jest otwarta część PoC-0 (i wejście do PoC-1).
+- [`tools/import-plan`](tools/import-plan/src/cli.ts) — CLI importu DOCX/PDF przez AI z porównaniem do wzorca. Uruchomione 31.10.2026 przez Claude Code — wyniki w sekcji „Import planów przez AI” na końcu.
 
 Wzorce przygotował Claude ręcznie z pełnego tekstu dokumentów (nie przez CLI), więc mierzą zdolność **schematu**, a nie jakość importu AI.
 
@@ -267,3 +267,34 @@ Iteracja 1 (bez poprawek niżej) dla porównania: ugruntowanie 66–94%, dni rea
 - **Etap 2 po 1–2 dni równolegle**, jako zadanie w tle z postępem (`ai_runs`), nie jedno żądanie: limit Edge Function 150 s bez aktywności i tak wymusza podział.
 - **Produkcja potrzebuje klucza API** — abonament Claude Code zasila tylko narzędzia deweloperskie. Decyzja przed MVP-2: kredyty Anthropic (Haiku ≈ 0,05 USD za plan) albo inny dostawca z darmowym pakietem.
 - Miara posiłków ma fałszywe alarmy, gdy brief sam podaje wczesną porę (Dinara: śniadanie 5:30) — do uwzględnienia przy ocenie, nie do poprawy w planie.
+
+---
+
+## Import planów przez AI — domknięcie PoC-0 (31.10.2026)
+
+Pięć Twoich dokumentów z `examples/` → `TripDocument` przez AI (z anonimizacją), porównane z ręcznymi wzorcami i przepuszczone przez silnik harmonogramu. Narzędzie: `npm run batch --workspace tools/import-plan -- [--models …] [--plans …]`, przez `claude -p` (abonament, tylko tanie modele); wyniki w `tools/import-plan/out/` (poza git — pochodzą z prywatnych dokumentów).
+
+| Plan | Haiku 5.5: punkty wzorca / silnik | Sonnet 5.5: punkty wzorca / silnik |
+|---|---|---|
+| Barcelona | 65% / ok | 65% / ok |
+| Gruzja | ✗ (te same klucze w wariantach i rezerwacjach) | 79% / ok |
+| Maroko | ✗ (notatka miejsca jako lista) | 86% / rozjazd 60 min |
+| Chatka | 40% / 1 twarde, rozjazd 1170 min | 83% / rozjazd 1170 min |
+| Dinara | 97% / rozjazd 330 min | 88% / rozjazd 10 min |
+
+Czas 93–370 s na dokument, koszt wg cennika API: Haiku 0,02–0,30 USD, Sonnet 0,19–0,76 USD.
+
+**Werdykt: import AI działa jako szkic do akceptacji, nie jako wierna kopia.** Sonnet 5/5 dokumentów zgodnych ze schematem, Haiku 3/5 — do importu (jednorazowego, długiego dokumentu) lepiej Sonnet. Wzorce ręczne zostają złotym standardem.
+
+**Błędy importu, które silnik i porównanie wyłapały:**
+- **„0:00 wyjazd” jako północ** (Haiku, Dinara): we wzorze to „godzina zero”, a AI wpisało godzinę 00:00 — silnik pokazał rozjazd 330 min.
+- **Fakty dnia jako punkty** (Chatka, oba modele): „zmiana czasu 3:00 → 2:00” i wschód słońca z godziną w osi dnia — rozjazd 1170 min. Te fakty liczy silnik; w dokumencie to notatki.
+- **Zgubione grupy równoległe** (Chatka): szpica i ekipy bez `participantRefs`/`parentRef` — punkty liczą się po kolei.
+- **Pominięte sekcje** (Barcelona, oba modele): cały spacer Gotyk–El Born z dnia 2 i 3 rezerwacje (przylot, nocleg, mecz) — model streszcza długi dokument.
+
+**Poprawki wprowadzone:**
+- Reguły 13–16 w poleceniu importu: godzina zero, fakty jako notatki, grupy równoległe, kompletność.
+- `notes` miejsca, uczestnika i kontaktu przyjmuje też listę — schemat nie zastawia pułapki: w punkcie to lista, w miejscu tekst.
+
+**Do MVP (import planu):** import po sekcjach (dzień po dniu + osobno rezerwacje, budżet, zadania) zamiast jednego zapytania — długie dokumenty tracą treść; podgląd do akceptacji per sekcja (SPECYFIKACJA §4) z ostrzeżeniami silnika przy dniu.
+

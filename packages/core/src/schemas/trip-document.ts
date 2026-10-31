@@ -19,6 +19,12 @@ export const Ref = z
 
 const text = z.string().min(1);
 
+/**
+ * Notatka jednym tekstem (uczestnik, miejsce, kontakt). Punkty i rezerwacje mają listę notatek,
+ * więc AI przy imporcie myli kształty (PoC-0) — lista jest łączona w jeden tekst, zamiast odrzucać plan.
+ */
+const noteText = z.union([z.string(), z.array(z.string()).transform((lines) => lines.join('\n'))]);
+
 /** Czas lokalny ze strefą: „2026-12-26T06:10” w „Europe/Warsaw”. */
 export const ZonedLocal = z.object({ local: LocalDateTime, tz: TimeZone });
 
@@ -64,7 +70,7 @@ export const DocTraveler = z.object({
   guardianRef: Ref.optional(),
   isDriver: z.boolean().optional(),
   heightCm: z.number().int().positive().optional(),
-  notes: z.string().optional(),
+  notes: noteText.optional(),
 });
 
 export const DocPlace = z.object({
@@ -86,7 +92,7 @@ export const DocPlace = z.object({
   elevationM: z.number().int().optional(),
   website: z.url().optional(),
   links: z.array(Link).default([]),
-  notes: z.string().optional(),
+  notes: noteText.optional(),
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -491,7 +497,7 @@ export const DocContact = z.object({
   phone: z.string().optional(),
   email: z.email().optional(),
   bookingRef: Ref.optional(),
-  notes: z.string().optional(),
+  notes: noteText.optional(),
 });
 
 export const BudgetCategory = z.enum([

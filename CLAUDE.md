@@ -28,6 +28,7 @@ npm run test:sync           # packages/sync against local Supabase (PoC-4 scenar
 npm run geocode -- [slug…] [--write]   # OSM/Nominatim coords for fixtures/plans (1 req/1.1 s, cached in tools/geocode/.cache.json)
 npm run plan-ai -- [--plans maroko,…] [--models claude-haiku-5-5,claude-sonnet-5-5] [--chunk-days 2] [--backend claude-code|api]   # PoC-1 chain; claude-code = `claude -p` on the owner's subscription (needs `claude auth login`)
 npm run plan-ai -- --rescore tools/plan-ai/out/<stamp>   # recompute metrics without AI
+npm run batch --workspace tools/import-plan -- [--models …] [--plans …]   # AI import of all examples/ docs via claude -p, compared with fixtures (out/ is git-ignored)
 npm run import-plan -- <file.docx|pdf> [--provider CLAUDE] [--out x.json] [--compare fixtures/plans/<p>/plan.json] [--anonymize] [--text-only]
 ```
 

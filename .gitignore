@@ -34,3 +34,6 @@ tools/geocode/.cache.json
 # Wyniki i cache przebiegów PoC-1
 tools/plan-ai/out/
 tools/plan-ai/.cache/
+
+# Wyniki importu planów przez AI (z prywatnych dokumentów — tylko lokalnie)
+tools/import-plan/out/

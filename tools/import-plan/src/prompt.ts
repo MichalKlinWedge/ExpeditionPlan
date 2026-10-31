@@ -25,10 +25,14 @@ Zasady:
 9. Pakowanie: osobiste (każdy) → scope personal, wspólne → shared z \`assigneeRef\`, jeśli wiadomo, kto bierze.
 10. Klucze \`ref\`: krótkie, małe litery, cyfry i myślniki, unikalne w CAŁYM dokumencie. Każde \`…Ref\` musi wskazywać istniejący element właściwego rodzaju.
 11. Źródła z datami sprawdzenia → \`sources\` (\`appliesToRefs\` wskazuje, czego dotyczą).
-12. Czego nie da się wyrazić polami — notatka (\`notes\`) o właściwym zasięgu i temacie, nie pomijaj.`;
+12. Czego nie da się wyrazić polami — notatka (\`notes\`) o właściwym zasięgu i temacie, nie pomijaj.
+13. „0:00 wyjazd” / „godzina zero” to NIE północ: \`days[].anchorTime\` puste (albo podana godzina zero), punkt z \`precision: "relative"\`, \`offsetMin: 0\`, \`from: "anchor"\`.
+14. Fakty dnia (wschód i zachód słońca, zmiana czasu w nocy, faza Księżyca) to notatki dnia (\`kind: "info"\`, \`topic: "time"\`), nie punkty harmonogramu — silnik liczy je sam.
+15. Część grupy osobno (szpica, ekipy) → \`participantRefs\`; blok z podpunktami równoległymi („PRACA 14:15–16:00” i ekipy) → punkt-rodzic i podpunkty z \`parentRef\`.
+16. Kompletność ponad zwięzłość: każdy dzień, każdy blok trasy (spacer po dzielnicy z listą miejsc to osobne punkty) i każda rezerwacja z dokumentu (przylot, nocleg, bilety) — nie streszczaj i nie pomijaj sekcji.`;
 
 const ANONYMIZE = `
-13. ANONIMIZACJA: zamiast imion i nazwisk osób prywatnych używaj ról („Dorosły A”, „Dziecko A1”, „Uczestnik 1”). Kody rezerwacji zastąp „ANON-…”. Pomiń prywatne telefony, e-maile i prywatne linki (Google Drive, Docs, linki „share”). Nazwy firm, miejsc i publiczne numery alarmowe zostają.`;
+17. ANONIMIZACJA: zamiast imion i nazwisk osób prywatnych używaj ról („Dorosły A”, „Dziecko A1”, „Uczestnik 1”). Kody rezerwacji zastąp „ANON-…”. Pomiń prywatne telefony, e-maile i prywatne linki (Google Drive, Docs, linki „share”). Nazwy firm, miejsc i publiczne numery alarmowe zostają.`;
 
 export function jsonSchema(): string {
   return JSON.stringify(z.toJSONSchema(TripDocument, { io: 'input', unrepresentable: 'any' }));
