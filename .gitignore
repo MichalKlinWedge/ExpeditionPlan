@@ -27,3 +27,6 @@ npm-debug.*
 # Oryginalne plany wyjazdów (dane osobowe, numery rezerwacji) — tylko lokalnie
 exaples/
 examples/
+
+# Cache geokodowania planów wzorcowych
+tools/geocode/.cache.json

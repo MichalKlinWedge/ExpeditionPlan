@@ -36,12 +36,18 @@
       "ref": "lotnisko-wroclaw",
       "name": "Wrocław Airport",
       "category": "airport",
+      "lat": 51.10378,
+      "lng": 16.88854,
+      "provider": "osm",
       "notes": "Dojazd na lotnisko we własnym zakresie."
     },
     {
       "ref": "lotnisko-zadar",
       "name": "Lotnisko Zadar",
-      "category": "airport"
+      "category": "airport",
+      "lat": 44.09984,
+      "lng": 15.35813,
+      "provider": "osm"
     },
     {
       "ref": "sklep-woda",
@@ -58,18 +64,27 @@
       "ref": "tulove-grede",
       "name": "Tulove Grede",
       "category": "trailhead",
+      "lat": 44.26351,
+      "lng": 15.6556,
+      "provider": "osm",
       "notes": "W dokumencie raz „Tulove Grede”, raz „Tulove Grade”."
     },
     {
       "ref": "cikola",
       "name": "Via ferrata Čikola",
       "category": "trailhead",
+      "lat": 43.84084,
+      "lng": 16.06587,
+      "provider": "osm",
       "notes": "W dokumencie „Cikola”."
     },
     {
       "ref": "szybenik",
       "name": "Szybenik (Šibenik)",
-      "category": "city"
+      "category": "city",
+      "lat": 43.74117,
+      "lng": 15.89851,
+      "provider": "osm"
     },
     {
       "ref": "kwatera-szybenik",
@@ -92,13 +107,19 @@
       "ref": "dinara",
       "name": "Dinara (1831 m n.p.m.)",
       "category": "peak",
+      "lat": 44.06248,
+      "lng": 16.38291,
+      "provider": "osm",
       "elevationM": 1831,
       "notes": "Najwyższy szczyt Chorwacji (Korona Europy)."
     },
     {
       "ref": "zadar",
       "name": "Zadar",
-      "category": "city"
+      "category": "city",
+      "lat": 44.11686,
+      "lng": 15.23533,
+      "provider": "osm"
     }
   ],
   "days": [

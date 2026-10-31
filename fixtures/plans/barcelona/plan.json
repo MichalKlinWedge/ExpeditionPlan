@@ -25,22 +25,34 @@
     {
       "ref": "bcn-t2",
       "name": "Lotnisko Barcelona, terminal T2 (Aeroport T2)",
-      "category": "airport"
+      "category": "airport",
+      "lat": 41.30345,
+      "lng": 2.07432,
+      "provider": "osm"
     },
     {
       "ref": "lotnisko-wroclaw",
       "name": "Lotnisko Wrocław",
-      "category": "airport"
+      "category": "airport",
+      "lat": 51.10378,
+      "lng": 16.88854,
+      "provider": "osm"
     },
     {
       "ref": "passeig-de-gracia",
       "name": "Passeig de Gràcia (stacja R2 Nord / metro L4)",
-      "category": "station"
+      "category": "station",
+      "lat": 41.3945,
+      "lng": 2.16231,
+      "provider": "osm"
     },
     {
       "ref": "jaume-i",
       "name": "Jaume I (metro L4)",
-      "category": "station"
+      "category": "station",
+      "lat": 41.38403,
+      "lng": 2.17868,
+      "provider": "osm"
     },
     {
       "ref": "nocleg",
@@ -52,53 +64,83 @@
       "ref": "pl-catalunya",
       "name": "Plaça de Catalunya",
       "category": "square",
+      "lat": 41.38782,
+      "lng": 2.16967,
+      "provider": "osm",
       "notes": "Skrytka na bagaż (rezerwowo); przystanek Aerobusu na lotnisko."
     },
     {
       "ref": "gran-vista",
       "name": "Gran Vista (ostatni przystanek V17)",
-      "category": "bus_stop"
+      "category": "bus_stop",
+      "lat": 41.41985,
+      "lng": 2.15979,
+      "provider": "osm"
     },
     {
       "ref": "bunkry-del-carmel",
       "name": "Bunkers del Carmel",
-      "category": "viewpoint"
+      "category": "viewpoint",
+      "lat": 41.41939,
+      "lng": 2.1617,
+      "provider": "osm"
     },
     {
       "ref": "sant-pau",
       "name": "Hospital de Sant Pau",
-      "category": "monument"
+      "category": "monument",
+      "lat": 41.41398,
+      "lng": 2.17555,
+      "provider": "osm"
     },
     {
       "ref": "sagrada-familia",
       "name": "Sagrada Família",
-      "category": "church"
+      "category": "church",
+      "lat": 41.4035,
+      "lng": 2.17443,
+      "provider": "osm"
     },
     {
       "ref": "espanya",
       "name": "Plaça d’Espanya (metro Espanya)",
-      "category": "station"
+      "category": "station",
+      "lat": 41.37405,
+      "lng": 2.14894,
+      "provider": "osm"
     },
     {
       "ref": "mnac",
       "name": "MNAC — schody i tarasy",
       "category": "museum",
+      "lat": 41.3686,
+      "lng": 2.15346,
+      "provider": "osm",
       "notes": "Do 18:00 wejście do muzeum jest gratis po rezerwacji online."
     },
     {
       "ref": "arenas",
       "name": "Arenas de Barcelona (dawna arena byków) — dach",
-      "category": "viewpoint"
+      "category": "viewpoint",
+      "lat": 41.3763,
+      "lng": 2.1493,
+      "provider": "osm"
     },
     {
       "ref": "font-magica",
       "name": "Font Màgica",
-      "category": "fountain"
+      "category": "fountain",
+      "lat": 41.37116,
+      "lng": 2.15174,
+      "provider": "osm"
     },
     {
       "ref": "liceu",
       "name": "Liceu (metro L3)",
-      "category": "station"
+      "category": "station",
+      "lat": 41.3814,
+      "lng": 2.17307,
+      "provider": "osm"
     },
     {
       "ref": "barca-store-centrum",
@@ -114,12 +156,18 @@
     {
       "ref": "gotyk",
       "name": "Gotyk (Barri Gòtic)",
-      "category": "district"
+      "category": "district",
+      "lat": 41.38384,
+      "lng": 2.17451,
+      "provider": "osm"
     },
     {
       "ref": "katedra",
       "name": "Katedra w Barcelonie",
-      "category": "church"
+      "category": "church",
+      "lat": 41.38393,
+      "lng": 2.17655,
+      "provider": "osm"
     },
     {
       "ref": "fira-santa-llucia",
@@ -129,42 +177,66 @@
     {
       "ref": "sant-felip-neri",
       "name": "Plaça Sant Felip Neri",
-      "category": "square"
+      "category": "square",
+      "lat": 41.38328,
+      "lng": 2.17513,
+      "provider": "osm"
     },
     {
       "ref": "placa-reial",
       "name": "Plaça Reial",
-      "category": "square"
+      "category": "square",
+      "lat": 41.3801,
+      "lng": 2.17526,
+      "provider": "osm"
     },
     {
       "ref": "el-born",
       "name": "El Born",
-      "category": "district"
+      "category": "district",
+      "lat": 41.38484,
+      "lng": 2.18287,
+      "provider": "osm"
     },
     {
       "ref": "santa-maria-del-mar",
       "name": "Santa Maria del Mar",
-      "category": "church"
+      "category": "church",
+      "lat": 41.38378,
+      "lng": 2.18201,
+      "provider": "osm"
     },
     {
       "ref": "barceloneta",
       "name": "Barceloneta",
-      "category": "beach"
+      "category": "beach",
+      "lat": 41.38209,
+      "lng": 2.18552,
+      "provider": "osm"
     },
     {
       "ref": "muzeum-picassa",
       "name": "Muzeum Picassa",
-      "category": "museum"
+      "category": "museum",
+      "lat": 41.3851,
+      "lng": 2.1812,
+      "provider": "osm"
     },
     {
       "ref": "montjuic",
       "name": "Montjuïc",
-      "category": "hill"
+      "category": "hill",
+      "lat": 41.36315,
+      "lng": 2.16561,
+      "provider": "osm"
     },
     {
       "ref": "stadion-olimpijski",
       "name": "Stadion Olimpijski (Montjuïc)",
       "category": "stadium",
+      "lat": 41.36472,
+      "lng": 2.15565,
+      "provider": "osm",
       "openingHours": "10–17 (zimą otwarty tylko do 17:00)"
     },
     {
@@ -175,7 +247,10 @@
     {
       "ref": "camp-nou",
       "name": "Camp Nou",
-      "category": "stadium"
+      "category": "stadium",
+      "lat": 41.38078,
+      "lng": 2.11565,
+      "provider": "osm"
     },
     {
       "ref": "barca-store-stadion",

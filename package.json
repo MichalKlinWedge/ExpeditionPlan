@@ -16,7 +16,8 @@
     "supabase": "npx --yes supabase@2.122.0",
     "import-plan": "npm run import --workspace tools/import-plan --",
     "test:sync": "npm run test:integration --workspace packages/sync",
-    "test:db": "npx --yes supabase@2.122.0 test db"
+    "test:db": "npx --yes supabase@2.122.0 test db",
+    "geocode": "npm run geocode --workspace tools/geocode --"
   },
   "engines": {
     "node": ">=22"

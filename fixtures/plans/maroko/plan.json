@@ -63,29 +63,44 @@
     {
       "ref": "p-wro",
       "name": "Lotnisko Wrocław",
-      "category": "airport"
+      "category": "airport",
+      "lat": 51.10378,
+      "lng": 16.88854,
+      "provider": "osm"
     },
     {
       "ref": "p-aga",
       "name": "Lotnisko Agadir Al Massira",
-      "category": "airport"
+      "category": "airport",
+      "lat": 30.3284,
+      "lng": -9.40912,
+      "provider": "osm"
     },
     {
       "ref": "p-sixt-aga",
       "name": "Sixt — biuro w terminalu, lotnisko Agadir",
       "category": "car_rental",
+      "lat": 30.3284,
+      "lng": -9.40912,
+      "provider": "osm",
       "openingHours": "07:00–01:00, 7 dni w tygodniu",
       "website": "https://www.sixt.com/"
     },
     {
       "ref": "p-marakesz",
       "name": "Marakesz",
-      "category": "city"
+      "category": "city",
+      "lat": 31.62583,
+      "lng": -7.98916,
+      "provider": "osm"
     },
     {
       "ref": "p-riad",
       "name": "Riad Lakhdar",
       "category": "lodging",
+      "lat": 31.62806,
+      "lng": -7.9945,
+      "provider": "osm",
       "address": "Marakesz, medyna",
       "notes": "Autem pod riad nie dojedziecie — riad przysyła kogoś z wózkiem po bagaże."
     },
@@ -98,23 +113,35 @@
     {
       "ref": "p-jemaa",
       "name": "Dżami al-Fna",
-      "category": "square"
+      "category": "square",
+      "lat": 31.62583,
+      "lng": -7.98892,
+      "provider": "osm"
     },
     {
       "ref": "p-suki",
       "name": "Suki Marakeszu",
-      "category": "market"
+      "category": "market",
+      "lat": 31.62792,
+      "lng": -7.98809,
+      "provider": "osm"
     },
     {
       "ref": "p-kutubijja",
       "name": "Minaret Kutubijji",
       "category": "landmark",
+      "lat": 31.62375,
+      "lng": -7.99336,
+      "provider": "osm",
       "notes": "Wnętrze niedostępne dla niemuzułmanów."
     },
     {
       "ref": "p-medersa",
       "name": "Medersa Ben Youssefa",
       "category": "monument",
+      "lat": 31.63198,
+      "lng": -7.98604,
+      "provider": "osm",
       "openingHours": "09:00–19:00",
       "website": "https://medersabenyoussef.ma/"
     },
@@ -122,22 +149,34 @@
       "ref": "p-bahia",
       "name": "Pałac Bahia",
       "category": "monument",
+      "lat": 31.62163,
+      "lng": -7.98194,
+      "provider": "osm",
       "openingHours": "09:00–17:00"
     },
     {
       "ref": "p-el-badi",
       "name": "Pałac El Badi",
-      "category": "monument"
+      "category": "monument",
+      "lat": 31.61818,
+      "lng": -7.98649,
+      "provider": "osm"
     },
     {
       "ref": "p-saadyci",
       "name": "Grobowce Saadytów",
-      "category": "monument"
+      "category": "monument",
+      "lat": 31.61726,
+      "lng": -7.98855,
+      "provider": "osm"
     },
     {
       "ref": "p-majorelle",
       "name": "Ogród Majorelle i muzeum YSL",
       "category": "garden",
+      "lat": 31.64147,
+      "lng": -8.00291,
+      "provider": "osm",
       "notes": "Poza medyną; bilety na konkretną godzinę."
     },
     {
@@ -150,27 +189,42 @@
       "ref": "p-essaouira",
       "name": "Essaouira",
       "category": "city",
+      "lat": 31.51183,
+      "lng": -9.76209,
+      "provider": "osm",
       "notes": "Parking przed murami, w medynie aut nie ma."
     },
     {
       "ref": "p-skala-ville",
       "name": "Mury Skala de la Ville",
-      "category": "monument"
+      "category": "monument",
+      "lat": 31.5142,
+      "lng": -9.7724,
+      "provider": "osm"
     },
     {
       "ref": "p-port-essaouira",
       "name": "Port rybacki w Essaouirze",
-      "category": "harbour"
+      "category": "harbour",
+      "lat": 31.50844,
+      "lng": -9.77462,
+      "provider": "osm"
     },
     {
       "ref": "p-medyna-essaouira",
       "name": "Medyna Essaouiry (UNESCO)",
-      "category": "old_town"
+      "category": "old_town",
+      "lat": 31.51328,
+      "lng": -9.76882,
+      "provider": "osm"
     },
     {
       "ref": "p-skala-port",
       "name": "Skala du Port",
-      "category": "viewpoint"
+      "category": "viewpoint",
+      "lat": 31.51003,
+      "lng": -9.77358,
+      "provider": "osm"
     },
     {
       "ref": "p-warsztaty-tui",
@@ -180,12 +234,18 @@
     {
       "ref": "p-plaza-essaouira",
       "name": "Plaża w Essaouirze",
-      "category": "beach"
+      "category": "beach",
+      "lat": 31.49926,
+      "lng": -9.76416,
+      "provider": "osm"
     },
     {
       "ref": "p-sidi-kaouki",
       "name": "Sidi Kaouki",
       "category": "village",
+      "lat": 31.38752,
+      "lng": -9.72951,
+      "provider": "osm",
       "notes": "27 km na południe od Essaouiry."
     },
     {
@@ -208,22 +268,34 @@
     {
       "ref": "p-imsouane",
       "name": "Imsouane",
-      "category": "village"
+      "category": "village",
+      "lat": 30.8419,
+      "lng": -9.81996,
+      "provider": "osm"
     },
     {
       "ref": "p-tamri",
       "name": "Plaża Tamri",
-      "category": "beach"
+      "category": "beach",
+      "lat": 30.69663,
+      "lng": -9.82504,
+      "provider": "osm"
     },
     {
       "ref": "p-taghazout",
       "name": "Taghazout",
-      "category": "village"
+      "category": "village",
+      "lat": 30.58467,
+      "lng": -9.6785,
+      "provider": "osm"
     },
     {
       "ref": "p-paradise",
       "name": "Paradise Valley",
       "category": "valley",
+      "lat": 30.58932,
+      "lng": -9.52258,
+      "provider": "osm",
       "notes": "35 km w głąb lądu od Taghazout, 54 min w jedną stronę."
     },
     {

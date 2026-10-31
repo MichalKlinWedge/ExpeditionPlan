@@ -86,12 +86,18 @@
       "ref": "wroclaw",
       "name": "Wrocław",
       "category": "city",
+      "lat": 51.12631,
+      "lng": 16.9782,
+      "provider": "osm",
       "notes": "Punkt startu — do potwierdzenia, czy wszyscy startują z Wrocławia."
     },
     {
       "ref": "bystrzyca",
       "name": "Bystrzyca Kłodzka",
       "category": "town",
+      "lat": 50.29687,
+      "lng": 16.65202,
+      "provider": "osm",
       "notes": "Ostatnie miejsce z normalnym sklepem i stacją — dokupujemy wodę i to, co zapomniane."
     },
     {
@@ -108,6 +114,9 @@
       "ref": "schronisko-jagodna",
       "name": "Schronisko PTTK „Jagodna”",
       "category": "mountain_hut",
+      "lat": 50.27711,
+      "lng": 16.53731,
+      "provider": "osm",
       "address": "Przełęcz Spalona",
       "elevationM": 811,
       "openingHours": "czynne cały rok",
@@ -117,6 +126,9 @@
       "ref": "chatka",
       "name": "Chatka Sylwestrowa",
       "category": "shelter",
+      "lat": 50.26361,
+      "lng": 16.52229,
+      "provider": "osm",
       "elevationM": 780,
       "notes": "Zachodnie zbocza Masywu Jagodnej, w zlewni Orlicy — głęboko w lesie; ok. 2 km od schroniska na Przełęczy Spalonej, przy dawnym niebieskim szlaku rowerowym. Nie leży na szlaku pieszym i nie ma jej na każdej mapie — jest zaznaczona na mapy.cz / mapy.com; bez punktu w telefonie można jej nie znaleźć, zwłaszcza po ciemku. Dawna chatka studencka, remontowana społecznie. Duża izba: koza, stół, ławy, prycze + strych do spania. Brak prądu, wody i toalety. Dokument nie podaje współrzędnych."
     },
@@ -136,6 +148,9 @@
       "ref": "jagodna",
       "name": "Jagodna (977 m n.p.m.)",
       "category": "peak",
+      "lat": 50.25246,
+      "lng": 16.56442,
+      "provider": "osm",
       "elevationM": 977,
       "notes": "Korona Gór Polski. 23-metrowa wieża widokowa: Masyw Śnieżnika, Góry Orlickie, czeska strona."
     },
@@ -143,6 +158,9 @@
       "ref": "sasin",
       "name": "Sasin (Kohlberg)",
       "category": "area",
+      "lat": 50.2742,
+      "lng": 16.55485,
+      "provider": "osm",
       "notes": "Kierunek krótkiej pętli przy chatce, szerokimi drogami leśnymi."
     },
     {

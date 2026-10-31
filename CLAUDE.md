@@ -25,6 +25,7 @@ npm run mobile              # expo start (needs a development build, not Expo Go
 npm run supabase -- start   # local Supabase via pinned CLI (needs Docker)
 npm run test:db             # pgTAP tests in supabase/tests (RLS, row versions) — needs local Supabase
 npm run test:sync           # packages/sync against local Supabase (PoC-4 scenarios); not part of `check`
+npm run geocode -- [slug…] [--write]   # OSM/Nominatim coords for fixtures/plans (1 req/1.1 s, cached in tools/geocode/.cache.json)
 npm run import-plan -- <file.docx|pdf> [--provider CLAUDE] [--out x.json] [--compare fixtures/plans/<p>/plan.json] [--anonymize] [--text-only]
 ```
 

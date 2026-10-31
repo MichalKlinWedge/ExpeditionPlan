@@ -161,6 +161,25 @@ describe('scheduleDay — na Twoich planach', () => {
     expect(cuts.every((cut) => cut.itemRef !== 'd2-wyjazd')).toBe(true);
   });
 
+  it('po geokodowaniu (OSM): Gruzja dzień 1 — dojazd do Zugdidi po przylocie wypada ok. 2 h po zmroku', () => {
+    const schedule = scheduleDay(fixture('gruzja'), 'd1');
+    const dark = schedule.warnings.find((warning) => warning.kind === 'driving_after_dark');
+
+    expect(dark?.itemRef).toBe('d1-dojazd-zugdidi');
+    expect(dark?.minutes).toBeGreaterThan(90);
+  });
+
+  it('po geokodowaniu (OSM): Maroko mieści każdą jazdę przed zmrokiem, zachód w Marakeszu 18:35', () => {
+    const maroko = fixture('maroko');
+    for (const day of maroko.days) {
+      for (const scenario of ['optimistic', 'pessimistic'] as const) {
+        const schedule = scheduleDay(maroko, day.ref, { scenario });
+        expect(schedule.warnings.filter((warning) => warning.kind === 'driving_after_dark' || warning.kind === 'no_coordinates')).toEqual([]);
+      }
+    }
+    expect(scheduleDay(maroko, 'd2').facts.sun).not.toBeNull();
+  });
+
   it('Maroko: suma kilometrów dni wobec limitu auta', () => {
     expect(checkCarKmLimit(fixture('maroko'))).toMatchObject({ totalKm: 675, limitKm: 680, overKm: 0 });
   });

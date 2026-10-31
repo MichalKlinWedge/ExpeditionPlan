@@ -16,4 +16,6 @@ Pięć prawdziwych planów z [`exaples/`](../../exaples/) w postaci danych. Słu
 
 Luki i niespójności znalezione w dokumentach zostają w polach `notes` — to też dane testowe (import ma je wyłapać, a nie zgubić).
 
+Współrzędne miejsc (`provider: osm`) pochodzą z OpenStreetMap przez Nominatim (`tools/geocode`) — dane © autorzy OpenStreetMap, licencja ODbL. Miejsca prywatne (noclegi u znajomych, „kwatera w okolicy”) celowo nie mają współrzędnych.
+
 Każdy `brief.json` jest walidowany schematem `TripBrief` z `@expeditionplan/core` (`npm test`).

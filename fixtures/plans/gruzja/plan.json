@@ -39,42 +39,66 @@
     {
       "ref": "lotnisko-wroclaw",
       "name": "Lotnisko Wrocław",
-      "category": "airport"
+      "category": "airport",
+      "lat": 51.10378,
+      "lng": 16.88854,
+      "provider": "osm"
     },
     {
       "ref": "lotnisko-kutaisi",
       "name": "Lotnisko Kutaisi",
-      "category": "airport"
+      "category": "airport",
+      "lat": 42.17835,
+      "lng": 42.49101,
+      "provider": "osm"
     },
     {
       "ref": "zugdidi",
       "name": "Zugdidi",
-      "category": "city"
+      "category": "city",
+      "lat": 42.50721,
+      "lng": 41.87169,
+      "provider": "osm"
     },
     {
       "ref": "mestia",
       "name": "Mestia",
-      "category": "town"
+      "category": "town",
+      "lat": 43.04376,
+      "lng": 42.72445,
+      "provider": "osm"
     },
     {
       "ref": "szekwetili",
       "name": "Szekwetili",
-      "category": "resort"
+      "category": "resort",
+      "lat": 41.92888,
+      "lng": 41.76933,
+      "provider": "osm"
     },
     {
       "ref": "ureki",
       "name": "Ureki",
-      "category": "resort"
+      "category": "resort",
+      "lat": 41.99694,
+      "lng": 41.77935,
+      "provider": "osm"
     },
     {
       "ref": "kobuleti",
       "name": "Kobuleti",
-      "category": "resort"
+      "category": "resort",
+      "lat": 41.81136,
+      "lng": 41.77932,
+      "provider": "osm"
     },
     {
       "ref": "zapora-inguri",
       "name": "Zapora Inguri",
-      "category": "viewpoint"
+      "category": "viewpoint",
+      "lat": 42.75848,
+      "lng": 42.03093,
+      "provider": "osm"
     },
     {
       "ref": "hacwali",
@@ -84,7 +108,10 @@
     {
       "ref": "lodowiec-czalaadi",
       "name": "Lodowiec Czalaadi",
-      "category": "glacier"
+      "category": "glacier",
+      "lat": 43.12819,
+      "lng": 42.71311,
+      "provider": "osm"
     },
     {
       "ref": "muzeum-swanetii",
@@ -99,22 +126,34 @@
     {
       "ref": "uszguli",
       "name": "Uszguli",
-      "category": "village"
+      "category": "village",
+      "lat": 42.98913,
+      "lng": 43.12046,
+      "provider": "osm"
     },
     {
       "ref": "lodowiec-szchara",
       "name": "Lodowiec Szchara",
-      "category": "glacier"
+      "category": "glacier",
+      "lat": 42.98006,
+      "lng": 43.10767,
+      "provider": "osm"
     },
     {
       "ref": "jeziora-koruldi",
       "name": "Jeziora Koruldi",
-      "category": "lake"
+      "category": "lake",
+      "lat": 43.08769,
+      "lng": 42.70308,
+      "provider": "osm"
     },
     {
       "ref": "mazeri",
       "name": "Mazeri",
-      "category": "village"
+      "category": "village",
+      "lat": 43.07384,
+      "lng": 42.61018,
+      "provider": "osm"
     },
     {
       "ref": "wodospad-uszba",
@@ -124,77 +163,119 @@
     {
       "ref": "tetnuldi",
       "name": "Kolejka Tetnuldi",
-      "category": "cable_car"
+      "category": "cable_car",
+      "lat": 43.03067,
+      "lng": 42.99329,
+      "provider": "osm"
     },
     {
       "ref": "kanion-martwili",
       "name": "Kanion Martwili",
       "category": "canyon",
+      "lat": 42.45843,
+      "lng": 42.37288,
+      "provider": "osm",
       "notes": "Rejs łódką po kanionie."
     },
     {
       "ref": "tsitsinatela",
       "name": "Park rozrywki Tsitsinatela",
-      "category": "amusement_park"
+      "category": "amusement_park",
+      "lat": 41.90685,
+      "lng": 41.77686,
+      "provider": "osm"
     },
     {
       "ref": "park-dendrologiczny",
       "name": "Park dendrologiczny",
       "category": "park",
+      "lat": 41.95979,
+      "lng": 41.7668,
+      "provider": "osm",
       "notes": "Dokument nie podaje pełnej nazwy ani lokalizacji (okolice Szekwetili)."
     },
     {
       "ref": "poti",
       "name": "Poti",
-      "category": "city"
+      "category": "city",
+      "lat": 42.14161,
+      "lng": 41.6748,
+      "provider": "osm"
     },
     {
       "ref": "park-kolchidy",
       "name": "Park Narodowy Kolchidy",
       "category": "national_park",
+      "lat": 42.14239,
+      "lng": 41.82809,
+      "provider": "osm",
       "notes": "Rejs łodzią po jeziorze Paliastomi i rzece Pichori."
     },
     {
       "ref": "ogrod-botaniczny-batumi",
       "name": "Ogród botaniczny (Batumi)",
       "category": "garden",
+      "lat": 41.70139,
+      "lng": 41.71988,
+      "provider": "osm",
       "notes": "Bez wjazdu do centrum Batumi."
     },
     {
       "ref": "twierdza-gonio",
       "name": "Twierdza Gonio",
-      "category": "fortress"
+      "category": "fortress",
+      "lat": 41.57326,
+      "lng": 41.57382,
+      "provider": "osm"
     },
     {
       "ref": "kwariati",
       "name": "Kwariati",
       "category": "beach",
+      "lat": 41.54761,
+      "lng": 41.56376,
+      "provider": "osm",
       "notes": "Nurkowanie z maską."
     },
     {
       "ref": "rzeka-aczariscchali",
       "name": "Rzeka Aczariscchali (rafting)",
-      "category": "river"
+      "category": "river",
+      "lat": 41.54403,
+      "lng": 41.7232,
+      "provider": "osm"
     },
     {
       "ref": "wodospad-machuncety",
       "name": "Wodospad Machuncety",
-      "category": "waterfall"
+      "category": "waterfall",
+      "lat": 41.57494,
+      "lng": 41.85831,
+      "provider": "osm"
     },
     {
       "ref": "jaskinia-prometeusza",
       "name": "Jaskinia Prometeusza",
-      "category": "cave"
+      "category": "cave",
+      "lat": 42.37563,
+      "lng": 42.59793,
+      "provider": "osm"
     },
     {
       "ref": "kutaisi",
       "name": "Kutaisi",
-      "category": "city"
+      "category": "city",
+      "lat": 42.27161,
+      "lng": 42.70545,
+      "provider": "osm"
     },
     {
       "ref": "katedra-bagrati",
       "name": "Katedra Bagrati",
-      "category": "church"
+      "category": "church",
+      "lat": 42.27729,
+      "lng": 42.70425,
+      "provider": "osm"
     },
     {
       "ref": "bb-cottages-mestia",
@@ -214,12 +295,18 @@
     {
       "ref": "majestic-kobuleti",
       "name": "Majestic (Kobuleti)",
-      "category": "lodging"
+      "category": "lodging",
+      "lat": 41.84794,
+      "lng": 41.7796,
+      "provider": "osm"
     },
     {
       "ref": "golden-fleece-ureki",
       "name": "Golden Fleece (Ureki)",
-      "category": "lodging"
+      "category": "lodging",
+      "lat": 41.98913,
+      "lng": 41.76149,
+      "provider": "osm"
     }
   ],
   "days": [

@@ -158,7 +158,7 @@ Zasady, które wyszły z danych:
 
 ### Ograniczenia, o których trzeba pamiętać
 
-- **Fakty dnia wymagają współrzędnych.** Z pięciu planów tylko Chatka ma pinezkę; w pozostałych zachód słońca i „bez jazdy po zmroku” sprawdzą się dopiero po geokodowaniu (MVP-2). Silnik mówi to wprost (`no_coordinates`), zamiast udawać.
+- **Fakty dnia wymagają współrzędnych.** Silnik bez nich mówi to wprost (`no_coordinates`), zamiast udawać. Plany wzorcowe są już zgeokodowane (sekcja „Geokodowanie planów wzorcowych” niżej) — każdy dzień ma słońce.
 - **Godziny otwarcia** rozumie tylko w postaci „09:00–19:00”; reszta (dni tygodnia, sezon) czeka na dane z Geoapify/OSM.
 - **Limit km Maroka:** silnik liczy 675 km z sum dni (dzień 5 nie ma km w planie), plan podaje 710 — różnica to brakujący odcinek na lotnisko, nie błąd liczenia.
 - Święta i nakładanie się punktu z poprzednim przy `from: previous` — do dopisania przy MVP-3.
@@ -196,3 +196,29 @@ Zasady, które wyszły z danych:
 - `pull_changes` bez stronicowania (pełna migawka Maroka to kilkadziesiąt kB); przy dużych wyjazdach — strony po `row_version`.
 - Odrzucenie trwałe (np. utrata prawa do wydatków) zatrzymuje outbox — trzeba je odróżnić od braku sieci i pokazać użytkownikowi.
 - Na telefonie: adapter expo-sqlite dla `LocalDb`, polyfill `crypto.getRandomValues` (expo-crypto) dla `uuidv7`, sprawdzenie na urządzeniu razem z PoC-2/3.
+
+---
+
+## Geokodowanie planów wzorcowych — przygotowanie do PoC-1 (31.10.2026)
+
+Miejsca w `fixtures/plans/*/plan.json` mają współrzędne z OpenStreetMap (publiczny Nominatim, jednorazowo, 1 zapytanie na 1,1 s, identyfikujący User-Agent, cache zapytań poza repozytorium — zgodnie z [docs/USLUGI.md](docs/USLUGI.md)). Narzędzie: [`tools/geocode`](tools/geocode/src/cli.ts), `npm run geocode -- [slug…] [--write]`.
+
+| Plan | Ze współrzędnymi | Bez (powód) |
+|---|---|---|
+| Barcelona | 25 / 31 | nocleg u znajomej i lokal kolegi (prywatne, celowo pominięte), dwa „X albo Y”, Barça Store przy stadionie, jarmark świąteczny (sezonowy, brak w OSM) |
+| Chatka | 6 / 10 | skrzynka geocachingowa; Orlica i Czerniec — OSM daje tylko imienników albo przysiółki, nie szczyty |
+| Dinara | 7 / 10 | kwatera i „zakup wody na trasie” (opisowe), start trasy na Dinarę |
+| Gruzja | 29 / 36 | trzy noclegi, kolejka na Hacwali, Muzeum Swanetii, wodospad Uszba, wieże w Mestii |
+| Maroko | 24 / 31 | obóz na Agafay, dwa noclegi, parking „przy medynie”, warsztaty tui, wydmy i plaża Sidi Kaouki z ruinami marabutu |
+
+**Co wyszło na Twoich planach:**
+- **Gruzja, dzień 1:** dojazd do Zugdidi po przylocie o 21:10 wypada ok. 2 h po zmierzchu cywilnym (20:30 zachód, 21:01 zmierzch) — silnik zgłasza `driving_after_dark`.
+- **Maroko:** żadna jazda nie wypada po zmroku — zachód 18:35–18:46, plan był policzony z poprawną godziną.
+- **Chatka:** OSM zna „Chatkę Sylwestrową” (ok. 1,8 km od schroniska, jak w opisie) — najważniejszy punkt wyjazdu, którego dokument nie miał.
+
+**Wnioski dla PoC-1 i importu:**
+- **Polskie egzonimy i transkrypcje nie działają w OSM** (Marakesz, Kutubijja, Uszguli, Szchara, Hacwali). Pomogły podpowiedzi nazw lokalnych/angielskich ([`aliases.ts`](tools/geocode/src/aliases.ts)) — import AI powinien zwracać obok nazwy polskiej `searchName` w języku lokalnym albo angielskim.
+- **Imiennicy** (Orlica pod Szczecinem, Tsitsinatela w Tbilisi zamiast w Szekwetili, „UNESCO” w Bieszczadach): trafienie dalej niż promień obszaru wyjazdu od mediany trafień jest odrzucane i szukane drugi raz tylko w prostokącie obszaru.
+- **Trafienia zbyt ogólne** (hotel „(Ureki)” znaleziony jako miejscowość Ureki) nie są zapisywane — wyglądałyby na dokładne. Schemat nie ma pola dokładności punktu; warto je dodać w MVP-2 (`precision: exact | area`), bo dla słońca wystarczy miejscowość, a dla nawigacji nie.
+- Nominatim nie nadaje się do aplikacji (zakaz bulk i autouzupełniania) — w produkcie geokodowanie przez Geoapify, jak w D4.
+
