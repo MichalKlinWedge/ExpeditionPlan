@@ -1,12 +1,13 @@
 "use server";
 
-import { Currency, IsoDate, TimeZone } from "@expeditionplan/core";
-import { uuidv7 } from "@expeditionplan/sync";
+import { Currency, IsoDate, TimeZone, TripDocument } from "@expeditionplan/core";
+import { importTrip, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { SAMPLE_PLANS } from "@/lib/sample-plans";
 
 /**
  * Akcje serwera MVP-1. Każda sprawdza zalogowanie sama (akcje omijają matcher proxy), a o prawie
@@ -87,6 +88,27 @@ export async function createInvite(tripId: string, _prev: FormState, form: FormD
   const { data, error } = await supabase.rpc("create_invite", { p_trip: tripId, p_role: role, p_days: 14, p_max_uses: maxUses });
   if (error) return { error: message(error) };
   return { token: data };
+}
+
+/** Pięć planów wzorcowych na moje konto; pomija te, które już mam (po tytule). */
+export async function importSamples(): Promise<FormState> {
+  const { supabase } = await requireUser("/");
+  const { data: mine, error } = await supabase.from("my_trips").select("title").eq("role", "owner");
+  if (error) return { error: message(error) };
+  const titles = new Set(mine.map((trip) => trip.title));
+  const added: string[] = [];
+  for (const plan of SAMPLE_PLANS) {
+    const doc = TripDocument.parse(plan);
+    if (titles.has(doc.trip.title)) continue;
+    try {
+      await importTrip(supabase, doc);
+      added.push(doc.trip.title);
+    } catch (e) {
+      return { error: `${doc.trip.title}: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  }
+  refresh();
+  return { ok: added.length === 0 ? "Wszystkie przykładowe wyjazdy już są na liście." : `Dodano: ${added.join(", ")}.` };
 }
 
 export async function acceptInvite(token: string): Promise<FormState> {

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { acceptInvite, addTraveler, createInvite, createTrip, type FormState } from "@/app/actions";
+import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples } from "@/app/actions";
 
 /** Formularze MVP-1 — stan i błędy z akcji serwera przez `useActionState`. */
 
@@ -136,6 +136,20 @@ export function InviteForm({ tripId }: { tripId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+export function SamplesButton() {
+  const [state, action, pending] = useActionState(importSamples, {});
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <button
+        disabled={pending}
+        className="self-start rounded-md border border-zinc-300 px-4 py-2 text-sm disabled:opacity-50 dark:border-zinc-700">
+        {pending ? "Dodaję przykłady…" : "Dodaj przykładowe wyjazdy"}
+      </button>
+      <Status state={state} />
+    </form>
   );
 }
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { SamplesButton } from "@/components/forms";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -18,6 +19,7 @@ export default function Home() {
       <Suspense fallback={<Loading />}>
         <TripList />
       </Suspense>
+      <SamplesButton />
     </Shell>
   );
 }
