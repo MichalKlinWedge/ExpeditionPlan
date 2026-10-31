@@ -45,6 +45,16 @@ describe('dokument ↔ wiersze tabel (MVP-1)', () => {
     expect(dayRow[groupLodging ? 'lodging_group_id' : 'lodging_booking_id']).toBe(ids.get(day.lodgingRef!));
   });
 
+  it('wiersz bez ref (dodany w UI) dostaje klucz z id i można się do niego odwołać', () => {
+    const doc = load('maroko');
+    const server = asServer(rowsFromDocument(doc, uuidv7(), uuidv7));
+    const id = uuidv7();
+    const guardian = server.tables.travelers![0]!;
+    server.tables.travelers!.push({ id, trip_id: server.trip.id, name: 'Nowy', guardian_id: guardian.id, sort_key: '99999', row_version: 2, deleted_at: null });
+    const back = documentFromRows(server.trip, server.tables);
+    expect(back.travelers.at(-1)).toMatchObject({ ref: `id-${id}`, name: 'Nowy', guardianRef: guardian.ref });
+  });
+
   it('usunięty wiersz znika z dokumentu', () => {
     const doc = load('chatka');
     const server = asServer(rowsFromDocument(doc, uuidv7(), uuidv7));

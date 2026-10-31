@@ -274,11 +274,24 @@ const alive = (row: Row) => row.deleted_at === null || row.deleted_at === undefi
 /** Wiersze tabel (po nazwie tabeli) → dokument. Usunięte wiersze się pomija. */
 export type TableRows = Record<string, Row[]>;
 
+/** Kolekcje, w których `ref` jest opcjonalny — tu wiersz bez klucza zostaje bez niego. */
+const OPTIONAL_REF = new Set<Collection>(['legs', 'constraints', 'notes']);
+
+/**
+ * Klucz dokumentu wiersza. Wiersze z UI (uczestnik dodany na webie, później edytor) nie mają
+ * `ref` — dostają stały klucz z `id` (UUID pasuje do składni `Ref`), więc odwołania do nich działają.
+ */
+const rowRef = (collection: Collection, row: Row): string | undefined =>
+  row.ref !== null && row.ref !== undefined ? (row.ref as string) : OPTIONAL_REF.has(collection) ? undefined : `id-${row.id as string}`;
+
 export function documentFromRows(trip: Row, tables: TableRows): Doc {
   const live = Object.fromEntries(COLLECTIONS.map((c) => [c, (tables[SPECS[c].table] ?? []).filter(alive)]));
   const refById = new Map<string, string>();
   for (const collection of COLLECTIONS) {
-    for (const row of live[collection]!) if (row.ref !== null && row.ref !== undefined) refById.set(row.id as string, row.ref as string);
+    for (const row of live[collection]!) {
+      const ref = rowRef(collection, row);
+      if (ref !== undefined) refById.set(row.id as string, ref);
+    }
   }
   // Odwołanie do usuniętego albo cudzego wiersza zostaje wykryte przez walidację dokumentu.
   const ctx: Context = {
@@ -293,7 +306,7 @@ export function documentFromRows(trip: Row, tables: TableRows): Doc {
     const spec = SPECS[collection];
     const rows = [...live[collection]!].sort((a, b) => String(a.sort_key ?? '').localeCompare(String(b.sort_key ?? '')) || String(a.ref ?? a.id).localeCompare(String(b.ref ?? b.id)));
     let elements: Row[] = rows.map((row) => ({
-      ...(row.ref === null || row.ref === undefined ? {} : { ref: row.ref }),
+      ...(rowRef(collection, row) === undefined ? {} : { ref: rowRef(collection, row) }),
       ...fromRow(row, spec.fields, ctx),
       ...(spec.fromRow?.(row, ctx) ?? {}),
     }));

@@ -48,7 +48,12 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <p className="text-sm text-zinc-500">
           Plan: {days.count ?? 0} dni, {items.count ?? 0} punktów. Edytor planu przyjdzie w MVP-3.
         </p>
-        <p className="text-sm">
+        <p className="flex gap-4 text-sm">
+          {(days.count ?? 0) > 0 && (
+            <Link href={`/trips/${id}/plan`} className="underline">
+              Plan dzień po dniu
+            </Link>
+          )}
           <Link href={`/trips/${id}/brief`} className="underline">
             {brief.data ? "Brief wyjazdu — zmień" : "Uzupełnij brief wyjazdu (dla AI)"}
           </Link>
