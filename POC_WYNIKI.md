@@ -298,3 +298,40 @@ Czas 93–370 s na dokument, koszt wg cennika API: Haiku 0,02–0,30 USD, Sonnet
 
 **Do MVP (import planu):** import po sekcjach (dzień po dniu + osobno rezerwacje, budżet, zadania) zamiast jednego zapytania — długie dokumenty tracą treść; podgląd do akceptacji per sekcja (SPECYFIKACJA §4) z ostrzeżeniami silnika przy dniu.
 
+---
+
+## Porównanie z Opus 5.5 (31.10.2026, na życzenie właściciela)
+
+Te same testy na `claude-opus-5-5` (przez `claude -p`, od tego przebiegu w `--safe-mode`, czyli bez globalnego CLAUDE.md użytkownika). Opus jest dopuszczony w `pricing.ts` tylko podany wprost w `--models` — nie jest domyślny.
+
+**Łańcuch PoC-1 (etap 2 po 2 dni), 5 planów:**
+
+| Miara | Haiku 5.5 | Sonnet 5.5 | Opus 5.5 |
+|---|---|---|---|
+| Ugruntowane miejsca konkretne | 97% | 95% | 94% |
+| Dni realizowalne | 84% | 92% | 84% |
+| Ryzyka z planów ręcznych (spoza briefu) | 81% (4/8) | 90% (6/8) | **100% (8/8)** |
+| Czas AI na plan | 146–281 s | 218–391 s | **102–178 s** |
+| Maroko (5 dni) | 281 s | 382 s | **131 s** |
+| Tokeny wyjścia, Maroko | 97 tys. | 98 tys. | **24 tys.** |
+| Naprawy odpowiedzi | 1–2 | 0–3 | 0–1 |
+| Koszt planu wg cennika API | **0,03–0,07 USD** | 0,40–2,03 USD | 0,27–1,33 USD |
+
+**Import planów (5 dokumentów):**
+
+| Plan | Haiku | Sonnet | Opus |
+|---|---|---|---|
+| Barcelona | 65% | 65% | **85%** |
+| Gruzja | ✗ | 79% | **86%** |
+| Maroko | ✗ | 86% | **89%** |
+| Chatka | 40% | 83% | 83% |
+| Dinara | 97% | 88% | **100%** |
+| Dokumenty zgodne ze schematem | 3/5 | 5/5 | 5/5 |
+| Koszt wg API | 0,02–0,30 USD | 0,19–0,76 USD | 0,34–1,91 USD |
+
+**Wnioski:**
+- **Opus pisze zwięźle** — ok. 4× mniej tokenów wyjścia niż Sonnet przy tym samym schemacie — więc jest od niego szybszy i tańszy, mimo 2× wyższej stawki. Sonnet nie ma w tych testach przewagi nad żadnym z dwóch pozostałych.
+- **Opus wykrywa wszystkie ryzyka** z planów ręcznych, także te, o których brief nie mówi (godziny biura wypożyczalni, limit km, kolejki na lotnisku w Maroku; kieszonkowcy w Barcelonie; woda na grani Dinary).
+- **Czas:** Opus zbliża się do kryterium (Maroko 131 s przez CLI z narzutem), ale go nie spełnia; na API i przy częściach po 1 dniu ma szansę zejść poniżej 90 s.
+- **Rekomendacja (zmienia D3):** **Haiku 5.5 dla etapu 2** (dni i punkty — 10–20× taniej, jakość wystarczająca, silnik i tak audytuje), **Opus 5.5 dla etapu 1 i importu planu** (warianty, ryzyka, jednorazowy długi dokument — tu liczy się trafność, a koszt to jedno wywołanie). Sonnet odpada. Próba jest mała (5 planów, jeden przebieg na model) — potwierdzić przy MVP-2.
+

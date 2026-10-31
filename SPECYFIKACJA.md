@@ -566,7 +566,7 @@ Stan na 30.10.2026, zweryfikowany na oficjalnych stronach: szczegóły, liczby i
 |---|---|---|
 | D1 | Odbiorcy: ja + znajomi (jak FormaSync) czy produkt publiczny w Google Play? | **Ja + znajomi.** APK przez GitHub Releases. Sklep dopiero w etapie wydania (deklaracja lokalizacji w tle, polityka prywatności). |
 | D2 | Klucze AI: serwerowe (płaci właściciel) czy każdy wkleja własny (jak FormaSync)? | **Serwerowe z limitem per osoba.** Własny klucz jako opcja później. |
-| D3 | Dostawca AI domyślny | **Claude** do planowania. Gemini jako tańsza alternatywa za tym samym walidatorem. Po PoC-1: **Haiku 5.5 dla etapu 2** (jakość blisko Sonneta, ~0,05 USD za plan), Sonnet 5.5 do rozważenia dla etapu 1. Drogich modeli (Opus, Fable) nie używamy. |
+| D3 | Dostawca AI domyślny | **Claude** do planowania. Gemini jako tańsza alternatywa za tym samym walidatorem. Po PoC-1: **Haiku 5.5 dla etapu 2** (~0,05 USD za plan, silnik audytuje wynik), **Opus 5.5 dla etapu 1 i importu planu** (100% ryzyk, najlepszy import, zwięzły — szybszy i tańszy od Sonneta). Sonnet odpada; Fable nie używamy. |
 | D8 | Klucz AI w produkcji | PoC-1 szedł przez abonament Claude Code, który **nie zasili Edge Functions**. Przed MVP-2: kredyty Anthropic (koszt planu na Haiku ≈ 0,03–0,07 USD) albo dostawca z darmowym pakietem — do decyzji właściciela. |
 | D4 | Źródło miejsc | **OSM przez Geoapify.** Google Places wykluczone przez warunki dla EOG (R3); w PoC-1 porównanie z Google tylko jakościowe, bez zapisywania danych. |
 | D5 | Web: Next.js | **Tak.** Wspólny TS z Expo, SSR linku publicznego. |

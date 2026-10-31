@@ -10,7 +10,8 @@ import { AiError, type AiClient, type AiUsage } from '@expeditionplan/ai';
  * zamiast kredytów API. Tylko do narzędzi deweloperskich (PoC-1): produkcja (Edge Functions)
  * potrzebuje klucza API, abonament Claude Code jej nie zasili.
  *
- * Bez narzędzi, bez zapisu sesji, bez MCP; zmienne środowiska sesji-rodzica są usuwane, żeby CLI
+ * Bez narzędzi, bez zapisu sesji, bez MCP, bez CLAUDE.md użytkownika (`--safe-mode` — globalne
+ * instrukcje dokładały np. stopkę do odpowiedzi i mogłyby zmieniać plan); zmienne środowiska sesji-rodzica są usuwane, żeby CLI
  * użyło logowania użytkownika (`claude auth login`), a nie tokenu aplikacji, w której działa.
  */
 
@@ -47,7 +48,7 @@ export function claudeCodeClient(model: string, effort: 'low' | 'medium' | 'high
   async function askOnce(prompt: string, request: Parameters<AiClient['ask']>[1] = {}): ReturnType<AiClient['ask']> {
     const dir = mkdtempSync(join(tmpdir(), 'plan-ai-'));
     // Model jest z listy dozwolonych (pricing.ts), ścieżka — z mkdtemp; nic z zewnątrz nie trafia do powłoki.
-    const args = ['claude', '-p', '--model', model, '--tools', '""', '--effort', effort, '--output-format', 'json', '--no-session-persistence', '--strict-mcp-config'];
+    const args = ['claude', '-p', '--model', model, '--tools', '""', '--effort', effort, '--safe-mode', '--output-format', 'json', '--no-session-persistence', '--strict-mcp-config'];
     if (request.system) {
       writeFileSync(join(dir, 'system.txt'), request.system);
       args.push('--system-prompt-file', `"${join(dir, 'system.txt')}"`);

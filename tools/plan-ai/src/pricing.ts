@@ -2,13 +2,14 @@ import type { AiUsage } from '@expeditionplan/ai';
 
 /**
  * Ceny API (USD za milion tokenów) z https://platform.claude.com/docs/en/about-claude/pricing,
- * sprawdzone 31.10.2026. Tylko tanie modele: droższych (Opus, Fable) narzędzie nie uruchomi —
- * decyzja właściciela klucza.
+ * sprawdzone 31.10.2026. Domyślnie tanie modele; Opus tylko podany wprost w `--models`
+ * (porównanie na życzenie właściciela), Fable nigdy.
  */
 export const ALLOWED_MODELS: Record<string, { input: number; output: number; longInput?: number; longOutput?: number }> = {
   'claude-sonnet-5-5': { input: 2, output: 10 },
   // Haiku 5.5: powyżej 100 tys. tokenów zapytania obowiązuje wyższa stawka.
   'claude-haiku-5-5': { input: 0.1, output: 0.5, longInput: 0.5, longOutput: 2.5 },
+  'claude-opus-5-5': { input: 4, output: 20 },
 };
 
 export const DEFAULT_RUN_MODELS = ['claude-sonnet-5-5', 'claude-haiku-5-5'];

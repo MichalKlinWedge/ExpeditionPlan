@@ -60,9 +60,11 @@ describe('ryzyka i koszt', () => {
     expect(risks.filter((risk) => risk.found).map((risk) => risk.risk)).toEqual(['zmiana czasu w nocy', 'zmrok, czołówki']);
   });
 
-  it('drogie modele są zablokowane, koszt liczy się z cennika', () => {
+  it('Fable jest zablokowany, Opus tylko podany wprost (nie ma go w domyślnych), koszt z cennika', async () => {
+    const { DEFAULT_RUN_MODELS } = await import('../pricing.ts');
     expect(() => assertAllowed('claude-fable-5-1')).toThrow();
-    expect(() => assertAllowed('claude-opus-5-5')).toThrow();
+    expect(() => assertAllowed('claude-opus-5-5')).not.toThrow();
+    expect(DEFAULT_RUN_MODELS).not.toContain('claude-opus-5-5');
     expect(costUsd('claude-sonnet-5-5', { inputTokens: 1_000_000, outputTokens: 100_000 })).toBeCloseTo(3);
     expect(costUsd('claude-haiku-5-5', { inputTokens: 200_000, outputTokens: 0 })).toBeCloseTo(0.1);
   });
