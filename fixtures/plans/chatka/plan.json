@@ -391,6 +391,7 @@
       "sortKey": "0100",
       "kind": "activity",
       "title": "Ekipa Drewno",
+      "parentRef": "praca",
       "description": "Rąbanie i cięcie, ułożenie zapasu przy kozie na całą noc + nadwyżka dla następnych grup; suche drzazgi pod rozpałkę.",
       "placeRef": "chatka",
       "time": {
@@ -413,6 +414,7 @@
       "sortKey": "0110",
       "kind": "activity",
       "title": "Ekipa Ogień",
+      "parentRef": "praca",
       "description": "Rozpalenie kozy, przewietrzenie izby, rozstawienie i uruchomienie czujnika czadu, sznur nad kozą na mokre rzeczy.",
       "placeRef": "chatka",
       "time": {
@@ -435,6 +437,7 @@
       "sortKey": "0120",
       "kind": "activity",
       "title": "Ekipa Kuchnia",
+      "parentRef": "praca",
       "description": "Woda, stół, kolacja, herbata; jedzenie zamknięte szczelnie — w takich chatkach są myszy.",
       "placeRef": "chatka",
       "time": {
@@ -456,6 +459,7 @@
       "sortKey": "0130",
       "kind": "activity",
       "title": "Ekipa Latryna",
+      "parentRef": "praca",
       "description": "Miejsce 50+ m od chatki i od cieków wodnych, dołek łopatką, papier, oznaczenie trasy na noc.",
       "placeRef": "chatka",
       "time": {

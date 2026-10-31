@@ -38,6 +38,7 @@ Mobile: always `npx expo install <pkg>` inside `apps/mobile` (SDK-compatible ver
 - Time in plans = **local date/time + IANA zone** (`LocalDateTime` + `TimeZone`), never UTC instants. Real events (expenses, delays) use timestamptz. Money = integer minor units + ISO currency; plan prices use the `Price` schema (ranges, "from", age tiers).
 - `packages/ai`: one client (`createAiClient`) over Claude/Gemini/OpenAI; keys come from config/env (server-side only — never in the browser or APK). Use `askStructured(client, schema, prompt)` for anything that becomes data: it validates with Zod and gets exactly one repair attempt. Model names are never guessed — `listModels()` is the source.
 - AI produces **drafts and patches, never silent overwrites**; user-edited items are `user_locked`.
+- `packages/core/src/engine/`: the schedule engine (§7) — `scheduleDay`, `proposeCuts`, `checkCarKmLimit`, `priceForGroup`, sun/moon, zoned time via `Intl` (no date libs). Computes on UTC instants, displays local time. Plan times are "not earlier than"; `relative` + `from: previous` counts from the START of the previous item. The `bramka PoC-5` test keeps all five fixture plans within ±15 min — keep it green.
 
 ## Reference data
 

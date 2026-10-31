@@ -240,6 +240,11 @@ export const DocItem = z.object({
   title: text,
   /** Szczegóły przejazdu — tylko przy `kind: transport`. */
   leg: ItemLeg.optional(),
+  /**
+   * Blok, do którego punkt należy: „PRACA 14:15–16:00” → ekipy Drewno, Ogień, Kuchnia, Latryna.
+   * Podpunkty dzieją się w czasie bloku, równolegle, i nie przesuwają reszty dnia (PoC-5).
+   */
+  parentRef: Ref.optional(),
   description: z.string().optional(),
   placeRef: Ref.optional(),
   time: ItemTime.optional(),
@@ -717,6 +722,10 @@ export function checkReferences(doc: Shape): { path: (string | number)[]; messag
     it.replacesRefs.forEach((r, j) => expect(['items', i, 'replacesRefs', j], r, 'items'));
     it.variantRefs.forEach((v, j) => expect(['items', i, 'variantRefs', j], v, 'variants'));
     expect(['items', i, 'placeRef'], it.placeRef, 'places');
+    expect(['items', i, 'parentRef'], it.parentRef, 'items');
+    if (it.parentRef !== undefined && it.parentRef === it.ref) {
+      problems.push({ path: ['items', i, 'parentRef'], message: 'Punkt nie może być własnym blokiem.' });
+    }
     expectBookingOrGroup(['items', i, 'bookingRef'], it.bookingRef);
     expect(['items', i, 'activity', 'trackRef'], it.activity?.trackRef, 'tracks');
     it.participantRefs?.forEach((p, j) => expect(['items', i, 'participantRefs', j], p, 'travelers'));

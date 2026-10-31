@@ -108,3 +108,57 @@ Migracja odsłoniła kilka nowych luk — dopisane do grupy B:
 1. ~~Poprawki A1–A9~~ — zrobione 31.10.2026.
 2. **Import przez AI** (`npm run import-plan -- … --compare …`) dla 5 dokumentów, gdy będzie klucz — wynik dopisać tutaj (ile punktów wzorca odnaleziono, które luki AI popełnia).
 3. ~~Specyfikacja v0.3~~ — §5 i §7 zaktualizowane; grupa B czeka na etapy z tabeli wyżej.
+
+---
+
+## PoC-5 — Silnik harmonogramu i ograniczeń (31.10.2026)
+
+**Werdykt: GO.** Silnik odtwarza godziny z pięciu planów w granicach ±15 min w obu scenariuszach (optymistycznym i pesymistycznym), bez twardych naruszeń — test `bramka PoC-5` w [`engine-schedule.test.ts`](packages/core/src/__tests__/engine-schedule.test.ts). Kod idzie wprost do MVP.
+
+### Co powstało — `packages/core/src/engine/`
+
+| Moduł | Co robi |
+|---|---|
+| [`time.ts`](packages/core/src/engine/time.ts) | czas lokalny ↔ chwila w strefie IANA przez `Intl` (bez bibliotek — to samo w przeglądarce, na telefonie i w Deno); zmiana czasu: godzina powtórzona → pierwsze wystąpienie, nieistniejąca → przesunięta naprzód |
+| [`sun.ts`](packages/core/src/engine/sun.ts) | wschód, zachód, zmierzch cywilny (równanie NOAA) i oświetlenie Księżyca — offline, bez API |
+| [`price.ts`](packages/core/src/engine/price.ts) | kwota dla grupy z progów wiekowych; uczestnicy bez wieku liczeni po najwyższym progu i zgłaszani |
+| [`schedule.ts`](packages/core/src/engine/schedule.ts) | `scheduleDay` (godziny, ostrzeżenia, zapas, fakty dnia), `proposeCuts`, `checkCarKmLimit`, wybór aktywnych wariantów |
+
+Zasady, które wyszły z danych:
+
+- **Godzina z planu = „nie wcześniej niż”.** Punkt startuje o niej, chyba że poprzednie się przeciągnęły; różnica (`driftMin`) to sygnał, że plan się nie spina. Stała godzina (`isFixed`) przy spóźnieniu daje twarde ostrzeżenie.
+- **Pora dnia to okno, nie godzina** — „wieczór” nie jest spóźnieniem o 17:01.
+- **Początek dnia liczony wstecz** od pierwszej podanej godziny („dojazd 3 h”, potem „w Mestii ok. 13:00” → start 10:00); bez żadnej godziny — 08:00.
+- **Część grupy idzie osobną ścieżką** (szpica, grupa główna) i schodzi się z resztą w następnym wspólnym punkcie.
+- **Blok z podpunktami** (`parentRef`, nowe pole — z listy B, wprowadzone, bo bez niego „PRACA 14:15–16:00” z czterema ekipami liczyła się po kolei i dawała fałszywy alarm o zachodzie słońca): podpunkty dzieją się równolegle w czasie bloku.
+- **Czas względny `from: previous`** od początku poprzedniego punktu aktywnego wariantu (decyzja z PoC-0); bez „godziny zero” silnik przyjmuje koniec ostatniego punktu przed nią i ostrzega.
+- **Ograniczenie bez wskazanego punktu nie jest zgadywane** („wymeldowanie 11:00” wskazuje tylko rezerwację — nie wiadomo, czyj to limit).
+
+### Rozjazdy w Twoich planach, które silnik wykrywa (wszystkie ≤ 15 min)
+
+| Plan | Punkt | Plan mówi | Wychodzi | Dlaczego |
+|---|---|---|---|---|
+| Maroko d1 | Autostradą A7 | 11:45 | 12:00 | odbiór auta 11:30 + „pół godziny na formalności” |
+| Maroko d1 | Marakesz, parking | 14:45 | 14:52 | skutek powyższego (+2 h 52 jazdy) |
+| Maroko d3 | Mury Skala de la Ville | 14:00 | 14:15 | lunch 12:45 trwa 1,5 h |
+| Maroko d4 | Sandboard | 09:30 | 09:45 | poranek na plaży 08:45 trwa 1 h |
+| Maroko d4 | Wyjazd drogą N1 | 11:30 | 11:45 | sandboard 2 h |
+| Chatka d1 | Szpica w chatce | 13:10 | 13:15 | dojście 45 min, w planie 40 |
+| Chatka d1 (pesym.) | Bystrzyca, zakupy | 10:15 | 10:30 | dojazd do 2:30 |
+| Dinara d1 | Ferrata Čikola | 18:00 | 18:10 | wyjazd 16:30 + 1:40 jazdy |
+
+### Testy na Twoich danych (wybrane)
+
+- Dinara, sobota z „godziną zero” 06:00: 07:20 wyjście, ferrata 07:20–16:20, 16:20 powrót, 17:50 Szybenik — dokładnie jak we wzorze.
+- Gruzja: wylot 15:40 czasu polskiego to 17:40 w Gruzji, przylot 21:10 na miejscu.
+- Chatka: zmiana czasu w nocy 24/25.10 wykryta; wschód 7:31 / zachód 17:45 / ciemno 18:20 zgodne z planem (±5 min); Księżyc ~98%.
+- Marakesz koniec grudnia: zachód ok. 18:35 — tak jak poprawka w Twoim planie, nie 17:40 ze starych przewodników.
+- Maroko d2: po 4 h w Pałacu Bahia wyjazd łamie „nie po 15:00”; `proposeCuts` dochodzi do wycięcia Bahii, nie rusza wyjazdu.
+- Pałac Bahia dla piątki: 450 MAD — dokładnie jak w planie (4 × 100 + 50), z informacją, że trzech dorosłych nie ma wieku.
+
+### Ograniczenia, o których trzeba pamiętać
+
+- **Fakty dnia wymagają współrzędnych.** Z pięciu planów tylko Chatka ma pinezkę; w pozostałych zachód słońca i „bez jazdy po zmroku” sprawdzą się dopiero po geokodowaniu (MVP-2). Silnik mówi to wprost (`no_coordinates`), zamiast udawać.
+- **Godziny otwarcia** rozumie tylko w postaci „09:00–19:00”; reszta (dni tygodnia, sezon) czeka na dane z Geoapify/OSM.
+- **Limit km Maroka:** silnik liczy 675 km z sum dni (dzień 5 nie ma km w planie), plan podaje 710 — różnica to brakujący odcinek na lotnisko, nie błąd liczenia.
+- Święta i nakładanie się punktu z poprzednim przy `from: previous` — do dopisania przy MVP-3.
