@@ -44,6 +44,7 @@ Cel: przed budową produktu sprawdzić rzeczy, które mogą zmienić architektur
 **No-go → wariant:** AI tylko wybiera z listy kandydatów pobranych wcześniej z API miejsc (odwrócenie kolejności: najpierw dane, potem model).
 
 ### PoC-2 — Mapa offline na Androidzie (≈ 2 dni)
+> Stan 31.10.2026: kod gotowy (`apps/mobile`, zakładki Mapa i Spacer), test na telefonie według [docs/POC-2-3.md](docs/POC-2-3.md).
 - `@maplibre/maplibre-react-native` (v11, New Architecture) w dev buildzie; region jednego miasta (Marakesz) i jednego regionu (Swanetia albo Góry Bystrzyckie ze śladem do chatki).
 - Wariant główny (wg [docs/USLUGI.md](docs/USLUGI.md)): plik `.pmtiles` regionu wycięty z buildu Protomaps (`pmtiles extract`), na R2, pobrany w całości na telefon i otwarty jako `pmtiles://file://…`, z lokalnymi glifami i sprite'ami. Najpierw sprawdzić, czy wrapper RN przepuszcza `pmtiles://` (Android: MapLibre Native od 11.7.0).
 - Wariant zapasowy: paczka `OfflineManager` z OpenFreeMap (≤ 3000 kafli / 50 MB na pobranie, ≤ 4 równoległe żądania, własny User-Agent).
