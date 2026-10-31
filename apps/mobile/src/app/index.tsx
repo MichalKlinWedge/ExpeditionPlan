@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { UpdateCard } from '@/features/updates/update-notice';
 
 /**
  * Ekran zastępczy z Etapu 0. Jedyne, co sprawdza, to że aplikacja widzi wspólny pakiet
@@ -34,6 +35,7 @@ export default function HomeScreen() {
             Pakiet @expeditionplan/core: {check.success ? 'działa' : 'błąd walidacji'}
           </ThemedText>
         </ThemedView>
+        <UpdateCard />
       </SafeAreaView>
     </ThemedView>
   );

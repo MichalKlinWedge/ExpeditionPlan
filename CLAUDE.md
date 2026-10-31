@@ -22,6 +22,7 @@ npm run typecheck           # web runs `next typegen` first (LayoutProps etc. ar
 npm test                    # vitest in packages/*
 npm run web                 # next dev
 npm run mobile              # expo start (needs a development build, not Expo Go)
+npm run ota --workspace apps/mobile   # OTA update (JS only) to the `preview` channel; the app checks on start/foreground and offers a restart. Native changes (new module, app.json plugins/permissions) need a new APK: `npx eas-cli@latest build --platform android --profile preview`
 npm run supabase -- start   # local Supabase via pinned CLI (needs Docker)
 npm run test:db             # pgTAP tests in supabase/tests (RLS, row versions) — needs local Supabase
 npm run test:sync           # packages/sync against local Supabase (PoC-4 scenarios); not part of `check`

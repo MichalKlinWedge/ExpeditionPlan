@@ -43,6 +43,13 @@ export default function MapScreen() {
     camera.current?.jumpTo({ center: next.center, zoom: next.zoom });
   };
 
+  const centerOnMe = async () => {
+    if (!(await Location.requestForegroundPermissionsAsync()).granted) return setStatus('Brak zgody na lokalizację.');
+    const here = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+    camera.current?.jumpTo({ center: [here.coords.longitude, here.coords.latitude], zoom: 16 });
+    setStatus(`Pozycja: dokładność ${Math.round(here.coords.accuracy ?? 0)} m`);
+  };
+
   const downloadPack = async () => {
     const maxZoom = maxZoomWithin(region.bounds, PACK_MIN_ZOOM, PACK_TILE_LIMIT);
     const tiles = tileCount(region.bounds, PACK_MIN_ZOOM, maxZoom);
@@ -118,12 +125,13 @@ export default function MapScreen() {
             <UserLocation accuracy />
           </MapView>
         </View>
-        <ScrollView contentContainerStyle={styles.panel}>
+        <ScrollView style={styles.controls} contentContainerStyle={styles.panel}>
           <ThemedText type="small">{status || 'Wybierz region i źródło mapy.'}</ThemedText>
           <Row>
             {REGIONS.map((each) => (
               <Button key={each.id} label={each.name} active={each.id === region.id} onPress={() => chooseRegion(each)} />
             ))}
+            <Button label="Do mnie" onPress={centerOnMe} />
           </Row>
           <Row>
             <Button label="Online" active={source === 'online'} onPress={() => setSource('online')} />
@@ -165,7 +173,9 @@ function Button({ label, onPress, active }: { label: string; onPress: () => void
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safe: { flex: 1 },
-  map: { flex: 1 },
+  // Mapa ok. 2/3 ekranu; bez flex na ScrollView panel zajmuje całą wysokość swojej treści.
+  map: { flex: 2 },
+  controls: { flex: 1 },
   panel: { padding: Spacing.three, gap: Spacing.two, paddingBottom: BottomTabInset + Spacing.three },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, alignItems: 'center' },
   button: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: '#8888' },

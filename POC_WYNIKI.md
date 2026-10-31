@@ -335,3 +335,22 @@ Te same testy na `claude-opus-5-5` (przez `claude -p`, od tego przebiegu w `--sa
 - **Czas:** Opus zbliża się do kryterium (Maroko 131 s przez CLI z narzutem), ale go nie spełnia; na API i przy częściach po 1 dniu ma szansę zejść poniżej 90 s.
 - **Rekomendacja (zmienia D3):** **Haiku 5.5 dla etapu 2** (dni i punkty — 10–20× taniej, jakość wystarczająca, silnik i tak audytuje), **Opus 5.5 dla etapu 1 i importu planu** (warianty, ryzyka, jednorazowy długi dokument — tu liczy się trafność, a koszt to jedno wywołanie). Sonnet odpada. Próba jest mała (5 planów, jeden przebieg na model) — potwierdzić przy MVP-2.
 
+---
+
+## Iteracja 3: reguły importu 13–16 i części po 1 dniu (31.10.2026)
+
+**Import z regułami 13–16** (godzina zero, fakty jako notatki, grupy równoległe, kompletność) — ten sam zestaw, Haiku i Sonnet:
+
+| Plan | Haiku przed → po | Sonnet przed → po |
+|---|---|---|
+| Barcelona | 65% → 75% | 65% → **88%** |
+| Gruzja | ✗ → 79% | 79% → 75% |
+| Maroko | ✗ → ✗ | 86% → 85% |
+| Chatka | 40% → 63% (rozjazd 1170 → 0 min) | 83% → **90%** (rozjazd 1170 → 0 min) |
+| Dinara | 97% → 97% (rozjazd 330 → 575 min) | 88% → 88% |
+| Dokumenty zgodne ze schematem | 3/5 → 4/5 | 5/5 → 5/5 |
+
+- Reguła „fakty jako notatki” zadziałała: Chatka bez rozjazdu 1170 min u obu modeli. Kompletność pomogła w Barcelonie (Sonnet 65 → 88%), choć nadal brakuje 2 rezerwacji.
+- Haiku dalej myli „godzinę zero” w Dinarze (rozjazd 575 min) i nie domyka Maroka — potwierdza, że do importu potrzebny jest mocniejszy model (D3: Opus) albo import po sekcjach.
+
+**PoC-1 z etapem 2 po 1 dniu** (Haiku, plany równolegle) — **gorzej niż po 2 dni**: czas 121–301 s (bez zysku — wąskim gardłem jest etap 1 i narzut CLI), Maroko 40% dni realizowalnych (było 84% średnio), Barcelona odrzucona przez walidację mimo naprawy, Gruzja 0,49 USD zamiast ok. 0,05 USD (więcej wywołań z pełnym kontekstem). Przebieg szedł równolegle z importem na tym samym abonamencie, co mogło wydłużyć czasy, ale nie tłumaczy spadku jakości. **Zostaje etap 2 po 2 dni**; kryterium 90 s do sprawdzenia dopiero na API (MVP-2).

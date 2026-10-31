@@ -14,8 +14,18 @@ export type Region = {
   zoom: number;
 };
 
-/** Miasto i region z PLAN_ETAPOWY (PoC-2): medyna Marakeszu i Góry Bystrzyckie ze ścieżką do chatki. */
+/**
+ * Miasto i region z PLAN_ETAPOWY (PoC-2): medyna Marakeszu i Góry Bystrzyckie ze ścieżką do chatki.
+ * Wrocław (całe miasto, ok. 25 MB w PMTiles) — test offline z GPS na trasie spaceru PoC-3.
+ */
 export const REGIONS: Region[] = [
+  {
+    id: 'wroclaw',
+    name: 'Wrocław (całe miasto)',
+    bounds: [16.8, 51.04, 17.18, 51.21],
+    center: [17.0333, 51.11],
+    zoom: 14,
+  },
   {
     id: 'marrakesh',
     name: 'Marakesz (medyna i Gueliz)',
