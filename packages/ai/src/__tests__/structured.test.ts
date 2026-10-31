@@ -41,6 +41,12 @@ describe('unwrapJson', () => {
   it('bez JSON-a oddaje null, zamiast zgadywać', () => {
     expect(unwrapJson('Nie mogę tego zrobić.')).toBeNull();
   });
+
+  it('bierze pierwszy domknięty obiekt, nawet gdy po nim model dopisał drugi albo klamrę w zdaniu', () => {
+    expect(unwrapJson('{"a":"}{"}\n{"b":2}')).toBe('{"a":"}{"}');
+    expect(unwrapJson('{"a":{"b":[1,2]}} — gotowe {tak}')).toBe('{"a":{"b":[1,2]}}');
+    expect(unwrapJson('{"a":"cudzysłów \\" w środku"}')).toBe('{"a":"cudzysłów \\" w środku"}');
+  });
 });
 
 describe('askStructured', () => {

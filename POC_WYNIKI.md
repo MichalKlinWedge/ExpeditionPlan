@@ -222,3 +222,48 @@ Miejsca w `fixtures/plans/*/plan.json` mają współrzędne z OpenStreetMap (pub
 - **Trafienia zbyt ogólne** (hotel „(Ureki)” znaleziony jako miejscowość Ureki) nie są zapisywane — wyglądałyby na dokładne. Schemat nie ma pola dokładności punktu; warto je dodać w MVP-2 (`precision: exact | area`), bo dla słońca wystarczy miejscowość, a dla nawigacji nie.
 - Nominatim nie nadaje się do aplikacji (zakaz bulk i autouzupełniania) — w produkcie geokodowanie przez Geoapify, jak w D4.
 
+
+---
+
+## PoC-1 — Łańcuch AI z ugruntowaniem (31.10.2026)
+
+**Werdykt: GO z warunkami.** Jakość spełnia kryteria (ugruntowanie, realizowalność, ryzyka), koszt na Haiku jest pomijalny. Kryterium czasu (< 90 s dla planu 4-dniowego) **nie jest spełnione** w tym pomiarze — ale przebiegi szły przez Claude Code (`claude -p`, abonament właściciela, bez kredytów API), z narzutem CLI; czas trzeba zmierzyć ponownie na kluczu API przed MVP-2. Wariant awaryjny („AI wybiera tylko z listy kandydatów”) nie jest potrzebny.
+
+Narzędzie: [`tools/plan-ai`](tools/plan-ai/src/cli.ts) — `npm run plan-ai -- [--plans …] [--models …] [--chunk-days 2] [--backend claude-code|api]`, przeliczenie miar bez AI: `--rescore tools/plan-ai/out/<znacznik>`. Wyniki przebiegów w `tools/plan-ai/out/` (poza git). Tylko tanie modele (Sonnet 5.5, Haiku 5.5) — Opus i Fable są zablokowane w kodzie.
+
+**Łańcuch:** brief → etap 1 (2–3 warianty, ryzyka, bazy z `searchName`) → bazy w OSM + fakty dni liczone kodem (słońce, zmierzch, święta z Nager.Date, zmiana czasu) → etap 2 w częściach po 2 dni, równolegle (dni, punkty, pula, warianty A/B, ograniczenia, audyt zapasu) → pinezki z briefu → ugruntowanie (Nominatim, zapas: Photon w obszarze wyjazdu; godziny otwarcia z OSM) → silnik harmonogramu (§7) → miary.
+
+### Wyniki — iteracja 2 (5 planów × 2 modele)
+
+| Miara (kryterium) | Haiku 5.5 | Sonnet 5.5 |
+|---|---|---|
+| Ugruntowane miejsca konkretne (≥ 90%) | **97%** (69/71) | **95%** (82/86) |
+| Dni realizowalne bez twardych ostrzeżeń (≥ 80%) | **84%** (21/25) | **92%** (23/25) |
+| Ryzyka z planów ręcznych (≥ połowa) | **81%** (17/21), spoza briefu 4/8 | **90%** (19/21), spoza briefu 6/8 |
+| Czas AI na plan (Maroko 5 dni < 90 s) | 146–281 s (Maroko 281 s) ✗ | 218–391 s (Maroko 382 s) ✗ |
+| Koszt planu wg cennika API | **0,03–0,07 USD** | 0,40–2,03 USD (Gruzja 12 dni: 2,03) |
+| Naprawy odpowiedzi (jedna próba) | 1–2 na plan | 0–3 na plan |
+
+Iteracja 1 (bez poprawek niżej) dla porównania: ugruntowanie 66–94%, dni realizowalne 33–100%, 1 plan z 10 nieudany, kolacje o 14:10.
+
+### Co poprawiło jakość (iteracja 1 → 2)
+
+- **`searchName` + kategorie po angielsku** z listy: OSM nie zna polskich egzonimów; polskie kategorie („lotnisko”, „baza”) psuły reguły dopasowania. Miejsca opisowe („restauracja w centrum Mestii”) celowo bez `searchName` — miara liczy tylko konkretne.
+- **Photon jako zapas** dla nieznalezionych — tylko w prostokącie obszaru wyjazdu i w jego krajach (sam z siebie zwraca muzeum w Mołdawii).
+- **Pinezki z briefu** mają pierwszeństwo przed geokoderem (parking na Przełęczy Spalonej).
+- **Kotwice czasu**: `dayStart`/`dayEnd` każdego dnia, posiłki z przybliżoną godziną. Bez nich model podawał godzinę tylko lotom, a silnik ściskał dzień (kolacja 14:10, obiad 10:10).
+- **Kod sprząta pomyłki formalne zamiast marnować naprawę**: odwołania do rezerwacji w etapie 2, przedrostek części doklejony do dnia („c3-d5”), drugi obiekt JSON po pierwszym (`unwrapJson` bierze pierwszą domkniętą wartość).
+- **Claude Code**: domyślne myślenie mnożyło tokeny (73 tys. → 32 tys. przy `--effort low`); na Windows trzeba zabijać całe drzewo procesów po przekroczeniu czasu.
+
+### Co silnik wyłapał w planach AI (to działa jak audyt)
+
+- **Rozjazdy godzin** (> 15 min): Haiku Gruzja 17, Sonnet Chatka 11 — kotwice modelu nie zgadzają się z jego własnymi czasami trwania. To sygnał dla etapu 3 (dostrajanie), nie błąd silnika.
+- **Przejazdy fizycznie niemożliwe** (np. 95 km w linii prostej, plan: 20 min pieszo): część to pomyłki AI, część — ugruntowanie w imienniku. Obie warto pokazać do sprawdzenia.
+- **Godziny otwarcia**: wyszły dwa błędy silnika, poprawione — godziny przez północ („12:00–01:00”) i zapis OSM z dniami tygodnia (teraz ostrzeżenie miękkie, bo parser bierze pierwszy przedział). **Do MVP-2: pełny parser `opening_hours` z OSM.**
+
+### Rekomendacje do MVP-2
+
+- **Haiku 5.5 jako domyślny model etapu 2**: jakość blisko Sonneta przy ~15× niższym koszcie. Sonnet do rozważenia dla etapu 1 (lepsze warianty i więcej ryzyk spoza briefu) albo jako opcja „dokładniej”.
+- **Etap 2 po 1–2 dni równolegle**, jako zadanie w tle z postępem (`ai_runs`), nie jedno żądanie: limit Edge Function 150 s bez aktywności i tak wymusza podział.
+- **Produkcja potrzebuje klucza API** — abonament Claude Code zasila tylko narzędzia deweloperskie. Decyzja przed MVP-2: kredyty Anthropic (Haiku ≈ 0,05 USD za plan) albo inny dostawca z darmowym pakietem.
+- Miara posiłków ma fałszywe alarmy, gdy brief sam podaje wczesną porę (Dinara: śniadanie 5:30) — do uwzględnienia przy ocenie, nie do poprawy w planie.

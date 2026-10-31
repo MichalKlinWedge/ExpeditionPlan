@@ -170,11 +170,19 @@ function durationOf(item: Item, scenario: Scenario): number {
   return 0;
 }
 
-/** „09:00–19:00” → [540, 1140]; inne zapisy godzin otwarcia silnik pomija. */
-function openingWindow(raw: string | undefined): [number, number] | null {
+/**
+ * „09:00–19:00” → [540, 1140]; „12:00–01:00” (przez północ) → [720, 1500]. Z zapisu OSM z dniami
+ * tygodnia i sezonami („Mo-Sa 09:00-18:00; Su 10:30-18:00”) bierze pierwszy przedział i oznacza
+ * wynik jako przybliżony — pełny parser `opening_hours` przychodzi w MVP-2.
+ */
+function openingWindow(raw: string | undefined): { open: number; close: number; approximate: boolean } | null {
   const match = /(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/.exec(raw ?? '');
   if (match === null) return null;
-  return [Number(match[1]) * 60 + Number(match[2]), Number(match[3]) * 60 + Number(match[4])];
+  const open = Number(match[1]) * 60 + Number(match[2]);
+  let close = Number(match[3]) * 60 + Number(match[4]);
+  if (close <= open) close += 24 * 60;
+  const approximate = /;|\b(Mo|Tu|We|Th|Fr|Sa|Su|PH|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/.test(raw ?? '');
+  return { open, close, approximate };
 }
 
 export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions = {}): DaySchedule {
@@ -327,14 +335,15 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     }
 
     const opening = openingWindow(item.placeRef === undefined ? undefined : places.get(item.placeRef)?.openingHours);
-    if (opening !== null && durationMin > 0) {
-      const opens = at(`${String(Math.floor(opening[0] / 60)).padStart(2, '0')}:${String(opening[0] % 60).padStart(2, '0')}`);
-      const closes = at(`${String(Math.floor(opening[1] / 60)).padStart(2, '0')}:${String(opening[1] % 60).padStart(2, '0')}`);
+    // Przejście do stacji nie „wychodzi poza godziny otwarcia” stacji — sprawdzamy tylko pobyt w miejscu.
+    if (opening !== null && durationMin > 0 && item.kind !== 'transport') {
+      const opens = at(`${String(Math.floor(opening.open / 60)).padStart(2, '0')}:${String(opening.open % 60).padStart(2, '0')}`);
+      const closes = opens + (opening.close - opening.open) * MINUTE;
       if (start < opens || end > closes) {
         warnings.push({
           kind: 'closed',
           itemRef: item.ref,
-          severity: 'hard',
+          severity: opening.approximate ? 'soft' : 'hard',
           minutes: Math.round(Math.max(opens - start, end - closes) / MINUTE),
           message: `„${item.title}” wychodzi poza godziny otwarcia (${local(opens).time}–${local(closes).time}).`,
         });

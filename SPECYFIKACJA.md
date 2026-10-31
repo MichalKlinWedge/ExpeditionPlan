@@ -318,6 +318,12 @@ Operacje łatki (Etap 3):
 ```
 Łatka zamiast całego planu: tańsza, reviewowalna i nie rusza reszty. Usunięty punkt domyślnie wraca do puli, a nie znika.
 
+### Wnioski z PoC-1 (szczegóły w POC_WYNIKI.md)
+- Etap 2 w częściach po 1–2 dni, równolegle, jako zadanie w tle z postępem — nie jedno długie żądanie.
+- Miejsca z AI mają `searchName` (nazwa lokalna/angielska) i kategorię z ustalonej listy; opisowe („restauracja w centrum”) bez `searchName`.
+- Kotwice czasu w każdym dniu (`dayStart`, `dayEnd`, posiłki z przybliżoną godziną) — bez nich harmonogram ściska się do południa.
+- Kod sprząta pomyłki formalne (odwołania do rezerwacji w etapie 2, przedrostki, doklejony tekst po JSON-ie), naprawa przez model zostaje na merytoryczne.
+
 ### Kontrola jakości AI (mierzona od PoC)
 - % punktów ugruntowanych (dopasowanych do realnego miejsca w promieniu X m),
 - % punktów zaplanowanych w godzinach otwarcia (gdzie godziny są znane),
@@ -560,7 +566,8 @@ Stan na 30.10.2026, zweryfikowany na oficjalnych stronach: szczegóły, liczby i
 |---|---|---|
 | D1 | Odbiorcy: ja + znajomi (jak FormaSync) czy produkt publiczny w Google Play? | **Ja + znajomi.** APK przez GitHub Releases. Sklep dopiero w etapie wydania (deklaracja lokalizacji w tle, polityka prywatności). |
 | D2 | Klucze AI: serwerowe (płaci właściciel) czy każdy wkleja własny (jak FormaSync)? | **Serwerowe z limitem per osoba.** Własny klucz jako opcja później. |
-| D3 | Dostawca AI domyślny | **Claude** do planowania. Gemini jako tańsza alternatywa za tym samym walidatorem. Wybór po PoC-1 na podstawie metryk. |
+| D3 | Dostawca AI domyślny | **Claude** do planowania. Gemini jako tańsza alternatywa za tym samym walidatorem. Po PoC-1: **Haiku 5.5 dla etapu 2** (jakość blisko Sonneta, ~0,05 USD za plan), Sonnet 5.5 do rozważenia dla etapu 1. Drogich modeli (Opus, Fable) nie używamy. |
+| D8 | Klucz AI w produkcji | PoC-1 szedł przez abonament Claude Code, który **nie zasili Edge Functions**. Przed MVP-2: kredyty Anthropic (koszt planu na Haiku ≈ 0,03–0,07 USD) albo dostawca z darmowym pakietem — do decyzji właściciela. |
 | D4 | Źródło miejsc | **OSM przez Geoapify.** Google Places wykluczone przez warunki dla EOG (R3); w PoC-1 porównanie z Google tylko jakościowe, bez zapisywania danych. |
 | D5 | Web: Next.js | **Tak.** Wspólny TS z Expo, SSR linku publicznego. |
 | D6 | iOS | **Nie w v1.** |

@@ -4,7 +4,14 @@
  * kilku wersji od najdokładniejszej. Miejsca prywatne i niejednoznaczne pomijamy z powodem.
  */
 
-export type PlaceInput = { ref: string; name: string; category?: string | undefined; address?: string | undefined };
+export type PlaceInput = {
+  ref: string;
+  name: string;
+  /** Nazwa lokalna/angielska do wyszukania (z importu AI), próbowana jako pierwsza. */
+  searchName?: string | undefined;
+  category?: string | undefined;
+  address?: string | undefined;
+};
 
 /** Nocleg u znajomych, „kwatera w okolicy”, lokal kolegi — nie szukamy po adresach prywatnych. */
 const PRIVATE = /^(nocleg|kwatera|lokal|zakup)\b/i;
@@ -27,7 +34,8 @@ export function candidateQueries(place: PlaceInput, aliases: string[] = []): str
   // Dopiski z wysokością, numerem skrzynki, linią metra itd. to nie są nazwy miejsc.
   const nameLike = inParens.filter((text) => !/\d|metro|n\.p\.m|rafting|ostatni|unesco/i.test(text)).map(clean);
 
-  const queries = [...aliases, clean(name), withoutParens, beforeDash, ...nameLike];
+  const hints = place.searchName === undefined ? aliases : [place.searchName, ...aliases];
+  const queries = [...hints, clean(name), withoutParens, beforeDash, ...nameLike];
   if (place.address !== undefined) {
     queries.push(`${beforeDash}, ${place.address}`);
     for (const alias of nameLike) queries.push(`${alias}, ${place.address}`);
@@ -63,7 +71,10 @@ export function boxAround(center: { lat: number; lng: number }, km: number) {
 }
 
 /** Miejsca, które same są miejscowością albo obszarem — dla nich trafienie w miejscowość jest dokładne. */
-const AREA_LIKE = new Set(['city', 'town', 'village', 'resort', 'district', 'area', 'old_town', 'square', 'beach', 'hill', 'national_park', 'river', 'valley', 'dunes']);
+const AREA_LIKE = new Set([
+  'city', 'town', 'village', 'resort', 'district', 'neighbourhood', 'quarter', 'area', 'old_town', 'square', 'beach', 'hill',
+  'national_park', 'river', 'valley', 'dunes', 'desert', 'island', 'ksar',
+]);
 
 /**
  * Trafienie zbyt ogólne: hotel z dopiskiem „(Ureki)” znaleziony jako miejscowość Ureki. Takich

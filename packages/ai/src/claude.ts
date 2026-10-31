@@ -25,6 +25,7 @@ const IMAGES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 type Reply = {
   content?: { type?: string; text?: string }[];
   stop_reason?: string;
+  usage?: { input_tokens?: number; output_tokens?: number };
   error?: { message?: string; type?: string };
 };
 
@@ -81,6 +82,10 @@ export async function askClaude(
       retryable: response.status >= 500,
       modelGone: response.status === 404,
     });
+  }
+
+  if (body?.usage) {
+    options.onUsage?.({ inputTokens: body.usage.input_tokens ?? 0, outputTokens: body.usage.output_tokens ?? 0 });
   }
 
   const text = (body?.content ?? [])

@@ -13,6 +13,7 @@ export { type AiModel, isModelName, normalizeModel, sortModels } from './models.
 export { askOpenAi, openAiModels, parseOpenAiModels } from './openai.ts';
 export {
   type AiImage,
+  type AiUsage,
   type AskOptions,
   DEFAULT_MODELS,
   PROVIDER_COMPANIES,

@@ -20,9 +20,23 @@ export function unwrapJson(text: string): string | null {
   const body = (fenced === null ? text : (fenced[1] ?? '')).trim();
   const start = body.search(/[[{]/);
   if (start === -1) return null;
-  const close = body[start] === '[' ? ']' : '}';
-  const end = body.lastIndexOf(close);
-  return end <= start ? null : body.slice(start, end + 1);
+  // Pierwsza domknięta wartość, z pominięciem nawiasów w napisach. Model potrafi dopisać po JSON-ie
+  // drugi obiekt albo zdanie z klamrą — „ostatnia klamra w tekście” sklejała wtedy dwa obiekty.
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < body.length; i++) {
+    const char = body[i];
+    if (inString) {
+      if (char === '\\') i++;
+      else if (char === '"') inString = false;
+    } else if (char === '"') inString = true;
+    else if (char === '{' || char === '[') depth++;
+    else if (char === '}' || char === ']') {
+      depth--;
+      if (depth === 0) return body.slice(start, i + 1);
+    }
+  }
+  return null;
 }
 
 export class AiValidationError extends AiError {

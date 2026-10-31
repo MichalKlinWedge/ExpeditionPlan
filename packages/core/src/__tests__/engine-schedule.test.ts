@@ -78,6 +78,20 @@ describe('scheduleDay — podstawy', () => {
     expect(schedule.warnings).toContainEqual(expect.objectContaining({ kind: 'closed', itemRef: 'bahia', minutes: 30 }));
   });
 
+  it('godziny przez północ są otwarte do rana, a zapis OSM z dniami tygodnia daje tylko miękkie ostrzeżenie', () => {
+    const at = (openingHours: string, start: string) =>
+      scheduleDay(
+        doc(
+          [{ ref: 'kolacja', dayRef: 'd1', sortKey: '0010', kind: 'meal', title: 'Kolacja', placeRef: 'p', time: { precision: 'exact', start }, durationMin: 90 }],
+          { places: [{ ref: 'p', name: 'Lokal', openingHours }] },
+        ),
+        'd1',
+      ).warnings.filter((warning) => warning.kind === 'closed');
+
+    expect(at('12:00–01:00', '21:00')).toEqual([]);
+    expect(at('Mo-Sa 09:00-18:00; Su 10:30-18:00', '17:00')).toEqual([expect.objectContaining({ severity: 'soft' })]);
+  });
+
   it('bez jazdy po zmroku: dojazd kończący się po zmierzchu cywilnym łamie ograniczenie', () => {
     const day = doc(
       [

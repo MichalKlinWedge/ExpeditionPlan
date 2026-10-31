@@ -70,6 +70,11 @@ export const DocTraveler = z.object({
 export const DocPlace = z.object({
   ref: Ref,
   name: text,
+  /**
+   * Nazwa do wyszukania w źródle miejsc (lokalna albo angielska: „Koutoubia Mosque”, „Ushguli”).
+   * OSM nie zna polskich egzonimów („Kutubijja”, „Uszguli”) — wniosek z geokodowania planów.
+   */
+  searchName: z.string().optional(),
   category: z.string().optional(),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
@@ -601,7 +606,7 @@ export const DocTrack = z.object({
 // ---------------------------------------------------------------------------------------------
 // Dokument i spójność odwołań
 
-const TripDocumentShape = z.object({
+export const TripDocumentShape = z.object({
   schemaVersion: z.literal(1),
   trip: DocTrip,
   travelers: z.array(DocTraveler).default([]),

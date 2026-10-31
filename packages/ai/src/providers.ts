@@ -48,4 +48,8 @@ export type AskOptions = {
   /** Najdłuższa odpowiedź. Plan na kilkanaście dni bywa długi — za ciasno i JSON urwie się w połowie. */
   maxTokens?: number;
   timeoutMs?: number;
+  /** Zużycie tokenów z odpowiedzi dostawcy — do kosztu w `ai_runs` i raportu PoC-1. */
+  onUsage?: (usage: AiUsage) => void;
 };
+
+export type AiUsage = { inputTokens: number; outputTokens: number };

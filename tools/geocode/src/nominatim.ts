@@ -4,18 +4,19 @@
  * nie usługa aplikacji (w aplikacji geokodowanie idzie przez Geoapify).
  */
 
-export type GeocodeHit = { lat: number; lng: number; displayName: string; osmType: string; osmId: number; category: string; countryCode: string };
+export type GeocodeHit = { lat: number; lng: number; displayName: string; osmType: string; osmId: number; category: string; countryCode: string; openingHours?: string };
 
 export const USER_AGENT = 'ExpeditionPlan-fixtures/0.1 (+https://github.com/MichalKlinWedge/ExpeditionPlan)';
 const ENDPOINT = 'https://nominatim.openstreetmap.org/search';
 const GAP_MS = 1100;
 
-let last = 0;
+let queue: Promise<void> = Promise.resolve();
 
-async function throttle() {
-  const wait = last + GAP_MS - Date.now();
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-  last = Date.now();
+/** Kolejka: zapytania idą jedno po drugim co `GAP_MS`, także gdy woła je kilka planów naraz. */
+function throttle(): Promise<void> {
+  const turn = queue.then(() => new Promise<void>((resolve) => setTimeout(resolve, GAP_MS)));
+  queue = turn;
+  return turn;
 }
 
 export type Box = { south: number; west: number; north: number; east: number };
@@ -31,11 +32,12 @@ export async function searchNominatim(query: string, countryCodes: string[], box
     countrycodes: countryCodes.join(','),
     'accept-language': 'pl,en',
     addressdetails: '1',
+    extratags: '1',
     ...(box === undefined ? {} : { viewbox: `${box.west},${box.north},${box.east},${box.south}`, bounded: '1' }),
   }).toString();
   const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
   if (!response.ok) throw new Error(`Nominatim ${response.status} dla „${query}”`);
-  const [hit] = (await response.json()) as { lat: string; lon: string; display_name: string; osm_type: string; osm_id: number; category: string; address?: { country_code?: string } }[];
+  const [hit] = (await response.json()) as { lat: string; lon: string; display_name: string; osm_type: string; osm_id: number; category: string; address?: { country_code?: string }; extratags?: { opening_hours?: string } | null }[];
   return hit === undefined
     ? null
     : {
@@ -46,5 +48,6 @@ export async function searchNominatim(query: string, countryCodes: string[], box
         osmId: hit.osm_id,
         category: hit.category,
         countryCode: hit.address?.country_code ?? '',
+        ...(hit.extratags?.opening_hours ? { openingHours: hit.extratags.opening_hours } : {}),
       };
 }

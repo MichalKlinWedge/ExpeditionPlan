@@ -55,6 +55,15 @@ describe('askClaude', () => {
     expect(body(sent[0]!).max_tokens).toEqual(expect.any(Number));
   });
 
+  it('przekazuje zużycie tokenów do kosztu', async () => {
+    respond(200, { ...text('{}'), usage: { input_tokens: 1200, output_tokens: 340 } });
+    const usage: unknown[] = [];
+
+    await askClaude('sk-test', 'claude-sonnet-5-5', 'x', { onUsage: (each) => usage.push(each) });
+
+    expect(usage).toEqual([{ inputTokens: 1200, outputTokens: 340 }]);
+  });
+
   it('zdjęcie idzie przed tekstem, bo polecenie się do niego odwołuje', async () => {
     respond(200, text('{}'));
 
