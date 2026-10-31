@@ -14,12 +14,14 @@ export interface LocalDb {
   transaction<T>(fn: () => T): T;
 }
 
-/** Tabele lustrzane serwera. Wiersz serwera leży w `data` jako JSON — telefon go tylko czyta. */
-export const MIRRORED = ['days', 'items', 'schedule_events', 'expenses'] as const;
-export type MirroredTable = (typeof MIRRORED)[number];
+/**
+ * Wiersze serwera leżą w jednej tabeli `rows` (nazwa tabeli + id) jako JSON — telefon je tylko
+ * czyta, a dokument składa `stateFromLocal`. Jedna tabela zamiast lustra każdej z tabel serwera:
+ * schemat lokalny nie musi nadążać za migracjami.
+ */
 
 /** Tabele, do których telefon dopisuje przez outbox. */
-export type OutboxTable = 'schedule_events' | 'expenses';
+export type OutboxTable = 'schedule_events' | 'expenses' | 'packing_checks';
 
 const SCHEMA = `
 create table if not exists trips (
@@ -28,18 +30,17 @@ create table if not exists trips (
   row_version integer not null,
   deleted_at text
 );
-${MIRRORED.map(
-  (table) => `
-create table if not exists ${table} (
-  id text primary key,
+create table if not exists rows (
+  tbl text not null,
+  id text not null,
   trip_id text not null,
   data text not null,
   row_version integer,
   pending integer not null default 0,
-  deleted_at text
+  deleted_at text,
+  primary key (tbl, id)
 );
-create index if not exists ${table}_trip on ${table} (trip_id);`,
-).join('\n')}
+create index if not exists rows_trip on rows (trip_id, tbl);
 create table if not exists sync_state (
   trip_id text primary key,
   version integer not null,

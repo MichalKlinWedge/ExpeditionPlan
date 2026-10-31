@@ -41,12 +41,10 @@ afterAll(async () => {
   }
 });
 
-const ids = (rows: { ref: string; id: string }[]) => new Map(rows.map((row) => [row.ref, row.id]));
+const ids = (rows: Record<string, unknown>[]) => new Map(rows.map((row) => [row.ref as string, row.id as string]));
 
-async function updateContent(client: SupabaseClient, itemId: string, patch: Record<string, unknown>) {
-  const { data, error } = await client.from('items').select('content').eq('id', itemId).single();
-  if (error) throw error;
-  const result = await client.from('items').update({ content: { ...data.content, ...patch } }).eq('id', itemId);
+async function updateItem(client: SupabaseClient, itemId: string, patch: Record<string, unknown>) {
+  const result = await client.from('items').update(patch).eq('id', itemId);
   if (result.error) throw result.error;
 }
 
@@ -78,15 +76,15 @@ describe('PoC-4 — synchronizacja Supabase ↔ SQLite', () => {
     });
     await waitFor(() => ready, 10_000);
 
-    const bahia = ids(rows.items).get('d2-bahia')!;
+    const bahia = ids(rows.items!).get('d2-bahia')!;
     const localDuration = () =>
-      JSON.parse(phone.db.all<{ data: string }>('select data from items where id = ?', [bahia])[0]!.data).content
-        .durationMin as number;
+      JSON.parse(phone.db.all<{ data: string }>("select data from rows where tbl = 'items' and id = ?", [bahia])[0]!.data)
+        .duration_min as number;
 
     const latencies: number[] = [];
     for (let i = 1; i <= 5; i++) {
       const start = performance.now();
-      await updateContent(web.client, bahia, { durationMin: 60 + i * 10 });
+      await updateItem(web.client, bahia, { duration_min: 60 + i * 10 });
       await waitFor(() => localDuration() === 60 + i * 10, 3_000);
       latencies.push(Math.round(performance.now() - start));
     }
@@ -101,8 +99,8 @@ describe('PoC-4 — synchronizacja Supabase ↔ SQLite', () => {
     const web = await device();
     const phone = await device();
     const { tripId, rows } = await seedTrip(web.client, loadFixture('maroko'));
-    const item = ids(rows.items);
-    const day2 = ids(rows.days).get('d2')!;
+    const item = ids(rows.items!);
+    const day2 = ids(rows.days!).get('d2')!;
     await pullChanges(phone.db, phone.remote, tripId);
 
     phone.setOffline(true);
@@ -117,7 +115,7 @@ describe('PoC-4 — synchronizacja Supabase ↔ SQLite', () => {
     expect(pendingCount(phone.db)).toBe(5);
 
     // W tym czasie organizator zmienia plan na webie.
-    await updateContent(web.client, item.get('d2-bahia')!, { durationMin: 90 });
+    await updateItem(web.client, item.get('d2-bahia')!, { duration_min: 90 });
     await web.client.from('items').update({ deleted_at: new Date().toISOString() }).eq('id', item.get('d2-suki-dzien')!);
     const added = await web.client.from('items').insert({
       id: crypto.randomUUID(),
@@ -125,7 +123,9 @@ describe('PoC-4 — synchronizacja Supabase ↔ SQLite', () => {
       ref: 'd2-herbata',
       day_id: day2,
       sort_key: '0055',
-      content: { kind: 'meal', title: 'Herbata miętowa', durationMin: 20 },
+      kind: 'meal',
+      title: 'Herbata miętowa',
+      duration_min: 20,
     });
     expect(added.error).toBeNull();
 
@@ -158,11 +158,11 @@ describe('PoC-4 — synchronizacja Supabase ↔ SQLite', () => {
     const web = await device();
     const phone = await device();
     const { tripId, rows } = await seedTrip(web.client, loadFixture('dinara'));
-    const [firstItem] = rows.items;
+    const firstItem = rows.items!.find((each) => each.day_id !== undefined) as { id: string; day_id: string };
     await pullChanges(phone.db, phone.remote, tripId);
 
     for (let round = 1; round <= 3; round++) {
-      for (let i = 0; i < 5; i++) recordDelay(phone.db, tripId, firstItem!.day_id!, firstItem!.id, 5);
+      for (let i = 0; i < 5; i++) recordDelay(phone.db, tripId, firstItem.day_id, firstItem.id, 5);
       saveExpense(phone.db, { tripId, amountMinor: 100 * round, currency: 'EUR' });
 
       await expect(
@@ -191,7 +191,7 @@ describe('PoC-4 — synchronizacja Supabase ↔ SQLite', () => {
     const dbPath = join(dir, 'phone.db');
     const phone = await device({ dbPath });
     const { tripId, rows } = await seedTrip(web.client, loadFixture('chatka'));
-    const target = rows.items.find((each) => each.day_id !== null)!;
+    const target = rows.items!.find((each) => each.day_id !== undefined) as { id: string; day_id: string };
     await pullChanges(phone.db, phone.remote, tripId);
 
     const TOTAL = 30;
@@ -226,7 +226,7 @@ describe('PoC-4 — synchronizacja Supabase ↔ SQLite', () => {
 
     await syncTrip(phone.db, phone.remote, tripId);
     const events = await web.client.from('schedule_events').select('id').eq('trip_id', tripId);
-    const local = phone.db.all<{ id: string }>('select id from schedule_events where trip_id = ?', [tripId]);
+    const local = phone.db.all<{ id: string }>("select id from rows where tbl = 'schedule_events' and trip_id = ?", [tripId]);
     expect(pendingCount(phone.db)).toBe(0);
     expect(events.data).toHaveLength(TOTAL);
     expect(new Set(events.data?.map((row) => row.id))).toEqual(new Set(local.map((row) => row.id)));

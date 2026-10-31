@@ -22,10 +22,8 @@ export type PullPayload = {
   version: number;
   planVersion: number;
   trip: TripRow | null;
-  days: ServerRow[];
-  items: ServerRow[];
-  scheduleEvents: ServerRow[];
-  expenses: ServerRow[];
+  /** Zmienione wiersze po nazwie tabeli (`synced_tables()` w migracji `mvp1_access`). */
+  tables: Record<string, ServerRow[]>;
 };
 
 /** To, czego synchronizacja potrzebuje od serwera; w testach jednostkowych łatwe do podmiany. */

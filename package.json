@@ -17,6 +17,7 @@
     "import-plan": "npm run import --workspace tools/import-plan --",
     "test:sync": "npm run test:integration --workspace packages/sync",
     "test:db": "npx --yes supabase@2.122.0 test db",
+    "seed:dev": "npm run seed --workspace tools/seed-dev",
     "geocode": "npm run geocode --workspace tools/geocode --",
     "plan-ai": "npm run plan --workspace tools/plan-ai --"
   },

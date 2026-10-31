@@ -21,11 +21,8 @@ function fakeServer() {
       return {
         version,
         planVersion: 1,
-        trip: since === 0 ? { id: TRIP, row_version: 1, deleted_at: null, doc_rest: {} } : null,
-        days: [],
-        items: [],
-        scheduleEvents: newer(tables.schedule_events),
-        expenses: newer(tables.expenses),
+        trip: since === 0 ? { id: TRIP, row_version: 1, deleted_at: null } : null,
+        tables: { schedule_events: newer(tables.schedule_events), expenses: newer(tables.expenses) },
       } satisfies PullPayload;
     },
     async push(table, rows) {
@@ -34,7 +31,7 @@ function fakeServer() {
       for (const row of rows) {
         if (table === 'schedule_events' && tables.schedule_events.has(row.id as string)) continue;
         version++;
-        tables[table].set(row.id as string, { ...(row as ServerRow), row_version: version, deleted_at: null });
+        (tables as Record<string, Map<string, ServerRow>>)[table]!.set(row.id as string, { ...(row as ServerRow), row_version: version, deleted_at: null });
       }
     },
   };
@@ -49,13 +46,13 @@ describe('outbox', () => {
     saveExpense(db, { tripId: TRIP, amountMinor: 4500, currency: 'MAD' });
 
     expect(pendingCount(db)).toBe(2);
-    expect(db.all('select id from schedule_events where pending = 1')).toHaveLength(1);
+    expect(db.all("select id from rows where tbl = 'schedule_events' and pending = 1")).toHaveLength(1);
 
     const result = await flushOutbox(db, server.remote);
 
     expect(result).toEqual({ sent: 2, remaining: 0 });
     expect(server.pushes).toHaveLength(2); // dwie tabele = dwie partie, w kolejności zapisu
-    expect(db.all('select id from schedule_events where pending = 1')).toHaveLength(0);
+    expect(db.all("select id from rows where tbl = 'schedule_events' and pending = 1")).toHaveLength(0);
   });
 
   it('bez sieci wpisy zostają w kolejce razem z błędem', async () => {
@@ -116,7 +113,7 @@ describe('pobieranie zmian', () => {
     const result = await syncTrip(db, server.remote, TRIP);
 
     expect(result.pull?.version).toBe(2);
-    expect(db.all<{ row_version: number }>('select row_version from schedule_events')[0]?.row_version).toBe(2);
+    expect(db.all<{ row_version: number }>("select row_version from rows where tbl = 'schedule_events'")[0]?.row_version).toBe(2);
     const second = await pullChanges(db, server.remote, TRIP);
     expect(second.changed).toBe(0);
   });
@@ -134,12 +131,9 @@ describe('pobieranie zmian', () => {
       version,
       planVersion: 1,
       trip: null,
-      days: [],
-      items: [],
-      scheduleEvents: [],
-      expenses,
+      tables: { expenses },
     });
-    const amount = () => JSON.parse(db.all<{ data: string }>('select data from expenses')[0]!.data).amount_minor;
+    const amount = () => JSON.parse(db.all<{ data: string }>("select data from rows where tbl = 'expenses'")[0]!.data).amount_minor;
 
     applyPull(db, TRIP, payload(8, [row(8, 800)]));
     applyPull(db, TRIP, payload(7, [row(7, 700)]));

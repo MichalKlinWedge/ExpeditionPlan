@@ -1,4 +1,5 @@
 export * from './document.ts';
+export * from './import.ts';
 export * from './local-db.ts';
 export * from './outbox.ts';
 export * from './pull.ts';

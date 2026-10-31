@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { TripDocument } from '@expeditionplan/core';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import { rowsFromDocument } from '../../document.ts';
+import { importTrip } from '../../import.ts';
 import { supabaseRemote } from '../../remote.ts';
 import { uuidv7 } from '../../uuid.ts';
 import { nodeDb } from './node-db.ts';
@@ -55,15 +55,8 @@ export function loadFixture(slug: string): TripDocument {
 
 /** Organizator zakłada wyjazd z wzorcowego planu (jak skrypt seed z MVP-1). */
 export async function seedTrip(client: SupabaseClient, doc: TripDocument) {
-  const tripId = uuidv7();
-  const rows = rowsFromDocument(doc, tripId, uuidv7);
-  const check = (result: { error: unknown }) => {
-    if (result.error) throw result.error;
-  };
-  check(await client.from('trips').insert(rows.trip));
-  check(await client.from('days').insert(rows.days));
-  check(await client.from('items').insert(rows.items));
-  return { tripId, rows };
+  const { tripId, rows } = await importTrip(client, doc);
+  return { tripId, rows: rows.tables as Record<string, ({ id: string } & Record<string, unknown>)[]> };
 }
 
 export async function waitFor(condition: () => boolean, timeoutMs: number, stepMs = 10): Promise<number> {

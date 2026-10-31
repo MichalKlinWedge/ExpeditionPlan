@@ -1,4 +1,4 @@
-import type { LocalDb, MirroredTable } from './local-db.ts';
+import type { LocalDb } from './local-db.ts';
 import { flushOutbox, type FlushOptions, type FlushResult } from './outbox.ts';
 import type { PullPayload, Remote, ServerRow } from './remote.ts';
 
@@ -12,22 +12,15 @@ export function localVersion(db: LocalDb, tripId: string): number {
   return db.all<{ version: number }>('select version from sync_state where trip_id = ?', [tripId])[0]?.version ?? 0;
 }
 
-const TABLES: [MirroredTable, keyof PullPayload][] = [
-  ['days', 'days'],
-  ['items', 'items'],
-  ['schedule_events', 'scheduleEvents'],
-  ['expenses', 'expenses'],
-];
-
-function upsertRow(db: LocalDb, table: MirroredTable, row: ServerRow) {
+function upsertRow(db: LocalDb, table: string, row: ServerRow) {
   // Starsza wersja nie nadpisze nowszej (dwa pobrania w locie), a wiersz wciąż czekający
   // w outboxie zostaje w wersji z telefonu, dopóki serwer go nie przyjmie.
   db.run(
-    `insert into ${table} (id, trip_id, data, row_version, pending, deleted_at) values (?, ?, ?, ?, 0, ?)
-     on conflict (id) do update set data = excluded.data, row_version = excluded.row_version,
+    `insert into rows (tbl, id, trip_id, data, row_version, pending, deleted_at) values (?, ?, ?, ?, ?, 0, ?)
+     on conflict (tbl, id) do update set data = excluded.data, row_version = excluded.row_version,
        deleted_at = excluded.deleted_at
-     where ${table}.pending = 0 and coalesce(${table}.row_version, 0) < excluded.row_version`,
-    [row.id, row.trip_id, JSON.stringify(row), row.row_version, row.deleted_at],
+     where rows.pending = 0 and coalesce(rows.row_version, 0) < excluded.row_version`,
+    [table, row.id, row.trip_id, JSON.stringify(row), row.row_version, row.deleted_at],
   );
 }
 
@@ -44,8 +37,8 @@ export function applyPull(db: LocalDb, tripId: string, payload: PullPayload): nu
       );
       changed++;
     }
-    for (const [table, key] of TABLES) {
-      for (const row of payload[key] as ServerRow[]) {
+    for (const [table, rows] of Object.entries(payload.tables)) {
+      for (const row of rows) {
         upsertRow(db, table, row);
         changed++;
       }

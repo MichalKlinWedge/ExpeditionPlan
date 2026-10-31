@@ -1,7 +1,9 @@
-# ExpeditionPlan — specyfikacja v0.3
+# ExpeditionPlan — specyfikacja v0.4
 
 Źródła: wstępna specyfikacja (30.10.2026), doświadczenia z FormaSync (`D:\AI\Kardio`) oraz pięć własnych planów wyjazdów z katalogu [`exaples/`](exaples/) (analiza w §0.2).
 Plan realizacji: [PLAN_ETAPOWY.md](PLAN_ETAPOWY.md).
+
+**Zmiany w v0.4 (bramka po PoC i MVP-1, 31.10.2026):** decyzje z bramki w [POC_WYNIKI.md](POC_WYNIKI.md) (dostawcy, synchronizacja własna, D3, D8, OTA). Model danych z §5 w migracjach `supabase/migrations/*_mvp1_*.sql`, z odstępstwami opisanymi w §5 „Odstępstwa w MVP-1”: `ref` dokumentu jako kolumna, miejsca na razie per wyjazd, uczestnicy punktu i źródła jako tablice id, godziny jako tekst `GG:MM`, zapis całego dokumentu jedną funkcją `import_trip`.
 
 **Zmiany w v0.3 (PoC-0, 31.10.2026):** model danych sprawdzony na pięciu własnych planach — poprawki A1–A9 z [POC_WYNIKI.md](POC_WYNIKI.md): strefa przy godzinie punktu, czas względny od poprzedniego kroku, obowiązkowa kolejność punktów w dniu, przejazd z godziną jako punkt `transport`, daty rezerwacji bez godziny, koniec statusu `in_package`, wybór z kandydatów rozwiązywany w dniach i punktach, dodatki do rezerwacji, status rezerwacji `unknown` / `not_required`, warianty wyrzucające punkty. Format dokumentu wyjazdu: `packages/core/src/schemas/trip-document.ts`.
 
@@ -414,6 +416,18 @@ Operacje łatki (Etap 3):
 | `ai_messages` | `trip_id`, `role`, `content`, `ai_run_id`, `created_by` | czat Etapu 3 |
 | `weather_snapshots` | `trip_id`, `day_id`, `lat`, `lng`, `forecast`, `fetched_at` | |
 | `activity_log` | `trip_id`, `actor_id`, `action`, `entity`, `entity_id`, `diff`, `created_at` | historia zmian, „kto co zmienił”, cofanie |
+
+### Odstępstwa w MVP-1 (v0.4)
+
+Schemat w migracjach `supabase/migrations/*_mvp1_*.sql` realizuje tabele powyżej z tymi zmianami:
+- **`ref` w każdej tabeli dokumentu** (unikalny w wyjeździe, obok `id`). Na nim stoją import, łatki AI i odwołania wewnątrz pól jsonb (`leg`, `activity`, `due`, `comparison`) — te zostają kluczami `ref`, a odwołania z pierwszego poziomu są kluczami obcymi. Mapowanie dokument ↔ wiersze ma jedno miejsce: `packages/sync/src/document.ts`.
+- **`places` per wyjazd.** Wspólna pamięć podręczna miejsc między wyjazdami przychodzi z Geoapify (MVP-2); wtedy `provider_id` wskaże wpis w niej.
+- **Tablice id zamiast tabel łączących:** `items.participant_ids` (null = cała grupa) zamiast `item_participants`, `sources.applies_to_ids` zamiast `source_links`, `vehicles.passenger_ids` zamiast `vehicle_passengers` — jeden wiersz na element, prościej w synchronizacji.
+- **Godziny planu jako tekst `GG:MM`** (domena `local_time`, ta sama reguła co Zod `LocalTime`), nie typ `time` — bez konwersji sekund w obie strony. Termin zadania (`due`) i termin decyzji (`decide_by`) jako jsonb ze schematem Zod.
+- **`trip_brief.brief jsonb`** — cały `TripBrief` z Zod zamiast kolumn.
+- **Zapis całego dokumentu:** funkcja `import_trip(trip, tables)` w jednej transakcji, z odroczonym sprawdzaniem kluczy obcych (odwołania w kółko: grupa wariantów → dzień → grupa kandydatów noclegu). Import planu, seed (`npm run seed:dev`) i testy idą tą drogą.
+- **Zaproszenia:** `create_invite` (tylko właściciel, token zwracany raz) i `accept_invite` (członek zostaje ze swoją rolą). Typy bazy: `packages/db` (`npm run gen --workspace packages/db`).
+- Klucz obcy nie sprawdza, że wskazany wiersz należy do tego samego wyjazdu — edytor nie odczyta cudzego wiersza (RLS), a dokument z takim odwołaniem nie przejdzie walidacji `checkReferences`. Do rozważenia przy edytorze (MVP-3): klucze złożone `(trip_id, id)`.
 
 ### Uprawnienia (RLS)
 

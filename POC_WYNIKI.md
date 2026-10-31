@@ -4,6 +4,38 @@ Dokument bramki decyzyjnej z [PLAN_ETAPOWY.md](PLAN_ETAPOWY.md). Każdy eksperym
 
 ---
 
+## Bramka decyzyjna (stan 31.10.2026)
+
+**Werdykt: MVP-1 startuje.** Wszystko, od czego zależy fundament danych (schemat, synchronizacja, silnik, AI), ma GO. PoC-2 i PoC-3 dotyczą mapy offline i geofencingu (MVP-4, Etap 8) — ich wynik dopiszę po teście w terenie i nie zmienia on MVP-1.
+
+| PoC | Werdykt | Najważniejsze |
+|---|---|---|
+| PoC-0 schemat | **GO** | 5 planów w `TripDocument`, poprawki A1–A9 wprowadzone (spec v0.3); luki B — przy etapach, które ich potrzebują |
+| PoC-1 łańcuch AI | **GO z warunkami** | jakość spełnia kryteria; czas < 90 s niezmierzony na API (przez CLI 102–391 s) — pomiar przed MVP-2 |
+| PoC-2 mapa offline | w toku | `pmtiles extract`: Wrocław 25 MB, Marakesz 2,9 MB, Góry Bystrzyckie 4,6 MB (kryterium ≤ 150 MB z zapasem); test w trybie samolotowym — na telefonie |
+| PoC-3 geofencing | w toku | APK z geofencingiem i trybem spaceru zainstalowany; spacery i pomiar baterii — w terenie |
+| PoC-4 synchronizacja | **GO** | wariant własny (outbox + `row_version` + `pull_changes`), bez PowerSync |
+| PoC-5 silnik | **GO** | 5 planów w ±15 min (`bramka PoC-5`) |
+
+**Wybrani dostawcy** (warunki: [docs/USLUGI.md](docs/USLUGI.md)):
+
+| Obszar | Wybór | Uwagi |
+|---|---|---|
+| AI | Claude: **Haiku 5.5** etap 2, **Opus 5.5** etap 1 i import planu | D3; klucz produkcyjny — D8, decyzja właściciela przed MVP-2 |
+| Miejsca, geokodowanie | **Geoapify** (produkcja), Nominatim + Photon (narzędzia, pojedyncze zapytania) | ugruntowanie 94–97% na OSM; Google Places — NIE |
+| Godziny otwarcia | OSM `opening_hours` (z `extratags`) | składnia OSM tylko przybliżona — pełny parser w MVP-2 |
+| Routing | **OpenRouteService** (pieszo, auto), Geoapify Routing zapasowo, Transitous dla komunikacji | bez zmian względem spec |
+| Kafle | **PMTiles** z buildu Protomaps (offline, własny CDN), **OpenFreeMap** online i małe paczki | potwierdzi PoC-2 |
+| Synchronizacja | własna (`packages/sync`) | PowerSync niepotrzebny |
+| Dystrybucja | EAS `preview` + **OTA** (`expo-updates`), sprawdzone na telefonie | nowy APK tylko przy zmianach natywnych |
+
+**Otwarte przed kolejnymi etapami:**
+- MVP-1 (logowanie): projekt Supabase w chmurze, klient Google OAuth, domena Resend (albo na start samo Google) — konta właściciela.
+- MVP-2: D8 (klucz AI w produkcji) i pomiar czasu PoC-1 na API.
+- MVP-4 / Etap 8: wynik PoC-2 i PoC-3 (glify offline, opóźnienie geofence, bateria ≤ 5%/h).
+
+---
+
 ## PoC-0 — Schemat danych na własnych planach (31.10.2026)
 
 **Werdykt: GO.** Poprawki A1–A9 wprowadzone 31.10.2026 (schemat, testy, migracja pięciu planów, specyfikacja v0.3) — patrz „Stan po poprawkach” niżej. Pierwotnie: **GO z poprawkami.** Wszystkie 5 planów zmieściło się w schemacie `TripDocument` bez utraty tego, co jest potrzebne na telefonie w trasie (godziny, rezerwacje i kody, warianty z warunkami, ograniczenia, ceny dla grupy, kontakty). Jednocześnie wyszło **9 luk, które dają złe wyniki silnika albo dublują dane** (grupa A niżej) — trzeba je załatać w schemacie przed MVP-1, razem z migracją pięciu `plan.json`.

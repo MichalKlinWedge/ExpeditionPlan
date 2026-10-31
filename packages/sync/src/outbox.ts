@@ -28,7 +28,7 @@ export type NewExpense = {
   amountMinor: number;
   currency: string;
   category?: string;
-  payerRef?: string | null;
+  payerTravelerId?: string | null;
   itemId?: string | null;
   note?: string | null;
   paidAt?: string;
@@ -38,9 +38,9 @@ function enqueue(db: LocalDb, table: OutboxTable, row: Record<string, unknown> &
   const now = new Date().toISOString();
   db.transaction(() => {
     db.run(
-      `insert into ${table} (id, trip_id, data, row_version, pending, deleted_at) values (?, ?, ?, null, 1, null)
-       on conflict (id) do update set data = excluded.data, pending = 1`,
-      [row.id, row.trip_id, JSON.stringify(row)],
+      `insert into rows (tbl, id, trip_id, data, row_version, pending, deleted_at) values (?, ?, ?, ?, null, 1, null)
+       on conflict (tbl, id) do update set data = excluded.data, pending = 1`,
+      [table, row.id, row.trip_id, JSON.stringify(row)],
     );
     db.run('insert into outbox (tbl, row_id, payload, created_at) values (?, ?, ?, ?)', [
       table,
@@ -81,7 +81,7 @@ export function saveExpense(db: LocalDb, expense: NewExpense): string {
     amount_minor: expense.amountMinor,
     currency: expense.currency,
     category: expense.category ?? 'other',
-    payer_ref: expense.payerRef ?? null,
+    payer_traveler_id: expense.payerTravelerId ?? null,
     item_id: expense.itemId ?? null,
     note: expense.note ?? null,
     paid_at: expense.paidAt ?? new Date().toISOString(),
@@ -139,7 +139,8 @@ export async function flushOutbox(db: LocalDb, remote: Remote, options: FlushOpt
       db.run('delete from outbox where seq <= ?', [lastSeq]);
       for (const id of latest.keys()) {
         // Wiersz zostaje „oczekujący”, jeśli po tej partii poprawiono go jeszcze raz.
-        db.run(`update ${table} set pending = 0 where id = ? and not exists (select 1 from outbox where row_id = ?)`, [
+        db.run('update rows set pending = 0 where tbl = ? and id = ? and not exists (select 1 from outbox where row_id = ?)', [
+          table,
           id,
           id,
         ]);

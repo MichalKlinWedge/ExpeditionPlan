@@ -91,6 +91,8 @@ Zakres MVP = wszystkie punkty **M** ze specyfikacji. Schemat bazy obejmuje od ra
 
 **Kryterium odbioru:** druga osoba dołącza z linku jako widz, widzi wyjazd i nie może niczego zmienić (sprawdzone testem RLS i ręcznie). Pięć planów referencyjnych jest w bazie.
 
+**Stan (31.10.2026):** część danych gotowa na lokalnym Supabase — pełny schemat §5 (migracje `*_mvp1_*`), RLS z testami pgTAP macierzy uprawnień (52 testy), zaproszenia linkiem, `packages/db` (typy), seed 5 planów (`npm run seed:dev`), test kryterium odbioru w `packages/sync` (`mvp1.integration.test.ts`: widz z linku dostaje z bazy ten sam plan i nie może go zmienić). Zostało: logowanie Google / magic link (projekt Supabase w chmurze, klient OAuth, Resend), ekrany web i mobile.
+
 ### MVP-2 — Kreator i AI w produkcie (≈ 5–7 dni)
 - Formularz `trip_brief` (Zod) na webie: założenia, uczestnicy, „co już ustalone” (loty, rezerwacje, stałe punkty), ograniczenia (maks. jazdy dziennie, bez jazdy po zmroku).
 - Edge Functions `ai-skeleton`, `ai-poi`, `places-search`, `routes` (logika z PoC-1), zapis w `ai_runs`, limity per użytkownik.
