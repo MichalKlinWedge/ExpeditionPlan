@@ -4,6 +4,7 @@ import { Currency, IsoDate, TimeZone, TripBrief, TripDocument } from "@expeditio
 import type { Json } from "@expeditionplan/db";
 import { countryOfTz, geoapifyLookup, groundPlaces, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, importTrip, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -57,6 +58,7 @@ export async function createTrip(_prev: FormState, form: FormData): Promise<Form
 
 const NewTraveler = z.object({
   name: z.string().trim().min(1, "Podaj imię."),
+  nickname: z.string().trim().optional(),
   age: z.preprocess((value) => (value === "" ? undefined : Number(value)), z.number().int().min(0).max(120).optional()),
   household: z.string().trim().optional(),
   guardianId: z.string().uuid().or(z.literal("")).optional(),
@@ -72,6 +74,7 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
     id: uuidv7(),
     trip_id: tripId,
     name: parsed.data.name,
+    nickname: parsed.data.nickname || null,
     age: parsed.data.age ?? null,
     household: parsed.data.household || null,
     guardian_id: parsed.data.guardianId || null,
@@ -82,6 +85,81 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
   if (error) return { error: message(error) };
   refresh();
   return { ok: `Dodano: ${parsed.data.name}` };
+}
+
+/** Zmiana danych uczestnika (imię, wiek, rodzina, opiekun, kierowca). O prawie decyduje RLS. */
+export async function updateTraveler(tripId: string, travelerId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const parsed = NewTraveler.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (parsed.data.guardianId === travelerId) return { error: "Uczestnik nie może być swoim opiekunem." };
+  const { supabase } = await requireUser(`/trips/${tripId}`);
+  const { data, error } = await supabase
+    .from("travelers")
+    .update({
+      name: parsed.data.name,
+      nickname: parsed.data.nickname || null,
+      age: parsed.data.age ?? null,
+      household: parsed.data.household || null,
+      guardian_id: parsed.data.guardianId || null,
+      is_driver: parsed.data.isDriver === "on",
+    })
+    .eq("id", travelerId)
+    .eq("trip_id", tripId)
+    .select("id");
+  if (error) return { error: message(error) };
+  // RLS odrzuca UPDATE bez błędu (0 wierszy) — widz nie edytuje.
+  if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  refresh();
+  return { ok: `Zapisano: ${parsed.data.name}` };
+}
+
+/**
+ * Usunięcie uczestnika (miękkie, `deleted_at`). Zablokowane, gdy coś na niego wskazuje — inaczej
+ * plan, wydatki czy pakowanie odwoływałyby się do nikogo. Komunikat mówi, co najpierw zmienić.
+ */
+export async function removeTraveler(tripId: string, travelerId: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}`);
+  // Tabele po nazwie z listy — bez typów wygenerowanych dla każdej z osobna.
+  const db = supabase as unknown as SupabaseClient;
+  type Counted = PromiseLike<{ count: number | null; error: { message: string } | null }> & {
+    eq(column: string, value: unknown): Counted;
+    contains(column: string, value: unknown[]): Counted;
+    or(filters: string): Counted;
+  };
+  const count = async (table: string, filter: (query: Counted) => Counted) => {
+    const query = db.from(table).select("id", { count: "exact", head: true }).eq("trip_id", tripId).is("deleted_at", null) as unknown as Counted;
+    const { count: found, error } = await filter(query);
+    if (error) throw new Error(error.message);
+    return found ?? 0;
+  };
+  const { data: person, error } = await supabase.from("travelers").select("name, user_id").eq("id", travelerId).eq("trip_id", tripId).maybeSingle();
+  if (error) return { error: message(error) };
+  if (person === null) return { error: "Nie ma takiego uczestnika." };
+  if (person.user_id !== null) return { error: `${person.name} jest połączony z kontem członka wyjazdu — tego uczestnika nie usuwamy.` };
+  let uses: string[];
+  try {
+    const checks: [string, number][] = [
+      ["opiekun innego uczestnika", await count("travelers", (q) => q.eq("guardian_id", travelerId))],
+      ["punkty planu (uczestnicy punktu)", await count("items", (q) => q.contains("participant_ids", [travelerId]))],
+      ["wydatki (płacący)", await count("expenses", (q) => q.eq("payer_traveler_id", travelerId))],
+      ["podziały wydatków", await count("expense_splits", (q) => q.eq("traveler_id", travelerId))],
+      ["rozliczenia", await count("settlements", (q) => q.or(`from_traveler_id.eq.${travelerId},to_traveler_id.eq.${travelerId}`))],
+      ["zadania", await count("tasks", (q) => q.contains("assignee_ids", [travelerId]))],
+      ["lista pakowania", await count("packing_items", (q) => q.eq("assignee_traveler_id", travelerId))],
+      ["odhaczenia pakowania", await count("packing_checks", (q) => q.eq("traveler_id", travelerId).eq("packed", true))],
+      ["rezerwacje (płacący)", await count("bookings", (q) => q.eq("paid_by_traveler_id", travelerId))],
+      ["auto (kierowca)", await count("vehicles", (q) => q.eq("driver_traveler_id", travelerId))],
+    ];
+    uses = checks.filter(([, found]) => found > 0).map(([what, found]) => `${what}: ${found}`);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  if (uses.length > 0) return { error: `Nie usunięto „${person.name}” — jest powiązany z: ${uses.join(", ")}. Zmień to najpierw.` };
+  const { data, error: removeError } = await supabase.from("travelers").update({ deleted_at: new Date().toISOString() }).eq("id", travelerId).select("id");
+  if (removeError) return { error: message(removeError) };
+  if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  refresh();
+  return { ok: `Usunięto: ${person.name}` };
 }
 
 export async function createInvite(tripId: string, _prev: FormState, form: FormData): Promise<FormState> {

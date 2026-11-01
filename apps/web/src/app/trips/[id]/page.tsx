@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { InviteForm, RemoveTripForm, TravelerForm } from "@/components/forms";
+import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -46,7 +46,6 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const role = trip.data.role!;
   const canEdit = role === "owner" || role === "editor";
   const people = travelers.data ?? [];
-  const nameOf = new Map(people.map((person) => [person.id, person.name]));
   // Szkic AI → plan: ze szkicu link do planu o tej samej nazwie, z planu wybór szkicu (szkice AI na górze).
   const others = mine.data ?? [];
   const title = trip.data.title!;
@@ -106,25 +105,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
 
       <section className={section}>
         <h2 className={heading}>Uczestnicy</h2>
-        {people.length === 0 ? (
-          <p className="text-sm text-zinc-500">Brak uczestników.</p>
-        ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {people.map((person) => (
-              <li key={person.id}>
-                <span className="font-medium">{person.name}</span>
-                {person.nickname ? ` „${person.nickname}”` : ""}
-                <span className="text-zinc-500">
-                  {person.age !== null ? ` · ${person.age} l.` : ""}
-                  {person.household ? ` · ${person.household}` : ""}
-                  {person.guardian_id ? ` · pod opieką: ${nameOf.get(person.guardian_id) ?? "?"}` : ""}
-                  {person.is_driver ? " · kierowca" : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {canEdit && <TravelerForm tripId={id} guardians={people.filter((person) => person.age === null || person.age >= 18)} />}
+        <TravelerList tripId={id} people={people} canEdit={canEdit} />
       </section>
 
       <section className={section}>

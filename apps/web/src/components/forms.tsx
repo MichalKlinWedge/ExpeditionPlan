@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 
-import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTrip } from "@/app/actions";
+import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTraveler, removeTrip, updateTraveler } from "@/app/actions";
 
 /** Formularze MVP-1 — stan i błędy z akcji serwera przez `useActionState`. */
 
@@ -77,43 +77,126 @@ export function ImportTripForm() {
   );
 }
 
-export function TravelerForm({ tripId, guardians }: { tripId: string; guardians: { id: string; name: string }[] }) {
-  const [state, action, pending] = useActionState(addTraveler.bind(null, tripId), {});
+export type Traveler = {
+  id: string;
+  name: string;
+  nickname: string | null;
+  age: number | null;
+  household: string | null;
+  guardian_id: string | null;
+  is_driver: boolean | null;
+};
+
+/** Nowy uczestnik albo edycja istniejącego (`traveler`) — te same pola, inna akcja. */
+export function TravelerForm({ tripId, guardians, traveler, onDone }: { tripId: string; guardians: { id: string; name: string }[]; traveler?: Traveler; onDone?: () => void }) {
+  const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
+    const result = traveler ? await updateTraveler(tripId, traveler.id, prev, form) : await addTraveler(tripId, prev, form);
+    if (result.ok && onDone) onDone();
+    return result;
+  }, {});
   return (
-    <form action={action} className="grid grid-cols-2 gap-3 sm:grid-cols-5 sm:items-end">
+    <form action={action} className="grid grid-cols-2 gap-3 sm:grid-cols-6 sm:items-end">
       <label className={`${label} col-span-2`}>
         Imię
-        <input name="name" required className={input} />
+        <input name="name" required className={input} defaultValue={traveler?.name ?? ""} />
+      </label>
+      <label className={label}>
+        Ksywka
+        <input name="nickname" className={input} defaultValue={traveler?.nickname ?? ""} />
       </label>
       <label className={label}>
         Wiek
-        <input name="age" type="number" min={0} max={120} className={input} />
+        <input name="age" type="number" min={0} max={120} className={input} defaultValue={traveler?.age ?? ""} />
       </label>
       <label className={label}>
         Rodzina
-        <input name="household" className={input} placeholder="np. Kowalscy" />
+        <input name="household" className={input} placeholder="np. Kowalscy" defaultValue={traveler?.household ?? ""} />
       </label>
       <label className={label}>
         Opiekun
-        <select name="guardianId" className={input} defaultValue="">
+        <select name="guardianId" className={input} defaultValue={traveler?.guardian_id ?? ""}>
           <option value="">—</option>
-          {guardians.map((guardian) => (
-            <option key={guardian.id} value={guardian.id}>
-              {guardian.name}
-            </option>
-          ))}
+          {guardians
+            .filter((guardian) => guardian.id !== traveler?.id)
+            .map((guardian) => (
+              <option key={guardian.id} value={guardian.id}>
+                {guardian.name}
+              </option>
+            ))}
         </select>
       </label>
       <label className="flex items-center gap-2 text-sm">
-        <input name="isDriver" type="checkbox" /> kierowca
+        <input name="isDriver" type="checkbox" defaultChecked={traveler?.is_driver ?? false} /> kierowca
       </label>
-      <button disabled={pending} className={button}>
-        {pending ? "Dodaję…" : "Dodaj"}
-      </button>
-      <div className="col-span-2 sm:col-span-5">
+      <div className="col-span-2 flex gap-2 sm:col-span-5">
+        <button disabled={pending} className={button}>
+          {pending ? "Zapisuję…" : traveler ? "Zapisz" : "Dodaj"}
+        </button>
+        {traveler && onDone && (
+          <button type="button" onClick={onDone} className="rounded-md border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700">
+            Anuluj
+          </button>
+        )}
+      </div>
+      <div className="col-span-2 sm:col-span-6">
         <Status state={state} />
       </div>
     </form>
+  );
+}
+
+/** Lista uczestników; organizator i edytor zmieniają dane albo usuwają (gdy nic na nich nie wskazuje). */
+export function TravelerList({ tripId, people, canEdit }: { tripId: string; people: Traveler[]; canEdit: boolean }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [result, setResult] = useState<FormState>({});
+  const [pending, start] = useTransition();
+  const nameOf = new Map(people.map((person) => [person.id, person.name]));
+  const guardians = people.filter((person) => person.age === null || person.age >= 18);
+  const remove = (person: Traveler) => {
+    if (!window.confirm(`Usunąć uczestnika „${person.name}”?`)) return;
+    start(async () => setResult(await removeTraveler(tripId, person.id)));
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      {people.length === 0 ? (
+        <p className="text-sm text-zinc-500">Brak uczestników.</p>
+      ) : (
+        <ul className="flex flex-col gap-2 text-sm">
+          {people.map((person) =>
+            editing === person.id ? (
+              <li key={person.id} className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+                <TravelerForm tripId={tripId} guardians={guardians} traveler={person} onDone={() => setEditing(null)} />
+              </li>
+            ) : (
+              <li key={person.id} className="flex flex-wrap items-baseline gap-x-2">
+                <span>
+                  <span className="font-medium">{person.name}</span>
+                  {person.nickname ? ` „${person.nickname}”` : ""}
+                  <span className="text-zinc-500">
+                    {person.age !== null ? ` · ${person.age} l.` : ""}
+                    {person.household ? ` · ${person.household}` : ""}
+                    {person.guardian_id ? ` · pod opieką: ${nameOf.get(person.guardian_id) ?? "?"}` : ""}
+                    {person.is_driver ? " · kierowca" : ""}
+                  </span>
+                </span>
+                {canEdit && (
+                  <span className="text-xs text-zinc-500">
+                    <button onClick={() => { setResult({}); setEditing(person.id); }} className="underline">
+                      edytuj
+                    </button>{" "}
+                    <button onClick={() => remove(person)} disabled={pending} className="underline disabled:opacity-50">
+                      usuń
+                    </button>
+                  </span>
+                )}
+              </li>
+            ),
+          )}
+        </ul>
+      )}
+      <Status state={result} />
+      {canEdit && <TravelerForm tripId={tripId} guardians={guardians} />}
+    </div>
   );
 }
 
