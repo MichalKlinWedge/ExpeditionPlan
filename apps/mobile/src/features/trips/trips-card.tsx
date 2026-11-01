@@ -1,4 +1,3 @@
-import type { Tables } from '@expeditionplan/db';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -6,13 +5,16 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
+import { loadMyTrips, type Trip } from '@/features/trips/my-trips';
 import { supabase } from '@/lib/supabase';
 
-/** Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy, kto ma dostęp i wejście w plan dnia. */
+/**
+ * Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy, kto ma dostęp
+ * i wejście w plan dnia. Bez logowania (`signedIn = false`) — lista i plany z telefonu, do odczytu.
+ */
 
 const ROLE: Record<string, string> = { owner: 'właściciel', editor: 'edytor', viewer: 'widz' };
 
-type Trip = Tables<'my_trips'>;
 type Details = {
   travelers: { id: string; name: string; age: number | null }[];
   members: { role: string; name: string }[];
@@ -20,18 +22,20 @@ type Details = {
   items: number;
 };
 
-export function TripsCard({ reloadKey }: { reloadKey: number }) {
+export function TripsCard({ reloadKey, signedIn }: { reloadKey: number; signedIn: boolean }) {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [error, setError] = useState('');
+  const [offline, setOffline] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [details, setDetails] = useState<Details | null>(null);
   const [plan, setPlan] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data, error: loadError } = await supabase.from('my_trips').select('*').order('start_date');
-    setError(loadError?.message ?? '');
-    setTrips(data ?? []);
-  }, []);
+    const result = await loadMyTrips(signedIn);
+    setError(result.error);
+    setOffline(result.offline);
+    setTrips(result.trips);
+  }, [signedIn]);
 
   // Pierwsze wczytanie z timera, nie wprost w efekcie (reguła react-hooks/set-state-in-effect).
   useEffect(() => {
@@ -43,12 +47,18 @@ export function TripsCard({ reloadKey }: { reloadKey: number }) {
     if (open === id) return setOpen(null);
     setOpen(id);
     setDetails(null);
+    if (!signedIn) return;
     const [travelers, members, days, items] = await Promise.all([
       supabase.from('travelers').select('id, name, age').eq('trip_id', id).is('deleted_at', null).order('sort_key'),
       supabase.from('trip_members').select('role, profiles(display_name)').eq('trip_id', id),
       supabase.from('days').select('id', { count: 'exact', head: true }).eq('trip_id', id).is('deleted_at', null),
       supabase.from('items').select('id', { count: 'exact', head: true }).eq('trip_id', id).is('deleted_at', null),
     ]);
+    // Bez sieci szczegółów nie ma, ale plan jest w bazie telefonu.
+    if (travelers.error) {
+      setOffline(true);
+      return;
+    }
     setDetails({
       travelers: travelers.data ?? [],
       members: (members.data ?? []).map((member) => ({ role: member.role, name: member.profiles?.display_name ?? '?' })),
@@ -61,8 +71,17 @@ export function TripsCard({ reloadKey }: { reloadKey: number }) {
     <ThemedView type="backgroundElement" style={styles.card}>
       <ThemedText type="subtitle">Wyjazdy</ThemedText>
       {error !== '' && <ThemedText type="small">{error}</ThemedText>}
+      {offline && (
+        <ThemedText type="small">
+          {signedIn ? 'Bez połączenia — lista z ostatniej synchronizacji.' : 'Niezalogowany — wyjazdy pobrane na telefon, tylko do odczytu.'}
+        </ThemedText>
+      )}
       {trips === null && <ThemedText type="small">Wczytuję…</ThemedText>}
-      {trips?.length === 0 && <ThemedText type="small">Nie masz jeszcze wyjazdów — utwórz je na webie albo dołącz z linku.</ThemedText>}
+      {trips?.length === 0 && (
+        <ThemedText type="small">
+          {signedIn ? 'Nie masz jeszcze wyjazdów — utwórz je na webie albo dołącz z linku.' : 'Na telefonie nie ma pobranych wyjazdów — zaloguj się na ekranie Start.'}
+        </ThemedText>
+      )}
       {trips?.map((trip) => (
         <View key={trip.id} style={styles.trip}>
           <Pressable onPress={() => void toggle(trip.id!)}>
@@ -74,7 +93,12 @@ export function TripsCard({ reloadKey }: { reloadKey: number }) {
           {open === trip.id && (
             <View style={styles.details}>
               {details === null ? (
-                <ThemedText type="small">Wczytuję…</ThemedText>
+                <>
+                  {!offline && <ThemedText type="small">Wczytuję…</ThemedText>}
+                  <Pressable onPress={() => setPlan(trip.id)} hitSlop={8}>
+                    <ThemedText type="linkPrimary">Plan dzień po dniu →</ThemedText>
+                  </Pressable>
+                </>
               ) : (
                 <>
                   <ThemedText type="small">
@@ -98,7 +122,7 @@ export function TripsCard({ reloadKey }: { reloadKey: number }) {
           )}
         </View>
       ))}
-      <PlanScreen tripId={plan} onClose={() => setPlan(null)} />
+      <PlanScreen tripId={plan} signedIn={signedIn} onClose={() => setPlan(null)} />
     </ThemedView>
   );
 }

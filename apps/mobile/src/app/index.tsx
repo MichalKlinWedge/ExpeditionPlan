@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,11 +8,13 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { LoginCard } from '@/features/auth/login-card';
 import { useSession } from '@/features/auth/session';
-import { UpdateCard } from '@/features/updates/update-notice';
+import { SettingsScreen } from '@/features/settings/settings-screen';
+import { UpdateBadge } from '@/features/updates/update-notice';
 import { isConfigured, supabase } from '@/lib/supabase';
 
 /**
- * Start (MVP-1): logowanie, konto, dołączenie z linku, aktualizacje (wyjazdy mają własną zakładkę). Linki z zewnątrz przychodzą tu jako
+ * Start (MVP-1): logowanie, dołączenie z linku, znaczek nowej wersji i wejście w Ustawienia
+ * (konto, wersja). Wyjazdy i plan mają własne zakładki. Linki z zewnątrz przychodzą tu jako
  * parametry (`+native-intent`): `code` — powrót z linku logowania, `join` — zaproszenie.
  * Zaproszenie otwarte przed zalogowaniem czeka, aż logowanie się skończy.
  */
@@ -20,6 +22,7 @@ export default function HomeScreen() {
   const session = useSession();
   const params = useLocalSearchParams<{ code?: string; join?: string }>();
   const [message, setMessage] = useState('');
+  const [settings, setSettings] = useState(false);
   const pendingJoin = useRef<string | null>(null);
 
   useEffect(() => {
@@ -48,27 +51,30 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <ThemedText type="title">ExpeditionPlan</ThemedText>
-          <ThemedText>Pocket Guide · testy PoC-2 i PoC-3</ThemedText>
+          <View style={styles.header}>
+            <ThemedText type="title" style={styles.title}>
+              Expedition Planer
+            </ThemedText>
+            <View style={styles.actions}>
+              <UpdateBadge />
+              <Pressable onPress={() => setSettings(true)} hitSlop={12} accessibilityLabel="Ustawienia">
+                <ThemedText style={styles.gear}>⚙︎</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+          <ThemedText>Pocket Guide</ThemedText>
           {message !== '' && <ThemedText type="small">{message}</ThemedText>}
           {!isConfigured && <ThemedText type="small">Brak adresu Supabase w tej wersji aplikacji (EXPO_PUBLIC_SUPABASE_URL).</ThemedText>}
           {isConfigured && session === undefined && <ThemedText type="small">Wczytuję…</ThemedText>}
           {isConfigured && session === null && <LoginCard />}
           {session && (
-            <>
-              <ThemedView type="backgroundElement" style={styles.account}>
-                <ThemedText type="small">{session.user.email}</ThemedText>
-                <Pressable onPress={() => void supabase.auth.signOut()}>
-                  <ThemedText type="small" style={styles.link}>
-                    Wyloguj
-                  </ThemedText>
-                </Pressable>
-              </ThemedView>
-            </>
+            <ThemedText type="small" themeColor="textSecondary">
+              Zalogowany: {session.user.email}. Wyjazdy i plan są w zakładkach na dole.
+            </ThemedText>
           )}
-          <UpdateCard />
         </ScrollView>
       </SafeAreaView>
+      <SettingsScreen visible={settings} onClose={() => setSettings(false)} />
     </ThemedView>
   );
 }
@@ -77,6 +83,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', justifyContent: 'center' },
   safeArea: { flex: 1, maxWidth: MaxContentWidth },
   content: { gap: Spacing.three, padding: Spacing.four, paddingBottom: BottomTabInset + Spacing.three },
-  account: { flexDirection: 'row', justifyContent: 'space-between', padding: Spacing.three, borderRadius: Spacing.three },
-  link: { textDecorationLine: 'underline' },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  title: { flex: 1 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.two },
+  gear: { fontSize: 28, lineHeight: 34 },
 });

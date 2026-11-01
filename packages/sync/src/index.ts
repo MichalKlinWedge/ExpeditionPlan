@@ -5,4 +5,5 @@ export * from './outbox.ts';
 export * from './plan-save.ts';
 export * from './pull.ts';
 export * from './remote.ts';
+export * from './trip-cache.ts';
 export * from './uuid.ts';

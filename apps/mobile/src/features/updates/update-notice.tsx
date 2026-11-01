@@ -16,8 +16,9 @@ const offerRestart = (title: string, message: string) =>
   ]);
 
 /**
- * Pilnuje nowych wersji bez udziału użytkownika: pyta serwer przy starcie i po powrocie na
- * pierwszy plan (najwyżej co kwadrans), sam pobiera paczkę i raz proponuje restart.
+ * Pilnuje nowych wersji bez udziału użytkownika: pyta serwer przy starcie, po powrocie na
+ * pierwszy plan i co `CHECK_COOLDOWN_MS`, gdy aplikacja jest otwarta; sam pobiera paczkę, raz
+ * proponuje restart, a do restartu na Start wisi znaczek (`UpdateBadge`).
  */
 export function UpdateWatcher() {
   const { isUpdateAvailable, isUpdatePending, isDownloading, lastCheckForUpdateTimeSinceRestart } = Updates.useUpdates();
@@ -31,7 +32,12 @@ export function UpdateWatcher() {
     };
     check();
     const subscription = AppState.addEventListener('change', (state) => state === 'active' && check());
-    return () => subscription.remove();
+    // Co pół minuty, a o pytaniu decyduje `shouldCheck` — interwał równy przerwie gubiłby co drugie sprawdzenie.
+    const timer = setInterval(() => AppState.currentState === 'active' && check(), 30_000);
+    return () => {
+      subscription.remove();
+      clearInterval(timer);
+    };
   }, [lastCheckForUpdateTimeSinceRestart]);
 
   useEffect(() => {
@@ -47,7 +53,27 @@ export function UpdateWatcher() {
   return null;
 }
 
-/** Karta na ekranie Start: która paczka działa i ręczne „Sprawdź aktualizację”. */
+/**
+ * Znaczek na ekranie Start, gdy jest nowa wersja: w trakcie pobierania tylko informacja,
+ * po pobraniu — dotknięcie proponuje restart.
+ */
+export function UpdateBadge() {
+  const { isUpdateAvailable, isUpdatePending } = Updates.useUpdates();
+  if (!isUpdateAvailable && !isUpdatePending) return null;
+  return (
+    <Pressable
+      disabled={!isUpdatePending}
+      onPress={() => offerRestart('Nowa wersja gotowa', 'Zacznie działać po ponownym uruchomieniu aplikacji.')}
+      style={styles.badge}
+      accessibilityLabel="Nowa wersja aplikacji">
+      <ThemedText type="small" style={styles.badgeText}>
+        {isUpdatePending ? '⬆ Nowa wersja' : '⬇ Pobieram…'}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
+/** Karta w Ustawieniach: która paczka działa i ręczne „Sprawdź aktualizację”. */
 export function UpdateCard() {
   const [busy, setBusy] = useState(false);
   // Stałe expo-updates są ustalane przy starcie aplikacji — czytamy je raz, bez stanu.
@@ -82,4 +108,6 @@ const styles = StyleSheet.create({
   card: { alignSelf: 'stretch', padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
   button: { alignSelf: 'flex-start', paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: '#8888' },
   disabled: { opacity: 0.4 },
+  badge: { borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, backgroundColor: '#3c87f7' },
+  badgeText: { color: '#ffffff' },
 });

@@ -49,10 +49,11 @@ export function describeCheck(check: UpdateCheck): { title: string; message: str
 }
 
 /**
- * Jak często pytać serwer po powrocie aplikacji na pierwszy plan. Telefon potrafi trzymać
- * aplikację w tle tygodniami — samo sprawdzenie przy starcie dawno by się przedawniło.
+ * Jak często pytać serwer: po powrocie aplikacji na pierwszy plan i co tyle, gdy jest otwarta.
+ * Telefon potrafi trzymać aplikację w tle tygodniami — samo sprawdzenie przy starcie dawno by się
+ * przedawniło. Pytanie to jedno małe żądanie, a znaczek nowej wersji na Start ma się pojawić od razu.
  */
-export const CHECK_COOLDOWN_MS = 15 * 60 * 1000;
+export const CHECK_COOLDOWN_MS = 2 * 60 * 1000;
 
 /** Czy od ostatniego sprawdzenia minęło dość czasu. Brak daty znaczy „jeszcze nie pytaliśmy”. */
 export function shouldCheck(lastCheck: Date | undefined, now: number): boolean {

@@ -7,21 +7,22 @@ import {
   scheduleDay,
   type ScheduleWarning,
 } from '@expeditionplan/core';
-import { type PullPayload, stateFromPayload, type TripState } from '@expeditionplan/sync';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { cachedTrip, refreshTrip, type TripState } from '@expeditionplan/sync';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { supabase } from '@/lib/supabase';
+import { localDb, remote } from '@/lib/local-db';
 
 /**
- * Plan dnia na telefonie (MVP-1, tylko odczyt, online). Dane tą samą drogą co web: `pull_changes`
- * → `stateFromPayload`, a godziny liczy silnik z packages/core na telefonie. Jeden dzień na ekranie;
- * domyślnie dzisiejszy, jeśli wyjazd trwa. Tryb offline (SQLite) to osobny krok.
+ * Plan dnia na telefonie (MVP-1, tylko odczyt). Offline: najpierw stan z SQLite (`cachedTrip`),
+ * potem synchronizacja przyrostowa (`refreshTrip`) — przy otwarciu, „Odśwież” i powrocie aplikacji
+ * na pierwszy plan. Godziny liczy silnik z packages/core na telefonie. Jeden dzień na ekranie;
+ * domyślnie dzisiejszy, jeśli wyjazd trwa.
  */
 
 const KIND: Record<string, string> = {
@@ -51,6 +52,11 @@ const weekday = (date: string) => {
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
+const stamp = (iso: string) =>
+  new Date(iso).toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
 const hm = (instant: number | null | undefined, tz: string) => (instant == null ? '—' : instantToZoned(instant, tz).time);
 
 /** Dzisiejszy dzień wyjazdu (data w strefie dnia), inaczej pierwszy. */
@@ -60,16 +66,16 @@ function initialDay(state: TripState): number {
   return Math.max(today, 0);
 }
 
-type Props = { tripId: string | null; onClose: () => void };
+type Props = { tripId: string | null; signedIn: boolean; onClose: () => void };
 
 /** Plan w pełnoekranowym oknie nad listą wyjazdów (Start). */
-export function PlanScreen({ tripId, onClose }: Props) {
+export function PlanScreen({ tripId, signedIn, onClose }: Props) {
   return (
     <Modal visible={tripId !== null} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
-            {tripId !== null && <Plan tripId={tripId} onClose={onClose} />}
+            {tripId !== null && <Plan tripId={tripId} signedIn={signedIn} onClose={onClose} />}
           </SafeAreaView>
         </ThemedView>
       </SafeAreaProvider>
@@ -77,31 +83,71 @@ export function PlanScreen({ tripId, onClose }: Props) {
   );
 }
 
-/** Plan jednego wyjazdu. `onClose` — przycisk powrotu (okno z listy wyjazdów); `bottomInset` — miejsce na pasek zakładek. */
-export function Plan({ tripId, onClose, bottomInset = 0 }: { tripId: string; onClose?: () => void; bottomInset?: number }) {
+type PlanProps = {
+  tripId: string;
+  /** Bez logowania: tylko stan z telefonu, bez synchronizacji. */
+  signedIn: boolean;
+  /** Przycisk powrotu (okno z listy wyjazdów). */
+  onClose?: () => void;
+  /** Miejsce na pasek zakładek. */
+  bottomInset?: number;
+};
+
+/** Plan jednego wyjazdu. */
+export function Plan({ tripId, signedIn, onClose, bottomInset = 0 }: PlanProps) {
   const [state, setState] = useState<TripState | null>(null);
-  const [error, setError] = useState('');
+  const [sync, setSync] = useState<{ busy: boolean; syncedAt?: string; error?: string }>({ busy: signedIn });
+  const [invalid, setInvalid] = useState('');
   const [index, setIndex] = useState(0);
   const [scenario, setScenario] = useState<Scenario>('optimistic');
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const placed = useRef(false);
+
+  const show = useCallback((next: TripState, syncedAt: string) => {
+    setState(next);
+    setInvalid('');
+    // Dzień ustawia się raz — odświeżenie nie przerzuca oglądanego dnia.
+    if (!placed.current) setIndex(initialDay(next));
+    placed.current = true;
+    setSync({ busy: false, syncedAt });
+  }, []);
 
   const load = useCallback(async () => {
-    const { data, error: pullError } = await supabase.rpc('pull_changes', { p_trip: tripId, p_since: 0 });
-    if (pullError) return setError(pullError.message);
+    if (!signedIn) return;
+    setSync((current) => ({ ...current, busy: true }));
     try {
-      const loaded = stateFromPayload(data as unknown as PullPayload);
-      setState(loaded);
-      setIndex(initialDay(loaded));
-      setError('');
+      const fresh = await refreshTrip(localDb, remote, tripId);
+      show(fresh.state, fresh.syncedAt);
     } catch (e) {
-      setError(`Plan w bazie nie przechodzi walidacji: ${e instanceof Error ? e.message : String(e)}`);
+      setSync((current) => ({ ...current, busy: false, error: message(e) }));
     }
-  }, [tripId]);
+  }, [tripId, signedIn, show]);
 
   useEffect(() => {
-    const first = setTimeout(() => void load(), 0);
-    return () => clearTimeout(first);
-  }, [load]);
+    const first = setTimeout(() => {
+      try {
+        const cached = cachedTrip(localDb, tripId);
+        if (cached !== null) show(cached.state, cached.syncedAt);
+      } catch (e) {
+        setInvalid(`Plan na telefonie nie przechodzi walidacji: ${message(e)}`);
+      }
+      void load();
+    }, 0);
+    const listener = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void load();
+    });
+    return () => {
+      clearTimeout(first);
+      listener.remove();
+    };
+  }, [tripId, load, show]);
+
+  let status: string;
+  if (!signedIn) status = sync.syncedAt ? `Niezalogowany — plan z ${stamp(sync.syncedAt)}, bez synchronizacji` : 'Ten plan nie był pobrany na telefon — zaloguj się na ekranie Start.';
+  else if (sync.busy) status = 'Synchronizuję…';
+  else if (sync.error !== undefined) status = sync.syncedAt ? `Bez połączenia — plan z ${stamp(sync.syncedAt)}` : `Brak połączenia, a plan nie był jeszcze pobrany na telefon (${sync.error}).`;
+  else status = sync.syncedAt ? `Zsynchronizowano ${stamp(sync.syncedAt)}` : '';
+  const error = invalid;
 
   const variants = useMemo(() => ({ ...state?.inputs.activeVariants, ...overrides }), [state, overrides]);
   const days = state?.doc.days ?? [];
@@ -118,13 +164,17 @@ export function Plan({ tripId, onClose, bottomInset = 0 }: { tripId: string; onC
         <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
           {state?.doc.trip.title ?? ''}
         </ThemedText>
-        <Pressable onPress={() => void load()} hitSlop={12}>
-          <ThemedText type="linkPrimary">Odśwież</ThemedText>
-        </Pressable>
+        {signedIn && (
+          <Pressable onPress={() => void load()} hitSlop={12}>
+            <ThemedText type="linkPrimary">Odśwież</ThemedText>
+          </Pressable>
+        )}
       </View>
 
+      <ThemedText type="small" themeColor="textSecondary" style={styles.status}>
+        {status}
+      </ThemedText>
       {error !== '' && <ThemedText style={[styles.pad, { color: HARD }]}>{error}</ThemedText>}
-      {state === null && error === '' && <ThemedText style={styles.pad}>Wczytuję…</ThemedText>}
       {state !== null && days.length === 0 && <ThemedText style={styles.pad}>Plan nie ma jeszcze dni.</ThemedText>}
 
       {state !== null && day && (
@@ -317,7 +367,9 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   title: { flex: 1, textAlign: 'center' },
   pad: { padding: Spacing.three },
-  chipsBar: { flexGrow: 0 },
+  status: { paddingHorizontal: Spacing.three },
+  // ScrollView domyślnie ma flexShrink: 1 — pasek dni ściskał się w pionie i ucinał tekst.
+  chipsBar: { flexGrow: 0, flexShrink: 0 },
   chips: { flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
   content: { padding: Spacing.three, gap: Spacing.three },
