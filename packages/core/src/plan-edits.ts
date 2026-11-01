@@ -84,6 +84,17 @@ export function moveToDay(doc: Doc, ref: string, dayRef: string | null): PlanEdi
   return { doc: replace(doc, changed), changed };
 }
 
+/** Do dnia `dayRef`, zaraz po `afterRef` (`null` = na początek dnia) — dla łatek AI („przenieś za X”). */
+export function moveAfter(doc: Doc, ref: string, dayRef: string, afterRef: string | null): PlanEdit | null {
+  const item = doc.items.find((each) => each.ref === ref);
+  if (item === undefined) return null;
+  const others = dayItems(doc, dayRef).filter((each) => each.ref !== ref);
+  const index = afterRef === null ? -1 : others.findIndex((each) => each.ref === afterRef);
+  if (afterRef !== null && index === -1) return null;
+  const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined }, others[index]?.ref, others[index + 1]?.ref);
+  return { doc: replace(doc, changed), changed };
+}
+
 export function updateItem(doc: Doc, ref: string, patch: Partial<Item>): PlanEdit | null {
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined) return null;

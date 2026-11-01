@@ -2,7 +2,7 @@
 
 import { Currency, IsoDate, parseCoordinates, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { countryOfTz, geoapifyLookup, groundPlaces, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
+import { geoapifyLookup, groundPlaces, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, importTrip, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { refresh } from "next/cache";
@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { plannerDeps, routeLookup } from "@/lib/ai";
+import { countriesFor } from "@/lib/countries";
 import { requireUser } from "@/lib/auth";
 import { SAMPLE_PLANS } from "@/lib/sample-plans";
 
@@ -467,13 +468,6 @@ export async function groundTrip(tripId: string): Promise<FormState> {
       skipped.length > 0 ? `Pominięte (opisowe albo prywatne): ${skipped.length}.` : "",
     ].filter((each) => each !== "").join(" "),
   };
-}
-
-/** Kraje wyjazdu do szukania miejsc: z briefu, a bez niego ze strefy wyjazdu. */
-function countriesFor(brief: TripBrief | null, primaryTz: string): string[] {
-  if (brief !== null) return brief.location.countries;
-  const fromTz = countryOfTz(primaryTz);
-  return fromTz === undefined ? [] : [fromTz];
 }
 
 /**

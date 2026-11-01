@@ -199,3 +199,44 @@ export const LogisticsCandidates = z.object({
 });
 
 export type LogisticsCandidates = z.infer<typeof LogisticsCandidates>;
+
+/**
+ * Etap 3: dostrajanie (czat) — łatka zamiast całego planu (SPECYFIKACJA §4). Punkty wskazuje się
+ * kluczami z planu (`itemRef`, `dayRef`); nowe miejsca po nazwie, współrzędne dokłada kod.
+ * Usunięty punkt domyślnie wraca do puli, a nie znika.
+ */
+const PatchItem = z.object({
+  title: text,
+  kind: z.enum(['visit', 'activity', 'meal', 'transport', 'lodging', 'errand', 'meetup', 'free', 'decision']),
+  durationMin: minutes.optional(),
+  /** Godzina „nie wcześniej niż” (HH:MM); bez niej punkt idzie po poprzednim. */
+  start: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  precision: z.enum(['exact', 'approx']).optional(),
+  /** Nazwa miejsca po polsku; istniejące miejsce planu o tej nazwie zostanie użyte ponownie. */
+  place: z.string().optional(),
+  /** Nazwa do wyszukania w OpenStreetMap (lokalna albo angielska). */
+  searchName: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const PatchOp = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('remove_item'), itemRef: Ref, toPool: z.boolean().default(true), reason: z.string().optional() }),
+  z.object({ op: z.literal('move_item'), itemRef: Ref, toDayRef: Ref, afterItemRef: Ref.optional() }),
+  z.object({ op: z.literal('add_item'), dayRef: Ref, afterItemRef: Ref.optional(), item: PatchItem }),
+  z.object({ op: z.literal('replace_item'), itemRef: Ref, with: PatchItem }),
+  z.object({
+    op: z.literal('set_field'),
+    itemRef: Ref,
+    field: z.enum(['title', 'durationMin', 'start', 'description']),
+    value: z.union([z.string(), z.number()]),
+  }),
+]);
+
+export const PlanPatch = z.object({
+  ops: z.array(PatchOp).max(15),
+  /** Krótka odpowiedź dla człowieka: co zmieniono i dlaczego (albo czego się nie da). */
+  message: text,
+});
+
+export type PatchOp = z.infer<typeof PatchOp>;
+export type PlanPatch = z.infer<typeof PlanPatch>;
