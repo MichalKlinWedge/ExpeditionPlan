@@ -1,6 +1,6 @@
 "use server";
 
-import { Currency, IsoDate, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
+import { Currency, IsoDate, parseCoordinates, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { countryOfTz, geoapifyLookup, groundPlaces, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, importTrip, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -431,8 +431,7 @@ export async function groundTrip(tripId: string): Promise<FormState> {
   const payload = data as Parameters<typeof stateFromPayload>[0];
   const { doc } = stateFromPayload(payload);
   const brief = TripBrief.safeParse(briefRow.data?.brief);
-  const fromTz = countryOfTz(doc.trip.primaryTz);
-  const countries = brief.success ? brief.data.location.countries : fromTz === undefined ? [] : [fromTz];
+  const countries = countriesFor(brief.success ? brief.data : null, doc.trip.primaryTz);
   if (countries.length === 0) return { error: `Nie wiem, w jakim kraju szukać (strefa ${doc.trip.primaryTz}) — podaj kraj w briefie wyjazdu.` };
 
   const missing = doc.places.filter((place) => place.lat === undefined && place.provider !== "user");
@@ -468,4 +467,64 @@ export async function groundTrip(tripId: string): Promise<FormState> {
       skipped.length > 0 ? `Pominięte (opisowe albo prywatne): ${skipped.length}.` : "",
     ].filter((each) => each !== "").join(" "),
   };
+}
+
+/** Kraje wyjazdu do szukania miejsc: z briefu, a bez niego ze strefy wyjazdu. */
+function countriesFor(brief: TripBrief | null, primaryTz: string): string[] {
+  if (brief !== null) return brief.location.countries;
+  const fromTz = countryOfTz(primaryTz);
+  return fromTz === undefined ? [] : [fromTz];
+}
+
+/**
+ * Ręczne przypięcie miejsca: wklejone współrzędne albo link z mapy (`parseCoordinates`). Miejsce
+ * dostaje `provider: user` — „Uzupełnij współrzędne” już go nie ruszy. O prawie decyduje RLS.
+ */
+export async function pinPlace(tripId: string, placeId: string, text: string): Promise<FormState> {
+  const point = parseCoordinates(text);
+  if (point === null) return { error: "Nie widzę tu współrzędnych. Wklej np. „31.6295, -7.9811” albo pełny link z Google Maps lub OpenStreetMap (krótki link maps.app.goo.gl trzeba najpierw otworzyć)." };
+  const { supabase } = await requireUser(`/trips/${tripId}/plan`);
+  const { data, error } = await supabase
+    .from("places")
+    .update({ lat: Math.round(point.lat * 1e5) / 1e5, lng: Math.round(point.lng * 1e5) / 1e5, provider: "user" })
+    .eq("id", placeId)
+    .eq("trip_id", tripId)
+    .select("name");
+  if (error) return { error: message(error) };
+  if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  refresh();
+  return { ok: `Przypięto „${data[0]!.name}”: ${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}.` };
+}
+
+/** Szukanie miejsca pod inną nazwą (np. nazwą z OpenStreetMap); trafienie zapisuje się z tą nazwą jako `searchName`. */
+export async function searchPlace(tripId: string, placeId: string, query: string): Promise<FormState> {
+  const text = query.trim();
+  if (text === "") return { error: "Wpisz nazwę do wyszukania." };
+  const key = process.env.GEOAPIFY_API_KEY ?? "";
+  if (key === "") return { error: "Serwer nie ma klucza GEOAPIFY_API_KEY." };
+  const { supabase } = await requireUser(`/trips/${tripId}/plan`);
+  const [trip, briefRow] = await Promise.all([
+    supabase.from("my_trips").select("primary_tz").eq("id", tripId).maybeSingle(),
+    supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
+  ]);
+  const brief = TripBrief.safeParse(briefRow.data?.brief);
+  const countries = countriesFor(brief.success ? brief.data : null, trip.data?.primary_tz ?? "");
+  if (countries.length === 0) return { error: "Nie wiem, w jakim kraju szukać — podaj kraj w briefie wyjazdu." };
+  let hit;
+  try {
+    hit = await geoapifyLookup(key)(text, countries);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  if (hit === null) return { error: `Nie znaleziono „${text}”. Spróbuj nazwy z OpenStreetMap albo wklej współrzędne.` };
+  const { data, error } = await supabase
+    .from("places")
+    .update({ lat: Math.round(hit.lat * 1e5) / 1e5, lng: Math.round(hit.lng * 1e5) / 1e5, provider: "osm", search_name: text })
+    .eq("id", placeId)
+    .eq("trip_id", tripId)
+    .select("name");
+  if (error) return { error: message(error) };
+  if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  refresh();
+  return { ok: `„${data[0]!.name}” → ${hit.displayName}. Jeśli to nie to miejsce, wklej współrzędne.` };
 }

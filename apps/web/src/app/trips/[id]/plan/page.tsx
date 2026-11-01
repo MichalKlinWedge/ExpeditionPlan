@@ -1,9 +1,11 @@
+import { placesOffMap } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { groundTrip, routeTrip } from "@/app/actions";
+import { PlacePinner } from "@/components/place-pinner";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { PlanView } from "@/components/plan-view";
 import { Loading, Shell } from "@/components/shell";
@@ -42,6 +44,7 @@ async function Plan({ params }: { params: Promise<{ id: string }> }) {
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
+  const ids = refIndex((data as { tables: Parameters<typeof refIndex>[0] }).tables);
   return (
     <>
       <div className="flex flex-col gap-1">
@@ -54,6 +57,7 @@ async function Plan({ params }: { params: Promise<{ id: string }> }) {
         <div className="flex flex-col gap-2">
           <PlanActionButton run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
           <PlanActionButton run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
+          <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />
         </div>
       )}
       <PlanView
@@ -61,7 +65,7 @@ async function Plan({ params }: { params: Promise<{ id: string }> }) {
         key={(data as { version: number }).version}
         state={state}
         tripId={id}
-        ids={refIndex((data as { tables: Parameters<typeof refIndex>[0] }).tables)}
+        ids={ids}
         canEdit={canEdit}
       />
     </>
