@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { TripDocument } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
-import { documentFromRows, rowsFromDocument } from '../document.ts';
+import { type Collection, COLLECTIONS, documentFromRows, refIndex, rowForUpdate, rowsFromDocument } from '../document.ts';
 import { uuidv7 } from '../uuid.ts';
 
 const plansDir = fileURLToPath(new URL('../../../../fixtures/plans/', import.meta.url));
@@ -53,6 +53,20 @@ describe('dokument ↔ wiersze tabel (MVP-1)', () => {
     server.tables.travelers!.push({ id, trip_id: server.trip.id, name: 'Nowy', guardian_id: guardian.id, sort_key: '99999', row_version: 2, deleted_at: null });
     const back = documentFromRows(server.trip, server.tables);
     expect(back.travelers.at(-1)).toMatchObject({ ref: `id-${id}`, name: 'Nowy', guardianRef: guardian.ref });
+  });
+
+  it('wiersz do UPDATE: zmienione pola, usunięte pola jako NULL, odwołania jako id', () => {
+    const doc = load('maroko');
+    const rows = rowsFromDocument(doc, uuidv7(), uuidv7);
+    const ids = refIndex(rows.tables);
+    const owner = new Map<string, Collection>();
+    for (const collection of COLLECTIONS) for (const element of doc[collection] as { ref?: string }[]) if (element.ref) owner.set(element.ref, collection);
+    const item = doc.items.find((each) => each.time?.precision === 'exact' && each.placeRef !== undefined)!;
+    const edited = { ...item, title: 'Nowa nazwa', time: undefined, durationMin: 45 };
+    const row = rowForUpdate('items', edited, { idOf: (ref) => ids[ref]!, collectionOf: (ref) => owner.get(ref) });
+    expect(row).toMatchObject({ title: 'Nowa nazwa', duration_min: 45, time_precision: null, start_time: null, place_id: ids[item.placeRef!] });
+    expect(row).not.toHaveProperty('ref');
+    expect(row).toHaveProperty('booking_group_id');
   });
 
   it('usunięty wiersz znika z dokumentu', () => {

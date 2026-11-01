@@ -18,7 +18,7 @@ import type { PullPayload, ServerRow } from './remote.ts';
  */
 
 type Doc = TripDocument;
-type Collection = Exclude<keyof Doc, 'schemaVersion' | 'trip'>;
+export type Collection = Exclude<keyof Doc, 'schemaVersion' | 'trip'>;
 type Row = Record<string, unknown>;
 
 /**
@@ -315,6 +315,50 @@ export function documentFromRows(trip: Row, tables: TableRows): Doc {
     doc[collection] = elements;
   }
   return TripDocument.parse(doc);
+}
+
+/** `ref` → `id` wszystkich wierszy migawki (także tych bez `ref` — klucz `id-<uuid>`). */
+export function refIndex(tables: TableRows): Record<string, string> {
+  const index: Record<string, string> = {};
+  for (const collection of COLLECTIONS) {
+    for (const row of tables[SPECS[collection].table] ?? []) {
+      const ref = rowRef(collection, row);
+      if (ref !== undefined) index[ref] = row.id as string;
+    }
+  }
+  return index;
+}
+
+/** Kolumny ustawiane przez `toRow` danej kolekcji (poza polami z listy `fields`). */
+const EXTRA_COLUMNS: Partial<Record<Collection, Record<string, unknown>>> = {
+  items: { time_precision: null, start_time: null, end_time: null, part_of_day: null, offset_min: null, relative_from: null, time_tz: null },
+  bookings: {
+    start_date: null, start_time: null, start_precision: null, start_tz: null,
+    end_date: null, end_time: null, end_precision: null, end_tz: null,
+    paid_minor: null, paid_currency: null, paid_on: null, details: {},
+  },
+  legs: { details: {} },
+};
+
+/**
+ * Element dokumentu → wiersz do UPDATE (edytor planu). W przeciwieństwie do importu każda
+ * mapowana kolumna jest w wierszu — pole usunięte w edycji staje się NULL (albo pustym jsonb).
+ * `ref` i `trip_id` się nie zmieniają, więc ich tu nie ma.
+ */
+export function rowForUpdate(
+  collection: Collection,
+  element: Row,
+  index: { idOf: (ref: string) => string; collectionOf: (ref: string) => Collection | undefined },
+): Row {
+  const spec = SPECS[collection];
+  const blank: Row = { ...EXTRA_COLUMNS[collection] };
+  for (const field of spec.fields) {
+    const { column, kind, poly } = fieldParts(field);
+    if (kind === 'poly') for (const target of Object.values(poly!)) blank[target!] = null;
+    else blank[column!] = null;
+  }
+  const ctx: Context = { idOf: index.idOf, refOf: () => undefined, collectionOf: index.collectionOf };
+  return { ...blank, ...toRow(element, spec.fields, ctx), ...(spec.toRow?.(element, ctx) ?? {}) };
 }
 
 /** Klucz kolejności z pozycji w tablicy: „00000”, „00001”… — porównywany jak tekst. */

@@ -115,6 +115,8 @@ Zakres MVP = wszystkie punkty **M** ze specyfikacji. Schemat bazy obejmuje od ra
 - Notatki praktyczne i źródła z datą sprawdzenia.
 - Realtime: otwarty plan odświeża się po zmianie z innego urządzenia.
 
+**Stan (31.10.2026):** widok „Plan dzień po dniu” (`/trips/[id]/plan`: godziny z silnika, ostrzeżenia, zapas, cięcia, słońce, scenariusze, warianty dnia, pula) z edycją punktów — w górę/w dół (`keyBetween`), do innego dnia i do puli, edycja godziny z precyzją, czasu trwania, bufora, priorytetu, nowy punkt, usunięcie z czyszczeniem odwołań. Logika w `packages/core/src/plan-edits.ts`, zapis `savePlanEdit` (packages/sync, `user_locked`), test na bazie: edycje wracają z `pull_changes` bez rozjazdu. Zostało: przeciąganie, mapa, warianty i ograniczenia w edytorze, rezerwacje, budżet, zadania, Realtime.
+
 **Kryterium odbioru:** plan Maroka z `fixtures/plans/` da się w edytorze odtworzyć i edytować: wariant A/B dnia 4, „bez jazdy po zmroku” i lista cięć dnia 2, pakiet Agafay z punktami „w pakiecie”, budżet 7 519 zł zapłacone / ~3 915–5 555 zł do wydania, 8 zadań przed wyjazdem. Przestawienie punktu przelicza godziny i zapas natychmiast, bez przeładowania strony.
 
 ### MVP-4 — Pocket Guide offline (Android) (≈ 6–9 dni)

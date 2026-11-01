@@ -1,4 +1,4 @@
-import { stateFromPayload } from "@expeditionplan/sync";
+import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -24,7 +24,10 @@ export default function PlanPage(props: PageProps<"/trips/[id]/plan">) {
 async function Plan({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}/plan`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
+  const [{ data, error }, membership] = await Promise.all([
+    supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
+    supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
+  ]);
   if (error) return <p className="text-sm text-red-600">{error.message}</p>;
   if (data === null) notFound();
   let state: ReturnType<typeof stateFromPayload>;
@@ -41,7 +44,12 @@ async function Plan({ params }: { params: Promise<{ id: string }> }) {
         </Link>
         <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
       </div>
-      <PlanView state={state} />
+      <PlanView
+        state={state}
+        tripId={id}
+        ids={refIndex((data as { tables: Parameters<typeof refIndex>[0] }).tables)}
+        canEdit={membership.data?.role === "owner" || membership.data?.role === "editor"}
+      />
     </>
   );
 }
