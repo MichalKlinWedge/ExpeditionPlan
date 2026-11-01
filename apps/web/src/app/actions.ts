@@ -206,6 +206,19 @@ export async function acceptInvite(token: string): Promise<FormState> {
 }
 
 /**
+ * Właściciel usuwa wyjazd (miękko — znika u wszystkich, także z telefonów), edytor i widz
+ * z niego wychodzą. O roli decyduje baza (`delete_trip` / `leave_trip`), tu tylko wybór RPC.
+ */
+export async function removeTrip(tripId: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}`);
+  const { data: trip } = await supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle();
+  if (trip === null) return { error: "Nie ma takiego wyjazdu albo nie masz do niego dostępu." };
+  const { error } = await supabase.rpc(trip.role === "owner" ? "delete_trip" : "leave_trip", { p_trip: tripId });
+  if (error) return { error: error.message };
+  redirect("/");
+}
+
+/**
  * „Zaplanuj z AI” (MVP-2): brief tego wyjazdu → łańcuch z packages/planner (Gemini + Geoapify)
  * → NOWY wyjazd „Szkic AI: …” zapisany jedną transakcją (`import_trip`). AI daje szkic, nie
  * nadpisuje planu (SPECYFIKACJA §4) — porównanie i przenoszenie punktów robi człowiek.

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { rowsFromDocument } from '../document.ts';
 import type { Remote, ServerRow, TripRow } from '../remote.ts';
 import { saveExpense, setPacked } from '../outbox.ts';
-import { cachedTrip, forgetLocal, recordDayEvent, refreshTrip } from '../trip-cache.ts';
+import { cachedTrip, forgetLocal, forgetTrip, pruneLocal, recordDayEvent, refreshTrip } from '../trip-cache.ts';
 import { stableUuid, uuidv7 } from '../uuid.ts';
 import { nodeDb } from './helpers/node-db.ts';
 
@@ -16,13 +16,13 @@ const load = (slug: string) =>
   TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
 
 /** Serwer w pamięci z całym planem: każda zmiana podbija wersję jak trigger w bazie. */
-function planServer(slug: string) {
-  const rows = rowsFromDocument(load(slug), TRIP, uuidv7);
+function planServer(slug: string, tripId = TRIP) {
+  const rows = rowsFromDocument(load(slug), tripId, uuidv7);
   let version = 1;
   let offline = false;
-  const trip: TripRow = { ...rows.trip, id: TRIP, row_version: 1, deleted_at: null };
+  const trip: TripRow = { ...rows.trip, id: tripId, row_version: 1, deleted_at: null };
   const tables: Record<string, ServerRow[]> = Object.fromEntries(
-    Object.entries(rows.tables).map(([table, list]) => [table, list.map((row) => ({ ...row, id: row.id as string, trip_id: TRIP, row_version: 1, deleted_at: null }))]),
+    Object.entries(rows.tables).map(([table, list]) => [table, list.map((row) => ({ ...row, id: row.id as string, trip_id: tripId, row_version: 1, deleted_at: null }))]),
   );
   const remote: Remote = {
     async pull(_trip, since) {
@@ -145,5 +145,30 @@ describe('plan offline na telefonie', () => {
     forgetLocal(db);
     expect(cachedTrip(db, TRIP)).toBeNull();
     expect(db.all('select 1 from rows')).toHaveLength(0);
+  });
+
+  it('usunięty wyjazd znika z telefonu razem z zapisami w outboxie, inne zostają', async () => {
+    const db = nodeDb();
+    await refreshTrip(db, planServer('dinara').remote, TRIP);
+    await refreshTrip(db, planServer('maroko', 'trip-drugi').remote, 'trip-drugi');
+    saveExpense(db, { tripId: TRIP, amountMinor: 100, currency: 'EUR', category: 'food' });
+    saveExpense(db, { tripId: 'trip-drugi', amountMinor: 200, currency: 'MAD', category: 'food' });
+
+    forgetTrip(db, TRIP);
+    expect(cachedTrip(db, TRIP)).toBeNull();
+    expect(db.all('select 1 from rows where trip_id = ?', [TRIP])).toHaveLength(0);
+    expect(cachedTrip(db, 'trip-drugi')!.live.expenses).toHaveLength(1);
+    expect(db.all('select 1 from outbox')).toHaveLength(1);
+  });
+
+  it('wyjazdy spoza listy „moich wyjazdów” są czyszczone, pozostałe zostają', async () => {
+    const db = nodeDb();
+    await refreshTrip(db, planServer('dinara').remote, TRIP);
+    await refreshTrip(db, planServer('maroko', 'trip-drugi').remote, 'trip-drugi');
+
+    expect(pruneLocal(db, ['trip-drugi'])).toEqual([TRIP]);
+    expect(cachedTrip(db, TRIP)).toBeNull();
+    expect(cachedTrip(db, 'trip-drugi')).not.toBeNull();
+    expect(pruneLocal(db, ['trip-drugi'])).toEqual([]);
   });
 });

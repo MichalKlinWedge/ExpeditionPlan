@@ -66,6 +66,30 @@ export async function refreshTrip(db: LocalDb, remote: Remote, tripId: string): 
   return { ...cached, changed: result.pull.changed, rejected: result.flush.rejected ?? [] };
 }
 
+/**
+ * Wyjazd usunięty albo opuszczony: jego plan, zapisy czekające w outboxie (serwer i tak by ich
+ * nie przyjął) i stan synchronizacji znikają z telefonu.
+ */
+export function forgetTrip(db: LocalDb, tripId: string): void {
+  db.transaction(() => {
+    db.run("delete from outbox where json_extract(payload, '$.trip_id') = ?", [tripId]);
+    for (const table of ['rows', 'sync_state']) db.run(`delete from ${table} where trip_id = ?`, [tripId]);
+    db.run('delete from trips where id = ?', [tripId]);
+  });
+}
+
+/**
+ * Po pobraniu listy „moich wyjazdów”: wyjazdy, których na niej już nie ma (usunięte na webie,
+ * opuszczone, odebrany dostęp), znikają z telefonu. Zwraca id zapomnianych.
+ */
+export function pruneLocal(db: LocalDb, keepTripIds: string[]): string[] {
+  const keep = new Set(keepTripIds);
+  const local = db.all<{ id: string }>('select id from trips union select trip_id as id from sync_state union select distinct trip_id as id from rows');
+  const gone = local.map((row) => row.id).filter((id) => !keep.has(id));
+  for (const id of gone) forgetTrip(db, id);
+  return gone;
+}
+
 /** Zmiana konta na telefonie: plany poprzedniego konta nie zostają dla następnego. */
 export function forgetLocal(db: LocalDb): void {
   db.transaction(() => {

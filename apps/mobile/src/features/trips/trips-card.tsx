@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
-import { loadMyTrips, type Trip } from '@/features/trips/my-trips';
+import { loadMyTrips, removeTrip, type Trip } from '@/features/trips/my-trips';
 import { supabase } from '@/lib/supabase';
 
 /**
  * Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy, kto ma dostęp
  * i wejście w plan dnia. Bez logowania (`signedIn = false`) — lista i plany z telefonu, do odczytu.
+ * Z siecią właściciel usuwa wyjazd, pozostali z niego wychodzą.
  */
 
 const ROLE: Record<string, string> = { owner: 'właściciel', editor: 'edytor', viewer: 'widz' };
@@ -67,6 +68,30 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
     });
   };
 
+  const remove = (trip: Trip) => {
+    const owner = trip.role === 'owner';
+    Alert.alert(
+      owner ? 'Usunąć wyjazd?' : 'Opuścić wyjazd?',
+      owner
+        ? `„${trip.title}” zniknie u wszystkich uczestników — na webie i na telefonach.`
+        : `„${trip.title}” zniknie z Twojej listy. Wrócić można tylko z nowego zaproszenia.`,
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        {
+          text: owner ? 'Usuń' : 'Opuść',
+          style: 'destructive',
+          onPress: async () => {
+            const failure = await removeTrip(trip);
+            if (failure !== null) return Alert.alert(owner ? 'Nie usunięto wyjazdu' : 'Nie opuszczono wyjazdu', failure);
+            setOpen(null);
+            setPlan((current) => (current === trip.id ? null : current));
+            setTrips((current) => current?.filter((each) => each.id !== trip.id) ?? null);
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
       <ThemedText type="subtitle">Wyjazdy</ThemedText>
@@ -118,6 +143,13 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
                   </ThemedText>
                 </>
               )}
+              {signedIn && !offline && (
+                <Pressable onPress={() => remove(trip)} hitSlop={8}>
+                  <ThemedText type="small" style={styles.danger}>
+                    {trip.role === 'owner' ? 'Usuń wyjazd' : 'Opuść wyjazd'}
+                  </ThemedText>
+                </Pressable>
+              )}
             </View>
           )}
         </View>
@@ -138,4 +170,5 @@ const styles = StyleSheet.create({
   card: { alignSelf: 'stretch', padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
   trip: { gap: Spacing.one, paddingVertical: Spacing.one },
   details: { gap: Spacing.one, paddingLeft: Spacing.two },
+  danger: { color: '#d32f2f', paddingTop: Spacing.one },
 });
