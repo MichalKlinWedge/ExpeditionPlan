@@ -37,7 +37,7 @@ describe('trasy przejazdów (ORS)', () => {
     expect(calls).toEqual(['driving-car', 'driving-car']);
     const jazda = routed.items.find((item) => item.ref === 'jazda')!;
     expect(jazda.durationMin).toBeUndefined();
-    expect(jazda.leg).toMatchObject({ mode: 'rental_car', durationMin: 59, durationMaxMin: 77, distanceKm: 52.3 });
+    expect(jazda.leg).toMatchObject({ mode: 'rental_car', durationMin: 59, durationMaxMin: 77, distanceKm: 52.3, routed: true });
     expect(Object.fromEntries(results.map((result) => [result.ref, result.status]))).toEqual({ jazda: 'routed', zejscie: 'no_coordinates', powrot: 'routed' });
     expect(results[0]!.before).toEqual({ durationMin: 75, distanceKm: 60 });
     expect(routed.items.find((item) => item.ref === 'lot')!.leg!.durationMin).toBe(95);

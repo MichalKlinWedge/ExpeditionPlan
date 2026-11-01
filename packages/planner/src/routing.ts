@@ -128,7 +128,7 @@ export async function routeLegs(doc: Doc, lookup: RouteLookup, refs?: ReadonlySe
       ...item,
       durationMin: undefined,
       durationMaxMin: undefined,
-      leg: { ...item.leg, durationMin, durationMaxMin: Math.round(durationMin * PESSIMISTIC), distanceKm: Math.round(route.distanceKm * 10) / 10 },
+      leg: { ...item.leg, durationMin, durationMaxMin: Math.round(durationMin * PESSIMISTIC), distanceKm: Math.round(route.distanceKm * 10) / 10, routed: true },
     });
     results.push({ ...base, status: 'routed', after: { durationMin, distanceKm: route.distanceKm } });
   }

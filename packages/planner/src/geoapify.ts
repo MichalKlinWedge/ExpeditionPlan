@@ -16,8 +16,13 @@ type Result = {
   formatted?: string;
   result_type?: string;
   country_code?: string;
+  /** Pewność dopasowania tekstu 0–1; 0 = Geoapify zgadł („Plaża Sidi Kaouki” → „Poznań Plaza”). */
+  rank?: { confidence?: number };
   datasource?: { sourcename?: string; raw?: { osm_id?: number; osm_type?: string; opening_hours?: string } };
 };
+
+/** Poniżej tej pewności wynik to zgadywanie, nie trafienie — lepiej brak niż złe miasto. */
+export const MIN_CONFIDENCE = 0.2;
 
 /** Obszary administracyjne Geoapify ↔ klasa `place`/`boundary` z Nominatim (dla `tooCoarse`). */
 const AREAS = new Set(['city', 'county', 'state', 'country', 'suburb', 'district', 'postcode', 'locality']);
@@ -53,6 +58,7 @@ export function geoapifyLookup(apiKey: string, fetchImpl: typeof fetch = fetch):
     if (!response.ok) throw new Error(`Geoapify ${response.status} dla „${query}”`);
     const body = (await response.json()) as { results?: Result[] };
     const first = body.results?.[0];
-    return first === undefined ? null : geoapifyHit(first);
+    if (first === undefined || (first.rank?.confidence !== undefined && first.rank.confidence < MIN_CONFIDENCE)) return null;
+    return geoapifyHit(first);
   };
 }

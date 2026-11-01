@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { groundTrip, routeTrip } from "@/app/actions";
+import { PlanActionButton } from "@/components/plan-action-button";
 import { PlanView } from "@/components/plan-view";
-import { RouteButton } from "@/components/route-button";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
@@ -12,7 +13,7 @@ import { requireUser } from "@/lib/auth";
  * Plan dzień po dniu. Dane idą tą samą drogą co na telefon: `pull_changes` → `stateFromPayload`
  * (dokument + zdarzenia z trasy), a harmonogram liczy silnik w przeglądarce.
  */
-// „Przelicz przejazdy” (akcja serwera na tej stronie) trwa do ok. 2 min.
+// „Uzupełnij współrzędne” i „Przelicz przejazdy” (akcje serwera na tej stronie) trwają do ok. 2 min.
 export const maxDuration = 300;
 
 export default function PlanPage(props: PageProps<"/trips/[id]/plan">) {
@@ -49,7 +50,12 @@ async function Plan({ params }: { params: Promise<{ id: string }> }) {
         </Link>
         <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
       </div>
-      {canEdit && <RouteButton tripId={id} />}
+      {canEdit && (
+        <div className="flex flex-col gap-2">
+          <PlanActionButton run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
+          <PlanActionButton run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
+        </div>
+      )}
       <PlanView
         // Nowa wersja danych z serwera = nowy stan widoku (patrz `useRefreshOnReturn`).
         key={(data as { version: number }).version}

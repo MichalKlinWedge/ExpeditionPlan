@@ -2,8 +2,8 @@
 
 import { Currency, IsoDate, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { planTrip, routeLegs } from "@expeditionplan/planner";
-import { importTrip, refIndex, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { countryOfTz, geoapifyLookup, groundPlaces, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
+import { COLLECTIONS, importTrip, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -329,5 +329,65 @@ export async function routeTrip(tripId: string): Promise<FormState> {
   ].filter((each) => each !== null);
   return {
     ok: `Przeliczono ${changed.length} przejazdów.${diffs.length > 0 ? ` Największe zmiany: ${diffs.join("; ")}.` : ""}${skipped.length > 0 ? ` Pominięte: ${skipped.join(", ")}.` : ""}`,
+  };
+}
+
+/**
+ * „Uzupełnij współrzędne miejsc”: miejsca planu bez współrzędnych szukane w Geoapify (dane OSM)
+ * tą samą logiką co w „Zaplanuj z AI” — kraj z briefu albo ze strefy wyjazdu, trafienia daleko
+ * od reszty planu odrzucone. Pinezek (`provider: user`) i miejsc ze współrzędnymi nie rusza.
+ * Bez współrzędnych nie ma tras (ORS), słońca dla bazy ani punktów na mapie w telefonie.
+ */
+export async function groundTrip(tripId: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/plan`);
+  const key = process.env.GEOAPIFY_API_KEY ?? "";
+  if (key === "") return { error: "Serwer nie ma klucza GEOAPIFY_API_KEY." };
+  const [{ data, error }, membership, briefRow] = await Promise.all([
+    supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 }),
+    supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle(),
+    supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
+  ]);
+  if (error) return { error: message(error) };
+  if (data === null) return { error: "Nie ma takiego wyjazdu." };
+  if (membership.data?.role !== "owner" && membership.data?.role !== "editor") return { error: "Uzupełniać może organizator albo edytor." };
+  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const { doc } = stateFromPayload(payload);
+  const brief = TripBrief.safeParse(briefRow.data?.brief);
+  const fromTz = countryOfTz(doc.trip.primaryTz);
+  const countries = brief.success ? brief.data.location.countries : fromTz === undefined ? [] : [fromTz];
+  if (countries.length === 0) return { error: `Nie wiem, w jakim kraju szukać (strefa ${doc.trip.primaryTz}) — podaj kraj w briefie wyjazdu.` };
+
+  const missing = doc.places.filter((place) => place.lat === undefined && place.provider !== "user");
+  if (missing.length === 0) return { ok: "Wszystkie miejsca mają już współrzędne." };
+  const anchors = doc.places.flatMap((place) => (place.lat !== undefined && place.lng !== undefined ? [{ lat: place.lat, lng: place.lng }] : []));
+  const results = await groundPlaces(
+    missing.map((place) => ({ ref: place.ref, name: place.name, ...(place.searchName ? { searchName: place.searchName } : {}), ...(place.category ? { category: place.category } : {}) })),
+    { countries, kind: brief.success ? brief.data.location.kind : "region", lookup: geoapifyLookup(key), anchors },
+  );
+
+  const ids = refIndex(payload.tables);
+  const owner = new Map(COLLECTIONS.flatMap((collection) => (doc[collection] as { ref?: string }[]).flatMap((element) => (element.ref ? [[element.ref, collection] as const] : []))));
+  const index = { idOf: (ref: string) => ids[ref]!, collectionOf: (ref: string) => owner.get(ref) };
+  const filled: string[] = [];
+  for (const result of results) {
+    if (result.status !== "found") continue;
+    const place = missing.find((each) => each.ref === result.ref)!;
+    const next = withCoordinates(place, result.hit, { openingHours: true });
+    const { error: saveError } = await supabase.from("places").update(rowForUpdate("places", next, index) as never).eq("id", index.idOf(place.ref));
+    if (saveError) return { error: `Zapisano ${filled.length} miejsc, potem błąd: ${message(saveError)}` };
+    filled.push(place.name);
+  }
+  const named = (status: string) => results.flatMap((result, i) => (result.status === status ? [missing[i]!.name] : []));
+  const list = (names: string[]) => names.slice(0, 5).map((name) => `„${name}”`).join(", ") + (names.length > 5 ? ` i ${names.length - 5} innych` : "");
+  const notFound = named("not_found");
+  const rejected = named("rejected");
+  const skipped = named("skipped");
+  return {
+    ok: [
+      `Uzupełniono ${filled.length} z ${missing.length} miejsc.`,
+      notFound.length > 0 ? `Nie znaleziono: ${list(notFound)}.` : "",
+      rejected.length > 0 ? `Odrzucone (za daleko od reszty planu): ${list(rejected)}.` : "",
+      skipped.length > 0 ? `Pominięte (opisowe albo prywatne): ${skipped.length}.` : "",
+    ].filter((each) => each !== "").join(" "),
   };
 }

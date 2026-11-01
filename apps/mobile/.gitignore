@@ -8,6 +8,8 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+# wyjątek: src/types/expo-env.d.ts jest pisany ręcznie (nie generuje go Expo), więc musi być w repo
+!src/types/expo-env.d.ts
 
 # Native
 .kotlin/

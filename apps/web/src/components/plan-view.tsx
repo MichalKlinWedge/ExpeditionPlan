@@ -6,6 +6,9 @@ import {
   documentProblem as problem,
   type DaySchedule,
   instantToZoned,
+  legLabel,
+  mapCoverage,
+  missingOnMap,
   moveToDay,
   moveWithinDay,
   type PlanEdit as Edit,
@@ -137,6 +140,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
         ))}
       </div>
 
+      <Coverage doc={doc} />
+
       {doc.days.length === 0 && <p className="text-sm text-zinc-500">Plan nie ma jeszcze dni.</p>}
       {doc.days.map((day) => (
         <Day
@@ -171,6 +176,19 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
         </section>
       )}
     </div>
+  );
+}
+
+/** Ile planu jest na mapie: miejsca ze współrzędnymi i przejazdy policzone trasą. */
+function Coverage({ doc }: { doc: TripDocument }) {
+  const { places, legs } = mapCoverage(doc);
+  if (places.total === 0 && legs.routable === 0) return null;
+  return (
+    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      Na mapie {places.onMap} z {places.total} miejsc
+      {legs.routable > 0 && ` · przejazdy z trasy: ${legs.routed} z ${legs.routable}`}
+      {places.onMap < places.total && " · miejsca bez współrzędnych mają znaczek „brak na mapie”"}
+    </p>
   );
 }
 
@@ -310,6 +328,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayPro
             const source = byRef.get(item.ref);
             const warnings = schedule.warnings.filter((warning) => warning.itemRef === item.ref);
             const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
+            const leg = source === undefined ? null : legLabel(source);
+            const offMap = source !== undefined && missingOnMap(doc, source);
             return (
               <li key={item.ref} className={`flex flex-col ${source?.parentRef ? "ml-6 border-l border-zinc-200 pl-3 dark:border-zinc-800" : ""}`}>
                 <div className="flex gap-3">
@@ -325,8 +345,14 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayPro
                       {place && place !== item.title ? ` · ${place}` : ""}
                       {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ""}
                     </span>
+                    {offMap && (
+                      <span title="Miejsce bez współrzędnych — nie ma go na mapie i nie policzy się do niego trasy" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                        brak na mapie
+                      </span>
+                    )}
                   </span>
                 </div>
+                {leg && <p className="ml-31 text-xs text-zinc-500">{leg}</p>}
                 {warnings.map((warning, index) => (
                   <p key={index} className={`ml-31 text-xs ${warning.severity === "hard" ? "text-red-600" : "text-amber-600"}`}>
                     {warning.severity === "hard" ? "⚠ " : "· "}

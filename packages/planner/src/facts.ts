@@ -12,7 +12,23 @@ export const COUNTRY_TZ: Record<string, string> = {
   ES: 'Europe/Madrid',
   PL: 'Europe/Warsaw',
   HR: 'Europe/Zagreb',
+  IT: 'Europe/Rome',
+  AT: 'Europe/Vienna',
+  SK: 'Europe/Bratislava',
+  CZ: 'Europe/Prague',
+  DE: 'Europe/Berlin',
+  SI: 'Europe/Ljubljana',
+  ME: 'Europe/Podgorica',
+  FR: 'Europe/Paris',
+  PT: 'Europe/Lisbon',
+  GR: 'Europe/Athens',
+  NO: 'Europe/Oslo',
 };
+
+/** Kraj ze strefy wyjazdu — gdy plan nie ma briefu z listą krajów (import, plan pisany ręcznie). */
+export function countryOfTz(tz: string): string | undefined {
+  return Object.entries(COUNTRY_TZ).find(([, zone]) => zone === tz)?.[0];
+}
 
 export type Holiday = { date: string; localName: string; name: string; countryCode: string };
 

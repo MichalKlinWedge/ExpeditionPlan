@@ -5,6 +5,9 @@ import {
   documentProblem,
   instantToZoned,
   ItemInUseError,
+  legLabel,
+  mapCoverage,
+  missingOnMap,
   moveToDay,
   moveWithinDay,
   type PlanEdit,
@@ -263,6 +266,12 @@ ${fresh.rejected[0]!.error}`);
   else if (sync.error !== undefined) status = sync.syncedAt ? `Bez połączenia — plan z ${stamp(sync.syncedAt)}` : `Brak połączenia, a plan nie był jeszcze pobrany na telefon (${sync.error}).`;
   else status = sync.syncedAt ? `Zsynchronizowano ${stamp(sync.syncedAt)}` : '';
   if (trip !== null && trip.pending > 0) status += ` · ${trip.pending === 1 ? '1 zmiana czeka' : `${trip.pending} zmian czeka`} na wysłanie`;
+  // Ile planu jest na mapie — miejsca ze współrzędnymi i przejazdy policzone trasą (web: „Uzupełnij”, „Przelicz”).
+  const coverage = trip === null ? null : mapCoverage(trip.state.doc);
+  if (coverage !== null && coverage.places.total > 0) {
+    status += `
+Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.legs.routable > 0 ? ` · przejazdy z trasy: ${coverage.legs.routed} z ${coverage.legs.routable}` : ''}`;
+  }
   const error = invalid;
 
   const variants = useMemo(() => ({ ...state?.inputs.activeVariants, ...overrides }), [state, overrides]);
@@ -461,6 +470,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayP
       {schedule?.items.map((item) => {
         const source = byRef.get(item.ref);
         const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
+        const leg = source === undefined ? null : legLabel(source);
+        const offMap = source !== undefined && missingOnMap(doc, source);
         return (
           <ThemedView key={item.ref} type="backgroundElement" style={[styles.item, source?.parentRef !== undefined && styles.child]}>
             <ThemedText type="code">
@@ -473,6 +484,16 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayP
               {place && place !== item.title ? ` · ${place}` : ''}
               {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ''}
             </ThemedText>
+            {leg && (
+              <ThemedText type="small" themeColor="textSecondary">
+                {leg}
+              </ThemedText>
+            )}
+            {offMap && (
+              <ThemedText type="small" style={{ color: SOFT }}>
+                brak na mapie (miejsce bez współrzędnych)
+              </ThemedText>
+            )}
             <Warnings list={schedule!.warnings.filter((warning) => warning.itemRef === item.ref)} />
             {actions && source && (
               <View style={styles.edit}>

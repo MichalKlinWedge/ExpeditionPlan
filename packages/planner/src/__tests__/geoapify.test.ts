@@ -32,6 +32,13 @@ describe('Geoapify jako źródło miejsc', () => {
     expect(params.get('apiKey')).toBe('test-key');
   });
 
+  it('zgadywanie (pewność < 0,2) = brak trafienia, pewne trafienie przechodzi', async () => {
+    const answer = (confidence: number) =>
+      (async () => new Response(JSON.stringify({ results: [{ lat: 52.4, lon: 16.9, formatted: 'Poznań Plaza', result_type: 'amenity', rank: { confidence } }] }))) as unknown as typeof fetch;
+    expect(await geoapifyLookup('k', answer(0))('Plaża Sidi Kaouki', ['ma'])).toBeNull();
+    expect((await geoapifyLookup('k', answer(0.9))('Poznań Plaza', ['pl']))?.displayName).toBe('Poznań Plaza');
+  });
+
   it('błąd usługi przechodzi wyżej', async () => {
     const lookup = geoapifyLookup('k', (async () => new Response('', { status: 401 })) as typeof fetch);
     await expect(lookup('x', ['ma'])).rejects.toThrow('Geoapify 401');

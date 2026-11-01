@@ -229,6 +229,8 @@ export const ItemLeg = z.object({
   ...legDetails,
   fromPlaceRef: Ref.optional(),
   toPlaceRef: Ref.optional(),
+  /** Czas i dystans z trasy (OpenRouteService), a nie z szacunku AI albo dokumentu. */
+  routed: z.boolean().optional(),
 });
 
 /** Klucz kolejności w dniu: porównywany jak tekst („0010” < „0020” < „0025”). */

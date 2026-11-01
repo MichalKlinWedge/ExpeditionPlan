@@ -31,6 +31,8 @@ export type GroundOptions = {
   /** Drugie źródło (Photon) — tylko dla nieznalezionych, tylko w obszarze wyjazdu. */
   fallback?: Lookup;
   aliases?: Record<string, string[]>;
+  /** Miejsca planu, które już mają współrzędne — liczą się do środka obszaru (uzupełnianie planu). */
+  anchors?: { lat: number; lng: number }[];
 };
 
 export async function groundPlaces(places: PlaceInput[], options: GroundOptions): Promise<GroundResult[]> {
@@ -62,9 +64,10 @@ export async function groundPlaces(places: PlaceInput[], options: GroundOptions)
   }
 
   // Trafienia w kraju domowym (lotnisko wylotu) nie liczą się do środka obszaru wyjazdu.
-  const center = medianPoint(
-    [...found.values()].filter(({ hit }) => tripCountries.includes(hit.countryCode)).map(({ hit }) => hit),
-  );
+  const center = medianPoint([
+    ...[...found.values()].filter(({ hit }) => tripCountries.includes(hit.countryCode)).map(({ hit }) => hit),
+    ...(options.anchors ?? []),
+  ]);
 
   // Trafienie poza obszarem: drugie podejście tylko w prostokącie wokół środka wyjazdu.
   if (center !== null) {
