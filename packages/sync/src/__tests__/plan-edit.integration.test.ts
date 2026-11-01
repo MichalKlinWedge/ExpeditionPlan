@@ -1,9 +1,9 @@
-import { addItem, dayItems, moveToDay, moveWithinDay, type PlanEdit, removeItem, type TripDocument, updateItem } from '@expeditionplan/core';
+import { addItem, copyFromDraft, dayItems, moveToDay, moveWithinDay, type PlanEdit, removeItem, replaceDayFromDraft, TripDocument, updateItem } from '@expeditionplan/core';
 import { afterAll, describe, expect, inject, it } from 'vitest';
 
 import { refIndex, stateFromPayload } from '../document.ts';
 import { importTrip } from '../import.ts';
-import { savePlanEdit } from '../plan-save.ts';
+import { saveMergeEdit, savePlanEdit } from '../plan-save.ts';
 import { uuidv7 } from '../uuid.ts';
 import { createDevice, createTestUser, loadFixture } from './helpers/harness.ts';
 
@@ -26,7 +26,7 @@ afterAll(async () => {
 });
 
 const byRef = <T extends { ref: string }>(list: T[]) => [...list].sort((a, b) => a.ref.localeCompare(b.ref));
-const normalize = (doc: TripDocument) => ({ ...doc, items: byRef(doc.items) });
+const normalize = (doc: TripDocument) => ({ ...doc, items: byRef(doc.items), places: byRef(doc.places) });
 
 describe('MVP-3 — edycja planu zapisana w bazie', () => {
   it('przesunięcia, edycja, nowy punkt, pula i usunięcie wracają z bazy bez rozjazdu', async () => {
@@ -61,6 +61,34 @@ describe('MVP-3 — edycja planu zapisana w bazie', () => {
 
     const { data: locked } = await owner.client.from('items').select('user_locked').eq('trip_id', tripId).eq('title', 'Zmieniona nazwa').single();
     expect(locked?.user_locked).toBe(true);
+  });
+
+  it('przeniesienie ze szkicu AI (nowe miejsce, nowy dzień, zastąpiony dzień) wraca z bazy bez rozjazdu', async () => {
+    const owner = await device();
+    const { tripId } = await importTrip(owner.client, loadFixture('maroko'));
+    const pull = async () => {
+      const { data, error } = await owner.client.rpc('pull_changes', { p_trip: tripId, p_since: 0 });
+      if (error) throw error;
+      return { state: stateFromPayload(data), ids: refIndex(data.tables), rows: data.tables.items as { ref: string | null; title: string; source: string; user_locked: boolean }[] };
+    };
+    let { state, ids } = await pull();
+    const plan = state.doc;
+    const draft = TripDocument.parse({
+      ...plan,
+      days: [...plan.days, { ref: 'd-extra', date: '2099-01-01', tz: plan.days[0]!.tz }],
+      places: [...plan.places, { ref: 'p-nowe', name: 'Miejsce tylko ze szkicu', lat: 31.6, lng: -8 }],
+      items: [...plan.items, { ref: 'x-1', dayRef: 'd-extra', sortKey: '0010', kind: 'visit', title: 'Punkt ze szkicu', placeRef: 'p-nowe', durationMin: 45 }],
+    });
+
+    const copy = copyFromDraft(plan, draft, ['x-1'], '2099-01-01', uuidv7);
+    ids = await saveMergeEdit(owner.client, tripId, copy, ids);
+    const replace = replaceDayFromDraft(copy.doc, draft, plan.days.find((day) => day.ref === 'd2')!.date, new Set(), uuidv7);
+    ids = await saveMergeEdit(owner.client, tripId, replace, ids);
+
+    const back = await pull();
+    expect(normalize(back.state.doc)).toEqual(normalize(replace.doc));
+    expect(back.state.doc.places.some((place) => place.name === 'Miejsce tylko ze szkicu')).toBe(true);
+    expect(back.rows.find((row) => row.title === 'Punkt ze szkicu')).toMatchObject({ source: 'ai', user_locked: false });
   });
 
   it('widz nie zapisze zmiany planu', async () => {

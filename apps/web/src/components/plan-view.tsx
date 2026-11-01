@@ -11,7 +11,7 @@ import {
   type PlanEdit as Edit,
   type PlanItem as Item,
   proposeCuts,
-  removeItem,
+  removeItemClosingGap,
   type Scenario,
   scheduleDay,
   type TripDocument,
@@ -22,6 +22,8 @@ import { useMemo, useState } from "react";
 
 import { ItemEditor } from "@/components/item-editor";
 import { createClient } from "@/lib/supabase/client";
+import { useHydrated } from "@/lib/use-hydrated";
+import { useRefreshOnReturn } from "@/lib/use-refresh-on-return";
 
 /**
  * Widok planu (MVP-3, tylko odczyt): dni z godzinami policzonymi przez silnik (§7), ostrzeżenia,
@@ -64,6 +66,7 @@ const hm = (instant: number | null | undefined, tz: string) => (instant == null 
 type Props = { state: TripState; tripId: string; ids: Record<string, string>; canEdit: boolean };
 
 export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
+  useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
   const [ids, setIds] = useState(initialIds);
@@ -107,7 +110,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
         add: (dayRef, fields) => apply(addItem(doc, dayRef, uuidv7(), fields)),
         remove: (ref) => {
           try {
-            apply(removeItem(doc, ref));
+            apply(removeItemClosingGap(doc, ref));
           } catch (error) {
             setSaving({ pending: 0, error: error instanceof Error ? error.message : String(error) });
           }
@@ -241,10 +244,12 @@ type DayProps = {
 function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
+  const hydrated = useHydrated();
   let schedule: DaySchedule | null = null;
   let failure: string | null = null;
   try {
-    schedule = scheduleDay(doc, dayRef, options);
+    // Godziny tylko w przeglądarce — patrz `useHydrated`.
+    if (hydrated) schedule = scheduleDay(doc, dayRef, options);
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
   }

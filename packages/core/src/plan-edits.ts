@@ -1,3 +1,5 @@
+import { scheduleDay } from './engine/schedule.ts';
+import { MINUTE, minutesOfDay, zonedToInstant } from './engine/time.ts';
 import { TripDocument } from './schemas/trip-document.ts';
 import { keyBetween, NoRoomError, renumber } from './sort-key.ts';
 
@@ -17,6 +19,8 @@ export type PlanEdit = {
   others?: ({ collection: 'variants'; element: Doc['variants'][number] } | { collection: 'sources'; element: Doc['sources'][number] })[];
   created?: Item;
   removed?: string;
+  /** O ile minut przesunięto wcześniej kolejne punkty po usunięciu (`removeItemClosingGap`). */
+  shiftedMin?: number;
 };
 
 const byKey = (a: Item, b: Item) => (a.sortKey ?? '').localeCompare(b.sortKey ?? '');
@@ -106,9 +110,12 @@ export function addItem(doc: Doc, dayRef: string, id: string, fields: Pick<Item,
 
 /** Punkt nie da się usunąć, bo wskazuje na niego coś, czego edytor jeszcze nie zmienia. */
 export class ItemInUseError extends Error {
+  readonly uses: string[];
+
   constructor(title: string, uses: string[]) {
     super(`„${title}” jest powiązany z: ${uses.join(', ')}. Usuń najpierw to powiązanie.`);
     this.name = 'ItemInUseError';
+    this.uses = uses;
   }
 }
 
@@ -158,6 +165,58 @@ export function removeItem(doc: Doc, ref: string): PlanEdit | null {
     others: [...variants.map((element) => ({ collection: 'variants' as const, element })), ...sources.map((element) => ({ collection: 'sources' as const, element }))],
     removed: ref,
   };
+}
+
+const hhmm = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+
+/**
+ * Usunięcie, po którym dzień „zamyka lukę”. Godziny w planie znaczą „nie wcześniej niż”, więc
+ * bez tego punkty z godziną przybliżoną (szkic AI daje ją prawie każdemu) zostają na swoich
+ * miejscach i w dniu zostaje dziura. Kolejne punkty z godziną przybliżoną albo przedziałem idą
+ * wcześniej o zwolniony czas (trwanie + zapas usuniętego), ale najwyżej do końca poprzedniego
+ * punktu — tyle, ile silnik pozwala. Przesuwanie kończy się na pierwszej stałej godzinie
+ * (`exact`, `isFixed`: lot, mecz), punkty bez godziny i liczone od poprzedniego idą same.
+ * Podpunkty bloku i punkty części grupy (osobne ścieżki) nie przesuwają reszty — tu też nie.
+ */
+export function removeItemClosingGap(doc: Doc, ref: string): PlanEdit | null {
+  const target = doc.items.find((each) => each.ref === ref);
+  const edit = removeItem(doc, ref);
+  if (edit === null || target?.dayRef === undefined || target.parentRef !== undefined || (target.participantRefs ?? []).length > 0) return edit;
+  const freed = (target.durationMin ?? 0) + (target.bufferAfterMin ?? 0);
+  if (freed === 0) return edit;
+  const day = doc.days.find((each) => each.ref === target.dayRef)!;
+  const original = dayItems(doc, day.ref);
+  const following = original.slice(original.findIndex((each) => each.ref === ref) + 1).map((each) => edit.doc.items.find((item) => item.ref === each.ref) ?? each);
+
+  // Pierwszy punkt z godziną po usuniętym wyznacza, ile da się przesunąć; stała godzina — nic.
+  const first = following.find((item) => item.time !== undefined && 'start' in item.time);
+  if (first?.time === undefined || !('start' in first.time) || first.time.precision === 'exact' || first.isFixed) return edit;
+  // Kiedy punkt by się zaczął bez swojej godziny = koniec tego, co przed nim.
+  const probe: Doc = { ...edit.doc, items: edit.doc.items.map((item) => (item.ref === first.ref ? { ...item, time: undefined } : item)) };
+  let arrival: number | undefined;
+  try {
+    arrival = scheduleDay(probe, day.ref).items.find((item) => item.ref === first.ref)?.start;
+  } catch {
+    return edit;
+  }
+  if (arrival === undefined) return edit;
+  const stated = zonedToInstant(day.date, first.time.start, first.time.tz ?? day.tz);
+  const shift = Math.min(freed, Math.floor((stated - arrival) / MINUTE));
+  if (shift <= 0) return edit;
+
+  const shifted: Item[] = [];
+  for (const item of following.slice(following.indexOf(first))) {
+    const time = item.time;
+    if (time?.precision === 'exact' || item.isFixed) break;
+    if (time === undefined || !('start' in time)) continue;
+    const start = minutesOfDay(time.start) - shift;
+    if (start < 0) break;
+    const end = time.end === undefined ? undefined : minutesOfDay(time.end) - shift;
+    shifted.push({ ...item, time: { ...time, start: hhmm(start), ...(end !== undefined && end >= 0 ? { end: hhmm(end) } : {}) } as Item['time'] });
+  }
+  if (shifted.length === 0) return edit;
+  const others = new Set(shifted.map((each) => each.ref));
+  return { ...edit, doc: replace(edit.doc, shifted), changed: [...edit.changed.filter((each) => !others.has(each.ref)), ...shifted], shiftedMin: shift };
 }
 
 /** Pierwszy problem walidacji dokumentu po zmianie — po polsku, do pokazania przy planie. */

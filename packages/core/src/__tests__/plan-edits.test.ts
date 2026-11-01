@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { addItem, dayItems, documentProblem, ItemInUseError, moveToDay, moveWithinDay, removeItem, updateItem } from '../plan-edits.ts';
+import { addItem, dayItems, documentProblem, ItemInUseError, moveToDay, moveWithinDay, removeItem, removeItemClosingGap, updateItem } from '../plan-edits.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -81,5 +81,46 @@ describe('edycja planu (MVP-3)', () => {
     const constrained = maroko.constraints.find((each) => each.itemRef !== undefined) ?? maroko.budgetLines.find((each) => each.itemRef !== undefined);
     expect(constrained).toBeDefined();
     expect(() => removeItem(maroko, constrained!.itemRef!)).toThrow(ItemInUseError);
+  });
+});
+
+describe('usunięcie z zamknięciem luki', () => {
+  const doc = (times: Record<string, [precision: 'exact' | 'approx', start: string, duration: number]>) =>
+    TripDocument.parse({
+      schemaVersion: 1,
+      trip: { title: 'Test', startDate: '2027-06-22', endDate: '2027-06-22', primaryTz: 'Europe/Rome', baseCurrency: 'EUR' },
+      days: [{ ref: 'd1', date: '2027-06-22', tz: 'Europe/Rome' }],
+      items: Object.entries(times).map(([ref, [precision, start, durationMin]], i) => ({
+        ref,
+        dayRef: 'd1',
+        sortKey: String((i + 1) * 10).padStart(4, '0'),
+        kind: 'visit',
+        title: ref,
+        time: { precision, start },
+        durationMin,
+      })),
+    });
+  const starts = (edit: ReturnType<typeof removeItemClosingGap>) =>
+    Object.fromEntries(scheduleDay(edit!.doc, 'd1').items.map((item) => [item.ref, item.startLocal]));
+
+  it('kolejne punkty z godziną przybliżoną idą wcześniej, do pierwszej stałej godziny', () => {
+    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['approx', '09:00', 60], c: ['approx', '10:00', 30], d: ['approx', '11:00', 60], e: ['exact', '13:00', 60], f: ['approx', '14:00', 60] }), 'b')!;
+    expect(edit.shiftedMin).toBe(60);
+    expect(starts(edit)).toEqual({ a: '08:00', c: '09:00', d: '10:00', e: '13:00', f: '14:00' });
+    expect(edit.changed.map((item) => item.ref)).toEqual(['c', 'd']);
+    expect(documentProblem(edit.doc)).toBeNull();
+  });
+
+  it('nie wcześniej niż koniec poprzedniego punktu; luka sprzed usunięcia zostaje', () => {
+    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['approx', '09:30', 30], c: ['approx', '10:30', 30] }), 'b')!;
+    // Zwolnione 30 min (trwanie b); c mogłoby zacząć się o 09:00, ale przesuwa się tylko o 30.
+    expect(edit.shiftedMin).toBe(30);
+    expect(starts(edit)).toEqual({ a: '08:00', c: '10:00' });
+  });
+
+  it('stała godzina zaraz po usuniętym — nic się nie przesuwa', () => {
+    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['approx', '09:00', 60], c: ['exact', '10:00', 30] }), 'b')!;
+    expect(edit.shiftedMin).toBeUndefined();
+    expect(edit.changed).toEqual([]);
   });
 });

@@ -45,6 +45,8 @@ async function Plan({ params }: { params: Promise<{ id: string }> }) {
         <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
       </div>
       <PlanView
+        // Nowa wersja danych z serwera = nowy stan widoku (patrz `useRefreshOnReturn`).
+        key={(data as { version: number }).version}
         state={state}
         tripId={id}
         ids={refIndex((data as { tables: Parameters<typeof refIndex>[0] }).tables)}

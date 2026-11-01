@@ -13,3 +13,4 @@ export * from './engine/sun.ts';
 export * from './engine/time.ts';
 export * from './trip-stats.ts';
 export * from './budget.ts';
+export * from './plan-merge.ts';

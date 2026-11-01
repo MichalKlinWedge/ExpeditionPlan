@@ -24,24 +24,31 @@ export default function TripPage(props: PageProps<"/trips/[id]">) {
 }
 
 const section = "flex flex-col gap-3";
+const DRAFT = "Szkic AI: ";
 const heading = "text-lg font-semibold";
 
 async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}`);
-  const [trip, members, travelers, days, items, brief] = await Promise.all([
+  const [trip, members, travelers, days, items, brief, mine] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, can_add_expenses, profiles(display_name)").eq("trip_id", id).order("created_at"),
     supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
     supabase.from("days").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
     supabase.from("items").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
     supabase.from("trip_brief").select("id").eq("trip_id", id).maybeSingle(),
+    supabase.from("my_trips").select("id, title, role").neq("id", id).order("start_date"),
   ]);
   if (trip.data === null) notFound();
   const role = trip.data.role!;
   const canEdit = role === "owner" || role === "editor";
   const people = travelers.data ?? [];
   const nameOf = new Map(people.map((person) => [person.id, person.name]));
+  // Szkic AI → plan: ze szkicu link do planu o tej samej nazwie, z planu wybór szkicu (szkice AI na górze).
+  const others = mine.data ?? [];
+  const title = trip.data.title!;
+  const source = title.startsWith(DRAFT) ? others.find((other) => other.title === title.slice(DRAFT.length) && (other.role === "owner" || other.role === "editor")) : undefined;
+  const drafts = [...others].sort((a, b) => Number(b.title!.startsWith(DRAFT)) - Number(a.title!.startsWith(DRAFT)));
 
   return (
     <>
@@ -72,6 +79,27 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       </div>
 
       {canEdit && brief.data !== null && <AiPlanButton tripId={id} />}
+
+      {source !== undefined && (
+        <p className="text-sm">
+          <Link href={`/trips/${source.id}/compare?draft=${id}`} className="underline">
+            Porównaj ze swoim planem „{source.title}” i przenieś punkty
+          </Link>
+        </p>
+      )}
+      {canEdit && source === undefined && drafts.length > 0 && (
+        <form action={`/trips/${id}/compare`} className="flex flex-wrap items-center gap-2 text-sm">
+          <label htmlFor="draft">Porównaj ze szkicem:</label>
+          <select id="draft" name="draft" defaultValue={drafts.find((other) => other.title === `${DRAFT}${title}`)?.id} className="rounded-md border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700">
+            {drafts.map((other) => (
+              <option key={other.id} value={other.id!}>
+                {other.title}
+              </option>
+            ))}
+          </select>
+          <button className="rounded-md border border-zinc-300 px-3 py-1 dark:border-zinc-700">Porównaj</button>
+        </form>
+      )}
 
       <section className={section}>
         <h2 className={heading}>Uczestnicy</h2>

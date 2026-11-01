@@ -9,7 +9,7 @@ import {
   moveWithinDay,
   type PlanEdit,
   type PlanItem,
-  removeItem,
+  removeItemClosingGap,
   updateItem,
   proposeCuts,
   type Scenario,
@@ -228,7 +228,7 @@ ${fresh.rejected[0]!.error}`);
           add: (dayRef, fields) => apply(addItem(trip.state.doc, dayRef, uuidv7(), fields)),
           remove: (ref) => {
             try {
-              apply(removeItem(trip.state.doc, ref));
+              apply(removeItemClosingGap(trip.state.doc, ref));
             } catch (e) {
               Alert.alert('Nie można usunąć', e instanceof ItemInUseError ? e.message : message(e));
             }
