@@ -7,3 +7,4 @@ export * from './plan-trip.ts';
 export * from './prompts.ts';
 export * from './queries.ts';
 export * from './routing.ts';
+export * from './practical.ts';

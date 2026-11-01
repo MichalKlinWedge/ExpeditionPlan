@@ -71,6 +71,9 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           <Link href={`/trips/${id}/logistics`} className="underline">
             Rezerwacje, budżet i zadania
           </Link>
+          <Link href={`/trips/${id}/practical`} className="underline">
+            Informacje praktyczne
+          </Link>
           <Link href={`/trips/${id}/brief`} className="underline">
             {brief.data ? "Brief wyjazdu — zmień" : "Uzupełnij brief wyjazdu (dla AI)"}
           </Link>

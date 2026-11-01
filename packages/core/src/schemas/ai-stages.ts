@@ -78,3 +78,69 @@ export const StagePlan = TripDocumentShape.pick({
 });
 
 export type StagePlan = z.infer<typeof StagePlan>;
+
+/**
+ * Etap 5: informacje praktyczne (SPECYFIKACJA §4) — szkic do akceptacji, nie zmiana planu.
+ * Notatki tematyczne, kontakty alarmowe, lista pakowania pod warunki i skład grupy, zadania
+ * z terminem względem wyjazdu i źródła. Kod sprawdza, czy adresy źródeł odpowiadają, i dopiero
+ * wybrane przez człowieka elementy trafiają do planu (nowe klucze nadaje kod).
+ */
+export const PracticalInfo = z.object({
+  notes: z
+    .array(
+      z.object({
+        topic: z.enum(['weather', 'documents', 'money', 'health', 'safety', 'culture', 'transport', 'rules', 'packing', 'time', 'other']),
+        kind: z.enum(['practical', 'tip', 'warning', 'safety']),
+        title: text,
+        body: text,
+        /** Indeksy w `sources`, na których notatka się opiera. */
+        sourceIndexes: z.array(z.number().int().nonnegative()).default([]),
+      }),
+    )
+    .max(20),
+  contacts: z
+    .array(
+      z.object({
+        name: text,
+        role: z.enum(['emergency', 'host', 'operator', 'rental', 'guide', 'venue', 'other']),
+        phone: z.string().optional(),
+        notes: z.string().optional(),
+      }),
+    )
+    .max(12),
+  packing: z
+    .array(
+      z.object({
+        category: text,
+        title: text,
+        scope: z.enum(['personal', 'shared']),
+        quantity: z.number().positive().optional(),
+        unit: z.string().optional(),
+        note: z.string().optional(),
+      }),
+    )
+    .max(80),
+  tasks: z
+    .array(
+      z.object({
+        kind: z.enum(['todo', 'question', 'decision']),
+        title: text,
+        body: z.string().optional(),
+        priority: z.enum(['high', 'normal', 'low']).optional(),
+        /** Ile dni przed wyjazdem (0 = dzień wyjazdu); brak = bez terminu. */
+        daysBefore: z.number().int().nonnegative().max(365).optional(),
+      }),
+    )
+    .max(30),
+  sources: z
+    .array(
+      z.object({
+        title: text,
+        url: z.url(),
+        note: z.string().optional(),
+      }),
+    )
+    .max(20),
+});
+
+export type PracticalInfo = z.infer<typeof PracticalInfo>;
