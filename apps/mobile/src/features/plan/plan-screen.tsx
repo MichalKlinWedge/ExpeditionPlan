@@ -41,6 +41,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { type DayEvent, NowCard } from '@/features/plan/now-card';
+import { InfoView } from '@/features/trip/info-view';
 import { PackingView } from '@/features/trip/packing-view';
 import { WalletView } from '@/features/trip/wallet-view';
 import { useTheme } from '@/hooks/use-theme';
@@ -119,7 +120,7 @@ type PlanProps = {
 
 /** Plan jednego wyjazdu. */
 export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose, bottomInset = 0 }: PlanProps) {
-  const [mode, setMode] = useState<'plan' | 'wallet' | 'packing'>('plan');
+  const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'info'>('plan');
   const [trip, setTrip] = useState<CachedTrip | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [lastDelay, setLastDelay] = useState<{ itemRef: string; minutes: number } | null>(null);
@@ -310,12 +311,15 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           <Chip active={mode === 'plan'} label="Plan" onPress={() => setMode('plan')} />
           <Chip active={mode === 'wallet'} label="Wydatki" onPress={() => setMode('wallet')} />
           <Chip active={mode === 'packing'} label="Pakowanie" onPress={() => setMode('packing')} />
+          <Chip active={mode === 'info'} label="Info" onPress={() => setMode('info')} />
         </View>
       )}
       {trip !== null && mode !== 'plan' && (
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]} keyboardShouldPersistTaps="handled">
           {mode === 'wallet' ? (
             <WalletView trip={trip} tripId={tripId} canAdd={signedIn && canAddExpense} onChanged={afterLocalWrite} />
+          ) : mode === 'info' ? (
+            <InfoView trip={trip} />
           ) : (
             <PackingView trip={trip} tripId={tripId} canEdit={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           )}
