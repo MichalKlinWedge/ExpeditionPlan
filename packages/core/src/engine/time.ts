@@ -26,7 +26,24 @@ function formatter(tz: string): Intl.DateTimeFormat {
 
 type Parts = { year: number; month: number; day: number; hour: number; minute: number };
 
+/**
+ * Zmiany stref nowsze niż baza stref części środowisk. Maroko (i Sahara Zachodnia) od
+ * 20.09.2026 02:00 czasu lokalnego (01:00 UTC) jest na stałe w UTC+0 — tzdata 2026c; Node 24
+ * ma 2026b i liczy UTC+1, telefony bez aktualizacji systemu też. Od tej chwili liczymy stałe
+ * przesunięcie zamiast `Intl`, więc web, serwer i telefon dają ten sam plan (gdy środowisko ma
+ * nowe dane, wynik jest identyczny). Nowy wpis — tylko po wydaniu tzdata, które zmianę zawiera.
+ */
+const FIXED_OFFSET_FROM: Record<string, { from: number; offsetMin: number }> = {
+  'Africa/Casablanca': { from: Date.UTC(2026, 8, 20, 1), offsetMin: 0 },
+  'Africa/El_Aaiun': { from: Date.UTC(2026, 8, 20, 1), offsetMin: 0 },
+};
+
 function partsAt(instant: number, tz: string): Parts {
+  const fixed = FIXED_OFFSET_FROM[tz];
+  if (fixed !== undefined && instant >= fixed.from) {
+    const local = new Date(instant + fixed.offsetMin * MINUTE);
+    return { year: local.getUTCFullYear(), month: local.getUTCMonth() + 1, day: local.getUTCDate(), hour: local.getUTCHours(), minute: local.getUTCMinutes() };
+  }
   const values: Record<string, number> = {};
   for (const part of formatter(tz).formatToParts(new Date(instant))) {
     if (part.type !== 'literal') values[part.type] = Number(part.value);

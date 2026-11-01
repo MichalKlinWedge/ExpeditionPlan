@@ -5,12 +5,14 @@ import { assemble, chunksFor, stagePlanSchema, tripContext, tripDates } from './
 import { COUNTRY_TZ, type DayFact, dayFact, type Holiday } from './facts.ts';
 import { type GroundResult, groundPlaces, type Lookup, withCoordinates } from './ground.ts';
 import { applyPins } from './pins.ts';
+import { type RouteLookup, type RouteResult, routeLegs } from './routing.ts';
 import { stage1Prompt, stage2Prompt, SYSTEM } from './prompts.ts';
 
 /**
  * Łańcuch „Zaplanuj z AI” (SPECYFIKACJA §4): brief → etap 1 (warianty układu) → bazy w OSM i fakty
  * dni (słońce, święta, zmiana czasu) → etap 2 (dni, punkty, pula, ograniczenia; części równolegle)
- * → pinezki z briefu → ugruntowanie miejsc (współrzędne, godziny otwarcia) → `TripDocument`.
+ * → pinezki z briefu → ugruntowanie miejsc (współrzędne, godziny otwarcia) → trasy przejazdów
+ * (OpenRouteService, gdy jest klucz) → `TripDocument`.
  * Czyste TS: dostawca AI, źródło miejsc i święta przychodzą z zewnątrz (aplikacja, narzędzie PoC).
  */
 
@@ -19,6 +21,8 @@ export type PlannerDeps = {
   lookup: Lookup;
   /** Drugie źródło miejsc dla nieznalezionych (narzędzia: Photon). */
   fallback?: Lookup;
+  /** Trasy przejazdów (ORS); bez niego zostają czasy szacowane przez AI. */
+  route?: RouteLookup;
   holidays: (country: string, year: number) => Promise<Holiday[]>;
   /** Strefa wyjazdu; domyślnie z `COUNTRY_TZ` dla pierwszego kraju briefu. */
   primaryTz?: string;
@@ -26,7 +30,7 @@ export type PlannerDeps = {
   chunkDays?: number;
   timeoutMs?: number;
   onUsage?: (usage: AiUsage) => void;
-  /** Postęp do logu albo interfejsu: „etap 1”, „bazy”, „etap 2”, „miejsca”. */
+  /** Postęp do logu albo interfejsu: „etap 1”, „bazy”, „etap 2”, „miejsca”, „trasy”. */
   onStep?: (step: string) => void;
 };
 
@@ -36,10 +40,13 @@ export type PlannedTrip = {
   stagePlans: StagePlan[];
   facts: DayFact[];
   grounding: GroundResult[];
+  /** Przejazdy przeliczone trasami (puste bez `route`). */
+  routing: RouteResult[];
   /** Ile razy model poprawiał odpowiedź po walidacji. */
   repairs: number;
   aiMs: number;
   groundMs: number;
+  routeMs: number;
 };
 
 export class PlannerError extends Error {
@@ -138,14 +145,27 @@ export async function planTrip(brief: TripBrief, deps: PlannerDeps): Promise<Pla
   });
   groundMs += performance.now() - started;
 
+  let routing: RouteResult[] = [];
+  let routeMs = 0;
+  if (deps.route !== undefined) {
+    step('trasy');
+    started = performance.now();
+    const routed = await routeLegs(doc, deps.route);
+    doc = TripDocument.parse(routed.doc);
+    routing = routed.results;
+    routeMs = performance.now() - started;
+  }
+
   return {
     doc,
     skeleton: skeleton.data,
     stagePlans,
     facts,
     grounding,
+    routing,
     repairs: skeleton.attempts - 1 + answers.reduce((sum, answer) => sum + answer.attempts - 1, 0),
     aiMs,
     groundMs,
+    routeMs,
   };
 }

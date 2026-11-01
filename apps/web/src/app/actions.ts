@@ -2,13 +2,13 @@
 
 import { Currency, IsoDate, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { planTrip } from "@expeditionplan/planner";
-import { importTrip, uuidv7 } from "@expeditionplan/sync";
+import { planTrip, routeLegs } from "@expeditionplan/planner";
+import { importTrip, refIndex, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { plannerDeps } from "@/lib/ai";
+import { plannerDeps, routeLookup } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { SAMPLE_PLANS } from "@/lib/sample-plans";
 
@@ -264,4 +264,57 @@ export async function planWithAi(tripId: string): Promise<FormState & { tripId?:
     duration_ms: Date.now() - started,
   });
   return { ok: `Szkic gotowy: ${doc.days.length} dni, ${doc.items.length} punktów.`, tripId: newTripId };
+}
+
+/**
+ * „Przelicz przejazdy”: czasy i dystanse przejazdów autem, pieszo i rowerem z OpenRouteService
+ * zamiast szacunków (z AI albo z dokumentu). Punkty zmienione ręcznie (`user_locked`) zostają.
+ * Do 60 tras na raz, 1,6 s na trasę (limit ORS 40/min) — `maxDuration` ustawia strona planu.
+ */
+export async function routeTrip(tripId: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/plan`);
+  const route = routeLookup();
+  if (route === null) return { error: "Serwer nie ma klucza OPENROUTESERVICE_API_KEY." };
+  const [{ data, error }, membership] = await Promise.all([
+    supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 }),
+    supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle(),
+  ]);
+  if (error) return { error: message(error) };
+  if (data === null) return { error: "Nie ma takiego wyjazdu." };
+  if (membership.data?.role !== "owner" && membership.data?.role !== "editor") return { error: "Przeliczać może organizator albo edytor." };
+  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const { doc } = stateFromPayload(payload);
+  const rows = (payload.tables.items ?? []) as unknown as { id: string; ref: string | null; user_locked?: boolean; deleted_at: string | null }[];
+  const locked = new Set(rows.filter((row) => row.user_locked && row.deleted_at === null).map((row) => row.ref ?? `id-${row.id}`));
+  const refs = new Set(doc.items.filter((item) => item.kind === "transport" && !locked.has(item.ref)).map((item) => item.ref));
+
+  const { doc: routed, results } = await routeLegs(doc, route, refs);
+  const done = new Set(results.filter((result) => result.status === "routed").map((result) => result.ref));
+  const changed = routed.items.filter((item) => done.has(item.ref));
+  if (changed.length > 0) {
+    try {
+      await saveMergeEdit(supabase, tripId, { doc: TripDocument.parse(routed), created: [], changed, others: [], removed: [], kept: [], copied: {} }, refIndex(payload.tables));
+    } catch (e) {
+      return { error: `Nie zapisano tras: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  }
+  const count = (status: string) => results.filter((result) => result.status === status).length;
+  // Największe różnice wobec szacunku — żeby było widać, co się zmieniło.
+  const diffs = results
+    .filter((result) => result.status === "routed" && result.before?.durationMin !== undefined)
+    .map((result) => ({ title: result.title, from: result.before!.durationMin!, to: result.after!.durationMin }))
+    .sort((a, b) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from))
+    .slice(0, 3)
+    .filter((each) => each.from !== each.to)
+    .map((each) => `„${each.title}” ${each.from} → ${each.to} min`);
+  const skipped = [
+    count("no_coordinates") > 0 ? `${count("no_coordinates")} bez współrzędnych` : null,
+    count("not_found") > 0 ? `${count("not_found")} bez trasy w OSM` : null,
+    count("failed") > 0 ? `${count("failed")} z błędem usługi` : null,
+    count("skipped_limit") > 0 ? `${count("skipped_limit")} ponad limit na raz` : null,
+    locked.size > 0 && doc.items.some((item) => item.kind === "transport" && locked.has(item.ref)) ? "zmienione ręcznie pominięte" : null,
+  ].filter((each) => each !== null);
+  return {
+    ok: `Przeliczono ${changed.length} przejazdów.${diffs.length > 0 ? ` Największe zmiany: ${diffs.join("; ")}.` : ""}${skipped.length > 0 ? ` Pominięte: ${skipped.join(", ")}.` : ""}`,
+  };
 }

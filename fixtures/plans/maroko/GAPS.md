@@ -140,3 +140,7 @@ Nadal otwarte, istotne na telefonie:
 - ceny z dwiema opcjami;
 - kaucja (blokada vs pobranie) i wymagania co do karty;
 - data dokumentu.
+
+## Strefa czasowa (1.11.2026)
+
+Dokument zakłada „Maroko cały rok na UTC+1”, zachód w Marakeszu ok. 18:35, wschód ok. 08:30 (notatka i `facts`). To już nieaktualne: od 20.09.2026 Maroko jest na stałe w UTC+0 (tzdata 2026c, https://data.iana.org/time-zones/tzdb/NEWS), więc pod koniec grudnia zachód ok. 17:35, wschód ok. 07:30. Notatki zostają jak w źródle; silnik liczy słońce i godziny z nowych reguł (`FIXED_OFFSET_FROM` w `packages/core/src/engine/time.ts`), więc ostrzeżenia o zmroku pojawiają się w planie same.

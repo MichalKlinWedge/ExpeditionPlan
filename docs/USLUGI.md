@@ -194,6 +194,7 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 ### OpenRouteService
 - Plan Standard: „darmowy dla wszystkich”. **Directions: 2000/dzień, 40/min; Matrix: 500/dzień, 40/min; Isochrones: 500/dzień, 20/min** (część limitów z gwiazdką „obowiązują dodatkowe ograniczenia”).
 - Status: **częściowo potwierdzone** — strona https://openrouteservice.org/plans/ zwróciła 404 przy bezpośrednim odczycie; liczby pochodzą z indeksu wyszukiwarki tej oficjalnej strony. Maks. liczba punktów/rozmiar macierzy — **NIEPOTWIERDZONE**.
+- Sprawdzone w użyciu (1.11.2026): `POST /v2/directions/{profil}`, klucz w nagłówku `Authorization`; domyślnie punkt musi leżeć ≤ 350 m od drogi (błąd 2010 / HTTP 404) — wysyłamy `radiuses` 5 km (auto) / 1 km (pieszo). Kod: `packages/planner/src/routing.ts`, odstęp 1,6 s między zapytaniami, najwyżej 60 tras na plan.
 - Źródło: https://openrouteservice.org/plans/
 
 ### Geoapify Routing

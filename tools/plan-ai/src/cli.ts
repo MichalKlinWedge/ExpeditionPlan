@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { type AiUsage, createAiClient } from '@expeditionplan/ai';
 import { TripBrief, TripDocument } from '@expeditionplan/core';
 import { cachedLookup, searchPhoton } from '@expeditionplan/geocode';
-import { applyPins, planTrip } from '@expeditionplan/planner';
+import { applyPins, orsRoute, planTrip } from '@expeditionplan/planner';
 
 import { claudeCodeClient } from './claude-code.ts';
 import { holidays } from './facts.ts';
@@ -44,6 +44,10 @@ const backend = arg('backend')?.[0] ?? 'claude-code';
 const chunkDays = Number(arg('chunk-days')?.[0] ?? 2);
 /** Plany po kolei (domyślnie) — czas jednego planu nie zależy od obciążenia innymi. */
 const parallelPlans = process.argv.includes('--parallel');
+/** Przejazdy z OpenRouteService (klucz OPENROUTESERVICE_API_KEY); bez flagi zostają czasy z AI. */
+const orsKey = process.env.OPENROUTESERVICE_API_KEY;
+if (process.argv.includes('--route') && !orsKey) throw new Error('Brak OPENROUTESERVICE_API_KEY w .env.local');
+const route = process.argv.includes('--route') && orsKey ? orsRoute(orsKey) : undefined;
 const key = process.env.ANTHROPIC_API_KEY;
 const geminiKey = process.env.GEMINI_API_KEY;
 if (backend === 'api' && !key) throw new Error('Brak ANTHROPIC_API_KEY w .env.local');
@@ -93,11 +97,13 @@ async function run(slug: string, model: string, outDir: string): Promise<Row> {
       chunkDays,
       timeoutMs: 300_000,
       onUsage,
+      ...(route ? { route } : {}),
     });
     save('stage1.json', result.skeleton);
     save('facts.json', result.facts);
     save('stage2.json', result.stagePlans);
     save('plan.json', result.doc);
+    if (route) save('routing.json', result.routing);
     save('grounding.json', result.grounding);
 
     row.variants = result.skeleton.variants.map((each) => `${each.recommended ? '★ ' : ''}${each.label}`);

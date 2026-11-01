@@ -17,7 +17,8 @@ describe('czas lokalny i strefy', () => {
   });
 
   it('zna przesunięcia stref z planów', () => {
-    expect(offsetMinutes(Date.UTC(2026, 11, 26), 'Africa/Casablanca')).toBe(60);
+    // Maroko od 20.09.2026 na stałe UTC+0 (tzdata 2026c) — wcześniej cały rok +1.
+    expect(offsetMinutes(Date.UTC(2026, 11, 26), 'Africa/Casablanca')).toBe(0);
     expect(offsetMinutes(Date.UTC(2027, 7, 4), 'Asia/Tbilisi')).toBe(240);
     expect(offsetMinutes(Date.UTC(2026, 6, 1), 'Europe/Warsaw')).toBe(120);
   });
@@ -25,7 +26,7 @@ describe('czas lokalny i strefy', () => {
   it('noc 24/25.10.2026 (Chatka): zmiana czasu 3:00 → 2:00', () => {
     expect(dstChange('2026-10-24', 'Europe/Warsaw')).toEqual({ fromOffsetMin: 120, toOffsetMin: 60 });
     expect(dstChange('2026-10-26', 'Europe/Warsaw')).toBeNull();
-    // Maroko trzyma UTC+1 cały rok — w grudniu żadnej zmiany.
+    // Maroko od 20.09.2026 stale na UTC+0 — w grudniu żadnej zmiany.
     expect(dstChange('2026-12-26', 'Africa/Casablanca')).toBeNull();
   });
 
@@ -37,6 +38,19 @@ describe('czas lokalny i strefy', () => {
   it('formatuje przesunięcia względne jak we wzorze', () => {
     expect(formatOffset(80)).toBe('+1:20');
     expect(formatOffset(540)).toBe('+9:00');
+  });
+});
+
+describe('Maroko od 20.09.2026 na stałe UTC+0 (tzdata 2026c)', () => {
+  it('grudzień 2026: UTC+0 niezależnie od bazy stref środowiska', () => {
+    expect(offsetMinutes(Date.UTC(2026, 11, 26, 12), 'Africa/Casablanca')).toBe(0);
+    expect(zonedToInstant('2026-12-26', '04:10', 'Africa/Casablanca')).toBe(Date.UTC(2026, 11, 26, 4, 10));
+    expect(instantToZoned(Date.UTC(2026, 11, 26, 3, 10), 'Africa/Casablanca').time).toBe('03:10');
+  });
+
+  it('noc zmiany 19/20.09.2026: z +1 na 0; latem 2026 nadal +1', () => {
+    expect(offsetMinutes(Date.UTC(2026, 6, 1, 12), 'Africa/Casablanca')).toBe(60);
+    expect(dstChange('2026-09-19', 'Africa/Casablanca')).toEqual({ fromOffsetMin: 60, toOffsetMin: 0 });
   });
 });
 
@@ -56,11 +70,11 @@ describe('słońce i Księżyc (dokładność ±5 min wobec planów)', () => {
     expect(gap(local(sun.sunset, 'Europe/Warsaw'), '16:43')).toBeLessThanOrEqual(5);
   });
 
-  it('Marakesz koniec grudnia: zachód ok. 18:35, a nie 17:40 ze starych przewodników', () => {
+  it('Marakesz koniec grudnia 2026: zachód ok. 17:35 (UTC+0 od 20.09.2026, nie 18:35 z planu)', () => {
     const sun = sunTimes('2026-12-27', 31.6295, -7.9811);
 
-    expect(gap(local(sun.sunset, 'Africa/Casablanca'), '18:35')).toBeLessThanOrEqual(5);
-    expect(gap(local(sun.sunrise, 'Africa/Casablanca'), '08:30')).toBeLessThanOrEqual(10);
+    expect(gap(local(sun.sunset, 'Africa/Casablanca'), '17:35')).toBeLessThanOrEqual(5);
+    expect(gap(local(sun.sunrise, 'Africa/Casablanca'), '07:30')).toBeLessThanOrEqual(10);
   });
 
   it('noc polarna nie ma wschodu ani zachodu', () => {

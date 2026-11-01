@@ -1,12 +1,12 @@
 import "server-only";
 
 import { createAiClient } from "@expeditionplan/ai";
-import { fetchHolidays, geoapifyLookup, type PlannerDeps } from "@expeditionplan/planner";
+import { fetchHolidays, geoapifyLookup, orsRoute, type PlannerDeps } from "@expeditionplan/planner";
 
 /**
  * Zależności łańcucha „Zaplanuj z AI” po stronie serwera. Klucze tylko z env serwera (bez
  * `NEXT_PUBLIC_`), nigdy w przeglądarce. Model z `AI_MODEL_GEMINI`, domyślnie wybrany po
- * porównaniu na planach wzorcowych (tools/plan-ai).
+ * porównaniu na planach wzorcowych (tools/plan-ai). Trasy przejazdów (ORS) — gdy jest klucz.
  */
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 
@@ -16,6 +16,7 @@ export function plannerDeps(): { deps: Omit<PlannerDeps, "primaryTz" | "onUsage"
   const missing = [gemini === "" ? "GEMINI_API_KEY" : null, geoapify === "" ? "GEOAPIFY_API_KEY" : null].filter((name) => name !== null);
   if (missing.length > 0) return { missing };
   const model = process.env.AI_MODEL_GEMINI || DEFAULT_GEMINI_MODEL;
+  const route = routeLookup();
   return {
     model,
     deps: {
@@ -23,6 +24,13 @@ export function plannerDeps(): { deps: Omit<PlannerDeps, "primaryTz" | "onUsage"
       lookup: geoapifyLookup(geoapify),
       holidays: (country, year) => fetchHolidays(country, year),
       timeoutMs: 120_000,
+      ...(route ? { route } : {}),
     },
   };
+}
+
+/** Trasy OpenRouteService; `null` bez klucza (wtedy zostają czasy szacowane przez AI). */
+export function routeLookup() {
+  const key = process.env.OPENROUTESERVICE_API_KEY ?? "";
+  return key === "" ? null : orsRoute(key);
 }
