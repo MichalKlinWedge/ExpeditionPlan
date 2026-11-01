@@ -144,3 +144,58 @@ export const PracticalInfo = z.object({
 });
 
 export type PracticalInfo = z.infer<typeof PracticalInfo>;
+
+/**
+ * Etap 4: logistyka — kandydaci do porównania (SPECYFIKACJA §4): noclegi per baza, auto, transfery,
+ * karnety. AI nie zna dostępności ani dzisiejszych cen, więc kandydat to RODZAJ oferty w obszarze
+ * („riad w medynie, pokój rodzinny”) z widełkami ceny jako szacunek, warunkami do sprawdzenia,
+ * plusami i minusami — bez wymyślonych nazw obiektów. Kod dokłada linki wyszukiwania (W1: bez
+ * rezerwacji) i zapisuje wybrane grupy jako grupę porównania z tabelą, jak w planach wzorcowych.
+ */
+export const LogisticsCandidates = z.object({
+  groups: z
+    .array(
+      z.object({
+        kind: z.enum(['lodging', 'car_rental', 'transfer', 'activity', 'transit_pass', 'package', 'esim', 'insurance', 'other']),
+        title: text,
+        /** Gdzie szukać: miejscowość / dzielnica / lotnisko — trafia do linku wyszukiwania. */
+        area: text,
+        start: IsoDate.optional(),
+        end: IsoDate.optional(),
+        /** Warunki brzegowe wyboru („pokój dla 5 osób, parking, śniadanie”). */
+        mustHave: z.string().optional(),
+        /** Nagłówki tabeli porównania (2–5), np. „Cena za noc”, „Odwołanie”, „Dojście do medyny”. */
+        columns: z.array(text).min(1).max(5),
+        candidates: z
+          .array(
+            z.object({
+              label: text,
+              summary: z.string().optional(),
+              priceMinMinor: z.number().int().nonnegative(),
+              priceMaxMinor: z.number().int().nonnegative(),
+              currency: z.string().regex(/^[A-Z]{3}$/),
+              priceBasis: z.enum(['per_person', 'per_group', 'per_unit', 'per_night', 'per_day']),
+              refundable: z.boolean().optional(),
+              conditions: z.array(z.string()).default([]),
+              includes: z.array(z.string()).default([]),
+              pros: z.array(z.string()).default([]),
+              cons: z.array(z.string()).default([]),
+              /** Wartości kolumn tabeli porównania, w kolejności `columns`. */
+              values: z.array(z.string()),
+              recommended: z.boolean().default(false),
+              /** Fraza do wyszukiwarki ofert („riad medyna Marrakesz pokój rodzinny”). */
+              searchQuery: text,
+              /** Auto: dzienny/łączny limit km, jeśli typowy dla tej oferty. */
+              kmLimit: z.number().int().positive().optional(),
+            }),
+          )
+          .min(2)
+          .max(4),
+      }),
+    )
+    .max(8),
+  /** Uwagi ogólne (np. „noclegi w grudniu warto rezerwować teraz”). */
+  advice: z.array(z.string()).default([]),
+});
+
+export type LogisticsCandidates = z.infer<typeof LogisticsCandidates>;

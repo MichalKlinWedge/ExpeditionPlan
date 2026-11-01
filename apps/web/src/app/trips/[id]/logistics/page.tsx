@@ -1,10 +1,13 @@
-import { budgetSummary, formatMoney, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { budgetSummary, formatMoney, LogisticsCandidates, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { draftCandidates } from "@/app/candidates-actions";
+import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { BookingEditor, BudgetLines, TaskList } from "@/components/logistics-editors";
+import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
@@ -13,6 +16,9 @@ import { requireUser } from "@/lib/auth";
  * `pull_changes` → dokument; portfel z wydatków zapisanych na telefonie. Organizator i edytor
  * zmieniają budżet, zadania i stan rezerwacji (`logistics-actions.ts`), widz tylko czyta.
  */
+// „Kandydaci z AI” (akcja serwera na tej stronie) trwa zwykle 15–60 s.
+export const maxDuration = 120;
+
 export default function LogisticsPage(props: PageProps<"/trips/[id]/logistics">) {
   return (
     <Shell>
@@ -104,9 +110,18 @@ const heading = "text-lg font-semibold";
 async function Logistics({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}/logistics`);
-  const [{ data, error }, membership] = await Promise.all([
+  const [{ data, error }, membership, draftRow] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
+    supabase
+      .from("ai_runs")
+      .select("id, output")
+      .eq("trip_id", id)
+      .eq("stage", "logistics")
+      .eq("status", "ok")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   if (error) return <p className="text-sm text-red-600">{error.message}</p>;
@@ -139,6 +154,36 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
         .join(" · "),
     ]),
   );
+  // Etap 4: szkic kandydatów z AI i grupy porównania z planu (kandydaci rezerwacji).
+  const draftOutput = draftRow.data?.output as { info?: unknown; checks?: string[] } | null | undefined;
+  const candidatesDraft = LogisticsCandidates.safeParse(draftOutput?.info);
+  const comparisons: ComparisonGroup[] = doc.variantGroups
+    .filter((group) => group.scope === "booking")
+    .map((group) => ({
+      ref: group.ref,
+      title: group.title,
+      ...(group.conditionText ? { conditionText: group.conditionText } : {}),
+      ...(group.chosenRef ? { chosenRef: group.chosenRef } : {}),
+      columns: group.comparison?.columns ?? [],
+      rows: doc.variants
+        .filter((variant) => variant.groupRef === group.ref)
+        .map((variant) => {
+          const booking = doc.bookings.find((each) => each.variantRef === variant.ref);
+          const basis = booking?.price ? { per_night: " za noc", per_day: " za dzień", per_group: "", per_person: " za osobę", per_unit: "" }[booking.price.basis] : "";
+          return {
+            variantRef: variant.ref,
+            label: variant.label,
+            recommended: variant.recommended === true,
+            values: group.comparison?.rows.find((row) => row.variantRef === variant.ref)?.values ?? [],
+            price: booking ? (price(booking) === null ? null : `${price(booking)}${basis}`) : null,
+            status: booking?.status ?? "candidate",
+            links: booking?.links ?? [],
+            pros: variant.pros,
+            cons: variant.cons,
+            notes: booking?.notes ?? [],
+          };
+        }),
+    }));
   const statuses = Object.fromEntries(Object.entries(BOOKING_STATUS).map(([key, value]) => [key, value.label]));
   const today = new Date().toISOString().slice(0, 10);
 
@@ -184,8 +229,26 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
       </section>
 
       <section className={card}>
+        <h2 className={heading}>Do porównania ({comparisons.length})</h2>
+        <p className="text-xs text-zinc-500">Kandydaci na noclegi, auto, transfery — bez rezerwacji: linki prowadzą do wyszukiwarek, „Wybieram” oznacza opcję „do rezerwacji”.</p>
+        {canEdit && (
+          <PlanActionButton
+            run={draftCandidates.bind(null, id)}
+            label={candidatesDraft.success ? "Nowi kandydaci z AI" : "Kandydaci z AI"}
+            note="Noclegi per baza, auto, transfery — szacunki cen do sprawdzenia (Gemini, ok. 30 s)"
+          />
+        )}
+        {canEdit && candidatesDraft.success && draftRow.data && (
+          <CandidatesReview tripId={id} runId={draftRow.data.id} info={candidatesDraft.data} checks={draftOutput?.checks ?? []} />
+        )}
+        {comparisons.map((group) => (
+          <ComparisonTable key={group.ref} tripId={id} group={group} canEdit={canEdit} />
+        ))}
+      </section>
+
+      <section className={card}>
         <h2 className={heading}>Rezerwacje ({bookings.length})</h2>
-        {candidates > 0 && <p className="text-xs text-zinc-500">Kandydaci i pomysły ({candidates}) są w wariantach planu — tu tylko wybrane rezerwacje.</p>}
+        {candidates > 0 && <p className="text-xs text-zinc-500">Kandydaci i pomysły ({candidates}) są wyżej, w „Do porównania” — tu tylko wybrane rezerwacje.</p>}
         <ul className="flex flex-col gap-3">
           {bookings.map((booking) => {
             const status = BOOKING_STATUS[booking.status]!;
