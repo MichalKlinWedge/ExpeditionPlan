@@ -1,15 +1,17 @@
-import { BUDGET_CATEGORY, budgetSummary, formatMoney, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { budgetSummary, formatMoney, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { BookingEditor, BudgetLines, TaskList } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
 /**
- * Rezerwacje, budżet „zapłacone / do wydania” i zadania (MVP-3, na razie do odczytu). Dane tą samą
- * drogą co plan: `pull_changes` → dokument; portfel z wydatków zapisanych na telefonie.
+ * Rezerwacje, budżet „zapłacone / do wydania” i zadania (MVP-3). Dane tą samą drogą co plan:
+ * `pull_changes` → dokument; portfel z wydatków zapisanych na telefonie. Organizator i edytor
+ * zmieniają budżet, zadania i stan rezerwacji (`logistics-actions.ts`), widz tylko czyta.
  */
 export default function LogisticsPage(props: PageProps<"/trips/[id]/logistics">) {
   return (
@@ -55,8 +57,6 @@ const BOOKING_STATUS: Record<string, { label: string; tone: string }> = {
   not_required: { label: "bez rezerwacji", tone: "text-zinc-500" },
 };
 
-const LINE_STATUS: Record<string, string> = { estimate: "szacunek", committed: "zobowiązanie", paid: "zapłacone" };
-const TASK_KIND: Record<string, string> = { todo: "do zrobienia", question: "pytanie", decision: "decyzja" };
 
 const shortDate = (date: string) =>
   new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
@@ -104,7 +104,11 @@ const heading = "text-lg font-semibold";
 async function Logistics({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}/logistics`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
+  const [{ data, error }, membership] = await Promise.all([
+    supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
+    supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
+  ]);
+  const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   if (error) return <p className="text-sm text-red-600">{error.message}</p>;
   if (data === null) notFound();
   const payload = data as Parameters<typeof stateFromPayload>[0];
@@ -126,6 +130,16 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
   const candidates = doc.bookings.length - bookings.length;
   const open = doc.tasks.filter((task) => task.status === "open");
   const closed = doc.tasks.length - open.length;
+  // Termin i osoby zadania po ludzku — liczone tu, bo potrzebują całego dokumentu.
+  const describe = Object.fromEntries(
+    doc.tasks.map((task) => [
+      task.ref,
+      [due(task, doc), task.assigneeRefs.length > 0 ? task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", ") : null]
+        .filter(Boolean)
+        .join(" · "),
+    ]),
+  );
+  const statuses = Object.fromEntries(Object.entries(BOOKING_STATUS).map(([key, value]) => [key, value.label]));
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -135,13 +149,15 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
           ← {doc.trip.title}
         </Link>
         <h1 className="text-2xl font-semibold">Rezerwacje, budżet i zadania</h1>
-        <p className="text-xs text-zinc-500">Na razie do odczytu — edycja przyjdzie w kolejnym kroku MVP-3.</p>
       </div>
 
       <section className={card}>
         <h2 className={heading}>Budżet</h2>
         {doc.budgetLines.length === 0 ? (
-          <p className="text-sm text-zinc-500">Plan nie ma pozycji budżetu.</p>
+          <>
+            <p className="text-sm text-zinc-500">Plan nie ma pozycji budżetu.</p>
+            <BudgetLines tripId={id} lines={[]} currency={doc.trip.baseCurrency} canEdit={canEdit} />
+          </>
         ) : (
           <>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
@@ -150,33 +166,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
               <Stat label="Razem" value={range(budget.totalLowMinor, budget.totalHighMinor)} />
               {budget.perPersonLowMinor !== null && <Stat label="Na osobę" value={range(budget.perPersonLowMinor, budget.perPersonHighMinor!)} />}
             </dl>
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs text-zinc-500">
-                <tr>
-                  <th className="py-1 font-normal">Pozycja</th>
-                  <th className="py-1 font-normal">Kategoria</th>
-                  <th className="py-1 font-normal">Status</th>
-                  <th className="py-1 text-right font-normal">Kwota</th>
-                </tr>
-              </thead>
-              <tbody>
-                {doc.budgetLines.map((line) => (
-                  <tr key={line.ref} className="border-t border-zinc-100 dark:border-zinc-900">
-                    <td className="py-1">
-                      {line.title}
-                      {line.perPerson ? <span className="text-zinc-500"> · na osobę</span> : null}
-                    </td>
-                    <td className="py-1 text-zinc-500">{BUDGET_CATEGORY[line.category] ?? line.category}</td>
-                    <td className="py-1 text-zinc-500">{LINE_STATUS[line.status]}</td>
-                    <td className="py-1 text-right font-mono">
-                      {line.lowMinor === line.highMinor
-                        ? formatMoney(line.lowMinor, line.currency)
-                        : `${formatMoney(line.lowMinor, line.currency)} – ${formatMoney(line.highMinor, line.currency)}`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <BudgetLines tripId={id} lines={doc.budgetLines} currency={budget.currency} canEdit={canEdit} />
             {Object.keys(budget.unconverted).length > 0 && (
               <p className="text-xs text-amber-700">
                 Bez kursu w planie (poza sumą):{" "}
@@ -207,6 +197,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                   <span className="font-medium">{booking.title}</span>
                   <span className="text-xs text-zinc-500">{BOOKING_KIND[booking.kind]}</span>
                   <span className={`text-xs ${status.tone}`}>{status.label}</span>
+                  {canEdit && <BookingEditor tripId={id} booking={booking} statuses={statuses} />}
                 </div>
                 <p className="text-zinc-600 dark:text-zinc-400">
                   {[when(booking), booking.provider, cost, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · ")}
@@ -234,25 +225,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
           Zadania — otwarte {open.length}
           {closed > 0 ? <span className="text-sm font-normal text-zinc-500"> (zamknięte: {closed})</span> : null}
         </h2>
-        <ul className="flex flex-col gap-2 text-sm">
-          {open.map((task) => (
-            <li key={task.ref} className="flex flex-col">
-              <span>
-                {task.priority === "high" ? <span className="text-red-600">! </span> : null}
-                {task.title}
-                <span className="text-xs text-zinc-500">
-                  {" "}
-                  · {TASK_KIND[task.kind]}
-                  {due(task, doc) ? ` · ${due(task, doc)}` : ""}
-                  {task.assigneeRefs.length > 0
-                    ? ` · ${task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", ")}`
-                    : ""}
-                </span>
-              </span>
-              {task.body && <span className="text-xs whitespace-pre-line text-zinc-500">{task.body}</span>}
-            </li>
-          ))}
-        </ul>
+        <TaskList tripId={id} tasks={doc.tasks} describe={describe} canEdit={canEdit} />
       </section>
     </>
   );
