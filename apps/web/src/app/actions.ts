@@ -9,7 +9,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { plannerDeps, routeLookup } from "@/lib/ai";
+import { aiAccessError, plannerDeps, routeLookup } from "@/lib/ai";
 import { countriesFor } from "@/lib/countries";
 import { requireUser } from "@/lib/auth";
 import { SAMPLE_PLANS } from "@/lib/sample-plans";
@@ -178,6 +178,8 @@ export async function createInvite(tripId: string, _prev: FormState, form: FormD
  */
 export async function saveBrief(tripId: string, _prev: FormState, form: FormData): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/brief`);
+  const denied = await aiAccessError();
+  if (denied) return { error: denied };
   const [trip, travelers, existing] = await Promise.all([
     supabase.from("trips").select("title, start_date, end_date, home_tz, base_currency").eq("id", tripId).single(),
     supabase.from("travelers").select("name, nickname, age, household, is_driver, notes").eq("trip_id", tripId).is("deleted_at", null).order("sort_key"),
@@ -305,6 +307,8 @@ export async function removeTrip(tripId: string): Promise<FormState> {
  */
 export async function planWithAi(tripId: string): Promise<FormState & { tripId?: string }> {
   const { supabase } = await requireUser(`/trips/${tripId}/brief`);
+  const denied = await aiAccessError();
+  if (denied) return { error: denied };
   const [trip, brief] = await Promise.all([
     supabase.from("my_trips").select("title, role, primary_tz").eq("id", tripId).maybeSingle(),
     supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
@@ -365,6 +369,8 @@ export async function planWithAi(tripId: string): Promise<FormState & { tripId?:
  */
 export async function routeTrip(tripId: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/plan`);
+  const denied = await aiAccessError();
+  if (denied) return { error: denied };
   const route = routeLookup();
   if (route === null) return { error: "Serwer nie ma klucza OPENROUTESERVICE_API_KEY." };
   const [{ data, error }, membership] = await Promise.all([
@@ -419,6 +425,8 @@ export async function routeTrip(tripId: string): Promise<FormState> {
  */
 export async function groundTrip(tripId: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/plan`);
+  const denied = await aiAccessError();
+  if (denied) return { error: denied };
   const key = process.env.GEOAPIFY_API_KEY ?? "";
   if (key === "") return { error: "Serwer nie ma klucza GEOAPIFY_API_KEY." };
   const [{ data, error }, membership, briefRow] = await Promise.all([
@@ -497,6 +505,8 @@ export async function searchPlace(tripId: string, placeId: string, query: string
   const key = process.env.GEOAPIFY_API_KEY ?? "";
   if (key === "") return { error: "Serwer nie ma klucza GEOAPIFY_API_KEY." };
   const { supabase } = await requireUser(`/trips/${tripId}/plan`);
+  const denied = await aiAccessError();
+  if (denied) return { error: denied };
   const [trip, briefRow] = await Promise.all([
     supabase.from("my_trips").select("primary_tz").eq("id", tripId).maybeSingle(),
     supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),

@@ -3,11 +3,27 @@ import "server-only";
 import { createAiClient } from "@expeditionplan/ai";
 import { fetchHolidays, geoapifyLookup, orsRoute, type PlannerDeps } from "@expeditionplan/planner";
 
+import { createClient } from "./supabase/server";
+
 /**
  * Zależności łańcucha „Zaplanuj z AI” po stronie serwera. Klucze tylko z env serwera (bez
  * `NEXT_PUBLIC_`), nigdy w przeglądarce. Model z `AI_MODEL_GEMINI`, domyślnie wybrany po
  * porównaniu na planach wzorcowych (tools/plan-ai). Trasy przejazdów (ORS) — gdy jest klucz.
  */
+/**
+ * Kto może uruchamiać AI i usługi na kluczach serwera (Gemini, Geoapify, ORS): e-maile z
+ * `AI_ALLOWED_EMAILS` (po przecinku). Bez tej zmiennej — wszyscy lokalnie, nikt na produkcji.
+ * Pozostali mają podgląd i ręczną edycję; własne klucze użytkowników to plan na później.
+ */
+export async function aiAccessError(): Promise<string | null> {
+  const list = process.env.AI_ALLOWED_EMAILS;
+  if (list === undefined || list.trim() === "") return process.env.NODE_ENV === "production" ? "AI jest wyłączone na tym serwerze." : null;
+  const { data } = await (await createClient()).auth.getClaims();
+  const email = String(data?.claims.email ?? "").toLowerCase();
+  const allowed = list.split(",").map((each) => each.trim().toLowerCase());
+  return email !== "" && allowed.includes(email) ? null : "AI i wyszukiwanie miejsc są na razie dostępne tylko dla właściciela aplikacji.";
+}
+
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 export function plannerDeps(): { deps: Omit<PlannerDeps, "primaryTz" | "onUsage">; model: string } | { missing: string[] } {

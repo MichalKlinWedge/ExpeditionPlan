@@ -37,7 +37,7 @@ if (local) {
   source.NEXT_PUBLIC_SUPABASE_ANON_KEY = status.PUBLISHABLE_KEY ?? status.ANON_KEY;
 }
 
-const SERVER_KEYS = ['GEMINI_API_KEY', 'AI_MODEL_GEMINI', 'GEOAPIFY_API_KEY', 'OPENROUTESERVICE_API_KEY'];
+const SERVER_KEYS = ['GEMINI_API_KEY', 'AI_MODEL_GEMINI', 'GEOAPIFY_API_KEY', 'OPENROUTESERVICE_API_KEY', 'AI_ALLOWED_EMAILS'];
 
 const targets = [
   { file: 'apps/web/.env.local', prefix: 'NEXT_PUBLIC_', server: SERVER_KEYS },

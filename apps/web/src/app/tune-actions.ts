@@ -7,7 +7,7 @@ import { refIndex, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionpl
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
-import { plannerDeps } from "@/lib/ai";
+import { aiAccessError, plannerDeps } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { countriesFor } from "@/lib/countries";
 import { plural } from "@/lib/plural";
@@ -44,6 +44,8 @@ export async function proposePatch(tripId: string, _prev: FormState, form: FormD
   if (command === "") return { error: "Napisz, co zmienić." };
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
+  const denied = await aiAccessError();
+  if (denied) return { error: denied };
   const setup = plannerDeps();
   if ("missing" in setup) return { error: `Serwer nie ma kluczy: ${setup.missing.join(", ")}.` };
   const { data: past } = await loaded.supabase.from("ai_messages").select("role, content").eq("trip_id", tripId).order("created_at", { ascending: false }).limit(10);
