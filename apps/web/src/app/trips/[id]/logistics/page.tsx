@@ -115,10 +115,10 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase
       .from("ai_runs")
-      .select("id, output")
+      .select("id, output, status")
       .eq("trip_id", id)
       .eq("stage", "logistics")
-      .eq("status", "ok")
+      .in("status", ["ok", "accepted"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -238,7 +238,9 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
             note="Noclegi per baza, auto, transfery — szacunki cen do sprawdzenia (Gemini, ok. 30 s)"
           />
         )}
-        {canEdit && candidatesDraft.success && draftRow.data && (
+        {/* Po „Dodaj do porównania” szkic znika z odświeżonej strony — potwierdzenie zostaje tutaj. */}
+        {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm text-green-700 dark:text-green-400">Ostatni szkic AI dodany do porównania — grupy są niżej.</p>}
+        {canEdit && candidatesDraft.success && draftRow.data?.status === "ok" && (
           <CandidatesReview tripId={id} runId={draftRow.data.id} info={candidatesDraft.data} checks={draftOutput?.checks ?? []} />
         )}
         {comparisons.map((group) => (

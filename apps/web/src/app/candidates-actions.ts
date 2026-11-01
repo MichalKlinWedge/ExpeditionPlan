@@ -10,6 +10,7 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/app/actions";
 import { plannerDeps } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+import { plural } from "@/lib/plural";
 
 /**
  * Etap 4 AI na webie: szkic kandydatów (noclegi, auto, transfery…) w `ai_runs` (stage `logistics`),
@@ -69,7 +70,7 @@ export async function draftCandidates(tripId: string): Promise<FormState> {
   });
   if (error) return { error: message(error) };
   refresh();
-  return { ok: `Szkic gotowy: ${draft.info.groups.length} decyzji do porównania. Zaznacz, które dodać do planu.` };
+  return { ok: `Szkic gotowy: ${plural(draft.info.groups.length, ["decyzja", "decyzje", "decyzji"])} do porównania. Zaznacz, które dodać do planu.` };
 }
 
 /** Zaznaczone grupy szkicu → grupy porównania w planie (grupa, warianty, kandydaci — w tej kolejności, bo klucze obce). */
@@ -100,7 +101,7 @@ export async function applyCandidates(tripId: string, runId: string, groupIndexe
   }
   await loaded.supabase.from("ai_runs").update({ status: "accepted" }).eq("id", runId);
   refresh();
-  return { ok: `Dodano do porównania: ${groupIndexes.length} ${groupIndexes.length === 1 ? "decyzję" : "decyzje"}.` };
+  return { ok: `Dodano do porównania: ${plural(groupIndexes.length, ["decyzję", "decyzje", "decyzji"])}.` };
 }
 
 /**

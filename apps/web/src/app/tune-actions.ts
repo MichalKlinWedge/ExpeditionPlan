@@ -10,6 +10,7 @@ import type { FormState } from "@/app/actions";
 import { plannerDeps } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { countriesFor } from "@/lib/countries";
+import { plural } from "@/lib/plural";
 
 /**
  * Etap 3 AI na webie: polecenie → łatka (ai_runs stage `tune`, rozmowa w ai_messages) → podgląd →
@@ -80,9 +81,11 @@ export async function proposePatch(tripId: string, _prev: FormState, form: FormD
     duration_ms: Date.now() - started,
   });
   if (error) return { error: message(error) };
+  // Jawne czasy: oba wpisy w jednym zapytaniu dostałyby ten sam `created_at`, a rozmowa ma iść po kolei.
+  const asked = new Date();
   await loaded.supabase.from("ai_messages").insert([
-    { id: uuidv7(), trip_id: tripId, role: "user", content: command, ai_run_id: runId },
-    { id: uuidv7(), trip_id: tripId, role: "assistant", content: patch.message, ai_run_id: runId },
+    { id: uuidv7(), trip_id: tripId, role: "user", content: command, ai_run_id: runId, created_at: asked.toISOString() },
+    { id: uuidv7(), trip_id: tripId, role: "assistant", content: patch.message, ai_run_id: runId, created_at: new Date(asked.getTime() + 1).toISOString() },
   ]);
   refresh();
   return { ok: "Propozycja gotowa — sprawdź podgląd i zastosuj albo odrzuć." };
@@ -132,7 +135,7 @@ export async function acceptPatch(tripId: string, runId: string): Promise<FormSt
   await loaded.supabase.from("ai_runs").update({ status: "accepted" }).eq("id", runId);
   refresh();
   const skipped = applied.results.filter((result) => !result.ok).length;
-  return { ok: `Zastosowano ${applied.results.length - skipped} zmian${skipped > 0 ? `, pominięto ${skipped}` : ""}.` };
+  return { ok: `Zastosowano ${plural(applied.results.length - skipped, ["zmianę", "zmiany", "zmian"])}${skipped > 0 ? `, pominięto ${skipped}` : ""}.` };
 }
 
 export async function rejectPatch(tripId: string, runId: string): Promise<FormState> {

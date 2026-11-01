@@ -124,9 +124,9 @@ export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: stri
                     {line.perPerson ? <span className="text-zinc-500"> · na osobę</span> : null}
                     {line.note ? <span className="block text-xs text-zinc-500">{line.note}</span> : null}
                   </td>
-                  <td className="py-1 text-zinc-500">{BUDGET_CATEGORY[line.category] ?? line.category}</td>
-                  <td className="py-1 text-zinc-500">{LINE_STATUS[line.status]}</td>
-                  <td className="py-1 text-right font-mono">
+                  <td className="py-1 pr-3 text-zinc-500">{BUDGET_CATEGORY[line.category] ?? line.category}</td>
+                  <td className="py-1 pr-3 text-zinc-500">{LINE_STATUS[line.status]}</td>
+                  <td className="py-1 text-right font-mono whitespace-nowrap">
                     {line.lowMinor === line.highMinor ? formatMoney(line.lowMinor, line.currency) : `${formatMoney(line.lowMinor, line.currency)} – ${formatMoney(line.highMinor, line.currency)}`}
                   </td>
                   {canEdit && (

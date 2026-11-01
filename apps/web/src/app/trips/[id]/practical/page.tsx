@@ -49,10 +49,10 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase
       .from("ai_runs")
-      .select("id, output, created_at")
+      .select("id, output, created_at, status")
       .eq("trip_id", id)
       .eq("stage", "practical")
-      .eq("status", "ok")
+      .in("status", ["ok", "accepted"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -81,7 +81,9 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
           note="Notatki, kontakty alarmowe, pakowanie, zadania i źródła — szkic do akceptacji (Gemini, ok. 30 s)"
         />
       )}
-      {canEdit && draft.success && draftRow.data && <PracticalReview tripId={id} runId={draftRow.data.id} info={draft.data} checks={output?.sources ?? []} />}
+      {canEdit && draft.success && draftRow.data?.status === "ok" && <PracticalReview tripId={id} runId={draftRow.data.id} info={draft.data} checks={output?.sources ?? []} />}
+      {/* Po „Dodaj zaznaczone” szkic znika z odświeżonej strony — potwierdzenie zostaje tutaj. */}
+      {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm text-green-700 dark:text-green-400">Ostatni szkic AI dodany do planu — notatki, kontakty i źródła są niżej, pakowanie w telefonie, zadania na stronie rezerwacji i zadań.</p>}
 
       <section className={card}>
         <h2 className="text-lg font-semibold">Notatki ({notes.length})</h2>

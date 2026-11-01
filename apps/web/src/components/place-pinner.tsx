@@ -12,16 +12,20 @@ export type OffMapPlace = { id: string; name: string; searchName?: string; usedB
  * ma je na mapie i może policzyć do niego trasę.
  */
 export function PlacePinner({ tripId, places }: { tripId: string; places: OffMapPlace[] }) {
-  if (places.length === 0) return null;
+  // Wynik ostatniego zapisu nad listą — wiersz przypiętego miejsca znika po odświeżeniu, a trzeba
+  // zobaczyć, co znalazło wyszukiwanie („→ Sidi Kaouki, Maroko”), żeby ocenić, czy to to miejsce.
+  const [last, setLast] = useState<FormState>({});
+  if (places.length === 0 && !last.ok) return null;
   return (
     <details className="rounded-lg border border-amber-200 p-3 text-sm dark:border-amber-900">
       <summary className="cursor-pointer font-medium">Miejsca bez współrzędnych ({places.length}) — przypnij albo wyszukaj</summary>
       <p className="mt-2 text-xs text-zinc-500">
         Współrzędne: w Google Maps przytrzymaj miejsce i skopiuj liczby z dołu ekranu albo wklej pełny link; w OpenStreetMap — link z paska adresu.
       </p>
+      {last.ok && <p className="mt-2 text-xs text-green-700 dark:text-green-400">{last.ok}</p>}
       <ul className="mt-3 flex flex-col gap-4">
         {places.map((place) => (
-          <PlaceRow key={place.id} tripId={tripId} place={place} />
+          <PlaceRow key={place.id} tripId={tripId} place={place} onSaved={setLast} />
         ))}
       </ul>
     </details>
@@ -31,12 +35,17 @@ export function PlacePinner({ tripId, places }: { tripId: string; places: OffMap
 const input = "min-w-0 flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700";
 const button = "rounded-md border border-zinc-300 px-3 py-1 disabled:opacity-50 dark:border-zinc-700";
 
-function PlaceRow({ tripId, place }: { tripId: string; place: OffMapPlace }) {
+function PlaceRow({ tripId, place, onSaved }: { tripId: string; place: OffMapPlace; onSaved: (result: FormState) => void }) {
   const [coords, setCoords] = useState("");
   const [query, setQuery] = useState(place.searchName ?? place.name);
   const [result, setResult] = useState<FormState>({});
   const [pending, start] = useTransition();
-  const run = (action: () => Promise<FormState>) => start(async () => setResult(await action()));
+  const run = (action: () => Promise<FormState>) =>
+    start(async () => {
+      const answer = await action();
+      setResult(answer);
+      if (answer.ok) onSaved(answer);
+    });
   return (
     <li className="flex flex-col gap-2">
       <div>
