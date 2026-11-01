@@ -5,9 +5,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { PlanScreen } from '@/features/plan/plan-screen';
 import { supabase } from '@/lib/supabase';
 
-/** Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy i kto ma dostęp. */
+/** Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy, kto ma dostęp i wejście w plan dnia. */
 
 const ROLE: Record<string, string> = { owner: 'właściciel', editor: 'edytor', viewer: 'widz' };
 
@@ -24,6 +25,7 @@ export function TripsCard({ reloadKey }: { reloadKey: number }) {
   const [error, setError] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [details, setDetails] = useState<Details | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data, error: loadError } = await supabase.from('my_trips').select('*').order('start_date');
@@ -78,6 +80,11 @@ export function TripsCard({ reloadKey }: { reloadKey: number }) {
                   <ThemedText type="small">
                     Plan: {details.days} dni, {details.items} punktów
                   </ThemedText>
+                  {details.days > 0 && (
+                    <Pressable onPress={() => setPlan(trip.id)} hitSlop={8}>
+                      <ThemedText type="linkPrimary">Plan dzień po dniu →</ThemedText>
+                    </Pressable>
+                  )}
                   <ThemedText type="small">
                     Uczestnicy:{' '}
                     {details.travelers.map((person) => (person.age === null ? person.name : `${person.name} (${person.age})`)).join(', ') || '—'}
@@ -91,6 +98,7 @@ export function TripsCard({ reloadKey }: { reloadKey: number }) {
           )}
         </View>
       ))}
+      <PlanScreen tripId={plan} onClose={() => setPlan(null)} />
     </ThemedView>
   );
 }

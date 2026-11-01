@@ -5,6 +5,7 @@
   "dependencies": {
     "@expeditionplan/core": "*",
     "@expeditionplan/db": "^0.0.0",
+    "@expeditionplan/sync": "*",
     "@expo/ui": "~58.0.26",
     "@maplibre/maplibre-react-native": "^11.5.1",
     "@protomaps/basemaps": "^5.7.2",

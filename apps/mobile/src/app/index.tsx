@@ -8,12 +8,11 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { LoginCard } from '@/features/auth/login-card';
 import { useSession } from '@/features/auth/session';
-import { TripsCard } from '@/features/trips/trips-card';
 import { UpdateCard } from '@/features/updates/update-notice';
 import { isConfigured, supabase } from '@/lib/supabase';
 
 /**
- * Start (MVP-1): logowanie, moje wyjazdy, dołączenie z linku. Linki z zewnątrz przychodzą tu jako
+ * Start (MVP-1): logowanie, konto, dołączenie z linku, aktualizacje (wyjazdy mają własną zakładkę). Linki z zewnątrz przychodzą tu jako
  * parametry (`+native-intent`): `code` — powrót z linku logowania, `join` — zaproszenie.
  * Zaproszenie otwarte przed zalogowaniem czeka, aż logowanie się skończy.
  */
@@ -21,7 +20,6 @@ export default function HomeScreen() {
   const session = useSession();
   const params = useLocalSearchParams<{ code?: string; join?: string }>();
   const [message, setMessage] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
   const pendingJoin = useRef<string | null>(null);
 
   useEffect(() => {
@@ -42,8 +40,7 @@ export default function HomeScreen() {
     if (!token || !session) return;
     pendingJoin.current = null;
     void supabase.rpc('accept_invite', { p_token: token }).then(({ error }) => {
-      setMessage(error ? 'Zaproszenie wygasło, zostało wykorzystane albo jest nieprawidłowe.' : 'Dołączono do wyjazdu.');
-      setReloadKey((key) => key + 1);
+      setMessage(error ? 'Zaproszenie wygasło, zostało wykorzystane albo jest nieprawidłowe.' : 'Dołączono do wyjazdu — jest w zakładce Wyjazdy.');
     });
   }, [params.join, session]);
 
@@ -67,7 +64,6 @@ export default function HomeScreen() {
                   </ThemedText>
                 </Pressable>
               </ThemedView>
-              <TripsCard reloadKey={reloadKey} />
             </>
           )}
           <UpdateCard />
