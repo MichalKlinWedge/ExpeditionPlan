@@ -1,0 +1,127 @@
+import { localToday, tripStats, type TripStats } from '@expeditionplan/core';
+import { pendingCount } from '@expeditionplan/sync';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Spacing } from '@/constants/theme';
+import { loadMyTrips } from '@/features/trips/my-trips';
+import { localDb } from '@/lib/local-db';
+
+/**
+ * Start: statystyki wyjazdów — trwający, najbliższy, liczby i dni — oraz co leży na telefonie
+ * na wypadek braku sieci. Z listy wyjazdów (także tej z pamięci telefonu), więc działa offline.
+ */
+
+type Local = { downloaded: number; items: number; pending: number };
+type Data = { stats: TripStats; local: Local; offline: boolean };
+
+const days = (count: number) => `${count} ${count === 1 ? 'dzień' : 'dni'}`;
+const shortDate = (date: string) => `${Number(date.slice(8))}.${date.slice(5, 7)}`;
+
+function localCounts(ids: string[]): Local {
+  if (ids.length === 0) return { downloaded: 0, items: 0, pending: pendingCount(localDb) };
+  const marks = ids.map(() => '?').join(', ');
+  const downloaded = localDb.all<{ n: number }>(`select count(*) as n from sync_state where trip_id in (${marks})`, ids)[0]?.n ?? 0;
+  const items = localDb.all<{ n: number }>(`select count(*) as n from rows where tbl = 'items' and deleted_at is null and trip_id in (${marks})`, ids)[0]?.n ?? 0;
+  return { downloaded, items, pending: pendingCount(localDb) };
+}
+
+export function StatsCard({ signedIn }: { signedIn: boolean }) {
+  const [data, setData] = useState<Data | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadMyTrips(signedIn).then((result) => {
+        const trips = result.trips.map((trip) => ({ id: trip.id!, title: trip.title!, startDate: trip.start_date!, endDate: trip.end_date! }));
+        setData({ stats: tripStats(trips, localToday()), local: localCounts(trips.map((trip) => trip.id)), offline: result.offline });
+      });
+    }, [signedIn]),
+  );
+
+  if (data === null) return <ThemedText type="small">Wczytuję…</ThemedText>;
+  const { stats, local } = data;
+  if (stats.total === 0) {
+    return (
+      <ThemedText type="small" themeColor="textSecondary">
+        {signedIn ? 'Nie masz jeszcze wyjazdów — utwórz je na webie albo dołącz z linku.' : 'Na telefonie nie ma pobranych wyjazdów.'}
+      </ThemedText>
+    );
+  }
+  const year = localToday().slice(0, 4);
+
+  return (
+    <View style={styles.stack}>
+      {stats.ongoing && (
+        <Pressable onPress={() => router.navigate('/plan')}>
+          <ThemedView type="backgroundSelected" style={styles.hero}>
+            <ThemedText type="small" themeColor="textSecondary">
+              TRWA
+            </ThemedText>
+            <ThemedText type="subtitle" numberOfLines={2}>
+              {stats.ongoing.trip.title}
+            </ThemedText>
+            <ThemedText>
+              Dzień {stats.ongoing.dayNo} z {stats.ongoing.days} · plan dnia →
+            </ThemedText>
+          </ThemedView>
+        </Pressable>
+      )}
+      {stats.next && (
+        <ThemedView type="backgroundElement" style={styles.hero}>
+          <ThemedText type="small" themeColor="textSecondary">
+            NAJBLIŻSZY WYJAZD
+          </ThemedText>
+          <ThemedText type="smallBold">{stats.next.trip.title}</ThemedText>
+          <ThemedText type="small">
+            {stats.next.inDays === 1 ? 'jutro' : `za ${days(stats.next.inDays)}`} · {shortDate(stats.next.trip.startDate)}–{shortDate(stats.next.trip.endDate)} · {days(stats.next.days)}
+          </ThemedText>
+        </ThemedView>
+      )}
+
+      <View style={styles.grid}>
+        <Tile value={stats.total} label="wyjazdów" />
+        <Tile value={stats.upcoming} label="przed wami" />
+        <Tile value={stats.past} label="zakończonych" />
+        <Tile value={stats.daysTraveled} label="dni w podróży" />
+        <Tile value={stats.daysAhead} label="dni zaplanowanych" />
+        <Tile value={stats.daysThisYear} label={`dni w ${year}`} />
+      </View>
+
+      <ThemedView type="backgroundElement" style={styles.hero}>
+        <ThemedText type="small" themeColor="textSecondary">
+          NA TELEFONIE (OFFLINE)
+        </ThemedText>
+        <ThemedText type="small">
+          {local.downloaded} z {stats.total} planów pobranych · {local.items} punktów
+        </ThemedText>
+        {local.pending > 0 && <ThemedText type="small">{local.pending} zapisów czeka na wysłanie</ThemedText>}
+        {data.offline && (
+          <ThemedText type="small" themeColor="textSecondary">
+            {signedIn ? 'Bez połączenia — dane z ostatniej synchronizacji.' : 'Niezalogowany — dane z telefonu.'}
+          </ThemedText>
+        )}
+      </ThemedView>
+    </View>
+  );
+}
+
+function Tile({ value, label }: { value: number; label: string }) {
+  return (
+    <ThemedView type="backgroundElement" style={styles.tile}>
+      <ThemedText type="subtitle">{value}</ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  stack: { gap: Spacing.three },
+  hero: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.one },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  tile: { flexBasis: '31%', flexGrow: 1, padding: Spacing.three, borderRadius: Spacing.three },
+});

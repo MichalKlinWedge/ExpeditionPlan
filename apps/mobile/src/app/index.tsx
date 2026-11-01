@@ -8,13 +8,14 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { LoginCard } from '@/features/auth/login-card';
 import { useSession } from '@/features/auth/session';
+import { StatsCard } from '@/features/home/stats-card';
 import { SettingsScreen } from '@/features/settings/settings-screen';
 import { UpdateBadge } from '@/features/updates/update-notice';
 import { isConfigured, supabase } from '@/lib/supabase';
 
 /**
- * Start (MVP-1): logowanie, dołączenie z linku, znaczek nowej wersji i wejście w Ustawienia
- * (konto, wersja). Wyjazdy i plan mają własne zakładki. Linki z zewnątrz przychodzą tu jako
+ * Start: statystyki wyjazdów (także offline i bez logowania), logowanie, dołączenie z linku,
+ * ikona nowej wersji i wejście w Ustawienia (konto, wersja). Wyjazdy i plan mają własne zakładki. Linki z zewnątrz przychodzą tu jako
  * parametry (`+native-intent`): `code` — powrót z linku logowania, `join` — zaproszenie.
  * Zaproszenie otwarte przed zalogowaniem czeka, aż logowanie się skończy.
  */
@@ -67,11 +68,7 @@ export default function HomeScreen() {
           {!isConfigured && <ThemedText type="small">Brak adresu Supabase w tej wersji aplikacji (EXPO_PUBLIC_SUPABASE_URL).</ThemedText>}
           {isConfigured && session === undefined && <ThemedText type="small">Wczytuję…</ThemedText>}
           {isConfigured && session === null && <LoginCard />}
-          {session && (
-            <ThemedText type="small" themeColor="textSecondary">
-              Zalogowany: {session.user.email}. Wyjazdy i plan są w zakładkach na dole.
-            </ThemedText>
-          )}
+          {isConfigured && session !== undefined && <StatsCard signedIn={session !== null} />}
         </ScrollView>
       </SafeAreaView>
       <SettingsScreen visible={settings} onClose={() => setSettings(false)} />

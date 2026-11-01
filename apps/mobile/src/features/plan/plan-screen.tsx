@@ -1,22 +1,35 @@
 import {
   activeVariants as resolveVariants,
+  addItem,
   type DaySchedule,
+  documentProblem,
   instantToZoned,
+  ItemInUseError,
+  moveToDay,
+  moveWithinDay,
+  type PlanEdit,
+  type PlanItem,
+  removeItem,
+  updateItem,
   proposeCuts,
   type Scenario,
   scheduleDay,
   type ScheduleWarning,
 } from '@expeditionplan/core';
-import { cachedTrip, refreshTrip, type TripState } from '@expeditionplan/sync';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type CachedTrip, cachedTrip, recordDayEvent, refreshTrip, savePlanEdit, type TripState, uuidv7 } from '@expeditionplan/sync';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
+import { type DayEvent, NowCard } from '@/features/plan/now-card';
 import { useTheme } from '@/hooks/use-theme';
 import { localDb, remote } from '@/lib/local-db';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Plan dnia na telefonie (MVP-1, tylko odczyt). Offline: najpierw stan z SQLite (`cachedTrip`),
@@ -24,18 +37,6 @@ import { localDb, remote } from '@/lib/local-db';
  * na pierwszy plan. Godziny liczy silnik z packages/core na telefonie. Jeden dzień na ekranie;
  * domyślnie dzisiejszy, jeśli wyjazd trwa.
  */
-
-const KIND: Record<string, string> = {
-  visit: 'zwiedzanie',
-  activity: 'aktywność',
-  meal: 'posiłek',
-  transport: 'przejazd',
-  lodging: 'nocleg',
-  errand: 'sprawa',
-  meetup: 'spotkanie',
-  free: 'czas wolny',
-  decision: 'decyzja',
-};
 
 const SLACK: Record<string, { label: string; color: string }> = {
   large: { label: 'duży zapas', color: '#2e7d32' },
@@ -66,16 +67,16 @@ function initialDay(state: TripState): number {
   return Math.max(today, 0);
 }
 
-type Props = { tripId: string | null; signedIn: boolean; onClose: () => void };
+type Props = { tripId: string | null; signedIn: boolean; canAct: boolean; onClose: () => void };
 
 /** Plan w pełnoekranowym oknie nad listą wyjazdów (Start). */
-export function PlanScreen({ tripId, signedIn, onClose }: Props) {
+export function PlanScreen({ tripId, signedIn, canAct, onClose }: Props) {
   return (
     <Modal visible={tripId !== null} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
-            {tripId !== null && <Plan tripId={tripId} signedIn={signedIn} onClose={onClose} />}
+            {tripId !== null && <Plan tripId={tripId} signedIn={signedIn} canAct={canAct} onClose={onClose} />}
           </SafeAreaView>
         </ThemedView>
       </SafeAreaProvider>
@@ -87,6 +88,8 @@ type PlanProps = {
   tripId: string;
   /** Bez logowania: tylko stan z telefonu, bez synchronizacji. */
   signedIn: boolean;
+  /** Edycja planu, „Zostajemy dłużej” i „Pomiń” — organizator i edytor (RLS). */
+  canAct: boolean;
   /** Przycisk powrotu (okno z listy wyjazdów). */
   onClose?: () => void;
   /** Miejsce na pasek zakładek. */
@@ -94,8 +97,16 @@ type PlanProps = {
 };
 
 /** Plan jednego wyjazdu. */
-export function Plan({ tripId, signedIn, onClose, bottomInset = 0 }: PlanProps) {
-  const [state, setState] = useState<TripState | null>(null);
+export function Plan({ tripId, signedIn, canAct, onClose, bottomInset = 0 }: PlanProps) {
+  const [trip, setTrip] = useState<CachedTrip | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [lastDelay, setLastDelay] = useState<{ itemRef: string; minutes: number } | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(0);
+  /** Id nowych punktów, zanim synchronizacja wpisze je do bazy telefonu. */
+  const extraIds = useRef<Record<string, string>>({});
+  /** Zapisy idą po kolei — kolejna zmiana może dotyczyć punktu dodanego przed chwilą. */
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [sync, setSync] = useState<{ busy: boolean; syncedAt?: string; error?: string }>({ busy: signedIn });
   const [invalid, setInvalid] = useState('');
   const [index, setIndex] = useState(0);
@@ -103,21 +114,22 @@ export function Plan({ tripId, signedIn, onClose, bottomInset = 0 }: PlanProps) 
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const placed = useRef(false);
 
-  const show = useCallback((next: TripState, syncedAt: string) => {
-    setState(next);
+  const state = trip?.state ?? null;
+
+  const show = useCallback((next: CachedTrip) => {
+    setTrip(next);
     setInvalid('');
     // Dzień ustawia się raz — odświeżenie nie przerzuca oglądanego dnia.
-    if (!placed.current) setIndex(initialDay(next));
+    if (!placed.current) setIndex(initialDay(next.state));
     placed.current = true;
-    setSync({ busy: false, syncedAt });
+    setSync({ busy: false, syncedAt: next.syncedAt });
   }, []);
 
   const load = useCallback(async () => {
     if (!signedIn) return;
     setSync((current) => ({ ...current, busy: true }));
     try {
-      const fresh = await refreshTrip(localDb, remote, tripId);
-      show(fresh.state, fresh.syncedAt);
+      show(await refreshTrip(localDb, remote, tripId));
     } catch (e) {
       setSync((current) => ({ ...current, busy: false, error: message(e) }));
     }
@@ -127,7 +139,7 @@ export function Plan({ tripId, signedIn, onClose, bottomInset = 0 }: PlanProps) 
     const first = setTimeout(() => {
       try {
         const cached = cachedTrip(localDb, tripId);
-        if (cached !== null) show(cached.state, cached.syncedAt);
+        if (cached !== null) show(cached);
       } catch (e) {
         setInvalid(`Plan na telefonie nie przechodzi walidacji: ${message(e)}`);
       }
@@ -136,17 +148,78 @@ export function Plan({ tripId, signedIn, onClose, bottomInset = 0 }: PlanProps) 
     const listener = AppState.addEventListener('change', (next) => {
       if (next === 'active') void load();
     });
+    // Karta „Teraz / następny” przesuwa się z zegarem.
+    const tick = setInterval(() => setNow(Date.now()), 30_000);
     return () => {
       clearTimeout(first);
       listener.remove();
+      clearInterval(tick);
     };
   }, [tripId, load, show]);
 
+  /**
+   * Edycja planu (online): zmiana od razu w dokumencie na ekranie, zapis w bazie przez
+   * `savePlanEdit`, potem synchronizacja do SQLite. Błąd (np. brak sieci) cofa zmianę.
+   */
+  const apply = (edit: PlanEdit | null) => {
+    if (edit === null || trip === null) return;
+    const invalidDoc = documentProblem(edit.doc);
+    if (invalidDoc !== null) return Alert.alert('Nie zapisano', invalidDoc);
+    const before = trip;
+    setTrip({ ...trip, state: { ...trip.state, doc: edit.doc } });
+    setSaving((count) => count + 1);
+    queue.current = queue.current
+      .then(async () => {
+        const ids = await savePlanEdit(supabase as unknown as SupabaseClient, tripId, edit, { ...before.ids, ...extraIds.current });
+        extraIds.current = { ...extraIds.current, ...ids };
+        await load();
+      })
+      .catch((e: unknown) => {
+        setTrip(before);
+        Alert.alert('Nie zapisano zmiany', `${message(e)}\n\nEdycja planu wymaga połączenia z internetem.`);
+      })
+      .finally(() => setSaving((count) => count - 1));
+  };
+
+  const actions: Actions | null =
+    signedIn && canAct && editMode && trip !== null
+      ? {
+          move: (ref, direction) => apply(moveWithinDay(trip.state.doc, ref, direction)),
+          moveTo: (ref, dayRef) => apply(moveToDay(trip.state.doc, ref, dayRef)),
+          update: (ref, fields) => apply(updateItem(trip.state.doc, ref, fields)),
+          add: (dayRef, fields) => apply(addItem(trip.state.doc, dayRef, uuidv7(), fields)),
+          remove: (ref) => {
+            try {
+              apply(removeItem(trip.state.doc, ref));
+            } catch (e) {
+              Alert.alert('Nie można usunąć', e instanceof ItemInUseError ? e.message : message(e));
+            }
+          },
+        }
+      : null;
+
+  /** Zdarzenie dnia: zapis lokalny (od razu w planie), potem wysyłka przy synchronizacji. */
+  const record = (dayRef: string, itemRef: string, event: DayEvent) => {
+    if (trip === null) return;
+    try {
+      recordDayEvent(localDb, tripId, trip, dayRef, itemRef, event);
+      setLastDelay(event.kind === 'delay' && event.minutes > 0 ? { itemRef, minutes: event.minutes } : null);
+      const updated = cachedTrip(localDb, tripId);
+      if (updated !== null) setTrip(updated);
+      setNow(Date.now());
+      void load();
+    } catch (e) {
+      Alert.alert('Nie zapisano', message(e));
+    }
+  };
+
   let status: string;
   if (!signedIn) status = sync.syncedAt ? `Niezalogowany — plan z ${stamp(sync.syncedAt)}, bez synchronizacji` : 'Ten plan nie był pobrany na telefon — zaloguj się na ekranie Start.';
+  else if (saving > 0) status = 'Zapisuję zmianę…';
   else if (sync.busy) status = 'Synchronizuję…';
   else if (sync.error !== undefined) status = sync.syncedAt ? `Bez połączenia — plan z ${stamp(sync.syncedAt)}` : `Brak połączenia, a plan nie był jeszcze pobrany na telefon (${sync.error}).`;
   else status = sync.syncedAt ? `Zsynchronizowano ${stamp(sync.syncedAt)}` : '';
+  if (trip !== null && trip.pending > 0) status += ` · ${trip.pending === 1 ? '1 zmiana czeka' : `${trip.pending} zmian czeka`} na wysłanie`;
   const error = invalid;
 
   const variants = useMemo(() => ({ ...state?.inputs.activeVariants, ...overrides }), [state, overrides]);
@@ -164,7 +237,12 @@ export function Plan({ tripId, signedIn, onClose, bottomInset = 0 }: PlanProps) 
         <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
           {state?.doc.trip.title ?? ''}
         </ThemedText>
-        {signedIn && (
+        {signedIn && canAct && state !== null && (
+          <Pressable onPress={() => setEditMode(!editMode)} hitSlop={12}>
+            <ThemedText type="linkPrimary">{editMode ? 'Gotowe' : 'Edytuj'}</ThemedText>
+          </Pressable>
+        )}
+        {signedIn && !editMode && (
           <Pressable onPress={() => void load()} hitSlop={12}>
             <ThemedText type="linkPrimary">Odśwież</ThemedText>
           </Pressable>
@@ -181,7 +259,12 @@ export function Plan({ tripId, signedIn, onClose, bottomInset = 0 }: PlanProps) 
         <>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsBar} contentContainerStyle={styles.chips}>
             {days.map((each, at) => (
-              <Chip key={each.ref} active={at === index} label={`${at + 1}. ${each.date.slice(8)}.${each.date.slice(5, 7)}`} onPress={() => setIndex(at)} />
+              <Chip
+                key={each.ref}
+                active={at === index}
+                label={instantToZoned(now, each.tz).date === each.date ? `${at + 1}. dziś` : `${at + 1}. ${each.date.slice(8)}.${each.date.slice(5, 7)}`}
+                onPress={() => setIndex(at)}
+              />
             ))}
           </ScrollView>
           <View style={styles.chips}>
@@ -195,6 +278,19 @@ export function Plan({ tripId, signedIn, onClose, bottomInset = 0 }: PlanProps) 
               scenario={scenario}
               variants={variants}
               onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
+              actions={actions}
+              top={
+                instantToZoned(now, day.tz).date === day.date
+                  ? (schedule) => (
+                      <NowCard
+                        schedule={schedule}
+                        now={now}
+                        lastDelay={lastDelay}
+                        onEvent={signedIn && canAct ? (itemRef, event) => record(day.ref, itemRef, event) : null}
+                      />
+                    )
+                  : undefined
+              }
             />
             <View style={styles.nav}>
               <Pressable disabled={index === 0} onPress={() => setIndex(index - 1)} hitSlop={12}>
@@ -234,10 +330,24 @@ type DayProps = {
   scenario: Scenario;
   variants: Record<string, string>;
   onChoose: (groupRef: string, variantRef: string) => void;
+  /** Karta nad punktami dnia, liczona z tego samego harmonogramu („Teraz / następny” w dniu dzisiejszym). */
+  top?: (schedule: DaySchedule) => ReactNode;
+  /** Tryb edycji (organizator, edytor); `null` = tylko odczyt. */
+  actions: Actions | null;
 };
 
-function Day({ state, dayRef, scenario, variants, onChoose }: DayProps) {
+type Actions = {
+  move: (ref: string, direction: -1 | 1) => void;
+  moveTo: (ref: string, dayRef: string | null) => void;
+  update: (ref: string, fields: ItemFields) => void;
+  add: (dayRef: string, fields: ItemFields) => void;
+  remove: (ref: string) => void;
+};
+
+function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayProps) {
   const { doc, inputs } = state;
+  const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
+  const [moving, setMoving] = useState<string | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs };
@@ -298,6 +408,8 @@ function Day({ state, dayRef, scenario, variants, onChoose }: DayProps) {
         </View>
       ))}
 
+      {schedule && top?.(schedule)}
+
       {failure && <ThemedText style={{ color: HARD }}>Nie udało się policzyć dnia: {failure}</ThemedText>}
 
       {schedule?.items.map((item) => {
@@ -316,9 +428,56 @@ function Day({ state, dayRef, scenario, variants, onChoose }: DayProps) {
               {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ''}
             </ThemedText>
             <Warnings list={schedule!.warnings.filter((warning) => warning.itemRef === item.ref)} />
+            {actions && source && (
+              <View style={styles.edit}>
+                <EditButton label="↑" onPress={() => actions.move(item.ref, -1)} />
+                <EditButton label="↓" onPress={() => actions.move(item.ref, 1)} />
+                <EditButton label="Edytuj" onPress={() => setEditing(source)} />
+                <EditButton label="Przenieś" onPress={() => setMoving(item.ref)} />
+                <EditButton
+                  label="Usuń"
+                  onPress={() =>
+                    Alert.alert('Usunąć punkt?', `„${item.title}” zniknie z planu.`, [
+                      { text: 'Anuluj', style: 'cancel' },
+                      { text: 'Usuń', style: 'destructive', onPress: () => actions.remove(item.ref) },
+                    ])
+                  }
+                />
+              </View>
+            )}
           </ThemedView>
         );
       })}
+
+      {actions && (
+        <Pressable onPress={() => setEditing('new')} hitSlop={8}>
+          <ThemedText type="linkPrimary">+ Dodaj punkt</ThemedText>
+        </Pressable>
+      )}
+      {actions && (
+        <>
+          <ItemEditor
+            item={editing === 'new' ? null : editing}
+            visible={editing !== null}
+            onCancel={() => setEditing(null)}
+            onSave={(fields) => {
+              if (editing === 'new') actions.add(dayRef, fields);
+              else if (editing !== null) actions.update(editing.ref, fields);
+              setEditing(null);
+            }}
+          />
+          <DayPicker
+            doc={doc}
+            current={dayRef}
+            visible={moving !== null}
+            onCancel={() => setMoving(null)}
+            onPick={(target) => {
+              if (moving !== null) actions.moveTo(moving, target);
+              setMoving(null);
+            }}
+          />
+        </>
+      )}
 
       {schedule && <Warnings list={schedule.warnings.filter((warning) => warning.itemRef === undefined)} />}
 
@@ -353,6 +512,15 @@ function Day({ state, dayRef, scenario, variants, onChoose }: DayProps) {
   );
 }
 
+function EditButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable onPress={onPress} hitSlop={4} style={[styles.editButton, { borderColor: theme.backgroundSelected }]}>
+      <ThemedText type="small">{label}</ThemedText>
+    </Pressable>
+  );
+}
+
 function Warnings({ list }: { list: ScheduleWarning[] }) {
   return list.map((warning, at) => (
     <ThemedText key={at} type="small" style={{ color: warning.severity === 'hard' ? HARD : SOFT }}>
@@ -381,4 +549,6 @@ const styles = StyleSheet.create({
   child: { marginLeft: Spacing.four },
   nav: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.three },
   hidden: { opacity: 0 },
+  edit: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingTop: Spacing.two },
+  editButton: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
 });

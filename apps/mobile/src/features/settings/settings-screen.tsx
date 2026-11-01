@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +13,19 @@ import { supabase } from '@/lib/supabase';
 /** Ustawienia (zębatka na Start): konto i wersja aplikacji z ręcznym sprawdzeniem aktualizacji. */
 export function SettingsScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const session = useSession();
+  const [name, setName] = useState<string | null>(null);
+  const userId = session?.user.id;
+
+  // Imię z profilu; bez sieci zostaje sam e-mail.
+  useEffect(() => {
+    if (!visible || userId === undefined) return;
+    void supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', userId)
+      .maybeSingle()
+      .then(({ data }) => setName(data?.display_name ?? null));
+  }, [visible, userId]);
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
@@ -28,6 +42,10 @@ export function SettingsScreen({ visible, onClose }: { visible: boolean; onClose
               <ThemedView type="backgroundElement" style={styles.card}>
                 {session ? (
                   <>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Zalogowany
+                    </ThemedText>
+                    {name && <ThemedText type="smallBold">{name}</ThemedText>}
                     <ThemedText type="small">{session.user.email}</ThemedText>
                     <Pressable
                       onPress={() => {

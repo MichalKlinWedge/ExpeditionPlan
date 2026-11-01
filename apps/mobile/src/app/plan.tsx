@@ -64,7 +64,13 @@ export default function PlanTab() {
                 ))}
               </ScrollView>
             )}
-            <Plan key={selected} tripId={selected} signedIn={session !== null} bottomInset={BottomTabInset} />
+            <Plan
+              key={selected}
+              tripId={selected}
+              signedIn={session !== null}
+              canAct={['owner', 'editor'].includes(trips!.find((trip) => trip.id === selected)?.role ?? '')}
+              bottomInset={BottomTabInset}
+            />
           </View>
         )}
       </SafeAreaView>

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { rowsFromDocument } from '../document.ts';
 import type { Remote, ServerRow, TripRow } from '../remote.ts';
-import { cachedTrip, forgetLocal, refreshTrip } from '../trip-cache.ts';
+import { cachedTrip, forgetLocal, recordDayEvent, refreshTrip } from '../trip-cache.ts';
 import { uuidv7 } from '../uuid.ts';
 import { nodeDb } from './helpers/node-db.ts';
 
@@ -93,6 +93,25 @@ describe('plan offline na telefonie', () => {
     expect(after.changed).toBe(1);
     expect(after.state.doc.items.some((item) => item.ref === free.ref)).toBe(false);
     expect(after.state.doc.items).toHaveLength(first.state.doc.items.length - 1);
+  });
+
+  it('„Zostajemy dłużej” i „Pomiń” offline: plan liczy się od razu, zdarzenia czekają w outboxie', async () => {
+    const db = nodeDb();
+    const server = planServer('maroko');
+    await refreshTrip(db, server.remote, TRIP);
+    server.setOffline(true);
+    const before = cachedTrip(db, TRIP)!;
+    const item = before.state.doc.items.find((each) => each.dayRef === 'd2' && each.parentRef === undefined)!;
+
+    recordDayEvent(db, TRIP, before, 'd2', item.ref, { kind: 'delay', minutes: 30 });
+    recordDayEvent(db, TRIP, before, 'd2', 'd2-bahia', { kind: 'skip' });
+    const after = cachedTrip(db, TRIP)!;
+    expect(after.state.inputs.delays).toEqual([{ itemRef: item.ref, minutes: 30 }]);
+    expect(after.state.inputs.skipRefs).toEqual(['d2-bahia']);
+    expect(after.pending).toBe(2);
+
+    recordDayEvent(db, TRIP, after, 'd2', item.ref, { kind: 'delay', minutes: -30 });
+    expect(cachedTrip(db, TRIP)!.state.inputs.delays.reduce((sum, each) => sum + each.minutes, 0)).toBe(0);
   });
 
   it('po zmianie konta na telefonie nie zostaje nic', async () => {

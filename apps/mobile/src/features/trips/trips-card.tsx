@@ -122,7 +122,12 @@ export function TripsCard({ reloadKey, signedIn }: { reloadKey: number; signedIn
           )}
         </View>
       ))}
-      <PlanScreen tripId={plan} signedIn={signedIn} onClose={() => setPlan(null)} />
+      <PlanScreen
+        tripId={plan}
+        signedIn={signedIn}
+        canAct={['owner', 'editor'].includes(trips?.find((trip) => trip.id === plan)?.role ?? '')}
+        onClose={() => setPlan(null)}
+      />
     </ThemedView>
   );
 }
