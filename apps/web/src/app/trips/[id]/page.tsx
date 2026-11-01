@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { InviteForm, TravelerForm } from "@/components/forms";
+import { InviteForm, RemoveTripForm, TravelerForm } from "@/components/forms";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
 
-/** Wyjazd: podsumowanie planu, „Zaplanuj z AI” (gdy jest brief), członkowie z rolami, uczestnicy, zaproszenie linkiem. */
+/**
+ * Wyjazd: podsumowanie planu, „Zaplanuj z AI” (gdy jest brief), członkowie z rolami, uczestnicy,
+ * zaproszenie linkiem; na dole usunięcie wyjazdu (właściciel) albo wyjście z niego.
+ */
 
 // Planowanie z AI (akcja serwera na tej stronie) trwa do kilku minut.
 export const maxDuration = 300;
@@ -134,6 +137,10 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           ))}
         </ul>
         {role === "owner" && <InviteForm tripId={id} />}
+      </section>
+
+      <section className={section}>
+        <RemoveTripForm tripId={id} title={title} owner={role === "owner"} />
       </section>
     </>
   );

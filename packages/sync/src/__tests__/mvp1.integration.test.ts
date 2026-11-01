@@ -5,6 +5,7 @@ import { afterAll, describe, expect, inject, it } from 'vitest';
 
 import { rowsFromDocument, stateFromPayload } from '../document.ts';
 import { importTrip } from '../import.ts';
+import { cachedTrip, pruneLocal, refreshTrip } from '../trip-cache.ts';
 import { uuidv7 } from '../uuid.ts';
 import { createDevice, createTestUser, loadFixture } from './helpers/harness.ts';
 
@@ -68,5 +69,29 @@ describe('MVP-1 — plan w bazie, widz z linku', () => {
     expect(result.error).not.toBeNull();
     const trips = await owner.client.from('trips').select('id');
     expect(trips.data).toEqual([]);
+  });
+
+  it('wyjazd usunięty na webie znika z telefonu widza; edytor może wyjść, a usunąć nie', async () => {
+    const owner = await device();
+    const editor = await device();
+    const viewer = await device();
+    const { tripId } = await importTrip(owner.client, loadFixture('dinara'));
+    for (const [member, role] of [[editor, 'editor'], [viewer, 'viewer']] as const) {
+      const invite = await owner.client.rpc('create_invite', { p_trip: tripId, p_role: role });
+      expect((await member.client.rpc('accept_invite', { p_token: invite.data })).error).toBeNull();
+    }
+    await refreshTrip(viewer.db, viewer.remote, tripId);
+    expect(cachedTrip(viewer.db, tripId)).not.toBeNull();
+
+    expect((await editor.client.rpc('delete_trip', { p_trip: tripId })).error?.code).toBe('42501');
+    expect((await editor.client.rpc('leave_trip', { p_trip: tripId })).error).toBeNull();
+    expect((await editor.client.from('my_trips').select('id')).data).toEqual([]);
+
+    expect((await owner.client.rpc('delete_trip', { p_trip: tripId })).error).toBeNull();
+    expect(await viewer.remote.pull(tripId, 0)).toBeNull();
+    const list = await viewer.client.from('my_trips').select('id');
+    expect(list.data).toEqual([]);
+    expect(pruneLocal(viewer.db, list.data!.map((trip) => trip.id!))).toEqual([tripId]);
+    expect(cachedTrip(viewer.db, tripId)).toBeNull();
   });
 });

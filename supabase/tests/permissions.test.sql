@@ -2,7 +2,7 @@
 -- Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(48);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000001', 'owner@test.local'),
@@ -104,6 +104,8 @@ update public.tasks set status = 'done' where ref = 't2';
 select is((select status from public.tasks where ref = 't2'), 'open', 'widz nie odhaczy cudzego zadania');
 select throws_ok($$update public.tasks set title = 'Inne' where ref = 't1'$$, '42501', null,
   'widz nie zmienia treści swojego zadania');
+select throws_ok($$select public.delete_trip('10000000-0000-4000-8000-000000000001')$$, '42501', null,
+  'widz nie usuwa wyjazdu');
 
 select lives_ok($$insert into public.packing_checks (id, trip_id, packing_item_id, traveler_id)
   values ('91000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001',
@@ -129,6 +131,8 @@ select is((select count(*) from public.documents), 1::bigint,
 update public.trip_members set role = 'owner' where user_id = '00000000-0000-4000-8000-000000000002';
 select is((select role from public.trip_members where user_id = '00000000-0000-4000-8000-000000000002'), 'editor',
   'edytor nie zmienia ról');
+select throws_ok($$select public.delete_trip('10000000-0000-4000-8000-000000000001')$$, '42501', null,
+  'edytor nie usuwa wyjazdu');
 
 -- ── Obcy ─────────────────────────────────────────────────────────────────────────────────────
 select pg_temp.login('00000000-0000-4000-8000-000000000004');
@@ -145,6 +149,38 @@ select throws_ok($$insert into public.items (id, trip_id, ref, kind, title, plan
 select pg_temp.login('00000000-0000-4000-8000-000000000003');
 delete from public.trip_members where user_id = '00000000-0000-4000-8000-000000000003';
 select is((select count(*) from public.trips), 0::bigint, 'widz może sam wyjść z wyjazdu');
+
+select pg_temp.login('00000000-0000-4000-8000-000000000001');
+insert into public.trip_members (trip_id, user_id, role) values
+  ('10000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000005', 'viewer');
+select throws_ok($$select public.leave_trip('10000000-0000-4000-8000-000000000001')$$, '42501', null,
+  'właściciel nie opuszcza wyjazdu');
+
+select pg_temp.login('00000000-0000-4000-8000-000000000005');
+select lives_ok($$select public.leave_trip('10000000-0000-4000-8000-000000000001')$$, 'widz opuszcza wyjazd przez RPC');
+select is((select count(*) from public.my_trips), 0::bigint, 'po wyjściu wyjazdu nie ma na liście');
+
+-- ── Usunięcie wyjazdu ────────────────────────────────────────────────────────────────────────
+select pg_temp.login('00000000-0000-4000-8000-000000000001');
+delete from invite;
+insert into invite select public.create_invite('10000000-0000-4000-8000-000000000001', 'viewer', 14, 5);
+select lives_ok($$select public.delete_trip('10000000-0000-4000-8000-000000000001')$$, 'właściciel usuwa wyjazd');
+select is((select count(*) from public.trips), 0::bigint, 'usunięty wyjazd znika właścicielowi');
+select is((select count(*) from public.my_trips), 0::bigint, 'usuniętego wyjazdu nie ma na liście');
+select is(public.pull_changes('10000000-0000-4000-8000-000000000001', 0), null::jsonb,
+  'telefon właściciela dostaje null jak przy braku dostępu');
+
+select pg_temp.login('00000000-0000-4000-8000-000000000002');
+select is((select count(*) from public.trips), 0::bigint, 'usunięty wyjazd znika edytorowi');
+select is((select count(*) from public.items), 0::bigint, 'plan usuniętego wyjazdu jest niewidoczny');
+select is(public.pull_changes('10000000-0000-4000-8000-000000000001', 3), null::jsonb, 'edytor nic nie pobierze');
+select throws_ok($$insert into public.items (id, trip_id, ref, kind, title, plan_status)
+  values ('30000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'i3', 'visit', 'X', 'candidate')$$,
+  '42501', null, 'do usuniętego wyjazdu nic się nie dopisze');
+
+select pg_temp.login('00000000-0000-4000-8000-000000000004');
+select throws_ok($$select public.accept_invite((select token from invite))$$, 'P0002', null,
+  'zaproszenie do usuniętego wyjazdu jest nieważne');
 
 select * from finish();
 rollback;

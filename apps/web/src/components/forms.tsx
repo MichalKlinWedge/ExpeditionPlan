@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile } from "@/app/actions";
+import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTrip } from "@/app/actions";
 
 /** Formularze MVP-1 — stan i błędy z akcji serwera przez `useActionState`. */
 
@@ -153,6 +153,22 @@ export function InviteForm({ tripId }: { tripId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Właściciel: „Usuń wyjazd” (u wszystkich), pozostali: „Opuść wyjazd” (tylko u siebie). Potwierdzenie z nazwą. */
+export function RemoveTripForm({ tripId, title, owner }: { tripId: string; title: string; owner: boolean }) {
+  const [state, action, pending] = useActionState(removeTrip.bind(null, tripId), {});
+  const question = owner
+    ? `Usunąć wyjazd „${title}”? Zniknie u wszystkich uczestników — na webie i na telefonach.`
+    : `Opuścić wyjazd „${title}”? Zniknie z Twojej listy; wrócić można tylko z nowego zaproszenia.`;
+  return (
+    <form action={action} onSubmit={(event) => !window.confirm(question) && event.preventDefault()} className="flex flex-col gap-2">
+      <button disabled={pending} className="self-start rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-400">
+        {pending ? (owner ? "Usuwam…" : "Wychodzę…") : owner ? "Usuń wyjazd" : "Opuść wyjazd"}
+      </button>
+      <Status state={state} />
+    </form>
   );
 }
 

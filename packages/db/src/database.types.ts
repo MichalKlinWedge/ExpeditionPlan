@@ -1256,6 +1256,9 @@ isOneToOne: false
 "create_invite":
 { Args: { "p_days"?: number,"p_max_uses"?: number,"p_role"?: string,"p_trip": string }; Returns: string
                            },
+"delete_trip":
+{ Args: { "p_trip": string }; Returns: undefined
+                           },
 "import_trip":
 { Args: { "p_tables": Json,"p_trip": Json }; Returns: string
                            },
@@ -1267,6 +1270,9 @@ isOneToOne: false
                            },
 "is_trip_owner":
 { Args: { "p_trip": string }; Returns: boolean
+                           },
+"leave_trip":
+{ Args: { "p_trip": string }; Returns: undefined
                            },
 "owns_expense":
 { Args: { "p_expense": string }; Returns: boolean
