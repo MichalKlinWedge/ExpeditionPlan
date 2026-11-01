@@ -4,7 +4,7 @@
  * nie usługa aplikacji (w aplikacji geokodowanie idzie przez Geoapify).
  */
 
-export type GeocodeHit = { lat: number; lng: number; displayName: string; osmType: string; osmId: number; category: string; countryCode: string; openingHours?: string };
+import type { Box, GeocodeHit } from '@expeditionplan/planner';
 
 export const USER_AGENT = 'ExpeditionPlan-fixtures/0.1 (+https://github.com/MichalKlinWedge/ExpeditionPlan)';
 const ENDPOINT = 'https://nominatim.openstreetmap.org/search';
@@ -18,8 +18,6 @@ function throttle(): Promise<void> {
   queue = turn;
   return turn;
 }
-
-export type Box = { south: number; west: number; north: number; east: number };
 
 /** `box` = szukaj tylko w tym prostokącie (imiennicy: Orlica w górach, a nie pod Szczecinem). */
 export async function searchNominatim(query: string, countryCodes: string[], box?: Box): Promise<GeocodeHit | null> {

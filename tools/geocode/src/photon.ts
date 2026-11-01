@@ -1,4 +1,4 @@
-import type { Box, GeocodeHit } from './nominatim.ts';
+import type { Box, GeocodeHit } from '@expeditionplan/planner';
 import { USER_AGENT } from './nominatim.ts';
 
 /**

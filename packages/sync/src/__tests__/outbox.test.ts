@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { flushOutbox, pendingCount, recordDelay, saveExpense } from '../outbox.ts';
 import { applyPull, pullChanges, serialPuller, syncTrip } from '../pull.ts';
-import type { PullPayload, Remote, ServerRow } from '../remote.ts';
+import { type PullPayload, type Remote, RemoteError, type ServerRow } from '../remote.ts';
 import { uuidv7 } from '../uuid.ts';
 import { nodeDb } from './helpers/node-db.ts';
 
@@ -174,5 +174,41 @@ describe('uuidv7', () => {
 
     expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(a < b).toBe(true);
+  });
+});
+
+describe('outbox: zapis odrzucony przez serwer', () => {
+  it('nie blokuje kolejki — wycofany z telefonu, reszta partii i kolejne zapisy przechodzą', async () => {
+    const db = nodeDb();
+    const server = fakeServer();
+    const push = server.remote.push.bind(server.remote);
+    let refuse = '';
+    server.remote.push = async (table, rows) => {
+      if (rows.some((row) => row.id === refuse)) throw new RemoteError('new row violates row-level security policy', '42501');
+      await push(table, rows);
+    };
+    recordDelay(db, TRIP, 'day-1', 'item-1', 15);
+    refuse = recordDelay(db, TRIP, 'day-1', 'item-2', 30);
+    recordDelay(db, TRIP, 'day-1', 'item-3', 45);
+
+    const result = await flushOutbox(db, server.remote);
+
+    expect(result.remaining).toBe(0);
+    expect(result.rejected).toEqual([{ table: 'schedule_events', id: refuse, error: 'new row violates row-level security policy' }]);
+    expect(server.tables.schedule_events.size).toBe(2);
+    expect(db.all('select id from rows where id = ?', [refuse])).toHaveLength(0);
+
+    recordDelay(db, TRIP, 'day-1', 'item-4', 5);
+    expect(await flushOutbox(db, server.remote)).toEqual({ sent: 1, remaining: 0 });
+  });
+
+  it('brak sieci to nie odrzucenie — wpis czeka w kolejce', async () => {
+    const db = nodeDb();
+    const server = fakeServer();
+    recordDelay(db, TRIP, 'day-1', 'item-1', 15);
+    server.setOffline(true);
+    const result = await flushOutbox(db, server.remote);
+    expect(result).toMatchObject({ sent: 0, remaining: 1, error: 'fetch failed' });
+    expect(result.rejected).toBeUndefined();
   });
 });

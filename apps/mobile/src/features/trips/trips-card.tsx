@@ -22,7 +22,7 @@ type Details = {
   items: number;
 };
 
-export function TripsCard({ reloadKey, signedIn }: { reloadKey: number; signedIn: boolean }) {
+export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; signedIn: boolean; userId: string | null }) {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [error, setError] = useState('');
   const [offline, setOffline] = useState(false);
@@ -126,6 +126,8 @@ export function TripsCard({ reloadKey, signedIn }: { reloadKey: number; signedIn
         tripId={plan}
         signedIn={signedIn}
         canAct={['owner', 'editor'].includes(trips?.find((trip) => trip.id === plan)?.role ?? '')}
+        canAddExpense={trips?.find((trip) => trip.id === plan)?.can_add_expenses === true}
+        userId={userId}
         onClose={() => setPlan(null)}
       />
     </ThemedView>

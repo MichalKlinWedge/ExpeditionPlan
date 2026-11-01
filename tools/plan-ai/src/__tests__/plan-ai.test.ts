@@ -1,8 +1,7 @@
 import { TripBrief } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
-import { chunksFor, stagePlanSchema, tripContext, tripDates } from '../assemble.ts';
-import { dayFact } from '../facts.ts';
+import { chunksFor, dayFact, stagePlanSchema, tripContext, tripDates } from '@expeditionplan/planner';
 import { detectRisks } from '../metrics.ts';
 import { assertAllowed, costUsd } from '../pricing.ts';
 
@@ -72,7 +71,7 @@ describe('ryzyka i koszt', () => {
 
 describe('pinezki z briefu', () => {
   it('„Przełęcz Spalona” dostaje współrzędne pinezki „Parking na Przełęczy Spalonej (…)”, schronisko z OSM zostaje', async () => {
-    const { applyPins } = await import('../metrics.ts');
+    const { applyPins } = await import('@expeditionplan/planner');
     const { TripDocument } = await import('@expeditionplan/core');
     const doc = TripDocument.parse({
       schemaVersion: 1,

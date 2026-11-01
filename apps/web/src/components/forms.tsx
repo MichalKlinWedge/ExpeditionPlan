@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples } from "@/app/actions";
+import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile } from "@/app/actions";
 
 /** Formularze MVP-1 — stan i błędy z akcji serwera przez `useActionState`. */
 
@@ -55,6 +55,23 @@ export function NewTripForm() {
       <Status state={state} />
       <button disabled={pending} className={`${button} self-start`}>
         {pending ? "Zapisuję…" : "Utwórz wyjazd"}
+      </button>
+    </form>
+  );
+}
+
+/** Import planu z pliku JSON (np. szkic AI pobrany z lokalnej bazy) jako nowy wyjazd. */
+export function ImportTripForm() {
+  const [state, action, pending] = useActionState(importTripFile, {});
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <label className={label}>
+        Plik JSON z „Pobierz JSON”
+        <input name="file" type="file" accept="application/json,.json" required className={input} />
+      </label>
+      <Status state={state} />
+      <button disabled={pending} className={`${button} self-start`}>
+        {pending ? "Importuję…" : "Importuj wyjazd"}
       </button>
     </form>
   );

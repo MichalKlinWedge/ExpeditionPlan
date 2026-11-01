@@ -6,6 +6,7 @@
  *
  * `claude-code` (domyślnie): przez `claude -p` na abonamencie Claude Code (wymaga `claude auth login`
  * w terminalu); koszt w raporcie to równowartość według cennika API. `api`: ANTHROPIC_API_KEY.
+ * `gemini`: GEMINI_API_KEY, np. `--backend gemini --models gemini-3.8-flash,gemini-3.5-flash-lite`.
  *
  * brief → etap 1 (warianty) → bazy w OSM + fakty dni (słońce, święta, zmiana czasu) → etap 2
  * (dni, punkty, pula, ograniczenia) → ugruntowanie miejsc (OSM, godziny otwarcia) → silnik
@@ -15,16 +16,15 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { type AiUsage, askStructured, createAiClient } from '@expeditionplan/ai';
-import { type StagePlan, TripBrief, TripDocument, TripSkeleton } from '@expeditionplan/core';
-import { cachedLookup, groundPlaces, searchPhoton, withCoordinates } from '@expeditionplan/geocode';
+import { type AiUsage, createAiClient } from '@expeditionplan/ai';
+import { TripBrief, TripDocument } from '@expeditionplan/core';
+import { cachedLookup, searchPhoton } from '@expeditionplan/geocode';
+import { applyPins, planTrip } from '@expeditionplan/planner';
 
 import { claudeCodeClient } from './claude-code.ts';
-import { assemble, chunksFor, stagePlanSchema, tripContext, tripDates } from './assemble.ts';
-import { COUNTRY_TZ, dayFact, holidays } from './facts.ts';
-import { applyPins, detectRisks, evaluate, type PlanMetrics } from './metrics.ts';
+import { holidays } from './facts.ts';
+import { detectRisks, evaluate, type PlanMetrics } from './metrics.ts';
 import { assertAllowed, costUsd, DEFAULT_RUN_MODELS } from './pricing.ts';
-import { stage1Prompt, stage2Prompt, SYSTEM } from './prompts.ts';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const here = fileURLToPath(new URL('../', import.meta.url));
@@ -45,9 +45,14 @@ const chunkDays = Number(arg('chunk-days')?.[0] ?? 2);
 /** Plany po kolei (domyślnie) — czas jednego planu nie zależy od obciążenia innymi. */
 const parallelPlans = process.argv.includes('--parallel');
 const key = process.env.ANTHROPIC_API_KEY;
+const geminiKey = process.env.GEMINI_API_KEY;
 if (backend === 'api' && !key) throw new Error('Brak ANTHROPIC_API_KEY w .env.local');
-const clientFor = (model: string) =>
-  backend === 'api' ? createAiClient({ keys: { CLAUDE: key }, models: { CLAUDE: model } }) : claudeCodeClient(model);
+if (backend === 'gemini' && !geminiKey) throw new Error('Brak GEMINI_API_KEY w .env.local');
+const clientFor = (model: string) => {
+  if (backend === 'api') return createAiClient({ keys: { CLAUDE: key }, models: { CLAUDE: model } });
+  if (backend === 'gemini') return createAiClient({ keys: { GEMINI: geminiKey }, models: { GEMINI: model }, defaultProvider: 'GEMINI' });
+  return claudeCodeClient(model);
+};
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
@@ -80,79 +85,28 @@ async function run(slug: string, model: string, outDir: string): Promise<Row> {
 
   try {
     const brief = TripBrief.parse(JSON.parse(readFileSync(join(root, 'fixtures/plans', slug, 'brief.json'), 'utf8')));
-    if (brief.dates.kind !== 'fixed') throw new Error('brief bez stałych dat');
-    const country = brief.location.countries[0]!;
-    const tz = COUNTRY_TZ[country];
-    if (tz === undefined) throw new Error(`brak strefy dla ${country}`);
-    const client = clientFor(model);
-    const ask = { system: SYSTEM, timeoutMs: 300_000, onUsage };
-
-    const started = performance.now();
-    const skeleton = await askStructured(client, TripSkeleton, stage1Prompt(brief), { ...ask, maxTokens: 12_000, label: `${slug} etap 1` });
-    save('stage1.json', skeleton.data);
-    const variant = skeleton.data.variants.find((each) => each.recommended)!;
-    row.variants = skeleton.data.variants.map((each) => `${each.recommended ? '★ ' : ''}${each.label}`);
-    let aiMs = performance.now() - started;
-
-    // Fakty dni: bazy w OSM → słońce; święta; zmiana czasu.
-    const groundStart = performance.now();
-    const bases = skeleton.data.bases.map((base, i) => ({ ref: `base-${i}`, name: base.name, searchName: base.searchName, category: 'town' }));
-    const baseHits = await groundPlaces(bases, { countries: brief.location.countries, kind: brief.location.kind, lookup });
-    const baseCoords = new Map(
-      bases.flatMap((base, i) => {
-        const hit = baseHits[i]!;
-        return hit.status === 'found' ? [[base.name, { lat: hit.hit.lat, lng: hit.hit.lng }] as const] : [];
-      }),
-    );
-    const dates = tripDates(brief.dates.start, brief.dates.end);
-    const years = [...new Set(dates.map((date) => Number(date.slice(0, 4))))];
-    const allHolidays = (await Promise.all(years.map((year) => holidays(country, year, join(here, '.cache/holidays.json'))))).flat();
-    const facts = dates.map((date) => {
-      const day = variant.days.find((each) => each.date === date) ?? { date, base: variant.days.at(-1)!.base };
-      return dayFact(day, tz, baseCoords.get(day.base), allHolidays.filter((holiday) => holiday.date === date));
+    const result = await planTrip(brief, {
+      client: clientFor(model),
+      lookup,
+      fallback,
+      holidays: (country, year) => holidays(country, year, join(here, '.cache/holidays.json')),
+      chunkDays,
+      timeoutMs: 300_000,
+      onUsage,
     });
-    save('facts.json', facts);
-    let groundMs = performance.now() - groundStart;
+    save('stage1.json', result.skeleton);
+    save('facts.json', result.facts);
+    save('stage2.json', result.stagePlans);
+    save('plan.json', result.doc);
+    save('grounding.json', result.grounding);
 
-    const context = tripContext(brief, tz);
-    const chunks = chunksFor(dates, chunkDays);
-    const stage2Start = performance.now();
-    const answers = await Promise.all(
-      chunks.map((chunk) =>
-        askStructured(
-          client,
-          stagePlanSchema(context, chunk),
-          stage2Prompt(brief, variant, chunk, facts.filter((fact) => chunk.dates.includes(fact.date)), dates.length),
-          { ...ask, maxTokens: 32_000, label: `${slug} etap 2 część ${chunk.index + 1}` },
-        ),
-      ),
-    );
-    aiMs += performance.now() - stage2Start;
-    const stagePlans: StagePlan[] = answers.map((answer) => answer.data);
-    save('stage2.json', stagePlans);
-    row.repairs = (skeleton.attempts - 1) + answers.reduce((sum, answer) => sum + answer.attempts - 1, 0);
-
-    // Ugruntowanie miejsc z etapu 2 (współrzędne + godziny otwarcia z OSM).
-    const placesStart = performance.now();
-    // Pinezki z briefu mają pierwszeństwo; geokoder uzupełnia resztę (środek obszaru liczy ze wszystkich).
-    let doc = applyPins(assemble(context, stagePlans), brief.location.pins);
-    const results = await groundPlaces(doc.places, { countries: brief.location.countries, kind: brief.location.kind, lookup, fallback });
-    doc = TripDocument.parse({
-      ...doc,
-      places: doc.places.map((place, i) => {
-        const result = results[i]!;
-        return result.status === 'found' && place.lat === undefined ? withCoordinates(place, result.hit, { openingHours: true }) : place;
-      }),
-    });
-    groundMs += performance.now() - placesStart;
-    save('plan.json', doc);
-    save('grounding.json', results);
-
-    row.days = doc.days.length;
-    row.aiSeconds = Math.round(aiMs / 100) / 10;
-    row.groundSeconds = Math.round(groundMs / 100) / 10;
-    row.metrics = evaluate(doc);
-    row.risks = detectRisks(slug, JSON.stringify({ skeleton: skeleton.data, plans: stagePlans }));
+    row.variants = result.skeleton.variants.map((each) => `${each.recommended ? '★ ' : ''}${each.label}`);
+    row.repairs = result.repairs;
+    row.days = result.doc.days.length;
+    row.aiSeconds = Math.round(result.aiMs / 100) / 10;
+    row.groundSeconds = Math.round(result.groundMs / 100) / 10;
+    row.metrics = evaluate(result.doc);
+    row.risks = detectRisks(slug, JSON.stringify({ skeleton: result.skeleton, plans: result.stagePlans }));
   } catch (error) {
     row.error = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     if (error instanceof Error && 'issues' in error) save('error.json', { issues: (error as { issues: unknown }).issues, raw: (error as { raw?: unknown }).raw });

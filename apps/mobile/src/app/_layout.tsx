@@ -1,3 +1,5 @@
+// Najpierw `crypto.getRandomValues` (id zapisów z telefonu).
+import '@/lib/polyfills';
 // Zadania w tle (PoC-3) muszą się zarejestrować przy ładowaniu modułu, zanim ruszy nawigacja.
 import '@/poc/tasks';
 

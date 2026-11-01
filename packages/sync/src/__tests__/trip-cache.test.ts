@@ -6,8 +6,9 @@ import { describe, expect, it } from 'vitest';
 
 import { rowsFromDocument } from '../document.ts';
 import type { Remote, ServerRow, TripRow } from '../remote.ts';
+import { saveExpense, setPacked } from '../outbox.ts';
 import { cachedTrip, forgetLocal, recordDayEvent, refreshTrip } from '../trip-cache.ts';
-import { uuidv7 } from '../uuid.ts';
+import { stableUuid, uuidv7 } from '../uuid.ts';
 import { nodeDb } from './helpers/node-db.ts';
 
 const TRIP = 'trip-offline';
@@ -112,6 +113,30 @@ describe('plan offline na telefonie', () => {
 
     recordDayEvent(db, TRIP, after, 'd2', item.ref, { kind: 'delay', minutes: -30 });
     expect(cachedTrip(db, TRIP)!.state.inputs.delays.reduce((sum, each) => sum + each.minutes, 0)).toBe(0);
+  });
+
+  it('portfel i pakowanie offline: wydatek i odhaczenie od razu w stanie, ta sama para = ten sam wiersz', async () => {
+    const db = nodeDb();
+    const server = planServer('dinara');
+    await refreshTrip(db, server.remote, TRIP);
+    server.setOffline(true);
+
+    saveExpense(db, { tripId: TRIP, amountMinor: 4500, currency: 'EUR', category: 'food' });
+    const first = setPacked(db, TRIP, 'item-1', 'traveler-1', true);
+    const again = setPacked(db, TRIP, 'item-1', 'traveler-1', false);
+    const cached = cachedTrip(db, TRIP)!;
+
+    expect(again).toBe(first);
+    expect(cached.live.expenses).toHaveLength(1);
+    expect(cached.live.packingChecks).toEqual([expect.objectContaining({ id: first, packed: false })]);
+    expect(cached.live.travelers.length).toBe(cached.state.doc.travelers.length);
+    expect(cached.pending).toBe(3);
+  });
+
+  it('stałe id: ta sama para daje to samo id, inna — inne, format UUID', () => {
+    expect(stableUuid('a', 'b')).toBe(stableUuid('a', 'b'));
+    expect(stableUuid('a', 'b')).not.toBe(stableUuid('a', 'c'));
+    expect(stableUuid('a', 'b')).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
   it('po zmianie konta na telefonie nie zostaje nic', async () => {

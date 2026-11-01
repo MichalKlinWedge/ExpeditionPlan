@@ -18,7 +18,7 @@ export default function TripsTab() {
     <ThemedView style={styles.fill}>
       <SafeAreaView style={styles.fill} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
-          {session !== undefined && <TripsCard reloadKey={reloadKey} signedIn={session !== null} />}
+          {session !== undefined && <TripsCard reloadKey={reloadKey} signedIn={session !== null} userId={session?.user.id ?? null} />}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>

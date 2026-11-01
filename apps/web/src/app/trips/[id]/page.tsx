@@ -2,12 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AiPlanButton } from "@/components/ai-plan-button";
 import { InviteForm, TravelerForm } from "@/components/forms";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
 
-/** Wyjazd (MVP-1): podsumowanie planu, członkowie z rolami, uczestnicy, zaproszenie linkiem. */
+/** Wyjazd: podsumowanie planu, „Zaplanuj z AI” (gdy jest brief), członkowie z rolami, uczestnicy, zaproszenie linkiem. */
+
+// Planowanie z AI (akcja serwera na tej stronie) trwa do kilku minut.
+export const maxDuration = 300;
+
 export default function TripPage(props: PageProps<"/trips/[id]">) {
   return (
     <Shell>
@@ -46,7 +51,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           {tripDates(trip.data.start_date!, trip.data.end_date!)} · {trip.data.primary_tz} · {trip.data.base_currency} · Twoja rola: {ROLE[role]}
         </p>
         <p className="text-sm text-zinc-500">
-          Plan: {days.count ?? 0} dni, {items.count ?? 0} punktów. Edytor planu przyjdzie w MVP-3.
+          Plan: {days.count ?? 0} dni, {items.count ?? 0} punktów.
         </p>
         <p className="flex gap-4 text-sm">
           {(days.count ?? 0) > 0 && (
@@ -54,11 +59,19 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
               Plan dzień po dniu
             </Link>
           )}
+          <Link href={`/trips/${id}/logistics`} className="underline">
+            Rezerwacje, budżet i zadania
+          </Link>
           <Link href={`/trips/${id}/brief`} className="underline">
             {brief.data ? "Brief wyjazdu — zmień" : "Uzupełnij brief wyjazdu (dla AI)"}
           </Link>
+          <a href={`/trips/${id}/export`} className="underline">
+            Pobierz JSON
+          </a>
         </p>
       </div>
+
+      {canEdit && brief.data !== null && <AiPlanButton tripId={id} />}
 
       <section className={section}>
         <h2 className={heading}>Uczestnicy</h2>

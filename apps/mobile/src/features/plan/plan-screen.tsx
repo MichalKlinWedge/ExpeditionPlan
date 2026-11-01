@@ -16,25 +16,38 @@ import {
   scheduleDay,
   type ScheduleWarning,
 } from '@expeditionplan/core';
-import { type CachedTrip, cachedTrip, recordDayEvent, refreshTrip, savePlanEdit, type TripState, uuidv7 } from '@expeditionplan/sync';
+import {
+  type CachedTrip,
+  cachedTrip,
+  recordDayEvent,
+  refreshTrip,
+  savePlanEdit,
+  serialPuller,
+  type TripState,
+  uuidv7,
+  watchTrip,
+} from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { type DayEvent, NowCard } from '@/features/plan/now-card';
+import { PackingView } from '@/features/trip/packing-view';
+import { WalletView } from '@/features/trip/wallet-view';
 import { useTheme } from '@/hooks/use-theme';
 import { localDb, remote } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
 
 /**
- * Plan dnia na telefonie (MVP-1, tylko odczyt). Offline: najpierw stan z SQLite (`cachedTrip`),
- * potem synchronizacja przyrostowa (`refreshTrip`) — przy otwarciu, „Odśwież” i powrocie aplikacji
- * na pierwszy plan. Godziny liczy silnik z packages/core na telefonie. Jeden dzień na ekranie;
+ * Plan dnia na telefonie. Offline: najpierw stan z SQLite (`cachedTrip`), potem synchronizacja
+ * przyrostowa (`refreshTrip`) — przy otwarciu, „Odśwież”, powrocie aplikacji na pierwszy plan
+ * i na żywo: Realtime daje znać o każdej zmianie wyjazdu (np. edycji na webie). Godziny liczy silnik z packages/core na telefonie. Jeden dzień na ekranie;
  * domyślnie dzisiejszy, jeśli wyjazd trwa.
  */
 
@@ -67,16 +80,17 @@ function initialDay(state: TripState): number {
   return Math.max(today, 0);
 }
 
-type Props = { tripId: string | null; signedIn: boolean; canAct: boolean; onClose: () => void };
+type Access = { signedIn: boolean; canAct: boolean; canAddExpense: boolean; userId: string | null };
+type Props = Access & { tripId: string | null; onClose: () => void };
 
 /** Plan w pełnoekranowym oknie nad listą wyjazdów (Start). */
-export function PlanScreen({ tripId, signedIn, canAct, onClose }: Props) {
+export function PlanScreen({ tripId, onClose, ...access }: Props) {
   return (
     <Modal visible={tripId !== null} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
-            {tripId !== null && <Plan tripId={tripId} signedIn={signedIn} canAct={canAct} onClose={onClose} />}
+            {tripId !== null && <Plan tripId={tripId} onClose={onClose} {...access} />}
           </SafeAreaView>
         </ThemedView>
       </SafeAreaProvider>
@@ -88,8 +102,12 @@ type PlanProps = {
   tripId: string;
   /** Bez logowania: tylko stan z telefonu, bez synchronizacji. */
   signedIn: boolean;
-  /** Edycja planu, „Zostajemy dłużej” i „Pomiń” — organizator i edytor (RLS). */
+  /** Edycja planu, „Zostajemy dłużej” i „Pomiń”, pakowanie za innych — organizator i edytor (RLS). */
   canAct: boolean;
+  /** Dodawanie wydatków (`can_add_expenses`). */
+  canAddExpense: boolean;
+  /** Zalogowany użytkownik — „ja” na liście pakowania. */
+  userId: string | null;
   /** Przycisk powrotu (okno z listy wyjazdów). */
   onClose?: () => void;
   /** Miejsce na pasek zakładek. */
@@ -97,7 +115,8 @@ type PlanProps = {
 };
 
 /** Plan jednego wyjazdu. */
-export function Plan({ tripId, signedIn, canAct, onClose, bottomInset = 0 }: PlanProps) {
+export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose, bottomInset = 0 }: PlanProps) {
+  const [mode, setMode] = useState<'plan' | 'wallet' | 'packing'>('plan');
   const [trip, setTrip] = useState<CachedTrip | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [lastDelay, setLastDelay] = useState<{ itemRef: string; minutes: number } | null>(null);
@@ -125,11 +144,18 @@ export function Plan({ tripId, signedIn, canAct, onClose, bottomInset = 0 }: Pla
     setSync({ busy: false, syncedAt: next.syncedAt });
   }, []);
 
-  const load = useCallback(async () => {
+  /** `quiet` — pobranie z sygnału Realtime, bez „Synchronizuję…” w statusie. */
+  const load = useCallback(async (quiet = false) => {
     if (!signedIn) return;
-    setSync((current) => ({ ...current, busy: true }));
+    if (!quiet) setSync((current) => ({ ...current, busy: true }));
     try {
-      show(await refreshTrip(localDb, remote, tripId));
+      const fresh = await refreshTrip(localDb, remote, tripId);
+      show(fresh);
+      if (fresh.rejected.length > 0) {
+        Alert.alert('Serwer nie przyjął zmiany', `${fresh.rejected.length === 1 ? 'Jeden zapis' : `${fresh.rejected.length} zapisy`} z telefonu wycofano — brak uprawnień albo dane już się zmieniły.
+
+${fresh.rejected[0]!.error}`);
+      }
     } catch (e) {
       setSync((current) => ({ ...current, busy: false, error: message(e) }));
     }
@@ -156,6 +182,18 @@ export function Plan({ tripId, signedIn, canAct, onClose, bottomInset = 0 }: Pla
       clearInterval(tick);
     };
   }, [tripId, load, show]);
+
+  // Na żywo: sygnał o zmianie wyjazdu → pobranie przyrostowe; sygnały w trakcie pobierania zlewają się w jedno.
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+  useEffect(() => {
+    if (!signedIn) return;
+    const pull = serialPuller(() => loadRef.current(true));
+    const stop = watchTrip(supabase as unknown as SupabaseClient, tripId, () => void pull());
+    return () => void stop();
+  }, [tripId, signedIn]);
 
   /**
    * Edycja planu (online): zmiana od razu w dokumencie na ekranie, zapis w bazie przez
@@ -198,16 +236,21 @@ export function Plan({ tripId, signedIn, canAct, onClose, bottomInset = 0 }: Pla
         }
       : null;
 
+  /** Po zapisie z telefonu: stan z SQLite od razu na ekranie, potem wysyłka i pobranie w tle. */
+  const afterLocalWrite = () => {
+    const updated = cachedTrip(localDb, tripId);
+    if (updated !== null) setTrip(updated);
+    void load(true);
+  };
+
   /** Zdarzenie dnia: zapis lokalny (od razu w planie), potem wysyłka przy synchronizacji. */
   const record = (dayRef: string, itemRef: string, event: DayEvent) => {
     if (trip === null) return;
     try {
       recordDayEvent(localDb, tripId, trip, dayRef, itemRef, event);
       setLastDelay(event.kind === 'delay' && event.minutes > 0 ? { itemRef, minutes: event.minutes } : null);
-      const updated = cachedTrip(localDb, tripId);
-      if (updated !== null) setTrip(updated);
       setNow(Date.now());
-      void load();
+      afterLocalWrite();
     } catch (e) {
       Alert.alert('Nie zapisano', message(e));
     }
@@ -237,7 +280,7 @@ export function Plan({ tripId, signedIn, canAct, onClose, bottomInset = 0 }: Pla
         <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
           {state?.doc.trip.title ?? ''}
         </ThemedText>
-        {signedIn && canAct && state !== null && (
+        {signedIn && canAct && state !== null && mode === 'plan' && (
           <Pressable onPress={() => setEditMode(!editMode)} hitSlop={12}>
             <ThemedText type="linkPrimary">{editMode ? 'Gotowe' : 'Edytuj'}</ThemedText>
           </Pressable>
@@ -253,9 +296,25 @@ export function Plan({ tripId, signedIn, canAct, onClose, bottomInset = 0 }: Pla
         {status}
       </ThemedText>
       {error !== '' && <ThemedText style={[styles.pad, { color: HARD }]}>{error}</ThemedText>}
-      {state !== null && days.length === 0 && <ThemedText style={styles.pad}>Plan nie ma jeszcze dni.</ThemedText>}
+      {trip !== null && (
+        <View style={styles.chips}>
+          <Chip active={mode === 'plan'} label="Plan" onPress={() => setMode('plan')} />
+          <Chip active={mode === 'wallet'} label="Wydatki" onPress={() => setMode('wallet')} />
+          <Chip active={mode === 'packing'} label="Pakowanie" onPress={() => setMode('packing')} />
+        </View>
+      )}
+      {trip !== null && mode !== 'plan' && (
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]} keyboardShouldPersistTaps="handled">
+          {mode === 'wallet' ? (
+            <WalletView trip={trip} tripId={tripId} canAdd={signedIn && canAddExpense} onChanged={afterLocalWrite} />
+          ) : (
+            <PackingView trip={trip} tripId={tripId} canEdit={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
+          )}
+        </ScrollView>
+      )}
+      {mode === 'plan' && state !== null && days.length === 0 && <ThemedText style={styles.pad}>Plan nie ma jeszcze dni.</ThemedText>}
 
-      {state !== null && day && (
+      {mode === 'plan' && state !== null && day && (
         <>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsBar} contentContainerStyle={styles.chips}>
             {days.map((each, at) => (
@@ -308,19 +367,6 @@ export function Plan({ tripId, signedIn, canAct, onClose, bottomInset = 0 }: Pla
         </>
       )}
     </View>
-  );
-}
-
-export function Chip({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.chip, { borderColor: active ? theme.text : theme.backgroundSelected, backgroundColor: active ? theme.backgroundSelected : 'transparent' }]}>
-      <ThemedText type="small" themeColor={active ? 'text' : 'textSecondary'}>
-        {label}
-      </ThemedText>
-    </Pressable>
   );
 }
 
@@ -539,7 +585,6 @@ const styles = StyleSheet.create({
   // ScrollView domyślnie ma flexShrink: 1 — pasek dni ściskał się w pionie i ucinał tekst.
   chipsBar: { flexGrow: 0, flexShrink: 0 },
   chips: { flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
-  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
   content: { padding: Spacing.three, gap: Spacing.three },
   day: { gap: Spacing.two },
   badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three },

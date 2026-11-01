@@ -3,16 +3,17 @@ import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/session';
-import { Chip, Plan } from '@/features/plan/plan-screen';
+import { Plan } from '@/features/plan/plan-screen';
 import { loadMyTrips, type Trip } from '@/features/trips/my-trips';
 import { isConfigured } from '@/lib/supabase';
 
 /**
- * Zakładka Plan: od razu bieżący wyjazd na dzisiejszym dniu. Bez logowania — plany z telefonu, do odczytu. Wybór wyjazdu: trwający dziś,
+ * Zakładka Plan: od razu bieżący wyjazd na dzisiejszym dniu; obok plan dnia — wydatki i pakowanie. Bez logowania — plany z telefonu, do odczytu. Wybór wyjazdu: trwający dziś,
  * inaczej najbliższy nadchodzący, inaczej ostatni. Przy kilku wyjazdach — przełącznik u góry.
  */
 
@@ -69,6 +70,8 @@ export default function PlanTab() {
               tripId={selected}
               signedIn={session !== null}
               canAct={['owner', 'editor'].includes(trips!.find((trip) => trip.id === selected)?.role ?? '')}
+              canAddExpense={trips!.find((trip) => trip.id === selected)?.can_add_expenses === true}
+              userId={session?.user.id ?? null}
               bottomInset={BottomTabInset}
             />
           </View>

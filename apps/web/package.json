@@ -10,8 +10,10 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@expeditionplan/ai": "*",
     "@expeditionplan/core": "*",
     "@expeditionplan/db": "^0.0.0",
+    "@expeditionplan/planner": "*",
     "@expeditionplan/sync": "^0.0.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",

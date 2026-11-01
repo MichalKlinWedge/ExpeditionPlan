@@ -31,6 +31,7 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 | Resend Free | e-mail (magic link, zaproszenia) | 3000/mies., 100/dzień, 3 domeny | weryfikacja domeny (SPF + DKIM; DMARC zalecany) | OK |
 | Google Play — lokalizacja w tle | publikacja w sklepie | — | formularz deklaracji + wideo ≤ 30 s + prominent disclosure; jedna funkcja w tle na aplikację | nie dotyczy MVP (APK); NIE bez przygotowania przy publikacji |
 | Android Geofencing | audio przy punkcie | 100 aktywnych geofence na aplikację i użytkownika urządzenia | promień ≥ 100 m (zalecane 100–150 m), opóźnienie ~2–3 min w tle | OK z warunkiem |
+| Gemini API (Google AI Studio) | AI: etapy planu, import, audio | darmowy limit per projekt, „best effort”, zmienny bez zapowiedzi (fora: ~20 zapytań/dzień dla 3.8 Flash, ~500 dla Flash-Lite; aktualne liczby tylko w AI Studio → Rate limits) | dane z darmowego limitu idą do ulepszania produktów Google, **ale w EOG/CH/UK obowiązują warunki płatne także dla darmowego limitu**; aplikacja dla użytkowników w EOG **tylko na Paid Services** (projekt z aktywnym rozliczeniem) | OK do testów (darmowy limit); produkcja = rozliczenia w projekcie Google Cloud (patrz §11) |
 
 ---
 
@@ -278,6 +279,16 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - Źródło: https://developer.android.com/develop/sensors-and-location/location/geofencing
 
 ---
+
+## 11. Gemini API (sprawdzone 1.11.2026)
+
+Źródła: [warunki](https://ai.google.dev/gemini-api/terms) (obowiązują od 23.03.2026, aktualizacja 28.04.2026), [limity](https://ai.google.dev/gemini-api/docs/rate-limits) (28.10.2026), [cennik](https://ai.google.dev/gemini-api/docs/pricing) (30.10.2026).
+
+- **Dane:** usługi niepłatne (AI Studio, darmowy limit API) — treść zapytań i odpowiedzi służy do ulepszania produktów Google, mogą ją czytać ludzie (po odłączeniu od konta); warunki każą nie wysyłać tam danych osobowych. Usługi płatne (projekt z aktywnym rozliczeniem) — bez ulepszania produktów, przetwarzanie wg Data Processing Addendum, logi tylko do wykrywania nadużyć.
+- **EOG, Szwajcaria, Wielka Brytania:** dla dewelopera z tych krajów warunki „Paid Services” dotyczące danych obowiązują **także na darmowym limicie**. Osobno: aplikację udostępnianą użytkownikom w EOG/CH/UK wolno opierać **tylko na Paid Services** — produkcja ExpeditionPlan (MVP-2+, Edge Functions) wymaga rozliczeń w projekcie.
+- **Limity:** per projekt (nie per klucz), dzienne kasują się o północy czasu pacyficznego; strona dokumentacji nie podaje liczb dla darmowego poziomu — tylko AI Studio. Google nazywa darmowy poziom „best effort”; fora zgłaszają cięcia (Flash: 250 → ~20 zapytań/dzień). Poziom 1 (z rozliczeniem) — rzędu tysięcy zapytań dziennie.
+- **Ceny (Standard, USD / mln tokenów, wejście / wyjście z „myśleniem”):** 3.8 Flash 0,75 / 3,75 do 31.12.2026, od 1.01.2027 1,50 / 7,50; 3.5 Flash-Lite 0,30 / 2,50; 3.1 Flash-Lite 0,25 / 1,50. Batch i Flex — połowa.
+- **Klucz:** tylko w `.env.local` (narzędzia) i w sekretach Edge Functions (`GEMINI_API_KEY`); nigdy w przeglądarce ani w APK.
 
 ## Wnioski dla specyfikacji
 

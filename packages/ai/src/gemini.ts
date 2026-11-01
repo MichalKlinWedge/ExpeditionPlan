@@ -33,6 +33,8 @@ export function contentParts(prompt: string, image?: AiImage | null): GeminiPart
 type Reply = {
   candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
   promptFeedback?: { blockReason?: string };
+  /** Tokeny „myślenia” liczą się do wyjścia (i do ceny wyjścia). */
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
   error?: { message?: string; status?: string };
 };
 
@@ -81,6 +83,11 @@ export async function askGemini(
       retryable: response.status >= 500,
       modelGone: response.status === 404,
     });
+  }
+
+  if (body?.usageMetadata) {
+    const usage = body.usageMetadata;
+    options.onUsage?.({ inputTokens: usage.promptTokenCount ?? 0, outputTokens: (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0) });
   }
 
   const blocked = body?.promptFeedback?.blockReason;

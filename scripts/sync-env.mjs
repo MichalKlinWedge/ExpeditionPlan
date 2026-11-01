@@ -2,8 +2,10 @@
 /**
  * Jeden `.env.local` w katalogu głównym → `.env.local` aplikacji. Next i Expo czytają pliki env
  * tylko ze swojego katalogu (apps/web, apps/mobile), a trzymanie trzech kopii kończy się
- * rozjazdem. Do aplikacji trafiają wyłącznie zmienne publiczne (`NEXT_PUBLIC_` / `EXPO_PUBLIC_`)
- * — klucz `SUPABASE_SERVICE_ROLE_KEY` i klucze AI zostają w katalogu głównym.
+ * rozjazdem. Do aplikacji trafiają zmienne publiczne (`NEXT_PUBLIC_` / `EXPO_PUBLIC_`), a do weba
+ * także klucze serwerowe „Zaplanuj z AI” (Gemini, Geoapify, ORS) — bez przedrostka `NEXT_PUBLIC_`
+ * Next nie wpuszcza ich do przeglądarki. `SUPABASE_SERVICE_ROLE_KEY` zostaje w katalogu głównym,
+ * a do telefonu nie idzie żaden klucz.
  *
  *   node scripts/sync-env.mjs           — wartości z .env.local (projekt w chmurze)
  *   node scripts/sync-env.mjs --local   — web na lokalnym Supabase (`npm run supabase -- start`)
@@ -35,14 +37,16 @@ if (local) {
   source.NEXT_PUBLIC_SUPABASE_ANON_KEY = status.PUBLISHABLE_KEY ?? status.ANON_KEY;
 }
 
+const SERVER_KEYS = ['GEMINI_API_KEY', 'AI_MODEL_GEMINI', 'GEOAPIFY_API_KEY', 'OPENROUTESERVICE_API_KEY'];
+
 const targets = [
-  { file: 'apps/web/.env.local', prefix: 'NEXT_PUBLIC_' },
+  { file: 'apps/web/.env.local', prefix: 'NEXT_PUBLIC_', server: SERVER_KEYS },
   // Telefon nie widzi 127.0.0.1 komputera — aplikacja mobilna zawsze idzie do chmury.
-  { file: 'apps/mobile/.env.local', prefix: 'EXPO_PUBLIC_' },
+  { file: 'apps/mobile/.env.local', prefix: 'EXPO_PUBLIC_', server: [] },
 ];
 
-for (const { file, prefix } of targets) {
-  const entries = Object.entries(source).filter(([key]) => key.startsWith(prefix));
+for (const { file, prefix, server } of targets) {
+  const entries = Object.entries(source).filter(([key]) => key.startsWith(prefix) || server.includes(key));
   const body = [
     `# Wygenerowane przez scripts/sync-env.mjs${local && prefix === 'NEXT_PUBLIC_' ? ' --local' : ''} — edytuj główny .env.local.`,
     ...entries.map(([key, value]) => `${key}=${value}`),

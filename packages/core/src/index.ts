@@ -12,3 +12,4 @@ export * from './engine/schedule.ts';
 export * from './engine/sun.ts';
 export * from './engine/time.ts';
 export * from './trip-stats.ts';
+export * from './budget.ts';

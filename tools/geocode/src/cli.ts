@@ -11,8 +11,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { ALIASES } from './aliases.ts';
-import { cachedLookup, describeResult, groundPlaces, RADIUS_KM, withCoordinates } from './ground.ts';
-import type { PlaceInput } from './queries.ts';
+import { describeResult, groundPlaces, type PlaceInput, RADIUS_KM, withCoordinates } from '@expeditionplan/planner';
+
+import { cachedLookup } from './ground.ts';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const lookup = cachedLookup(fileURLToPath(new URL('../.cache.json', import.meta.url)));

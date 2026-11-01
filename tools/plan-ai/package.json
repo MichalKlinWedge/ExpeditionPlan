@@ -16,7 +16,8 @@
     "@expeditionplan/ai": "*",
     "@expeditionplan/core": "*",
     "@expeditionplan/geocode": "*",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@expeditionplan/planner": "*"
   },
   "devDependencies": {
     "@types/node": "^24",

@@ -1,6 +1,6 @@
 import { refIndex, type TripState, stateFromLocal } from './document.ts';
 import type { LocalDb } from './local-db.ts';
-import { pendingCount, recordEvent } from './outbox.ts';
+import { pendingCount, recordEvent, type RejectedWrite } from './outbox.ts';
 import { syncTrip } from './pull.ts';
 import type { Remote, ServerRow } from './remote.ts';
 
@@ -10,8 +10,18 @@ import type { Remote, ServerRow } from './remote.ts';
  * zostaje ostatni stan razem z godziną synchronizacji.
  */
 
-/** `ids`: ref → id wierszy (zdarzenia dnia i edycja planu zapisują się po id); `pending` — zapisy czekające na sieć. */
-export type CachedTrip = { state: TripState; syncedAt: string; ids: Record<string, string>; pending: number };
+/**
+ * `ids`: ref → id wierszy (zdarzenia dnia i edycja planu zapisują się po id); `pending` — zapisy
+ * czekające na sieć; `live` — wiersze spoza dokumentu planu (portfel, odhaczenia pakowania,
+ * uczestnicy z kontem), bez usuniętych, razem z zapisami z telefonu.
+ */
+export type CachedTrip = {
+  state: TripState;
+  syncedAt: string;
+  ids: Record<string, string>;
+  pending: number;
+  live: { expenses: ServerRow[]; packingChecks: ServerRow[]; travelers: ServerRow[] };
+};
 
 /** Stan z SQLite albo `null`, gdy wyjazd nie był jeszcze pobrany na telefon. */
 export function cachedTrip(db: LocalDb, tripId: string): CachedTrip | null {
@@ -22,7 +32,14 @@ export function cachedTrip(db: LocalDb, tripId: string): CachedTrip | null {
   const rows = db.all<{ tbl: string; data: string }>('select tbl, data from rows where trip_id = ?', [tripId]);
   const tables: Record<string, ServerRow[]> = {};
   for (const row of rows) (tables[row.tbl] ??= []).push(JSON.parse(row.data) as ServerRow);
-  return { state: stateFromLocal(db, tripId), syncedAt: synced.synced_at, ids: refIndex(tables), pending: pendingCount(db) };
+  const alive = (table: string) => (tables[table] ?? []).filter((row) => row.deleted_at === null || row.deleted_at === undefined);
+  return {
+    state: stateFromLocal(db, tripId),
+    syncedAt: synced.synced_at,
+    ids: refIndex(tables),
+    pending: pendingCount(db),
+    live: { expenses: alive('expenses'), packingChecks: alive('packing_checks'), travelers: alive('travelers') },
+  };
 }
 
 /**
@@ -37,7 +54,8 @@ export function recordDayEvent(db: LocalDb, tripId: string, cached: CachedTrip, 
   recordEvent(db, { tripId, dayId, itemId, kind: event.kind, minutes: event.kind === 'delay' ? event.minutes : null });
 }
 
-export type RefreshedTrip = CachedTrip & { changed: number };
+/** `rejected` — zapisy z telefonu, których serwer nie przyjął (już wycofane z bazy telefonu). */
+export type RefreshedTrip = CachedTrip & { changed: number; rejected: RejectedWrite[] };
 
 /** Synchronizacja i świeży stan. Błąd sieci przechodzi wyżej — stan w SQLite zostaje nietknięty. */
 export async function refreshTrip(db: LocalDb, remote: Remote, tripId: string): Promise<RefreshedTrip> {
@@ -45,7 +63,7 @@ export async function refreshTrip(db: LocalDb, remote: Remote, tripId: string): 
   if (result.pull === null) throw new Error(result.flush.error ?? 'Nie udało się wysłać zapisów z telefonu');
   const cached = cachedTrip(db, tripId);
   if (cached === null) throw new Error(`Wyjazd ${tripId} nie trafił do bazy lokalnej`);
-  return { ...cached, changed: result.pull.changed };
+  return { ...cached, changed: result.pull.changed, rejected: result.flush.rejected ?? [] };
 }
 
 /** Zmiana konta na telefonie: plany poprzedniego konta nie zostają dla następnego. */

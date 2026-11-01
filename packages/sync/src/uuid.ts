@@ -16,3 +16,23 @@ export function uuidv7(now: number = Date.now()): string {
   const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+/**
+ * Stałe id z kilku części (np. pozycja pakowania + uczestnik): dwa telefony odhaczające tę samą
+ * parę offline trafiają w ten sam wiersz, zamiast łamać `unique (packing_item_id, traveler_id)`.
+ * Cztery skróty FNV-1a z różnymi ziarnami → 128 bitów w formacie UUID wersji 8.
+ */
+export function stableUuid(...parts: string[]): string {
+  const text = parts.join('|');
+  const words = [0x811c9dc5, 0x01000193, 0x2e4f61b7, 0x9e3779b9].map((seed) => {
+    let hash = seed >>> 0;
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash;
+  });
+  const hex = words.map((word) => word.toString(16).padStart(8, '0')).join('');
+  const variant = ((parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20)}`;
+}

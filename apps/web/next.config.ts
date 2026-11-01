@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Pakiety z monorepo są publikowane jako źródła TypeScript — Next musi je skompilować sam.
-  transpilePackages: ["@expeditionplan/core", "@expeditionplan/sync", "@expeditionplan/db"],
+  transpilePackages: ["@expeditionplan/core", "@expeditionplan/sync", "@expeditionplan/db", "@expeditionplan/ai", "@expeditionplan/planner"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

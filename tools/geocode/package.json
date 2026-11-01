@@ -11,10 +11,11 @@
   "scripts": {
     "geocode": "node src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@expeditionplan/core": "*"
+    "@expeditionplan/core": "*",
+    "@expeditionplan/planner": "*"
   },
   "devDependencies": {
     "@types/node": "^24",

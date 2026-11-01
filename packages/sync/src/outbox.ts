@@ -1,6 +1,6 @@
 import type { LocalDb, OutboxTable } from './local-db.ts';
-import type { Remote } from './remote.ts';
-import { uuidv7 } from './uuid.ts';
+import { type Remote, RemoteError } from './remote.ts';
+import { stableUuid, uuidv7 } from './uuid.ts';
 
 /**
  * Zapisy z telefonu (SPECYFIKACJA §6): wiersz lokalny i wpis w outboxie powstają w jednej
@@ -89,6 +89,23 @@ export function saveExpense(db: LocalDb, expense: NewExpense): string {
   return id;
 }
 
+/**
+ * Odhaczenie pozycji pakowania dla uczestnika (albo cofnięcie). Id stałe dla pary pozycja +
+ * uczestnik, więc kolejne kliknięcia poprawiają ten sam wiersz (outbox wyśle ostatni stan).
+ */
+export function setPacked(db: LocalDb, tripId: string, packingItemId: string, travelerId: string, packed: boolean): string {
+  const id = stableUuid('packing', packingItemId, travelerId);
+  enqueue(db, 'packing_checks', {
+    id,
+    trip_id: tripId,
+    packing_item_id: packingItemId,
+    traveler_id: travelerId,
+    packed,
+    checked_at: new Date().toISOString(),
+  });
+  return id;
+}
+
 export function pendingCount(db: LocalDb): number {
   return db.all<{ n: number }>('select count(*) as n from outbox')[0]?.n ?? 0;
 }
@@ -102,7 +119,17 @@ export type FlushOptions = {
   afterSend?: (sent: number) => void;
 };
 
-export type FlushResult = { sent: number; remaining: number; error?: string };
+/** Zapis, którego serwer nie przyjmie (brak uprawnień, naruszone ograniczenie) — wycofany z telefonu. */
+export type RejectedWrite = { table: OutboxTable; id: string; error: string };
+
+export type FlushResult = { sent: number; remaining: number; error?: string; rejected?: RejectedWrite[] };
+
+/** Błąd, którego ponowienie nic nie zmieni: uprawnienia (42…), ograniczenia (23…), dane (22…). */
+function isPermanent(error: unknown): boolean {
+  return error instanceof RemoteError && /^(42|23|22)/.test(error.code ?? '');
+}
+
+const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 type OutboxRow = { seq: number; tbl: OutboxTable; row_id: string; payload: string };
 
@@ -113,6 +140,13 @@ type OutboxRow = { seq: number; tbl: OutboxTable; row_id: string; payload: strin
 export async function flushOutbox(db: LocalDb, remote: Remote, options: FlushOptions = {}): Promise<FlushResult> {
   const batchSize = options.batchSize ?? 100;
   let sent = 0;
+  const rejected: RejectedWrite[] = [];
+  const result = (remaining: number, error?: string): FlushResult => ({
+    sent,
+    remaining,
+    ...(error === undefined ? {} : { error }),
+    ...(rejected.length === 0 ? {} : { rejected }),
+  });
 
   for (;;) {
     const head = db.all<OutboxRow>('select seq, tbl, row_id, payload from outbox order by seq limit ?', [batchSize]);
@@ -123,21 +157,44 @@ export async function flushOutbox(db: LocalDb, remote: Remote, options: FlushOpt
     // Ten sam wiersz poprawiony kilka razy offline: wysyłamy tylko ostatnią wersję.
     const latest = new Map(batch.map((row) => [row.row_id, JSON.parse(row.payload) as Record<string, unknown>]));
 
+    const refused = new Map<string, string>();
     try {
       await remote.push(table, [...latest.values()]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      db.run('update outbox set attempts = attempts + 1, last_error = ? where seq = ?', [message, batch[0]!.seq]);
-      return { sent, remaining: pendingCount(db), error: message };
+      if (!isPermanent(error)) {
+        db.run('update outbox set attempts = attempts + 1, last_error = ? where seq = ?', [messageOf(error), batch[0]!.seq]);
+        return result(pendingCount(db), messageOf(error));
+      }
+      // Serwer odrzucił partię na stałe: wiersz po wierszu, żeby wycofać tylko te nie do przyjęcia.
+      // Bez tego jeden zły zapis (np. widz odhacza cudzą rzecz) blokowałby kolejkę na zawsze.
+      for (const [id, row] of latest) {
+        try {
+          await remote.push(table, [row]);
+        } catch (each) {
+          if (!isPermanent(each)) {
+            db.run('update outbox set attempts = attempts + 1, last_error = ? where seq = ?', [messageOf(each), batch[0]!.seq]);
+            return result(pendingCount(db), messageOf(each));
+          }
+          refused.set(id, messageOf(each));
+        }
+      }
     }
 
-    sent += batch.length;
+    sent += batch.length - refused.size;
     options.afterSend?.(sent);
 
     const lastSeq = batch[batch.length - 1]!.seq;
     db.transaction(() => {
       db.run('delete from outbox where seq <= ?', [lastSeq]);
+      for (const [id, error] of refused) {
+        // Wiersz z telefonu znika; jeśli nadpisał wiersz z serwera, pełne pobranie przywróci oryginał.
+        const local = db.all<{ trip_id: string; row_version: number | null }>('select trip_id, row_version from rows where tbl = ? and id = ?', [table, id])[0];
+        db.run('delete from rows where tbl = ? and id = ? and not exists (select 1 from outbox where row_id = ?)', [table, id, id]);
+        if (local?.row_version != null) db.run('update sync_state set version = 0 where trip_id = ?', [local.trip_id]);
+        rejected.push({ table, id, error });
+      }
       for (const id of latest.keys()) {
+        if (refused.has(id)) continue;
         // Wiersz zostaje „oczekujący”, jeśli po tej partii poprawiono go jeszcze raz.
         db.run('update rows set pending = 0 where tbl = ? and id = ? and not exists (select 1 from outbox where row_id = ?)', [
           table,
@@ -148,5 +205,5 @@ export async function flushOutbox(db: LocalDb, remote: Remote, options: FlushOpt
     });
   }
 
-  return { sent, remaining: 0 };
+  return result(0);
 }

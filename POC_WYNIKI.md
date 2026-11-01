@@ -36,6 +36,20 @@ Dokument bramki decyzyjnej z [PLAN_ETAPOWY.md](PLAN_ETAPOWY.md). Każdy eksperym
 
 ---
 
+## Gemini zamiast Claude w łańcuchu planowania (1.11.2026)
+
+Decyzja D8: Gemini API. `npm run plan-ai -- --backend gemini --models …` na 5 planach wzorcowych (`tools/plan-ai/out/2026-11-01T09-54-06`):
+
+| plan | model | AI | miejsca ugruntowane | dni wykonalne | twarde ostrz. | dryf > 15 min | ryzyka | koszt |
+|---|---|---|---|---|---|---|---|---|
+| dinara | gemini-3.5-flash-lite | 22 s | 6/6 | 3/3 | 0 | 6 | 3/4 | $0,038 |
+| barcelona | gemini-3.5-flash-lite | 15 s | 10/11 | 2/3 | 1 | 1 | 3/4 | $0,026 |
+| dinara | claude-haiku-5-5 (31.10) | 140 s | 14/14 | 3/3 | 0 | 1 | 4/4 | $0,035 |
+
+- Flash-Lite: 3 z 5 planów padły na walidacji (JSON niezgodny ze schematem dwa razy z rzędu) — `planTrip` ponawia teraz etap jednym świeżym zapytaniem; z tym poprawką Dinara przeszła na lokalnej bazie.
+- `gemini-3.8-flash`: wszystkie 5 planów — „model przeciążony” (darmowy limit, ~20 zapytań/dzień). Do ponownego porównania po włączeniu rozliczeń.
+- Wniosek: Flash-Lite daje szkic szybciej i równie tanio jak Haiku, ale mniej szczegółowy (mniej miejsc) i z większym dryfem godzin — do szkicu wystarcza; silnik i tak audytuje wynik.
+
 ## PoC-0 — Schemat danych na własnych planach (31.10.2026)
 
 **Werdykt: GO.** Poprawki A1–A9 wprowadzone 31.10.2026 (schemat, testy, migracja pięciu planów, specyfikacja v0.3) — patrz „Stan po poprawkach” niżej. Pierwotnie: **GO z poprawkami.** Wszystkie 5 planów zmieściło się w schemacie `TripDocument` bez utraty tego, co jest potrzebne na telefonie w trasie (godziny, rezerwacje i kody, warianty z warunkami, ograniczenia, ceny dla grupy, kontakty). Jednocześnie wyszło **9 luk, które dają złe wyniki silnika albo dublują dane** (grupa A niżej) — trzeba je załatać w schemacie przed MVP-1, razem z migracją pięciu `plan.json`.

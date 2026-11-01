@@ -2,11 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AiPlanButton } from "@/components/ai-plan-button";
 import { BriefForm, type BriefDraft } from "@/components/brief-form";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
-/** Kreator briefu wyjazdu (MVP-2, część bez AI): to, co AI dostanie na start planowania. */
+/** Kreator briefu wyjazdu (MVP-2) i „Zaplanuj z AI” — gdy brief jest zapisany. */
+
+// Planowanie z AI (akcja serwera na tej stronie) trwa do kilku minut.
+export const maxDuration = 300;
+
 export default function BriefPage(props: PageProps<"/trips/[id]/brief">) {
   return (
     <Shell>
@@ -60,6 +65,7 @@ async function Brief({ params }: { params: Promise<{ id: string }> }) {
           Założenia dla AI. Daty ({trip.data.start_date} – {trip.data.end_date}) i uczestnicy pochodzą z wyjazdu.
         </p>
       </div>
+      {canEdit && brief.data !== null && <AiPlanButton tripId={id} />}
       {canEdit ? (
         <BriefForm tripId={id} tripTz={trip.data.primary_tz!} initial={initial} travelers={travelers.count ?? 0} />
       ) : (

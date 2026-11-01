@@ -2,11 +2,13 @@
 
 import { Currency, IsoDate, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
+import { planTrip } from "@expeditionplan/planner";
 import { importTrip, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { plannerDeps } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { SAMPLE_PLANS } from "@/lib/sample-plans";
 
@@ -170,9 +172,96 @@ export async function importSamples(): Promise<FormState> {
   return { ok: added.length === 0 ? "Wszystkie przykładowe wyjazdy już są na liście." : `Dodano: ${added.join(", ")}.` };
 }
 
+/** Plik JSON z „Pobierz JSON” (albo inny `TripDocument`) jako NOWY wyjazd na moim koncie. */
+export async function importTripFile(_prev: FormState, form: FormData): Promise<FormState> {
+  const { supabase } = await requireUser("/trips/new");
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Wybierz plik JSON." };
+  if (file.size > 1_000_000) return { error: "Plik jest za duży (najwyżej 1 MB — limit akcji serwera)." };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await file.text());
+  } catch {
+    return { error: "To nie jest poprawny plik JSON." };
+  }
+  const parsed = TripDocument.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { error: `Plik nie jest planem wyjazdu: ${issue?.path.join(".") ?? ""} ${issue?.message ?? ""}`.trim() };
+  }
+  let tripId: string;
+  try {
+    tripId = (await importTrip(supabase, parsed.data)).tripId;
+  } catch (e) {
+    return { error: `Nie zapisano: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  redirect(`/trips/${tripId}`);
+}
+
 export async function acceptInvite(token: string): Promise<FormState> {
   const { supabase } = await requireUser(`/join/${token}`);
   const { data, error } = await supabase.rpc("accept_invite", { p_token: token });
   if (error) return { error: error.code === "P0002" ? "Zaproszenie wygasło, zostało wykorzystane albo jest nieprawidłowe." : message(error) };
   redirect(`/trips/${data}`);
+}
+
+/**
+ * „Zaplanuj z AI” (MVP-2): brief tego wyjazdu → łańcuch z packages/planner (Gemini + Geoapify)
+ * → NOWY wyjazd „Szkic AI: …” zapisany jedną transakcją (`import_trip`). AI daje szkic, nie
+ * nadpisuje planu (SPECYFIKACJA §4) — porównanie i przenoszenie punktów robi człowiek.
+ * Trwa zwykle 30–90 s; `maxDuration` ustawia strona briefu.
+ */
+export async function planWithAi(tripId: string): Promise<FormState & { tripId?: string }> {
+  const { supabase } = await requireUser(`/trips/${tripId}/brief`);
+  const [trip, brief] = await Promise.all([
+    supabase.from("my_trips").select("title, role, primary_tz").eq("id", tripId).maybeSingle(),
+    supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
+  ]);
+  if (trip.error || brief.error) return { error: message((trip.error ?? brief.error)!) };
+  if (trip.data === null) return { error: "Nie ma takiego wyjazdu." };
+  if (trip.data.role !== "owner" && trip.data.role !== "editor") return { error: "Planować z AI może organizator albo edytor." };
+  if (brief.data === null) return { error: "Najpierw uzupełnij brief wyjazdu." };
+  const parsed = TripBrief.safeParse(brief.data.brief);
+  if (!parsed.success) return { error: `Brief nie przechodzi walidacji: ${parsed.error.issues[0]?.message ?? ""}` };
+
+  const setup = plannerDeps();
+  if ("missing" in setup) return { error: `Serwer nie ma kluczy: ${setup.missing.join(", ")}.` };
+
+  const usage = { inputTokens: 0, outputTokens: 0 };
+  const started = Date.now();
+  let planned: Awaited<ReturnType<typeof planTrip>>;
+  try {
+    planned = await planTrip(parsed.data, {
+      ...setup.deps,
+      primaryTz: trip.data.primary_tz ?? undefined,
+      onUsage: (each) => {
+        usage.inputTokens += each.inputTokens;
+        usage.outputTokens += each.outputTokens;
+      },
+    });
+  } catch (e) {
+    return { error: `AI nie ułożyło planu: ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  const doc = TripDocument.parse({ ...planned.doc, trip: { ...planned.doc.trip, title: `Szkic AI: ${trip.data.title}` } });
+  let newTripId: string;
+  try {
+    newTripId = (await importTrip(supabase, doc)).tripId;
+  } catch (e) {
+    return { error: `Nie zapisano szkicu: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  // Ślad wywołania (audyt kosztów); jego brak nie unieważnia szkicu.
+  await supabase.from("ai_runs").insert({
+    id: uuidv7(),
+    trip_id: newTripId,
+    stage: "plan",
+    provider: "GEMINI",
+    model: setup.model,
+    input: { sourceTripId: tripId } as Json,
+    status: "ok",
+    tokens_in: usage.inputTokens,
+    tokens_out: usage.outputTokens,
+    duration_ms: Date.now() - started,
+  });
+  return { ok: `Szkic gotowy: ${doc.days.length} dni, ${doc.items.length} punktów.`, tripId: newTripId };
 }
