@@ -14,7 +14,7 @@ export function LoginForm() {
   const next = params.get("next") ?? "/";
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<{ error?: string; ok?: string }>(
-    params.get("error") ? { error: "Logowanie nie powiodło się — spróbuj jeszcze raz." } : {},
+    params.get("error") ? { error: `Logowanie nie powiodło się — spróbuj jeszcze raz.${params.get("error") === "1" ? "" : ` (${params.get("error")})`}` } : {},
   );
   const [pending, setPending] = useState(false);
   const redirectTo = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
