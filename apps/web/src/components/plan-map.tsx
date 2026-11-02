@@ -44,9 +44,11 @@ export function PlanMap({ map: data, fitKey, selected, onSelect, editing = null 
   const fitted = useRef<string | null>(null);
   const select = useRef(onSelect);
   const edit = useRef(editing);
+  const chosen = useRef(selected);
   useEffect(() => {
     select.current = onSelect;
     edit.current = editing;
+    chosen.current = selected;
   });
 
   useEffect(() => {
@@ -123,6 +125,8 @@ export function PlanMap({ map: data, fitKey, selected, onSelect, editing = null 
         }
         return { pin, marker };
       });
+      // Pinezki powstają po `import()` — wyróżnienie musi dostać też nowa pinezka wybranego punktu.
+      highlight(markers.current, chosen.current);
       if (fitted.current === fitKey) return;
       const main = data.pins.filter((pin) => pin.stops.length > 0 || pin.base);
       const focus = main.length > 0 ? main : data.pins;
@@ -137,13 +141,8 @@ export function PlanMap({ map: data, fitKey, selected, onSelect, editing = null 
   // Wybrany punkt: wyróżniona pinezka, a gdy jest poza widokiem — przesunięcie mapy.
   useEffect(() => {
     if (map === null) return;
-    for (const { pin, marker } of markers.current) {
-      const active = selected !== null && (pin.stops.some((stop) => stop.ref === selected) || (pin.pool ?? []).some((each) => each.ref === selected));
-      const element = marker.getElement();
-      element.dataset.active = String(active);
-      element.style.zIndex = active ? "10" : "";
-      if (active && !map.getBounds().contains([pin.lng, pin.lat])) map.easeTo({ center: [pin.lng, pin.lat], duration: 500 });
-    }
+    const pin = highlight(markers.current, selected);
+    if (pin !== undefined && !map.getBounds().contains([pin.lng, pin.lat])) map.easeTo({ center: [pin.lng, pin.lat], duration: 500 });
   }, [map, selected, data]);
 
   // Wskazywanie miejsca nowego punktu: celownik zamiast rączki i znacznik wskazanego miejsca.
@@ -177,6 +176,19 @@ export function PlanMap({ map: data, fitKey, selected, onSelect, editing = null 
   );
 }
 
+/** Wyróżnia pinezkę z wybranym punktem (dnia albo z puli); zwraca ją. */
+function highlight(markers: { pin: MapPin; marker: Marker }[], selected: string | null): MapPin | undefined {
+  let found: MapPin | undefined;
+  for (const { pin, marker } of markers) {
+    const active = selected !== null && (pin.stops.some((stop) => stop.ref === selected) || (pin.pool ?? []).some((each) => each.ref === selected));
+    const element = marker.getElement();
+    element.dataset.active = String(active);
+    element.style.zIndex = active ? "10" : "";
+    if (active) found = pin;
+  }
+  return found;
+}
+
 function lines(parts: MapLine[]) {
   return {
     type: "FeatureCollection" as const,
@@ -184,22 +196,30 @@ function lines(parts: MapLine[]) {
   };
 }
 
-/** Pinezka: numery punktów dnia („3 · 4”), baza dnia albo szara kropka z puli. */
+/**
+ * Pinezka: numery punktów dnia („3 · 4”), baza dnia albo szara kropka z puli. Zewnętrzny element
+ * należy do MapLibre (pozycja przez `transform`) — wygląd, powiększenie i animacja są na
+ * wewnętrznym. Inaczej `scale` (Tailwind 4: osobna właściwość CSS) mnoży też przesunięcie
+ * pinezki, a `transition` animuje jej pozycję przy każdym ruchu mapy.
+ */
 function pinElement(pin: MapPin): HTMLElement {
   const element = document.createElement("button");
   element.type = "button";
+  element.className = "group cursor-pointer";
   const titles = [...pin.stops.map((stop) => `${stop.n}. ${stop.title}`), ...(pin.pool ?? []).map((each) => `pula: ${each.title}`)];
   element.title = [pin.name, ...titles, ...(pin.base ? ["baza dnia"] : [])].join("\n");
-  const ring = "border-2 border-white shadow-md transition data-[active=true]:scale-125 data-[active=true]:ring-4 data-[active=true]:ring-signal/60";
+  const face = document.createElement("span");
+  const ring = "border-2 border-white shadow-md transition-[scale,box-shadow] group-data-[active=true]:scale-125 group-data-[active=true]:ring-4 group-data-[active=true]:ring-signal/60";
   if (pin.stops.length > 0) {
-    element.textContent = ranges(pin.stops.map((stop) => stop.n));
-    element.className = `flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-full px-1.5 text-xs font-semibold text-white ${pin.base ? "bg-indigo-500" : "bg-sea"} ${ring}`;
+    face.textContent = ranges(pin.stops.map((stop) => stop.n));
+    face.className = `flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-white ${pin.base ? "bg-indigo-500" : "bg-sea"} ${ring}`;
   } else if (pin.base) {
-    element.textContent = "⌂";
-    element.className = `flex size-6 cursor-pointer items-center justify-center rounded-full bg-indigo-500 text-sm text-white ${ring}`;
+    face.textContent = "⌂";
+    face.className = `flex size-6 items-center justify-center rounded-full bg-indigo-500 text-sm text-white ${ring}`;
   } else {
-    element.className = `size-3 cursor-pointer rounded-full bg-zinc-400 ${ring}`;
+    face.className = `block size-3 rounded-full bg-zinc-400 ${ring}`;
   }
+  element.append(face);
   return element;
 }
 

@@ -42,6 +42,7 @@ import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { DayMap } from '@/features/plan/day-map';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { type DayEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
@@ -580,6 +581,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayP
       )}
 
       {schedule && <Warnings list={schedule.warnings.filter((warning) => warning.itemRef === undefined)} />}
+
+      {schedule && <DayMap doc={doc} dayRef={dayRef} schedule={schedule} />}
 
       {cuts.length > 0 && (
         <View style={styles.group}>
