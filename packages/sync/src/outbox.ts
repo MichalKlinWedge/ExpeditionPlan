@@ -100,6 +100,38 @@ export function removeExpense(db: LocalDb, expense: NewExpense & { id: string })
 }
 
 /**
+ * Na kogo dzieli się wydatek (`expense_splits`). Id stałe dla pary wydatek + uczestnik, więc
+ * zmiana wyboru poprawia te same wiersze: wybrani — aktywni, odznaczeni — `deleted_at`.
+ * Wszyscy uczestnicy = brak podziału (domyślnie równo na wszystkich), wiersze usunięte.
+ */
+export function saveExpenseSplits(db: LocalDb, tripId: string, expenseId: string, chosen: readonly string[], everyone: readonly string[]): void {
+  const all = chosen.length === 0 || everyone.every((id) => chosen.includes(id));
+  const now = new Date().toISOString();
+  for (const travelerId of everyone) {
+    const id = stableUuid('split', expenseId, travelerId);
+    const active = !all && chosen.includes(travelerId);
+    const exists = db.all('select 1 from rows where tbl = ? and id = ?', ['expense_splits', id]).length > 0;
+    if (!active && !exists) continue;
+    enqueue(db, 'expense_splits', { id, trip_id: tripId, expense_id: expenseId, traveler_id: travelerId, weight: 1, deleted_at: active ? null : now });
+  }
+}
+
+/** Wykonany przelew rozliczenia („Kuba oddał Ani 120 zł”) — pomniejsza saldo w `settle`. */
+export function recordSettlement(db: LocalDb, payment: { tripId: string; fromId: string; toId: string; amountMinor: number; currency: string }): string {
+  const id = uuidv7();
+  enqueue(db, 'settlements', {
+    id,
+    trip_id: payment.tripId,
+    from_traveler_id: payment.fromId,
+    to_traveler_id: payment.toId,
+    amount_minor: payment.amountMinor,
+    currency: payment.currency,
+    settled_at: new Date().toISOString(),
+  });
+  return id;
+}
+
+/**
  * Odhaczenie pozycji pakowania dla uczestnika (albo cofnięcie). Id stałe dla pary pozycja +
  * uczestnik, więc kolejne kliknięcia poprawiają ten sam wiersz (outbox wyśle ostatni stan).
  */

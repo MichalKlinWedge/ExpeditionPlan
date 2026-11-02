@@ -27,3 +27,4 @@ export * from './rates.ts';
 export * from './weather.ts';
 export * from './reminders.ts';
 export * from './item-icon.ts';
+export * from './settle.ts';

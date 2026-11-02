@@ -1,5 +1,5 @@
 import { BUDGET_CATEGORY, budgetSummary, formatMoney, parseMoney, walletSummary } from '@expeditionplan/core';
-import { type CachedTrip, type NewExpense, removeExpense, saveExpense } from '@expeditionplan/sync';
+import { type CachedTrip, type NewExpense, removeExpense, saveExpense, saveExpenseSplits } from '@expeditionplan/sync';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLiveRates } from '@/features/trip/live-rates';
+import { SettleView } from '@/features/trip/settle-view';
 import { localDb } from '@/lib/local-db';
 
 /**
@@ -131,8 +132,9 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
         <ExpenseForm
           trip={trip}
           onCancel={() => setAdding(false)}
-          onSave={(expense) => {
-            saveExpense(localDb, { tripId, ...expense });
+          onSave={({ splitIds, ...expense }) => {
+            const id = saveExpense(localDb, { tripId, ...expense });
+            saveExpenseSplits(localDb, tripId, id, splitIds, trip.live.travelers.map((row) => row.id));
             setAdding(false);
             onChanged();
           }}
@@ -146,8 +148,9 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
             trip={trip}
             initial={expense}
             onCancel={() => setEditing(null)}
-            onSave={(changed) => {
+            onSave={({ splitIds, ...changed }) => {
               saveExpense(localDb, { ...asExpense(tripId, expense), ...changed, id: expense.id });
+              saveExpenseSplits(localDb, tripId, expense.id, splitIds, trip.live.travelers.map((row) => row.id));
               setEditing(null);
               onChanged();
             }}
@@ -189,6 +192,8 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
           </Pressable>
         ),
       )}
+
+      <SettleView trip={trip} tripId={tripId} canEdit={canEditAll} fx={fx} onChanged={onChanged} />
     </View>
   );
 }
@@ -268,7 +273,8 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 
-type ExpenseFields = { amountMinor: number; currency: string; category: string; payerTravelerId: string | null; note: string | null };
+/** `splitIds` — na kogo dzieli się wydatek; pusto = na wszystkich. */
+type ExpenseFields = { amountMinor: number; currency: string; category: string; payerTravelerId: string | null; note: string | null; splitIds: string[] };
 
 /** Nowy wydatek albo poprawka (`initial`) — wtedy także „Usuń”. */
 function ExpenseForm({
@@ -291,13 +297,24 @@ function ExpenseForm({
   const [currency, setCurrency] = useState(initial?.currency ?? currencies[0]!);
   const [category, setCategory] = useState(initial?.category ?? 'food');
   const [payer, setPayer] = useState<string | null>(initial?.payer_traveler_id ?? null);
+  // Podział z bazy telefonu (aktywne wiersze `expense_splits` tego wydatku); brak = wszyscy.
+  const [forWhom, setForWhom] = useState<string[]>(() =>
+    initial === undefined
+      ? []
+      : localDb
+          .all<{ data: string }>("select data from rows where tbl = 'expense_splits'")
+          .map((row) => JSON.parse(row.data) as { expense_id: string; traveler_id: string; deleted_at: string | null })
+          .filter((row) => row.expense_id === initial.id && row.deleted_at === null)
+          .map((row) => row.traveler_id),
+  );
+  const toggle = (id: string) => setForWhom((current) => (current.includes(id) ? current.filter((each) => each !== id) : [...current, id]));
   const [note, setNote] = useState(initial?.note ?? '');
   const input = [styles.input, { color: theme.text, borderColor: theme.backgroundSelected }];
 
   const save = () => {
     const minor = parseMoney(amount);
     if (minor === null || minor === 0) return Alert.alert('Kwota', 'Podaj kwotę, np. 45 albo 12,50.');
-    onSave({ amountMinor: minor, currency, category, payerTravelerId: payer, note: note.trim() || null });
+    onSave({ amountMinor: minor, currency, category, payerTravelerId: payer, note: note.trim() || null, splitIds: forWhom });
   };
 
   return (
@@ -323,6 +340,15 @@ function ExpenseForm({
             <Chip active={payer === null} label="nie wiem" onPress={() => setPayer(null)} />
             {trip.live.travelers.map((row) => (
               <Chip key={row.id} active={payer === row.id} label={row.name as string} onPress={() => setPayer(row.id)} />
+            ))}
+          </View>
+          <ThemedText type="small" themeColor="textSecondary">
+            Na kogo (do rozliczenia)
+          </ThemedText>
+          <View style={styles.wrap}>
+            <Chip active={forWhom.length === 0} label="wszyscy" onPress={() => setForWhom([])} />
+            {trip.live.travelers.map((row) => (
+              <Chip key={row.id} active={forWhom.includes(row.id)} label={row.name as string} onPress={() => toggle(row.id)} />
             ))}
           </View>
         </>

@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { BookingEditor, BookingItems, BudgetLines, BudgetSuggestions, type Choices, Contacts, FxEditor, NewBooking, TaskList } from "@/components/logistics-editors";
+import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
@@ -294,6 +295,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           Portfel — wydane na miejscu: <span className="font-medium">{money(wallet.spentMinor)}</span>
           <span className="text-zinc-500"> ({wallet.count} wydatków z telefonu)</span>
         </p>
+        <Settlement doc={doc} tables={payload.tables as unknown as Parameters<typeof Settlement>[0]["tables"]} />
       </section>
 
       <section className={card}>

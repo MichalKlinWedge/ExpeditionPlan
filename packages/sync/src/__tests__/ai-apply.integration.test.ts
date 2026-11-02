@@ -1,10 +1,10 @@
-import { dayItems, type LogisticsCandidates, PlanPatch, type PracticalInfo, TripDocument } from '@expeditionplan/core';
+import { dayItems, type LogisticsCandidates, PlanPatch, type PracticalInfo, settle, TripDocument } from '@expeditionplan/core';
 import { applyPatch, mergeLogistics, mergePractical, patchDiff } from '@expeditionplan/planner';
 import { afterAll, describe, expect, inject, it } from 'vitest';
 
 import { COLLECTIONS, refIndex, stateFromPayload } from '../document.ts';
 import { importTrip } from '../import.ts';
-import { flushOutbox, removeExpense, saveExpense } from '../outbox.ts';
+import { flushOutbox, recordSettlement, removeExpense, saveExpense, saveExpenseSplits } from '../outbox.ts';
 import { type ElementWrite, saveElements, saveMergeEdit } from '../plan-save.ts';
 import { uuidv7 } from '../uuid.ts';
 import { createDevice, createTestUser, loadFixture } from './helpers/harness.ts';
@@ -203,6 +203,28 @@ describe('Web — szkice AI i edytor logistyki zapisane w bazie', () => {
     expect((await flushOutbox(owner.db, owner.remote)).error).toBeUndefined();
     const { data } = await owner.client.from('expenses').select('id, deleted_at').eq('id', id).single();
     expect(data?.deleted_at).not.toBeNull();
+  });
+
+  it('rozliczenie: podział wydatku i wykonany przelew przez outbox; saldo z bazy się zeruje', async () => {
+    const { owner, tripId, pull } = await ownTrip('maroko');
+    const { tables } = await pull();
+    const people = (tables.travelers as unknown as { id: string; name: string; guardian_id: string | null }[]).filter((row) => row.guardian_id === null).slice(0, 2);
+    expect(people).toHaveLength(2);
+    const [a, b] = people as [(typeof people)[number], (typeof people)[number]];
+    const id = saveExpense(owner.db, { tripId, amountMinor: 20000, currency: 'PLN', payerTravelerId: a.id, note: 'kolacja (test)' });
+    saveExpenseSplits(owner.db, tripId, id, [a.id, b.id], (tables.travelers as unknown as { id: string }[]).map((row) => row.id));
+    recordSettlement(owner.db, { tripId, fromId: b.id, toId: a.id, amountMinor: 10000, currency: 'PLN' });
+    expect((await flushOutbox(owner.db, owner.remote)).error).toBeUndefined();
+
+    const back = (await pull()).tables as unknown as Record<string, Record<string, unknown>[]>;
+    const result = settle({
+      travelers: (back.travelers ?? []).map((row) => ({ id: String(row.id), name: String(row.name), guardianId: (row.guardian_id as string | null) ?? null })),
+      expenses: (back.expenses ?? []).map((row) => ({ id: String(row.id), payerId: (row.payer_traveler_id as string | null) ?? null, amountMinor: Number(row.amount_minor), currency: String(row.currency) })),
+      splits: (back.expense_splits ?? []).filter((row) => row.deleted_at === null).map((row) => ({ expenseId: String(row.expense_id), travelerId: String(row.traveler_id), weight: Number(row.weight) })),
+      payments: (back.settlements ?? []).map((row) => ({ fromId: String(row.from_traveler_id), toId: String(row.to_traveler_id), amountMinor: Number(row.amount_minor), currency: String(row.currency) })),
+      toBase: (amount, currency) => (currency === 'PLN' ? amount : null),
+    });
+    expect(result.transfers).toEqual([]);
   });
 
   it('widz nie zapisze elementów, a konto bez zaproszenia nie założy wyjazdu', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { flushOutbox, pendingCount, recordDelay, removeExpense, saveExpense } from '../outbox.ts';
+import { flushOutbox, pendingCount, recordDelay, removeExpense, saveExpense, saveExpenseSplits } from '../outbox.ts';
 import { applyPull, pullChanges, serialPuller, syncTrip } from '../pull.ts';
 import { type PullPayload, type Remote, RemoteError, type ServerRow } from '../remote.ts';
 import { uuidv7 } from '../uuid.ts';
@@ -101,6 +101,19 @@ describe('outbox', () => {
 
     expect(server.pushes).toEqual([[id]]);
     expect(server.tables.expenses.get(id)?.amount_minor).toBe(250);
+  });
+
+  it('podział wydatku: wybrani aktywni, odznaczeni usunięci, wszyscy = brak podziału', () => {
+    const db = nodeDb();
+    const id = saveExpense(db, { tripId: TRIP, amountMinor: 100, currency: 'MAD' });
+    const alive = () =>
+      db.all<{ data: string }>("select data from rows where tbl = 'expense_splits'").map((row) => JSON.parse(row.data) as { traveler_id: string; deleted_at: string | null }).filter((row) => row.deleted_at === null).map((row) => row.traveler_id).sort();
+    saveExpenseSplits(db, TRIP, id, ['a', 'b'], ['a', 'b', 'c']);
+    expect(alive()).toEqual(['a', 'b']);
+    saveExpenseSplits(db, TRIP, id, ['a'], ['a', 'b', 'c']);
+    expect(alive()).toEqual(['a']);
+    saveExpenseSplits(db, TRIP, id, ['a', 'b', 'c'], ['a', 'b', 'c']);
+    expect(alive()).toEqual([]);
   });
 
   it('usunięty offline wydatek znika z telefonu od razu, a na serwer idzie jako miękkie usunięcie', async () => {
