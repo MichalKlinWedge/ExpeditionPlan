@@ -46,16 +46,26 @@ async function Documents({ params, searchParams }: { params: Promise<{ id: strin
   const mayEdit = role === "owner" || role === "editor";
   const editing = mayEdit && wantsEdit;
   const documents = (payload.tables.documents ?? []).map((row) => vaultDocument(row as Record<string, unknown>)).filter((each): each is VaultDocument => each !== null);
-  // Rezerwacje i punkty po id wiersza (dokument wskazuje wiersze, nie `ref`).
+  // Rezerwacje i punkty po id wiersza (dokument wskazuje wiersze, nie `ref`); wiersz bez `ref` ma w planie `id-<id>`.
   const rowId = new Map<string, string>();
-  for (const table of ["bookings", "items"] as const) for (const row of payload.tables[table] ?? []) if (typeof row.ref === "string") rowId.set(`${table}:${row.ref}`, String(row.id));
-  const dayLabel = new Map(doc.days.map((day, index) => [day.ref, `dz. ${index + 1}`]));
+  for (const table of ["bookings", "items"] as const) for (const row of payload.tables[table] ?? []) rowId.set(`${table}:${typeof row.ref === "string" ? row.ref : `id-${String(row.id)}`}`, String(row.id));
   const bookings = doc.bookings
     .filter((booking) => booking.status !== "candidate" && booking.status !== "idea")
     .flatMap((booking) => (rowId.get(`bookings:${booking.ref}`) ? [{ id: rowId.get(`bookings:${booking.ref}`)!, title: booking.title, code: booking.confirmationCode ?? null }] : []));
-  const items = doc.items
-    .filter((item) => item.dayRef !== undefined)
-    .flatMap((item) => (rowId.get(`items:${item.ref}`) ? [{ id: rowId.get(`items:${item.ref}`)!, title: `${dayLabel.get(item.dayRef!) ?? ""} · ${item.title}` }] : []));
+  // Punkty planu dzień po dniu, w kolejności planu; na końcu dnia nocleg (rezerwacja obejmująca tę noc).
+  const dayName = new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" });
+  const items = doc.days.flatMap((day, index) => {
+    const label = `Dzień ${index + 1} · ${dayName.format(new Date(`${day.date}T12:00:00Z`))}`;
+    const points = doc.items
+      .filter((item) => item.dayRef === day.ref && rowId.has(`items:${item.ref}`))
+      .sort((a, b) => (a.sortKey ?? "").localeCompare(b.sortKey ?? ""))
+      .map((item) => ({ id: rowId.get(`items:${item.ref}`)!, title: `dz. ${index + 1} · ${item.title}`, label: item.title, day: label }));
+    const nights = doc.bookings
+      .filter((booking) => (booking.kind === "lodging" || booking.lodging !== undefined) && booking.start?.date !== undefined && booking.start.date <= day.date && day.date < (booking.end?.date ?? booking.start.date))
+      .flatMap((booking) => bookings.filter((each) => each.id === rowId.get(`bookings:${booking.ref}`)))
+      .map((booking) => ({ id: booking.id, title: booking.title, label: `nocleg · ${booking.title}`, day: label, booking: true }));
+    return [...points, ...nights];
+  });
   const people = (members.data ?? []).map((member) => ({ userId: member.user_id, name: member.profiles?.display_name ?? "?", role: member.role }));
 
   return (

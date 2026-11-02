@@ -16,12 +16,14 @@ import { createClient } from "@/lib/supabase/client";
  */
 
 type Ref = { id: string; title: string };
+/** Pozycja listy „Punkt planu”: punkt dnia albo nocleg tego dnia (`booking` — wtedy `id` to rezerwacja). */
+type PlanRef = Ref & { label: string; day: string; booking?: boolean };
 type Person = { userId: string; name: string; role: string };
 type Props = {
   tripId: string;
   documents: VaultDocument[];
   bookings: (Ref & { code: string | null })[];
-  items: Ref[];
+  items: PlanRef[];
   people: Person[];
   userId: string;
   owner: boolean;
@@ -38,7 +40,7 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
   const [adding, setAdding] = useState(false);
   const groups = [
     ...bookings.map((booking) => ({ key: booking.id, title: booking.title, code: booking.code, docs: documents.filter((each) => each.bookingId === booking.id) })),
-    ...items.map((item) => ({ key: item.id, title: item.title, code: null, docs: documents.filter((each) => each.itemId === item.id && each.bookingId === null) })),
+    ...items.filter((item) => !item.booking).map((item) => ({ key: item.id, title: item.title, code: null, docs: documents.filter((each) => each.itemId === item.id && each.bookingId === null) })),
     { key: "other", title: "Inne dokumenty", code: null, docs: documents.filter((each) => each.bookingId === null && each.itemId === null) },
   ].filter((group) => group.docs.length > 0 || (group.code !== null && group.code !== ""));
   const names = new Map(people.map((person) => [person.userId, person.name]));
@@ -88,7 +90,7 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
   );
 }
 
-function DocumentRow({ tripId, document, names, editing, bookings, items, people, userId, owner, onShow }: { tripId: string; document: VaultDocument; names: Map<string, string>; editing: boolean; bookings: Ref[]; items: Ref[]; people: Person[]; userId: string; owner: boolean; onShow: () => void }) {
+function DocumentRow({ tripId, document, names, editing, bookings, items, people, userId, owner, onShow }: { tripId: string; document: VaultDocument; names: Map<string, string>; editing: boolean; bookings: Ref[]; items: PlanRef[]; people: Person[]; userId: string; owner: boolean; onShow: () => void }) {
   const router = useRouter();
   const [changing, setChanging] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -183,7 +185,7 @@ function DocumentFields({ initial, bookings, items, people, userId, owner, submi
   tripId: string;
   initial?: VaultDocument;
   bookings: Ref[];
-  items: Ref[];
+  items: PlanRef[];
   people: Person[];
   userId: string;
   owner: boolean;
@@ -246,12 +248,28 @@ function DocumentFields({ initial, bookings, items, people, userId, owner, submi
         </label>
         <label className={label}>
           Punkt planu
-          <select value={item} onChange={(event) => setItem(event.target.value)} className={input}>
+          {/* Nocleg to rezerwacja — wybór ustawia pole „Rezerwacja”. */}
+          <select
+            value={item || (items.some((each) => each.booking && each.id === booking) ? `night:${booking}` : "")}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value.startsWith("night:")) {
+                setBooking(value.slice("night:".length));
+                setItem("");
+              } else setItem(value);
+            }}
+            className={input}>
             <option value="">—</option>
-            {items.map((each) => (
-              <option key={each.id} value={each.id}>
-                {each.title}
-              </option>
+            {[...new Set(items.map((each) => each.day))].map((day) => (
+              <optgroup key={day} label={day}>
+                {items
+                  .filter((each) => each.day === day)
+                  .map((each) => (
+                    <option key={`${day}:${each.id}`} value={each.booking ? `night:${each.id}` : each.id}>
+                      {each.label}
+                    </option>
+                  ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -313,7 +331,7 @@ function DocumentFields({ initial, bookings, items, people, userId, owner, submi
   );
 }
 
-function UploadForm({ tripId, bookings, items, people, userId, owner, onDone }: { tripId: string; bookings: Ref[]; items: Ref[]; people: Person[]; userId: string; owner: boolean; onDone: () => void }) {
+function UploadForm({ tripId, bookings, items, people, userId, owner, onDone }: { tripId: string; bookings: Ref[]; items: PlanRef[]; people: Person[]; userId: string; owner: boolean; onDone: () => void }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [detected, setDetected] = useState<DetectedCode | null>(null);
