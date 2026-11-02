@@ -8,11 +8,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { loadMyTrips } from '@/features/trips/my-trips';
+import { OnTrip } from '@/features/home/on-trip';
+import { loadMyTrips, setCurrentTrip } from '@/features/trips/my-trips';
 import { localDb } from '@/lib/local-db';
 
 /**
- * Start: statystyki wyjazdów — trwający, najbliższy, liczby i dni — oraz co leży na telefonie
+ * Start: statystyki wyjazdów — trwający (tryb „w trasie”: teraz/następny, pogoda, Nawiguj), najbliższy, liczby i dni — oraz co leży na telefonie
  * na wypadek braku sieci. Z listy wyjazdów (także tej z pamięci telefonu), więc działa offline.
  */
 
@@ -57,14 +58,19 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
   return (
     <View style={styles.stack}>
       {stats.ongoing && (
-        <Pressable onPress={() => router.navigate('/plan')}>
+        <Pressable
+          onPress={() => {
+            setCurrentTrip(stats.ongoing!.trip.id);
+            router.navigate('/plan');
+          }}>
           <View style={[styles.hero, styles.ongoing, { backgroundColor: theme.primary }]}>
             <ThemedText type="smallBold" style={styles.onPrimaryMuted}>
-              TRWA · DZIEŃ {stats.ongoing.dayNo} Z {stats.ongoing.days}
+              W TRASIE · DZIEŃ {stats.ongoing.dayNo} Z {stats.ongoing.days}
             </ThemedText>
             <ThemedText type="subtitle" numberOfLines={2} style={styles.onPrimary}>
               {stats.ongoing.trip.title}
             </ThemedText>
+            <OnTrip tripId={stats.ongoing.trip.id} />
             <ThemedText type="smallBold" style={styles.onPrimary}>
               Plan dnia →
             </ThemedText>

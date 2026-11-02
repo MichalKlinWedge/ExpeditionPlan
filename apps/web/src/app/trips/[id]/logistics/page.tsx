@@ -12,6 +12,7 @@ import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+import { BOOKING_KIND } from "@/lib/labels";
 
 /**
  * Rezerwacje, budżet „zapłacone / do wydania”, kontakty i zadania (MVP-3). Dane tą samą drogą co
@@ -34,25 +35,6 @@ export default function LogisticsPage(props: PageProps<"/trips/[id]/logistics">)
 type Doc = TripDocument;
 type Booking = Doc["bookings"][number];
 type Task = Doc["tasks"][number];
-
-const BOOKING_KIND: Record<string, string> = {
-  flight: "lot",
-  train: "pociąg",
-  bus: "autobus",
-  ferry: "prom",
-  lodging: "nocleg",
-  car_rental: "wynajem auta",
-  transfer: "transfer",
-  driver_hire: "kierowca",
-  activity: "atrakcja",
-  package: "pakiet",
-  ticket: "bilet",
-  transit_pass: "karta komunikacji",
-  insurance: "ubezpieczenie",
-  esim: "eSIM",
-  luggage: "bagaż",
-  other: "inne",
-};
 
 const BOOKING_STATUS: Record<string, { label: string; tone: string }> = {
   idea: { label: "pomysł", tone: "text-zinc-500" },

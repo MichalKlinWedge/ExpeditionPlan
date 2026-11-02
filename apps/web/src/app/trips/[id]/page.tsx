@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { CompareIcon, DownloadIcon, InfoIcon, NoteIcon, PeopleIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { CompareIcon, DownloadIcon, InfoIcon, NoteIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -103,6 +103,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         {compareHref !== null && (
           <Tile href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />
         )}
+        {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/print`} icon={<PrinterIcon />} title="Wydruk / PDF" hint="plan na papierze, bez telefonu" />}
         <Tile href={`/trips/${id}/export`} icon={<DownloadIcon />} title="Pobierz JSON" hint="kopia całego planu" download />
       </nav>
 

@@ -128,3 +128,12 @@ export const ShieldIcon = (props: Props) => (
     <path d="m9 12 2 2 4-4" />
   </Svg>
 );
+
+export const PrinterIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M7 9V3.5h10V9" />
+    <rect x="3.5" y="9" width="17" height="8" rx="1.5" />
+    <path d="M7 14h10v6.5H7Z" />
+    <path d="M17 11.5h.01" />
+  </Svg>
+);

@@ -138,7 +138,16 @@ h2 {
     border: 1px solid var(--color-zinc-300);
     border-radius: 0.6rem;
   }
+  /* Podpowiedź (przykład) wyraźnie inna niż wpisany tekst — kursywa, przygaszona. */
+  .field::placeholder {
+    color: var(--color-zinc-400);
+    font-style: italic;
+    opacity: 1;
+  }
   @media (prefers-color-scheme: dark) {
+    .field::placeholder {
+      color: var(--color-zinc-500);
+    }
     .field {
       border-color: var(--color-zinc-700);
     }
@@ -161,4 +170,15 @@ h2 {
       color: #9fd8cf;
     }
   }
+}
+
+/* Wydruk (strona `/trips/[id]/print`): biała kartka, bez tła motywu. */
+@media print {
+  body {
+    background: #ffffff;
+    color: var(--color-zinc-900);
+  }
+}
+@page {
+  margin: 14mm 12mm;
 }

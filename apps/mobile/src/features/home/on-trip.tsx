@@ -1,0 +1,115 @@
+import { instantToZoned, nowAndNext, scheduleDay, type TripDocument, weatherIcon, weatherLine } from '@expeditionplan/core';
+import { cachedTrip, type TripState } from '@expeditionplan/sync';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Linking, StyleSheet, View } from 'react-native';
+
+import { Button } from '@/components/button';
+import { ThemedText } from '@/components/themed-text';
+import { Spacing } from '@/constants/theme';
+import { useTripWeather } from '@/features/trip/trip-weather';
+import { localDb } from '@/lib/local-db';
+
+/**
+ * Tryb „w trasie” na Starcie: dla trwającego wyjazdu — teraz i następny punkt dnia, pogoda,
+ * „Nawiguj” do następnego miejsca i do noclegu. Z bazy telefonu (działa offline), zegar co 30 s.
+ * Godziny jak w planie: scenariusz optymistyczny, warianty i zdarzenia dnia z bazy.
+ */
+
+const duration = (value: number) => (value < 60 ? `${value} min` : `${Math.floor(value / 60)} h ${value % 60} min`);
+const navigate = (at: { lat: number; lng: number }) => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${at.lat},${at.lng}`);
+
+/** Miejsce, do którego się jedzie: cel przejazdu albo miejsce punktu (ze współrzędnymi). */
+function placeOf(doc: TripDocument, itemRef: string) {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  const ref = item?.leg?.toPlaceRef ?? item?.placeRef;
+  const place = ref === undefined ? undefined : doc.places.find((each) => each.ref === ref);
+  return place?.lat === undefined || place.lng === undefined ? null : { name: place.name, lat: place.lat, lng: place.lng };
+}
+
+export function OnTrip({ tripId }: { tripId: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(tick);
+  }, []);
+  // Przy każdym wejściu na Start — opóźnienia i pominięcia z planu zmieniają godziny.
+  const [state, setState] = useState<TripState | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      try {
+        setState(cachedTrip(localDb, tripId)?.state ?? null);
+      } catch {
+        setState(null);
+      }
+    }, [tripId]),
+  );
+  const weather = useTripWeather(tripId, state?.doc ?? null);
+  if (state === null) return null;
+
+  const { doc, inputs } = state;
+  const day = doc.days.find((each) => instantToZoned(now, each.tz).date === each.date);
+  if (day === undefined) return null;
+  let view: ReturnType<typeof nowAndNext> | null = null;
+  try {
+    const schedule = scheduleDay(doc, day.ref, { scenario: 'optimistic', activeVariants: inputs.activeVariants, delays: inputs.delays, skipRefs: inputs.skipRefs });
+    view = nowAndNext(schedule, now);
+  } catch {
+    view = null;
+  }
+  const sky = weather?.days[day.ref];
+  const target = view?.next ?? view?.current ?? null;
+  const goTo = target === null ? null : placeOf(doc, target.ref);
+  const base = day.baseRef === undefined ? undefined : doc.places.find((place) => place.ref === day.baseRef);
+  const lodging = base?.lat !== undefined && base.lng !== undefined ? { lat: base.lat, lng: base.lng } : null;
+
+  return (
+    <View style={styles.block}>
+      {day.title && (
+        <ThemedText type="small" style={styles.muted}>
+          {day.title}
+        </ThemedText>
+      )}
+      {sky && (
+        <ThemedText type="smallBold" style={styles.text}>
+          {weatherIcon(sky.code)} {weatherLine(sky)}
+        </ThemedText>
+      )}
+      {view?.current && (
+        <ThemedText type="small" style={styles.text}>
+          <ThemedText type="smallBold" style={styles.text}>
+            Teraz:
+          </ThemedText>{' '}
+          {view.current.title} · do {view.current.endLocal}
+        </ThemedText>
+      )}
+      {view?.next && (
+        <ThemedText type="small" style={styles.text}>
+          <ThemedText type="smallBold" style={styles.text}>
+            Następny:
+          </ThemedText>{' '}
+          {view.next.startLocal} {view.next.title} · za {duration(view.untilNextMin!)}
+        </ThemedText>
+      )}
+      {view !== null && view.current === null && view.next === null && (
+        <ThemedText type="small" style={styles.text}>
+          Na dziś wszystko z planu za wami.
+        </ThemedText>
+      )}
+      {(goTo !== null || lodging !== null) && (
+        <View style={styles.buttons}>
+          {goTo !== null && <Button small label={`Nawiguj: ${goTo.name}`} onPress={() => navigate(goTo)} style={styles.grow} />}
+          {lodging !== null && <Button small label="Do noclegu" onPress={() => navigate(lodging)} />}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  block: { gap: Spacing.one },
+  text: { color: '#FFFFFF' },
+  muted: { color: '#FFFFFFCC' },
+  buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.one },
+  grow: { flexShrink: 1 },
+});

@@ -6,3 +6,23 @@ export const tripDates = (start: string, end: string) =>
     new Date(`${start}T00:00:00Z`),
     new Date(`${end}T00:00:00Z`),
   );
+
+/** Rodzaj rezerwacji (`BookingKind`). */
+export const BOOKING_KIND: Record<string, string> = {
+  flight: "lot",
+  train: "pociąg",
+  bus: "autobus",
+  ferry: "prom",
+  lodging: "nocleg",
+  car_rental: "wynajem auta",
+  transfer: "transfer",
+  driver_hire: "kierowca",
+  activity: "atrakcja",
+  package: "pakiet",
+  ticket: "bilet",
+  transit_pass: "karta komunikacji",
+  insurance: "ubezpieczenie",
+  esim: "eSIM",
+  luggage: "bagaż",
+  other: "inne",
+};

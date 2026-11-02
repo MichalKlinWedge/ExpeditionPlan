@@ -58,7 +58,12 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
           </Link>
           <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
         </div>
-        {canEdit && <EditToggle href={`/trips/${id}/plan`} editing={editing} />}
+        <div className="flex items-center gap-3">
+          <Link href={`/trips/${id}/print`} className="text-sm text-zinc-500 underline">
+            Wydruk / PDF
+          </Link>
+          {canEdit && <EditToggle href={`/trips/${id}/plan`} editing={editing} />}
+        </div>
       </div>
       {editing && (
         <div className="flex flex-col gap-2">
