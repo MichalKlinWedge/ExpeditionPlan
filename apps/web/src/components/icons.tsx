@@ -82,3 +82,20 @@ export const PencilIcon = (props: Props) => (
     <path d="m13.5 6.5 4 4" />
   </Svg>
 );
+
+export const PeopleIcon = (props: Props) => (
+  <Svg {...props}>
+    <circle cx="9" cy="8" r="3.2" />
+    <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+    <circle cx="17" cy="9" r="2.4" />
+    <path d="M15.5 14.2A4.5 4.5 0 0 1 20.5 19" />
+  </Svg>
+);
+
+export const CompareIcon = (props: Props) => (
+  <Svg {...props}>
+    <rect x="3" y="4" width="7" height="16" rx="1.5" />
+    <rect x="14" y="4" width="7" height="16" rx="1.5" />
+    <path d="M10 12h4M12.5 10.5 14 12l-1.5 1.5" />
+  </Svg>
+);
