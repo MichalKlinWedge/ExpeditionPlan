@@ -17,7 +17,7 @@ export function Shell({ children, wide = false }: { children: React.ReactNode; w
               <CompassIcon className="size-6" />
             </span>
             <span className="flex flex-col leading-tight">
-              <span className="font-display text-lg font-bold tracking-tight">ExpeditionPlan</span>
+              <span className="font-display text-lg font-bold tracking-tight">Expedition Planner</span>
               <span className="text-xs text-zinc-300">Planner Hub</span>
             </span>
           </Link>

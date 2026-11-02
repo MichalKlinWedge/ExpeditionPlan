@@ -159,7 +159,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
         );
       })}
 
-      <footer className="border-t border-zinc-300 pt-2 text-xs text-zinc-500">Godziny orientacyjne (scenariusz optymistyczny) · ExpeditionPlan</footer>
+      <footer className="border-t border-zinc-300 pt-2 text-xs text-zinc-500">Godziny orientacyjne (scenariusz optymistyczny) · Expedition Planner</footer>
     </article>
   );
 }

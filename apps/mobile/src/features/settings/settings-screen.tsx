@@ -97,7 +97,7 @@ export function SettingsScreen({ visible, onClose }: { visible: boolean; onClose
 
               <ThemedText type="smallBold">Wersja aplikacji</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {Constants.expoConfig?.name ?? 'Expedition Planer'} {Constants.expoConfig?.version ?? ''}
+                {Constants.expoConfig?.name ?? 'Expedition Planner'} {Constants.expoConfig?.version ?? ''}
               </ThemedText>
               <UpdateCard />
             </ScrollView>

@@ -21,7 +21,7 @@ const bitter = Bitter({
 });
 
 export const metadata: Metadata = {
-  title: "ExpeditionPlan — Planner Hub",
+  title: "Expedition Planner",
   description: "Planowanie wyjazdów z pomocą AI",
 };
 

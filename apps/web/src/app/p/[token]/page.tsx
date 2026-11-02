@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 
 // Link prywatny — nie do wyszukiwarek.
-export const metadata: Metadata = { title: "Plan wyjazdu — ExpeditionPlan", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Plan wyjazdu — Expedition Planner", robots: { index: false, follow: false } };
 
 export default function PublicPlanPage(props: PageProps<"/p/[token]">) {
   return (

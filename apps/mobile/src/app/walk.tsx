@@ -80,7 +80,7 @@ export default function WalkScreen() {
       timeInterval: 5000,
       distanceInterval: 10,
       foregroundService: {
-        notificationTitle: 'Expedition Planer — tryb spaceru',
+        notificationTitle: 'Expedition Planner — tryb spaceru',
         notificationBody: 'Śledzę pozycję, żeby wykryć punkty trasy.',
         killServiceOnDestroy: false,
       },

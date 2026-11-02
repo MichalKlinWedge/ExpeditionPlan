@@ -38,7 +38,7 @@ async function Join({ params }: { params: Promise<{ token: string }> }) {
       <p>Dołączysz jako {email}.</p>
       <JoinButton token={token} />
       <p className="text-sm text-zinc-500">
-        Na telefonie z aplikacją ExpeditionPlan:{" "}
+        Na telefonie z aplikacją Expedition Planner:{" "}
         <a href={`expeditionplan://join/${token}`} className="underline">
           otwórz w aplikacji
         </a>

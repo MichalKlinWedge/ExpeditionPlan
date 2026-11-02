@@ -54,7 +54,7 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <TopoHeader
-            title="Expedition Planer"
+            title="Expedition Planner"
             subtitle="Pocket Guide"
             actions={
               <View style={styles.actions}>
