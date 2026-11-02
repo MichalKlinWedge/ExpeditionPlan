@@ -3,6 +3,7 @@
 import {
   activeVariants as resolveVariants,
   addItem,
+  addItemAtPin,
   dayItems,
   dayMap,
   documentProblem as problem,
@@ -12,6 +13,7 @@ import {
   legLabel,
   mapCoverage,
   missingOnMap,
+  movePlace,
   moveToDay,
   moveWithinDay,
   type PlanEdit as Edit,
@@ -27,7 +29,7 @@ import { savePlanEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import { useMemo, useState } from "react";
 
 import { ItemEditor } from "@/components/item-editor";
-import { PlanMap } from "@/components/plan-map";
+import { type LatLng, PlanMap } from "@/components/plan-map";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useRefreshOnReturn } from "@/lib/use-refresh-on-return";
@@ -89,6 +91,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
   const mapDay = doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0];
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ ref: string; over: DropTarget | null } | null>(null);
+  /** Własna pinezka: tryb wskazywania na mapie i wskazane miejsce nowego punktu. */
+  const [pick, setPick] = useState<{ at: LatLng | null } | null>(null);
 
   // Kolejność na mapie = kolejność z silnika (warianty, pominięcia); przed hydratacją — z klucza.
   let mapRefs: string[] = [];
@@ -100,7 +104,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
     }
   }
   const map = dayMap(doc, mapRefs, { baseRef: mapDay?.baseRef, pool: true });
-  const mapKey = JSON.stringify([map.path, map.pins.map((pin) => [pin.placeRef, pin.stops.map((stop) => stop.n), pin.pool?.length])]);
+  const mapKey = JSON.stringify([map.lines, map.pins.map((pin) => [pin.placeRef, pin.lat, pin.lng, pin.stops.map((stop) => stop.n), pin.pool?.length])]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- mapa przerysowuje się tylko przy zmianie tego, co pokazuje
   const stableMap = useMemo(() => map, [mapKey]);
 
@@ -214,11 +218,54 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
                 ))}
               </select>
             </div>
-            <PlanMap map={stableMap} selected={selected} onSelect={(ref) => select(ref, "map")} />
+            <PlanMap
+              map={stableMap}
+              fitKey={mapDay.ref}
+              selected={selected}
+              onSelect={(ref) => select(ref, "map")}
+              editing={
+                canEdit
+                  ? {
+                      picking: pick !== null,
+                      picked: pick?.at ?? null,
+                      onPick: (at) => setPick({ at }),
+                      onMovePlace: (placeRef, at) => apply(movePlace(doc, placeRef, at)),
+                    }
+                  : null
+              }
+            />
+            {canEdit && (
+              <div className="flex flex-col gap-2 text-sm">
+                {pick === null ? (
+                  <button onClick={() => setPick({ at: null })} className="btn-secondary btn-sm self-start">
+                    + Dodaj punkt na mapie
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-2">
+                    <p className="text-xs text-zinc-500">
+                      {pick.at === null ? "Kliknij mapę w miejscu nowego punktu" : "Nowy punkt w zaznaczonym miejscu"} — na koniec dnia „{weekday(mapDay.date)}”.
+                    </p>
+                    {pick.at !== null && (
+                      <AddItemForm
+                        autoFocus
+                        onAdd={(fields) => {
+                          apply(addItemAtPin(doc, mapDay.ref, { itemId: uuidv7(), placeId: uuidv7() }, pick.at!, fields));
+                          setPick(null);
+                        }}
+                      />
+                    )}
+                    <button onClick={() => setPick(null)} className="self-start text-xs underline">
+                      anuluj
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             <p className="text-xs text-zinc-500">
-              Numery = kolejność dnia. Linia łączy kolejne miejsca prosto (czas przejazdu jest w planie)
+              Numery = kolejność dnia. Linia ciągła: trasa po drogach („Przelicz przejazdy”), przerywana: prosto między miejscami
               {map.pins.some((pin) => pin.pool) ? " · szare kropki: pula" : ""}
-              {map.pins.some((pin) => pin.base) ? " · fioletowa: baza dnia" : ""}.
+              {map.pins.some((pin) => pin.base) ? " · fioletowa: baza dnia" : ""}
+              {canEdit && map.pins.some((pin) => pin.movable) ? " · własne pinezki można przeciągnąć" : ""}.
             </p>
           </aside>
         )}
@@ -343,7 +390,7 @@ function MoveSelect({ doc, current, onMove }: { doc: TripDocument; current: stri
   );
 }
 
-function AddItemForm({ onAdd }: { onAdd: (fields: Pick<Item, "title" | "kind"> & Partial<Item>) => void }) {
+function AddItemForm({ onAdd, autoFocus = false }: { onAdd: (fields: Pick<Item, "title" | "kind"> & Partial<Item>) => void; autoFocus?: boolean }) {
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<Item["kind"]>("visit");
   const [duration, setDuration] = useState("60");
@@ -356,7 +403,7 @@ function AddItemForm({ onAdd }: { onAdd: (fields: Pick<Item, "title" | "kind"> &
         onAdd({ title: title.trim(), kind, durationMin: Number(duration) || undefined });
         setTitle("");
       }}>
-      <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nowy punkt" className="flex-1 field px-2 py-1" />
+      <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nowy punkt" autoFocus={autoFocus} className="flex-1 field px-2 py-1" />
       <select value={kind} onChange={(event) => setKind(event.target.value as Item["kind"])} className="field px-2 py-1">
         {Object.entries(KIND).map(([key, name]) => (
           <option key={key} value={key}>

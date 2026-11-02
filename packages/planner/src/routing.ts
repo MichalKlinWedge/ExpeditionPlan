@@ -1,4 +1,4 @@
-import type { TripDocument } from '@expeditionplan/core';
+import { decodePolyline, encodePolyline, simplifyPath, type TripDocument } from '@expeditionplan/core';
 
 /**
  * Realne czasy przejazdów z OpenRouteService (docs/USLUGI.md: 2000 tras/dzień, 40/min, darmowy).
@@ -6,7 +6,8 @@ import type { TripDocument } from '@expeditionplan/core';
  * Dla punktu `transport` autem, pieszo albo rowerem bierzemy współrzędne skąd/dokąd (z `leg`,
  * a gdy ich brak — miejsce poprzedniego i następnego punktu dnia, na początku dnia jego baza)
  * i zastępujemy szacunek trasą: czas optymistyczny = ORS, pesymistyczny = +30% (korki, parking,
- * postój), dystans z trasy. Lotów, promów, pociągów ORS nie liczy — zostają jak są.
+ * postój), dystans z trasy, a do mapy — uproszczona linia trasy (`leg.geometry`). Lotów, promów,
+ * pociągów ORS nie liczy — zostają jak są.
  */
 
 type Doc = TripDocument;
@@ -15,7 +16,8 @@ type Place = Doc['places'][number];
 type LegMode = NonNullable<Item['leg']>['mode'];
 export type LatLng = { lat: number; lng: number };
 export type RouteProfile = 'driving-car' | 'foot-walking' | 'foot-hiking' | 'cycling-regular';
-export type Route = { distanceKm: number; durationMin: number };
+/** `geometry` = polilinia z ORS (format Google, precyzja 5), pełna — upraszcza ją `routeLegs`. */
+export type Route = { distanceKm: number; durationMin: number; geometry?: string };
 /** `null` = ORS nie zna trasy (punkt poza drogami, morze między). */
 export type RouteLookup = (from: LatLng, to: LatLng, profile: RouteProfile) => Promise<Route | null>;
 
@@ -35,6 +37,9 @@ const PESSIMISTIC = 1.3;
 const MISMATCH = 2.5;
 /** Najwięcej tras na jeden plan — dzienny limit ORS (2000) dzieli się na wszystkie plany. */
 export const MAX_ROUTES = 60;
+/** Ile linia trasy może odjechać od drogi po uproszczeniu — autem 25 m, pieszo 5 m (ścieżki się wiją). */
+const SIMPLIFY_CAR_M = 25;
+const SIMPLIFY_FOOT_M = 5;
 
 export type RouteResult = {
   ref: string;
@@ -128,11 +133,26 @@ export async function routeLegs(doc: Doc, lookup: RouteLookup, refs?: ReadonlySe
       ...item,
       durationMin: undefined,
       durationMaxMin: undefined,
-      leg: { ...item.leg, durationMin, durationMaxMin: Math.round(durationMin * PESSIMISTIC), distanceKm: Math.round(route.distanceKm * 10) / 10, routed: true },
+      leg: {
+        ...item.leg,
+        durationMin,
+        durationMaxMin: Math.round(durationMin * PESSIMISTIC),
+        distanceKm: Math.round(route.distanceKm * 10) / 10,
+        routed: true,
+        geometry: routeGeometry(route.geometry, profile),
+      },
     });
     results.push({ ...base, status: 'routed', after: { durationMin, distanceKm: route.distanceKm } });
   }
   return { doc: { ...doc, items: doc.items.map((item) => changed.get(item.ref) ?? item) }, results };
+}
+
+/** Linia z ORS uproszczona do mapy; stara linia znika, gdy nowa trasa jej nie ma. */
+function routeGeometry(encoded: string | undefined, profile: RouteProfile): string | undefined {
+  if (encoded === undefined) return undefined;
+  const points = decodePolyline(encoded);
+  if (points.length < 2) return undefined;
+  return encodePolyline(simplifyPath(points, profile === 'driving-car' ? SIMPLIFY_CAR_M : SIMPLIFY_FOOT_M));
 }
 
 const ENDPOINT = 'https://api.openrouteservice.org/v2/directions';
@@ -162,9 +182,12 @@ export function orsRoute(apiKey: string, fetchImpl: typeof fetch = fetch): Route
     // 404 = punkt poza siecią dróg (np. szczyt, środek jeziora) — trasy nie ma, to nie awaria.
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`OpenRouteService ${response.status}`);
-    const body = (await response.json()) as { routes?: { summary?: { distance?: number; duration?: number } }[] };
-    const summary = body.routes?.[0]?.summary;
+    // Bez `geometry_format` ORS oddaje linię jako zakodowaną polilinię (precyzja 5).
+    const body = (await response.json()) as { routes?: { summary?: { distance?: number; duration?: number }; geometry?: unknown }[] };
+    const first = body.routes?.[0];
+    const summary = first?.summary;
     if (summary?.distance === undefined || summary.duration === undefined) return null;
-    return { distanceKm: summary.distance / 1000, durationMin: summary.duration / 60 };
+    const geometry = typeof first?.geometry === 'string' && first.geometry !== '' ? first.geometry : undefined;
+    return { distanceKm: summary.distance / 1000, durationMin: summary.duration / 60, ...(geometry === undefined ? {} : { geometry }) };
   };
 }

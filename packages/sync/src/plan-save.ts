@@ -17,6 +17,7 @@ export async function savePlanEdit(client: SupabaseClient, tripId: string, edit:
   const known = { ...ids };
   // Nowy punkt ma ref `id-<uuid>` — wiersz w bazie dostaje to samo id i pusty `ref`.
   if (edit.created) known[edit.created.ref] = edit.created.ref.slice(3);
+  for (const { place, created } of edit.places ?? []) if (created) known[place.ref] = place.ref.slice(3);
   const index = {
     idOf: (ref: string) => {
       const id = known[ref];
@@ -29,6 +30,12 @@ export async function savePlanEdit(client: SupabaseClient, tripId: string, edit:
     if (error) throw new RemoteError(error.code === '42501' ? 'Brak uprawnień do zmiany planu.' : error.message, error.code);
   };
 
+  // Własna pinezka: nowe miejsce przed punktem (klucz obcy `place_id`), na końcu listy miejsc.
+  for (const { place, created } of edit.places ?? []) {
+    const row = rowForUpdate('places', place, index);
+    if (created) check(await client.from('places').insert({ ...row, id: index.idOf(place.ref), trip_id: tripId, sort_key: `z${Date.now().toString(36)}` }));
+    else check(await client.from('places').update(row).eq('id', index.idOf(place.ref)));
+  }
   if (edit.created) {
     const row = rowForUpdate('items', edit.created, index);
     check(await client.from('items').insert({ ...row, id: index.idOf(edit.created.ref), trip_id: tripId, source: 'user', user_locked: true }));

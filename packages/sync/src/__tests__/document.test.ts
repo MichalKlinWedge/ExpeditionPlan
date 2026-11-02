@@ -33,6 +33,20 @@ describe('dokument ↔ wiersze tabel (MVP-1)', () => {
     expect({ ...back, items: byRef(back.items) }).toEqual({ ...doc, items: byRef(doc.items) });
   });
 
+  it('linia trasy przejazdu (`leg.geometry`) i własna pinezka wracają z bazy bez zmian', () => {
+    const doc = load('maroko');
+    const leg = doc.items.find((item) => item.leg !== undefined)!;
+    const changed = TripDocument.parse({
+      ...doc,
+      places: [...doc.places, { ref: 'p-pinezka', name: 'Moja pinezka', lat: 31.625812, lng: -7.989199, provider: 'user' }],
+      items: doc.items.map((item) => (item.ref === leg.ref ? { ...item, leg: { ...item.leg!, routed: true, geometry: '_p~iF~ps|U_ulLnnqC_mqNvxq`@' } } : item)),
+    });
+    const server = asServer(rowsFromDocument(changed, uuidv7(), uuidv7));
+    const back = documentFromRows(server.trip, server.tables);
+    expect(back.items.find((item) => item.ref === leg.ref)!.leg!.geometry).toBe('_p~iF~ps|U_ulLnnqC_mqNvxq`@');
+    expect(back.places.find((place) => place.ref === 'p-pinezka')).toMatchObject({ provider: 'user', lat: 31.625812, lng: -7.989199 });
+  });
+
   it('odwołania stają się kluczami obcymi, a noclegi z grupy kandydatów trafiają do osobnej kolumny', () => {
     const doc = load('maroko');
     const rows = rowsFromDocument(doc, uuidv7(), uuidv7);

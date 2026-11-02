@@ -12,10 +12,13 @@ import { keyBetween, NoRoomError, renumber } from './sort-key.ts';
 type Doc = TripDocument;
 export type PlanItem = Doc['items'][number];
 type Item = PlanItem;
+export type PlanPlace = Doc['places'][number];
 /** Zmiana planu: nowy dokument, punkty do zapisania i — przy usuwaniu — inne elementy, które wskazywały punkt. */
 export type PlanEdit = {
   doc: Doc;
   changed: Item[];
+  /** Miejsca do zapisania (własna pinezka): nowe idą do bazy przed punktem, który je wskazuje. */
+  places?: { place: PlanPlace; created?: true }[];
   others?: ({ collection: 'variants'; element: Doc['variants'][number] } | { collection: 'sources'; element: Doc['sources'][number] })[];
   created?: Item;
   removed?: string;
@@ -140,6 +143,33 @@ export function addItem(doc: Doc, dayRef: string, id: string, fields: Pick<Item,
   };
   return { doc: { ...doc, items: [...doc.items, item] }, changed: [], created: item };
 }
+
+/**
+ * Własna pinezka na mapie: nowe miejsce `provider: 'user'` ze współrzędnymi i punkt w nim na końcu
+ * dnia. Nazwa miejsca = tytuł punktu. `itemId` i `placeId` to uuid nowych wierszy.
+ */
+export function addItemAtPin(
+  doc: Doc,
+  dayRef: string,
+  ids: { itemId: string; placeId: string },
+  at: { lat: number; lng: number },
+  fields: Pick<Item, 'title' | 'kind'> & Partial<Item>,
+): PlanEdit {
+  const place: PlanPlace = { ref: `id-${ids.placeId}`, name: fields.title, lat: round(at.lat), lng: round(at.lng), provider: 'user', links: [] };
+  const edit = addItem({ ...doc, places: [...doc.places, place] }, dayRef, ids.itemId, { ...fields, placeRef: place.ref });
+  return { ...edit, places: [{ place, created: true }] };
+}
+
+/** Przesunięcie własnej pinezki (`provider: 'user'`); miejsc z bazy (OSM, Geoapify) nie ruszamy. */
+export function movePlace(doc: Doc, ref: string, at: { lat: number; lng: number }): PlanEdit | null {
+  const found = doc.places.find((each) => each.ref === ref);
+  if (found === undefined || found.provider !== 'user') return null;
+  const place = { ...found, lat: round(at.lat), lng: round(at.lng) };
+  return { doc: { ...doc, places: doc.places.map((each) => (each.ref === ref ? place : each)) }, changed: [], places: [{ place }] };
+}
+
+/** 6 miejsc po przecinku ≈ 10 cm — więcej z kliknięcia na mapie i tak nie wynika. */
+const round = (value: number) => Math.round(value * 1e6) / 1e6;
 
 /** Punkt nie da się usunąć, bo wskazuje na niego coś, czego edytor jeszcze nie zmienia. */
 export class ItemInUseError extends Error {

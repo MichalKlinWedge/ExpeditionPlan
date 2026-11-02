@@ -15,5 +15,6 @@ export * from './trip-stats.ts';
 export * from './budget.ts';
 export * from './plan-merge.ts';
 export * from './plan-info.ts';
+export * from './polyline.ts';
 export * from './coordinates.ts';
 export * from './booking-info.ts';

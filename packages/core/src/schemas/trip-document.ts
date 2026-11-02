@@ -231,6 +231,11 @@ export const ItemLeg = z.object({
   toPlaceRef: Ref.optional(),
   /** Czas i dystans z trasy (OpenRouteService), a nie z szacunku AI albo dokumentu. */
   routed: z.boolean().optional(),
+  /**
+   * Linia trasy z OpenRouteService do mapy: zakodowana polilinia (format Google, precyzja 5,
+   * uproszczona — `polyline.ts`). Bez niej mapa łączy miejsca prosto. Nie wypełnia jej AI.
+   */
+  geometry: z.string().optional(),
 });
 
 /** Klucz kolejności w dniu: porównywany jak tekst („0010” < „0020” < „0025”). */

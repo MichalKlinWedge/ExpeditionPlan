@@ -1,4 +1,4 @@
-import { addItem, copyFromDraft, dayItems, moveToDay, moveWithinDay, type PlanEdit, removeItem, replaceDayFromDraft, TripDocument, updateItem } from '@expeditionplan/core';
+import { addItem, addItemAtPin, copyFromDraft, dayItems, moveToDay, movePlace, moveWithinDay, type PlanEdit, removeItem, replaceDayFromDraft, TripDocument, updateItem } from '@expeditionplan/core';
 import { afterAll, describe, expect, inject, it } from 'vitest';
 
 import { refIndex, stateFromPayload } from '../document.ts';
@@ -53,11 +53,16 @@ describe('MVP-3 — edycja planu zapisana w bazie', () => {
     await step(moveToDay(doc, d2[3]!, null));
     await step(moveToDay(doc, d2[3]!, 'd3'));
     await step(removeItem(doc, 'd1-suki'));
+    const pin = addItemAtPin(doc, 'd2', { itemId: uuidv7(), placeId: uuidv7() }, { lat: 31.6258, lng: -7.9892 }, { title: 'Ogród z pinezki', kind: 'visit', durationMin: 30 });
+    await step(pin);
+    await step(movePlace(doc, pin.places![0]!.place.ref, { lat: 31.63, lng: -7.99 }));
 
     const back = (await pull()).state.doc;
     expect(normalize(back)).toEqual(normalize(doc));
     expect(back.items.some((item) => item.ref === 'd1-suki')).toBe(false);
     expect(back.items.find((item) => item.title === 'Herbata miętowa')?.dayRef).toBe('d2');
+    const garden = back.items.find((item) => item.title === 'Ogród z pinezki')!;
+    expect(back.places.find((place) => place.ref === garden.placeRef)).toMatchObject({ provider: 'user', lat: 31.63, lng: -7.99, name: 'Ogród z pinezki' });
 
     const { data: locked } = await owner.client.from('items').select('user_locked').eq('trip_id', tripId).eq('title', 'Zmieniona nazwa').single();
     expect(locked?.user_locked).toBe(true);

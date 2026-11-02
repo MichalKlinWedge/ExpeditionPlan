@@ -2,29 +2,51 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import type { DayMap, MapPin } from "@expeditionplan/core";
+import type { DayMap, MapLine, MapPin } from "@expeditionplan/core";
 import type { Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Mapa dnia w edytorze (MVP-3): pinezki z numerami kolejności z silnika, linia między kolejnymi
- * miejscami (prosta — trasa jest tylko w czasie przejazdu), baza dnia i szare kropki z puli.
- * Kafle OpenFreeMap bez klucza (docs/USLUGI.md); MapLibre ładuje się dopiero w przeglądarce.
+ * Mapa dnia w edytorze (MVP-3): pinezki z numerami kolejności z silnika, linia dnia (ciągła po
+ * drogach, gdy przejazd ma trasę z ORS, przerywana prosto między resztą miejsc), baza dnia i szare
+ * kropki z puli. Przy edycji: kliknięcie mapy wskazuje miejsce nowego punktu, a własne pinezki
+ * (`provider: 'user'`) da się przeciągnąć. Kafle OpenFreeMap bez klucza (docs/USLUGI.md);
+ * MapLibre ładuje się dopiero w przeglądarce.
  */
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
-type Props = { map: DayMap; selected: string | null; onSelect: (ref: string) => void };
+export type LatLng = { lat: number; lng: number };
 
-export function PlanMap({ map: data, selected, onSelect }: Props) {
+/** Edycja na mapie: wskazywanie miejsca nowego punktu (`picking`) i przesuwanie własnych pinezek. */
+export type MapEditing = {
+  picking: boolean;
+  picked: LatLng | null;
+  onPick: (at: LatLng) => void;
+  onMovePlace: (placeRef: string, at: LatLng) => void;
+};
+
+type Props = {
+  map: DayMap;
+  /** Zmiana klucza (inny dzień) dopasowuje widok do pinezek; nowy punkt widoku nie rusza. */
+  fitKey: string;
+  selected: string | null;
+  onSelect: (ref: string) => void;
+  editing?: MapEditing | null;
+};
+
+export function PlanMap({ map: data, fitKey, selected, onSelect, editing = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const markers = useRef<{ pin: MapPin; marker: Marker }[]>([]);
+  const draft = useRef<Marker | null>(null);
   const fitted = useRef<string | null>(null);
   const select = useRef(onSelect);
+  const edit = useRef(editing);
   useEffect(() => {
     select.current = onSelect;
+    edit.current = editing;
   });
 
   useEffect(() => {
@@ -35,19 +57,38 @@ export function PlanMap({ map: data, selected, onSelect }: Props) {
         if (cancelled || container.current === null) return;
         // Worker MapLibre to osobny plik; po bundlowaniu jego adres nie wynika już z adresu modułu.
         maplibre.setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).href);
-        created = new maplibre.Map({ container: container.current, style: STYLE, center: [15, 35], zoom: 1, attributionControl: { compact: true } });
+        created = new maplibre.Map({
+          container: container.current,
+          style: STYLE,
+          center: [15, 35],
+          zoom: 1,
+          attributionControl: { compact: true, customAttribution: '<a href="https://openrouteservice.org/" target="_blank">Trasy: openrouteservice.org</a>' },
+        });
         created.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
         created.on("error", (event) => console.warn("Mapa:", event.error?.message));
+        created.on("click", (event) => {
+          if (edit.current?.picking) edit.current.onPick({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+        });
         created.on("load", () => {
           if (cancelled || created === undefined) return;
           polishLabels(created);
-          created.addSource("path", { type: "geojson", data: line([]) });
+          created.addSource("path", { type: "geojson", data: lines([]) });
+          // Prosto między miejscami — przerywana; trasa po drogach z ORS — ciągła.
           created.addLayer({
-            id: "path",
+            id: "path-straight",
             type: "line",
             source: "path",
+            filter: ["!", ["get", "routed"]],
             layout: { "line-cap": "round", "line-join": "round" },
-            paint: { "line-color": "#2e7d74", "line-width": 3, "line-opacity": 0.8, "line-dasharray": [2, 1.5] },
+            paint: { "line-color": "#2e7d74", "line-width": 3, "line-opacity": 0.7, "line-dasharray": [2, 1.5] },
+          });
+          created.addLayer({
+            id: "path-routed",
+            type: "line",
+            source: "path",
+            filter: ["get", "routed"],
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#2e7d74", "line-width": 4, "line-opacity": 0.9 },
           });
           setMap(created);
         });
@@ -60,29 +101,38 @@ export function PlanMap({ map: data, selected, onSelect }: Props) {
     };
   }, []);
 
-  // Dane dnia: linia, pinezki, a przy zmianie zestawu miejsc — dopasowanie widoku.
+  // Dane dnia: linia, pinezki, a przy zmianie dnia — dopasowanie widoku.
+  const movable = editing !== null;
   useEffect(() => {
     if (map === null) return;
     void import("maplibre-gl").then((maplibre) => {
-      (map.getSource("path") as import("maplibre-gl").GeoJSONSource | undefined)?.setData(line(data.path));
+      (map.getSource("path") as import("maplibre-gl").GeoJSONSource | undefined)?.setData(lines(data.lines));
       for (const { marker } of markers.current) marker.remove();
       markers.current = data.pins.map((pin) => {
         const element = pinElement(pin);
         const first = pin.stops[0]?.ref ?? pin.pool?.[0]?.ref;
         if (first !== undefined) element.addEventListener("click", () => select.current(first));
-        return { pin, marker: new maplibre.Marker({ element }).setLngLat([pin.lng, pin.lat]).addTo(map) };
+        const draggable = movable && pin.movable === true;
+        if (draggable) element.title += "\n(przeciągnij, żeby przesunąć)";
+        const marker = new maplibre.Marker({ element, draggable }).setLngLat([pin.lng, pin.lat]).addTo(map);
+        if (draggable) {
+          marker.on("dragend", () => {
+            const at = marker.getLngLat();
+            edit.current?.onMovePlace(pin.placeRef, { lat: at.lat, lng: at.lng });
+          });
+        }
+        return { pin, marker };
       });
-      const key = data.pins.map((pin) => pin.placeRef).join(",");
-      if (fitted.current === key) return;
-      fitted.current = key;
+      if (fitted.current === fitKey) return;
       const main = data.pins.filter((pin) => pin.stops.length > 0 || pin.base);
       const focus = main.length > 0 ? main : data.pins;
       if (focus.length === 0) return;
+      fitted.current = fitKey;
       const bounds = new maplibre.LngLatBounds();
       for (const pin of focus) bounds.extend([pin.lng, pin.lat]);
       map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 600 });
     });
-  }, [map, data]);
+  }, [map, data, fitKey, movable]);
 
   // Wybrany punkt: wyróżniona pinezka, a gdy jest poza widokiem — przesunięcie mapy.
   useEffect(() => {
@@ -96,12 +146,29 @@ export function PlanMap({ map: data, selected, onSelect }: Props) {
     }
   }, [map, selected, data]);
 
+  // Wskazywanie miejsca nowego punktu: celownik zamiast rączki i znacznik wskazanego miejsca.
+  const picking = editing?.picking ?? false;
+  const picked = editing?.picked ?? null;
+  useEffect(() => {
+    if (map === null) return;
+    map.getCanvas().style.cursor = picking ? "crosshair" : "";
+    void import("maplibre-gl").then((maplibre) => {
+      draft.current?.remove();
+      draft.current = picked === null ? null : new maplibre.Marker({ color: "#e0662f" }).setLngLat([picked.lng, picked.lat]).addTo(map);
+    });
+  }, [map, picking, picked]);
+
   return (
-    <div className="relative h-72 w-full overflow-hidden rounded-xl border border-zinc-200 lg:h-[calc(100vh-8rem)] dark:border-zinc-800">
+    <div className={`relative h-72 w-full overflow-hidden rounded-xl border border-zinc-200 lg:h-[calc(100vh-8rem)] dark:border-zinc-800 ${picking ? "ring-2 ring-signal" : ""}`}>
       {/* Nie `absolute inset-0`: CSS MapLibre (poza warstwami Tailwinda) ustawia `position: relative`. */}
       <div ref={container} className="h-full w-full" />
       {failure && <p className="absolute inset-x-0 top-0 bg-red-50 p-2 text-xs text-red-700">Mapa się nie wczytała: {failure}</p>}
-      {map !== null && data.pins.length === 0 && (
+      {picking && (
+        <p className="absolute inset-x-4 top-4 rounded bg-white/90 p-2 text-center text-xs text-zinc-700 shadow dark:bg-zinc-900/90 dark:text-zinc-200">
+          {picked === null ? "Kliknij mapę w miejscu nowego punktu." : "Wpisz nazwę pod mapą albo kliknij inne miejsce."}
+        </p>
+      )}
+      {map !== null && data.pins.length === 0 && !picking && (
         <p className="absolute inset-x-4 top-4 rounded bg-white/90 p-2 text-center text-xs text-zinc-600 shadow dark:bg-zinc-900/90 dark:text-zinc-300">
           Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.
         </p>
@@ -110,8 +177,11 @@ export function PlanMap({ map: data, selected, onSelect }: Props) {
   );
 }
 
-function line(path: [number, number][]) {
-  return { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: path } };
+function lines(parts: MapLine[]) {
+  return {
+    type: "FeatureCollection" as const,
+    features: parts.map((part) => ({ type: "Feature" as const, properties: { routed: part.routed }, geometry: { type: "LineString" as const, coordinates: part.coordinates } })),
+  };
 }
 
 /** Pinezka: numery punktów dnia („3 · 4”), baza dnia albo szara kropka z puli. */

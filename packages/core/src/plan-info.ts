@@ -1,3 +1,4 @@
+import { decodePolyline, distanceM, type LngLat } from './polyline.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
@@ -78,20 +79,32 @@ export type MapPin = {
   base?: boolean;
   /** Punkty z puli w tym miejscu (bez numeru — poza dniem). */
   pool?: { ref: string; title: string }[];
+  /** Własna pinezka użytkownika (`provider: 'user'`) — można ją przesunąć na mapie. */
+  movable?: boolean;
 };
+
+/** Kawałek linii dnia [lng, lat]: trasa po drogach z ORS (`routed`) albo prosta między miejscami. */
+export type MapLine = { coordinates: LngLat[]; routed: boolean };
 
 export type DayMap = {
   pins: MapPin[];
-  /** Kolejne miejsca dnia [lng, lat] — linia prosta, nie trasa. */
-  path: [number, number][];
+  /** Linia dnia po kolei: trasy przejazdów, gdy są zapisane, a między resztą miejsc — proste. */
+  lines: MapLine[];
   /** Numer punktu na mapie (tylko punkty z miejscem ze współrzędnymi). */
   numbers: Record<string, number>;
 };
+
+/** Pieszo trasa dociąga się do ścieżki z 1 km, autem do drogi z 5 km (`routing.ts`). */
+const FOOT_MODES: ReadonlySet<string> = new Set(['walk', 'hike', 'bike']);
+const SNAP_FOOT_M = 1_000;
+const SNAP_CAR_M = 5_000;
 
 /**
  * Mapa dnia z kolejności podanej przez silnik (`refs` = punkty dnia po wariantach i pominięciach).
  * Przejazd zaczyna się w miejscu „skąd” i kończy w „dokąd” — numer dostaje cel. Kilka punktów
  * w tym samym miejscu (powrót do noclegu) to jedna pinezka z kilkoma numerami.
+ * Przejazd z zapisaną linią trasy (`leg.geometry`) rysuje się po drogach — o ile jej końce
+ * pasują do sąsiednich miejsc; po przestawieniu punktu stara trasa ustępuje linii prostej.
  */
 export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: string; pool?: boolean } = {}): DayMap {
   const places = new Map(doc.places.map((place) => [place.ref, place]));
@@ -104,29 +117,53 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     let found = pins.get(ref);
     if (found === undefined) {
       found = { placeRef: ref, name: place.name, lat: place.lat, lng: place.lng, stops: [] };
+      if (place.provider === 'user') found.movable = true;
       pins.set(ref, found);
     }
     return found;
   };
-  const path: [number, number][] = [];
-  const visit = (found: MapPin | undefined) => {
-    if (found === undefined) return;
-    const last = path.at(-1);
-    if (last?.[0] !== found.lng || last[1] !== found.lat) path.push([found.lng, found.lat]);
+  const at = (found: MapPin): LngLat => [found.lng, found.lat];
+  const lines: MapLine[] = [];
+  let cursor: LngLat | undefined;
+  const straightTo = (point: LngLat) => {
+    if (cursor !== undefined && (cursor[0] !== point[0] || cursor[1] !== point[1])) {
+      const last = lines.at(-1);
+      const end = last?.coordinates.at(-1);
+      if (last !== undefined && !last.routed && end?.[0] === cursor[0] && end[1] === cursor[1]) last.coordinates.push(point);
+      else lines.push({ coordinates: [cursor, point], routed: false });
+    }
+    cursor = point;
+  };
+  /** Gdzie zaczyna się następny punkt dnia ze współrzędnymi — tam kończy się trasa przejazdu bez „dokąd”. */
+  const nextStart = (index: number): LngLat | undefined => {
+    for (const ref of refs.slice(index + 1)) {
+      const item = items.get(ref);
+      const place = item === undefined ? undefined : places.get(item.leg?.fromPlaceRef ?? item.placeRef ?? '');
+      if (place?.lat !== undefined && place.lng !== undefined) return [place.lng, place.lat];
+    }
+    return undefined;
   };
   const numbers: Record<string, number> = {};
-  for (const ref of refs) {
+  refs.forEach((ref, index) => {
     const item = items.get(ref);
-    if (item === undefined) continue;
-    const isLeg = item.kind === 'transport' && item.leg !== undefined;
-    if (isLeg) visit(pin(item.leg!.fromPlaceRef));
-    const target = pin(isLeg ? (item.leg!.toPlaceRef ?? item.placeRef) : item.placeRef);
-    visit(target);
-    if (target === undefined) continue;
+    if (item === undefined) return;
+    const leg = item.kind === 'transport' ? item.leg : undefined;
+    const from = pin(leg?.fromPlaceRef);
+    if (from !== undefined) straightTo(at(from));
+    const target = pin(leg === undefined ? item.placeRef : (leg.toPlaceRef ?? item.placeRef));
+    const route = leg === undefined ? null : routeLine(leg, cursor, [target === undefined ? undefined : at(target), nextStart(index)]);
+    if (route !== null) {
+      straightTo(route[0]!);
+      lines.push({ coordinates: route, routed: true });
+      cursor = route.at(-1);
+    } else if (target !== undefined) {
+      straightTo(at(target));
+    }
+    if (target === undefined) return;
     const n = Object.keys(numbers).length + 1;
     numbers[ref] = n;
     target.stops.push({ ref, n, title: item.title });
-  }
+  });
   const base = pin(options.baseRef);
   if (base !== undefined) base.base = true;
   if (options.pool) {
@@ -136,5 +173,20 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
       if (found !== undefined) (found.pool ??= []).push({ ref: item.ref, title: item.title });
     }
   }
-  return { pins: [...pins.values()], path, numbers };
+  return { pins: [...pins.values()], lines, numbers };
+}
+
+/**
+ * Linia trasy przejazdu, jeśli pasuje do planu: początek przy miejscu, z którego się wyjeżdża,
+ * koniec przy celu albo przy następnym punkcie. Inaczej `null` — trasa jest z innej kolejności.
+ */
+function routeLine(leg: NonNullable<Item['leg']>, start: LngLat | undefined, ends: (LngLat | undefined)[]): LngLat[] | null {
+  if (leg.geometry === undefined) return null;
+  const route = decodePolyline(leg.geometry);
+  if (route.length < 2) return null;
+  const snap = FOOT_MODES.has(leg.mode) ? SNAP_FOOT_M : SNAP_CAR_M;
+  if (start !== undefined && distanceM(start, route[0]!) > snap) return null;
+  const known = ends.filter((end) => end !== undefined);
+  if (known.length > 0 && !known.some((end) => distanceM(end, route.at(-1)!) <= snap)) return null;
+  return route;
 }

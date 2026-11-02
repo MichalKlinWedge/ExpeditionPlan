@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { dayMap, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
+import { encodePolyline, type LngLat } from '../polyline.ts';
 import { DocItem, TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -46,7 +47,8 @@ describe('mapa dnia', () => {
     expect(map.pins.map((pin) => pin.placeRef)).toEqual(['p-riad', 'p-medersa', 'p-bahia', 'p-jemaa']);
     expect(map.pins.find((pin) => pin.placeRef === 'p-bahia')!.stops.map((stop) => stop.n)).toEqual([3, 4]);
     // Medersa → (przejazd z Medersy) → Bahia: bez powtórzonego punktu na linii.
-    expect(map.path).toHaveLength(4);
+    expect(map.lines).toEqual([{ routed: false, coordinates: expect.any(Array) }]);
+    expect(map.lines[0]!.coordinates).toHaveLength(4);
     // Baza dnia 2 (Agafay) nie ma współrzędnych — nie ma jej na mapie.
     expect(map.pins.some((pin) => pin.base)).toBe(false);
   });
@@ -56,5 +58,41 @@ describe('mapa dnia', () => {
     expect(map.pins.find((pin) => pin.placeRef === 'p-riad')!.base).toBe(true);
     const pooled = maroko.items.filter((item) => item.dayRef === undefined && item.placeRef !== undefined && !missingOnMap(maroko, item));
     expect(map.pins.flatMap((pin) => pin.pool ?? []).map((each) => each.ref).sort()).toEqual(pooled.map((item) => item.ref).sort());
+  });
+
+  const at = (ref: string): LngLat => {
+    const place = maroko.places.find((each) => each.ref === ref)!;
+    return [place.lng!, place.lat!];
+  };
+  const withRoute = (geometry: LngLat[]) =>
+    TripDocument.parse({
+      ...maroko,
+      items: maroko.items.map((item) => (item.ref === 'd2-do-bahii' ? { ...item, leg: { ...item.leg!, routed: true, geometry: encodePolyline(geometry) } } : item)),
+    });
+
+  it('przejazd z linią trasy rysuje się po drogach, reszta prosto', () => {
+    const [medersa, bahia] = [at('p-medersa'), at('p-bahia')];
+    const road: LngLat[] = [medersa, [medersa[0] + 0.002, medersa[1] - 0.004], [bahia[0] - 0.001, bahia[1] + 0.001], bahia];
+    const map = dayMap(withRoute(road), d2);
+    expect(map.lines.map((line) => line.routed)).toEqual([false, true, false]);
+    expect(map.lines[0]!.coordinates).toEqual([at('p-riad'), medersa]);
+    expect(map.lines[1]!.coordinates).toHaveLength(4);
+    expect(map.lines[2]!.coordinates).toEqual([bahia, at('p-jemaa')]);
+    // Numery i pinezki bez zmian.
+    expect(map.numbers['d2-do-bahii']).toBe(3);
+  });
+
+  it('linia trasy z innej kolejności (końce daleko od miejsc) ustępuje prostej', () => {
+    const elsewhere: LngLat[] = [[-7.5, 31.2], [-7.6, 31.3]];
+    const map = dayMap(withRoute(elsewhere), d2);
+    expect(map.lines.every((line) => !line.routed)).toBe(true);
+    expect(map.lines[0]!.coordinates).toHaveLength(4);
+  });
+
+  it('własna pinezka (provider: user) da się przesunąć, miejsca z bazy nie', () => {
+    const doc = TripDocument.parse({ ...maroko, places: maroko.places.map((place) => (place.ref === 'p-bahia' ? { ...place, provider: 'user' } : place)) });
+    const pins = dayMap(doc, d2).pins;
+    expect(pins.find((pin) => pin.placeRef === 'p-bahia')!.movable).toBe(true);
+    expect(pins.find((pin) => pin.placeRef === 'p-medersa')!.movable).toBeUndefined();
   });
 });

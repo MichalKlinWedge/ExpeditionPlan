@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { addItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, moveWithinDay, removeItem, removeItemClosingGap, updateItem } from '../plan-edits.ts';
+import { addItem, addItemAtPin, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, removeItem, removeItemClosingGap, updateItem } from '../plan-edits.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -84,6 +84,21 @@ describe('edycja planu (MVP-3)', () => {
     expect(documentProblem(added.doc)).toBeNull();
     const removed = removeItem(added.doc, added.created!.ref)!;
     expect(removed.doc.items.some((each) => each.ref === added.created!.ref)).toBe(false);
+  });
+
+  it('własna pinezka: nowe miejsce provider: user i punkt w nim; przesunięcie tylko własnych pinezek', () => {
+    const ids = { itemId: '01a19366-0000-7000-8000-000000000002', placeId: '01a19366-0000-7000-8000-000000000003' };
+    const added = addItemAtPin(maroko, 'd2', ids, { lat: 31.6258123456, lng: -7.9891987654 }, { title: 'Ogród', kind: 'visit', durationMin: 30 });
+    expect(added.places).toEqual([{ created: true, place: { ref: `id-${ids.placeId}`, name: 'Ogród', lat: 31.625812, lng: -7.989199, provider: 'user', links: [] } }]);
+    expect(added.created).toMatchObject({ ref: `id-${ids.itemId}`, placeRef: `id-${ids.placeId}`, dayRef: 'd2' });
+    expect(refs(added.doc, 'd2').at(-1)).toBe(added.created!.ref);
+    expect(documentProblem(added.doc)).toBeNull();
+
+    const moved = movePlace(added.doc, `id-${ids.placeId}`, { lat: 31.63, lng: -7.99 })!;
+    expect(moved.changed).toEqual([]);
+    expect(moved.places).toEqual([{ place: expect.objectContaining({ lat: 31.63, lng: -7.99, provider: 'user' }) }]);
+    expect(moved.doc.places.find((place) => place.ref === `id-${ids.placeId}`)).toMatchObject({ lat: 31.63, lng: -7.99 });
+    expect(movePlace(maroko, 'p-bahia', { lat: 0, lng: 0 })).toBeNull();
   });
 
   it('usunięcie punktu wyrzucanego przez wariant: wariant przestaje go wyrzucać', () => {

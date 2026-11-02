@@ -1,4 +1,4 @@
-import { TripDocument } from '@expeditionplan/core';
+import { decodePolyline, encodePolyline, type LngLat, TripDocument } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
 import { legEnds, orsRoute, type RouteLookup, routeLegs } from '../routing.ts';
@@ -44,6 +44,17 @@ describe('trasy przejazdów (ORS)', () => {
     expect(() => TripDocument.parse(routed)).not.toThrow();
   });
 
+  it('linia trasy z ORS trafia do `leg.geometry` uproszczona; bez linii stara znika', async () => {
+    // Prosta Szybenik → Dinara z punktem co ~100 m: po uproszczeniu zostają końce.
+    const line: LngLat[] = Array.from({ length: 101 }, (_, i) => [15.889 + (i * (16.42 - 15.889)) / 100, 43.735 + (i * (43.95 - 43.735)) / 100]);
+    const { doc: routed } = await routeLegs(doc, async () => ({ distanceKm: 52, durationMin: 58, geometry: encodePolyline(line) }));
+    const geometry = routed.items.find((item) => item.ref === 'jazda')!.leg!.geometry!;
+    expect(decodePolyline(geometry)).toEqual([line[0], line.at(-1)]);
+
+    const { doc: again } = await routeLegs(routed, async () => ({ distanceKm: 52, durationMin: 58 }));
+    expect(again.items.find((item) => item.ref === 'jazda')!.leg!.geometry).toBeUndefined();
+  });
+
   it('„Wyjazd z parkingu”: cel to miejsce następnego punktu, nie miejsce przejazdu', () => {
     const wyjazd = TripDocument.parse({
       ...doc,
@@ -80,11 +91,11 @@ describe('trasy przejazdów (ORS)', () => {
     const fake = (async (url: string, init: RequestInit) => {
       requests.push({ url, init });
       return requests.length === 1
-        ? new Response(JSON.stringify({ routes: [{ summary: { distance: 52_340, duration: 3516 } }] }), { status: 200 })
+        ? new Response(JSON.stringify({ routes: [{ summary: { distance: 52_340, duration: 3516 }, geometry: '_p~iF~ps|U_ulLnnqC' }] }), { status: 200 })
         : new Response('{}', { status: 404 });
     }) as unknown as typeof fetch;
     const route = orsRoute('klucz-testowy', fake);
-    expect(await route({ lat: 43.7, lng: 15.9 }, { lat: 43.9, lng: 16.4 }, 'driving-car')).toEqual({ distanceKm: 52.34, durationMin: 58.6 });
+    expect(await route({ lat: 43.7, lng: 15.9 }, { lat: 43.9, lng: 16.4 }, 'driving-car')).toEqual({ distanceKm: 52.34, durationMin: 58.6, geometry: '_p~iF~ps|U_ulLnnqC' });
     expect(requests[0]!.url).toBe('https://api.openrouteservice.org/v2/directions/driving-car');
     expect(requests[0]!.url).not.toContain('klucz');
     expect((requests[0]!.init.headers as Record<string, string>).Authorization).toBe('klucz-testowy');
