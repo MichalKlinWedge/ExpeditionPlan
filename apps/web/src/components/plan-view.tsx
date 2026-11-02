@@ -12,6 +12,7 @@ import {
   instantToZoned,
   flightLine,
   flightOf,
+  itemIcon,
   legLabel,
   mapCoverage,
   missingOnMap,
@@ -623,6 +624,11 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules,
                         className="mr-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sea px-1 align-text-bottom text-[10px] font-semibold text-white">
                         {n}
                       </button>
+                    )}
+                    {source && (
+                      <span aria-hidden="true" className="mr-1.5">
+                        {itemIcon(doc, source)}
+                      </span>
                     )}
                     <span className="font-medium">{item.title}</span>
                     <span className="text-zinc-500">

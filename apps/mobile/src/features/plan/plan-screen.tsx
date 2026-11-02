@@ -7,6 +7,7 @@ import {
   flightLine,
   flightOf,
   instantToZoned,
+  itemIcon,
   ItemInUseError,
   legLabel,
   mapCoverage,
@@ -541,6 +542,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
               {item.endDate !== day.date ? ' +1' : ''}
             </ThemedText>
             <ThemedText type="smallBold" style={styles.itemTitle}>
+              {source ? `${itemIcon(doc, source)} ` : ''}
               {item.title}
             </ThemedText>
             {flightText && (
