@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { CompassIcon } from "./icons";
+import { TripNav } from "./trip-nav";
 import { UserMenu } from "./user-menu";
 
 /** Wspólna rama stron: granatowy pasek z poziomicami (nazwa aplikacji, użytkownik) i treść. `wide` — plan z mapą obok. */
@@ -25,6 +26,10 @@ export function Shell({ children, wide = false }: { children: React.ReactNode; w
           </Suspense>
         </div>
       </header>
+      {/* Adres (`useParams`) jest znany dopiero w czasie żądania — pasek dochodzi strumieniem. */}
+      <Suspense fallback={null}>
+        <TripNav width={width} />
+      </Suspense>
       <main className={`mx-auto flex w-full ${width} flex-col gap-6 px-4 py-8`}>{children}</main>
     </div>
   );

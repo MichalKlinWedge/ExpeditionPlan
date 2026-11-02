@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { CompareIcon, DownloadIcon, InfoIcon, NoteIcon, PeopleIcon, RouteIcon, SparkIcon, TicketIcon } from "@/components/icons";
+import { CompareIcon, DownloadIcon, InfoIcon, NoteIcon, PeopleIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -95,7 +95,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/plan`} icon={<RouteIcon />} title="Plan dzień po dniu" hint="godziny, trasy, słońce" />}
         <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, zadania" />
-        <Tile href={`/trips/${id}/documents`} icon={<TicketIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
+        <Tile href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
         <Tile href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />
         <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.count ?? 0} os. jedzie · ${members.count ?? 0} z dostępem`} />
         {canEdit && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />}

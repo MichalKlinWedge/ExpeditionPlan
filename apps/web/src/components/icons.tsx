@@ -99,3 +99,32 @@ export const CompareIcon = (props: Props) => (
     <path d="M10 12h4M12.5 10.5 14 12l-1.5 1.5" />
   </Svg>
 );
+
+export const VaultIcon = (props: Props) => (
+  <Svg {...props}>
+    <rect x="3.5" y="5" width="17" height="14" rx="2" />
+    <circle cx="12" cy="12" r="3.2" />
+    <path d="M12 8.8V7.5M12 16.5v-1.3M15.2 12h1.3M7.5 12h1.3M7 19v1.5M17 19v1.5" />
+  </Svg>
+);
+
+export const FlagIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M5 21V4" />
+    <path d="M5 4h11l-2 4 2 4H5" />
+  </Svg>
+);
+
+export const ListIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <path d="M4 6h.01M4 12h.01M4 18h.01" />
+  </Svg>
+);
+
+export const ShieldIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M12 3 5 6v5c0 4.4 3 8.3 7 10 4-1.7 7-5.6 7-10V6Z" />
+    <path d="m9 12 2 2 4-4" />
+  </Svg>
+);

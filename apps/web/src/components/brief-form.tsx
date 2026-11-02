@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { type FormState, saveBrief } from "@/app/actions";
+import { FlagIcon, ListIcon, RouteIcon, ShieldIcon, TicketIcon } from "@/components/icons";
 
 /**
  * Kreator briefu (SPECYFIKACJA M2) w pięciu krokach. Stan trzyma cały szkic w jednym obiekcie,
@@ -89,6 +90,7 @@ const FIXED_KIND: Record<string, string> = {
 };
 
 const STEPS = ["Cel i miejsce", "Styl i transport", "Ograniczenia", "Już ustalone", "Podsumowanie"];
+const STEP_ICONS = [FlagIcon, RouteIcon, ShieldIcon, TicketIcon, ListIcon];
 
 const input = "w-full field px-3 py-2 text-sm";
 const label = "flex flex-col gap-1 text-sm";
@@ -154,12 +156,28 @@ export function BriefForm({ tripId, tripTz, initial, travelers }: { tripId: stri
   return (
     <form action={action} className="flex flex-col gap-6">
       <input type="hidden" name="brief" value={payload} />
-      <nav className="flex flex-wrap gap-2">
-        {STEPS.map((name, index) => (
-          <button key={name} type="button" onClick={() => setStep(index)} className={`text-sm ${index === step ? "font-semibold underline" : "text-zinc-500"}`}>
-            {index + 1}. {name}
-          </button>
-        ))}
+      {/* Kroki jako mini kafelki w jednym rzędzie — przejście do dowolnego kroku jednym dotknięciem. */}
+      <nav aria-label="Kroki briefu" className="-mx-1 overflow-x-auto px-1">
+        <ol className="flex gap-2">
+          {STEPS.map((name, index) => {
+            const Icon = STEP_ICONS[index]!;
+            const active = index === step;
+            return (
+              <li key={name} className="min-w-0 flex-1 shrink-0 basis-20">
+                <button
+                  type="button"
+                  onClick={() => setStep(index)}
+                  aria-current={active ? "step" : undefined}
+                  className={`flex w-full flex-col items-center gap-1 rounded-xl border px-2 py-2 text-center transition ${active ? "border-sea bg-sea text-white" : index < step ? "border-sea/40 bg-sea-light text-sea dark:bg-sea/15 dark:text-teal-300" : "border-zinc-200 text-zinc-500 hover:border-sea hover:text-sea dark:border-zinc-800"}`}>
+                  <Icon className="size-5" />
+                  <span className="text-[11px] leading-tight font-medium">
+                    {index + 1}. {name}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
       </nav>
 
       {step === 0 && (
