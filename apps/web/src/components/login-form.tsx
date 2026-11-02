@@ -17,6 +17,7 @@ export function LoginForm() {
     params.get("error") ? { error: `Logowanie nie powiodło się — spróbuj jeszcze raz.${params.get("error") === "1" ? "" : ` (${params.get("error")})`}` } : {},
   );
   const [pending, setPending] = useState(false);
+  const invite = /^\/join\/([A-Za-z0-9_-]+)/.exec(next)?.[1] ?? null;
   const redirectTo = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
   const google = async () => {
@@ -31,9 +32,12 @@ export function LoginForm() {
   const magicLink = async (event: React.FormEvent) => {
     event.preventDefault();
     setPending(true);
-    // Nowe konto tylko z linku zaproszenia (`/join/…`); poza nim link dostają istniejące konta.
-    const invited = next.startsWith("/join/");
-    const { error } = await createClient().auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo(), shouldCreateUser: invited } });
+    // Nowe konto tylko z linku zaproszenia (`/join/<token>`): token idzie w metadanych, a hook
+    // „before user created” w Supabase sprawdza, czy zaproszenie jest ważne.
+    const { error } = await createClient().auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo(), shouldCreateUser: invite !== null, ...(invite ? { data: { invite } } : {}) },
+    });
     setPending(false);
     if (error && /signups? not allowed/i.test(error.message)) {
       setStatus({ error: "Nie ma konta z tym adresem. Konto zakłada się z linku zaproszenia od organizatora wyjazdu." });
@@ -50,6 +54,11 @@ export function LoginForm() {
         className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium disabled:opacity-50 dark:border-zinc-700">
         Zaloguj przez Google
       </button>
+      {invite && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Nie masz jeszcze konta? Pierwszy raz zaloguj się linkiem z maila — konto powstaje z zaproszenia. Później możesz logować się też przez Google (ten sam adres).
+        </p>
+      )}
       <form onSubmit={magicLink} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
           albo link na e-mail

@@ -107,4 +107,15 @@ describe('etap 3 — łatka na planie', () => {
     const diff = patchDiff(maroko, doc);
     expect(diff.created.map((entry) => entry.collection)).toEqual(['places', 'variantGroups', 'variants', 'variants', 'items', 'items']);
   });
+
+  it('plan B nie wyrzuca noclegu — zameldowanie zostaje w obu wariantach', () => {
+    const patch = PlanPatch.parse({
+      message: 'ok',
+      ops: [{ op: 'add_variant', dayRef: 'd3', title: 'Deszcz', conditionKind: 'weather', mainLabel: 'Słońce', label: 'Deszcz', replacesItemRefs: ['d3-sk-zameldowanie'], items: [{ title: 'Hammam (test)', kind: 'activity', durationMin: 90 }] }],
+    });
+    const { doc, results } = applyPatch(maroko, patch, new Set(), newId);
+    expect(results[0]).toMatchObject({ ok: true });
+    expect(results[0]!.text).toContain('nocleg zostaje');
+    expect(doc.variants.at(-1)!.excludesRefs).toEqual([]);
+  });
 });

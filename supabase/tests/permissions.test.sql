@@ -2,7 +2,7 @@
 -- Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(54);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000001', 'owner@test.local'),
@@ -187,6 +187,18 @@ select throws_ok($$insert into public.items (id, trip_id, ref, kind, title, plan
 select pg_temp.login('00000000-0000-4000-8000-000000000004');
 select throws_ok($$select public.accept_invite((select token from invite))$$, 'P0002', null,
   'zaproszenie do usuniętego wyjazdu jest nieważne');
+
+-- ── Hook „before user created”: nowe konto tylko z ważnego zaproszenia ─────────────────────────
+reset role;
+insert into public.trip_invites (trip_id, role, token_hash, created_by) values
+  ('10000000-0000-4000-8000-000000000001', 'viewer', public.token_digest('dobry-token'), '00000000-0000-4000-8000-000000000001');
+create function pg_temp.signup(p_meta jsonb, p_app jsonb default '{"provider": "email"}') returns jsonb language sql as $$
+  select public.before_user_created(jsonb_build_object('user', jsonb_build_object('app_metadata', p_app, 'user_metadata', p_meta)))
+$$;
+select ok(pg_temp.signup('{}') ? 'error', 'konto bez zaproszenia odrzucone');
+select ok(pg_temp.signup('{"invite": "zly-token"}') ? 'error', 'konto ze złym tokenem odrzucone');
+select is(pg_temp.signup('{"invite": "dobry-token"}'), '{}'::jsonb, 'konto z ważnym zaproszeniem przepuszczone');
+select is(has_function_privilege('authenticated', 'public.invite_token_valid(text)', 'execute'), false, 'sprawdzanie tokenu niedostępne dla klientów');
 
 select * from finish();
 rollback;

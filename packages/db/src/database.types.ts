@@ -1244,6 +1244,9 @@ isOneToOne: false
             "accept_invite":
 { Args: { "p_token": string }; Returns: string
                            },
+"before_user_created":
+{ Args: { "event": Json }; Returns: Json
+                           },
 "can_add_expense":
 { Args: { "p_trip": string }; Returns: boolean
                            },
@@ -1264,6 +1267,9 @@ isOneToOne: false
                            },
 "import_trip":
 { Args: { "p_tables": Json,"p_trip": Json }; Returns: string
+                           },
+"invite_token_valid":
+{ Args: { "p_token": string }; Returns: boolean
                            },
 "is_my_traveler":
 { Args: { "p_traveler": string }; Returns: boolean

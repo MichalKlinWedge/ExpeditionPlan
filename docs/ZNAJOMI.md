@@ -28,14 +28,17 @@ Web jest wspólny: https://expedition-plan.vercel.app.
 
    Publikuje bieżący kod z repo, więc wysyłaj z tego samego commita, który sprawdziłeś na `preview`.
 
-Konta: nowe konto powstaje tylko z linku zaproszenia (web). Zakładać wyjazdy i używać AI może
+Konta: nowe konto powstaje tylko z linku zaproszenia (web, link e-mail) — pilnuje tego hook
+`before_user_created` w Supabase (Authentication → Hooks). Zakładać wyjazdy i używać AI może
 tylko właściciel (`trip_creator`, `AI_ALLOWED_EMAILS`) — znajomi oglądają i, jako edytorzy,
 poprawiają zaproszone plany.
 
 ## Znajomy
 
-1. **Otwórz link zaproszenia** (najlepiej na telefonie) i zaloguj się — przez Google albo linkiem
-   z maila. Po zalogowaniu kliknij „Dołącz do wyjazdu”. Wyjazd jest teraz na Twoim koncie.
+1. **Otwórz link zaproszenia** (najlepiej na telefonie) i zaloguj się **linkiem z maila** — tak
+   powstaje konto (z samego Google nowe konto się nie założy). Po zalogowaniu kliknij „Dołącz do
+   wyjazdu”. Wyjazd jest teraz na Twoim koncie; później możesz logować się też przez Google, jeśli
+   to ten sam adres.
 2. **Zainstaluj aplikację** z linku do APK. Android zapyta o zgodę na instalację z tego źródła
    (przeglądarka → „Zezwalaj z tego źródła”) — to normalne dla aplikacji spoza Sklepu Play.
 3. **Zaloguj się w aplikacji „Expedition Planer”** tym samym kontem (Google albo ten sam e-mail).

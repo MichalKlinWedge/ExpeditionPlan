@@ -79,7 +79,7 @@ export function tunePrompt(doc: Doc, locked: ReadonlySet<string>, history: ChatT
     '3. Punkty z `locked: true` zmienił człowiek — NIE ruszaj ich; jeśli polecenie tego wymaga, napisz to w `message`.',
     '4. `remove_item` domyślnie przenosi punkt do puli (`toPool: true`); `toPool: false` tylko, gdy człowiek wprost każe usunąć.',
     '5. `add_item`/`replace_item`: realny czas trwania, godzina tylko gdy ważna (otwarcie, zachód, rezerwacja); `place` po polsku i `searchName` z OpenStreetMap dla konkretnego miejsca.',
-    '6. Plan B / alternatywa „jeśli pada”, „jeśli zamknięte”, „jeśli dzieci zmęczone” → `add_variant`: obecny plan dnia zostaje wariantem A (`mainLabel`), wariant B zastępuje `replacesItemRefs` punktami `items`. Nie usuwaj punktów, żeby zrobić alternatywę; nie dubluj wariantu, który dzień już ma (`variants`).',
+    '6. Plan B / alternatywa „jeśli pada”, „jeśli zamknięte”, „jeśli dzieci zmęczone” → `add_variant`: obecny plan dnia zostaje wariantem A (`mainLabel`), wariant B zastępuje `replacesItemRefs` punktami `items`. Nie usuwaj punktów, żeby zrobić alternatywę; nie dubluj wariantu, który dzień już ma (`variants`). Zastępuj tylko program (zwiedzanie, aktywności, posiłki) — nocleg i zameldowanie (`lodging`) zostają w obu wariantach. `mainLabel` nazywa obecny plan po treści („Słońce”, „Pełny program”), `label` — nowy („Deszcz: medyna i hammam”).',
     '7. Jeśli czegoś nie da się zrobić albo dzień się nie zmieści — powiedz to w `message` zamiast udawać. Piszesz po polsku.',
     '',
     'JSON Schema:',
@@ -211,6 +211,9 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
             fail(`Wariant „${op.label}”: punktów ${missing.join(', ')} nie ma w tym dniu.`);
             continue;
           }
+          // Nocleg zostaje w każdym wariancie — wariant na deszcz nie odwołuje zameldowania.
+          const kept = list.filter((item) => item.kind === 'lodging' && op.replacesItemRefs.includes(item.ref));
+          const replaces = op.replacesItemRefs.filter((ref) => !kept.some((item) => item.ref === ref));
           const groupRef = `id-${newId()}`;
           const mainRef = `id-${newId()}`;
           const altRef = `id-${newId()}`;
@@ -224,11 +227,11 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
             variants: [
               ...current.variants,
               { ref: mainRef, groupRef, label: op.mainLabel, pros: [], cons: [], excludesRefs: [] },
-              { ref: altRef, groupRef, label: op.label, pros: [], cons: [], excludesRefs: op.replacesItemRefs },
+              { ref: altRef, groupRef, label: op.label, pros: [], cons: [], excludesRefs: replaces },
             ],
           };
           // Nowe punkty w miejsce pierwszego zastępowanego (bez zastępowanych — na koniec dnia).
-          const first = list.findIndex((item) => op.replacesItemRefs.includes(item.ref));
+          const first = list.findIndex((item) => replaces.includes(item.ref));
           let after: string | null = first === -1 ? (list.at(-1)?.ref ?? null) : first === 0 ? null : list[first - 1]!.ref;
           for (const input of op.items) {
             const placed = placeFor(draft, input, newId);
@@ -248,8 +251,8 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
             after = added.created!.ref;
           }
           next = draft;
-          const replaced = op.replacesItemRefs.map((ref) => `„${title(ref)}”`).join(', ');
-          text = `Wariant na ${dayName(op.dayRef)} — ${op.title}: „${op.mainLabel}” albo „${op.label}” (${op.items.map((each) => `„${each.title}”`).join(', ')}${replaced ? ` zamiast ${replaced}` : ''})`;
+          const replaced = replaces.map((ref) => `„${title(ref)}”`).join(', ');
+          text = `Wariant na ${dayName(op.dayRef)} — ${op.title}: „${op.mainLabel}” albo „${op.label}” (${op.items.map((each) => `„${each.title}”`).join(', ')}${replaced ? ` zamiast ${replaced}` : ''})${kept.length > 0 ? `; nocleg zostaje: ${kept.map((item) => `„${item.title}”`).join(', ')}` : ''}`;
           break;
         }
         case 'set_field': {
