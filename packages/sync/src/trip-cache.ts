@@ -13,14 +13,15 @@ import type { Remote, ServerRow } from './remote.ts';
 /**
  * `ids`: ref → id wierszy (zdarzenia dnia i edycja planu zapisują się po id); `pending` — zapisy
  * czekające na sieć; `live` — wiersze spoza dokumentu planu (portfel, odhaczenia pakowania,
- * uczestnicy z kontem), bez usuniętych, razem z zapisami z telefonu.
+ * uczestnicy z kontem, sejf dokumentów — tylko te, które RLS pozwala zobaczyć), bez usuniętych,
+ * razem z zapisami z telefonu.
  */
 export type CachedTrip = {
   state: TripState;
   syncedAt: string;
   ids: Record<string, string>;
   pending: number;
-  live: { expenses: ServerRow[]; packingChecks: ServerRow[]; travelers: ServerRow[] };
+  live: { expenses: ServerRow[]; packingChecks: ServerRow[]; travelers: ServerRow[]; documents: ServerRow[] };
 };
 
 /** Stan z SQLite albo `null`, gdy wyjazd nie był jeszcze pobrany na telefon. */
@@ -38,7 +39,7 @@ export function cachedTrip(db: LocalDb, tripId: string): CachedTrip | null {
     syncedAt: synced.synced_at,
     ids: refIndex(tables),
     pending: pendingCount(db),
-    live: { expenses: alive('expenses'), packingChecks: alive('packing_checks'), travelers: alive('travelers') },
+    live: { expenses: alive('expenses'), packingChecks: alive('packing_checks'), travelers: alive('travelers'), documents: alive('documents') },
   };
 }
 

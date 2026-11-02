@@ -89,6 +89,7 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
             <Row label="Do wydania" value={range(money, budget.toSpendLowMinor, budget.toSpendHighMinor)} />
             <Row label="Razem" value={range(money, budget.totalLowMinor, budget.totalHighMinor)} />
             {budget.perPersonLowMinor !== null && <Row label="Na osobę" value={range(money, budget.perPersonLowMinor, budget.perPersonHighMinor!)} />}
+            <BudgetDetails doc={doc} budget={budget} spent={wallet.byCategory} money={money} />
           </>
         )}
       </ThemedView>
@@ -194,6 +195,69 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
 
 const range = (money: (minor: number) => string, low: number, high: number) => (low === high ? money(low) : `${money(low)} – ${money(high)}`);
 
+const LINE_STATUS: Record<string, string> = { estimate: 'szacunek', committed: 'zobowiązanie', paid: 'zapłacone' };
+
+/**
+ * Szczegóły budżetu: kategorie z planem (oszczędnie – wygodnie), zapłaconym i wydanym na miejscu,
+ * a po dotknięciu kategorii — jej pozycje (status, kwota, rezerwacja, notatka). Kwoty kategorii
+ * w walucie wyjazdu, pozycje w swojej walucie.
+ */
+function BudgetDetails({ doc, budget, spent, money }: { doc: CachedTrip['state']['doc']; budget: ReturnType<typeof budgetSummary>; spent: Record<string, number>; money: (minor: number) => string }) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+  const [category, setCategory] = useState<string | null>(null);
+  const bookings = new Map(doc.bookings.map((booking) => [booking.ref, booking.title]));
+  // Kategorie z planu i te, w których tylko wydano na miejscu (np. jedzenie bez pozycji w budżecie).
+  const categories = [
+    ...budget.byCategory,
+    ...Object.keys(spent)
+      .filter((key) => !budget.byCategory.some((each) => each.category === key))
+      .map((key) => ({ category: key, paidMinor: 0, lowMinor: 0, highMinor: 0 })),
+  ];
+  return (
+    <View style={styles.details}>
+      <Pressable onPress={() => setOpen(!open)} hitSlop={8}>
+        <ThemedText type="linkPrimary">{open ? '▾ Ukryj szczegóły' : '▸ Szczegóły budżetu'}</ThemedText>
+      </Pressable>
+      {open &&
+        categories.map((each) => {
+          const lines = doc.budgetLines.filter((line) => line.category === each.category);
+          const expanded = category === each.category;
+          return (
+            <View key={each.category} style={styles.category}>
+              <Pressable onPress={() => setCategory(expanded ? null : each.category)} disabled={lines.length === 0} hitSlop={4}>
+                <View style={styles.row}>
+                  <ThemedText type="smallBold">
+                    {lines.length > 0 ? (expanded ? '▾ ' : '▸ ') : ''}
+                    {BUDGET_CATEGORY[each.category] ?? each.category}
+                  </ThemedText>
+                  <ThemedText type="small">{each.highMinor > 0 ? range(money, each.lowMinor, each.highMinor) : '—'}</ThemedText>
+                </View>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {[each.paidMinor > 0 ? `zapłacone ${money(each.paidMinor)}` : null, spent[each.category] ? `wydane na miejscu ${money(spent[each.category]!)}` : null, lines.length > 0 ? `pozycje: ${lines.length}` : 'bez pozycji w planie'].filter(Boolean).join(' · ')}
+                </ThemedText>
+              </Pressable>
+              {expanded &&
+                lines.map((line) => (
+                  <View key={line.ref} style={[styles.line, { borderLeftColor: theme.backgroundSelected }]}>
+                    <View style={styles.row}>
+                      <ThemedText type="small" style={styles.lineTitle}>
+                        {line.title}
+                      </ThemedText>
+                      <ThemedText type="small">{range((minor) => formatMoney(minor, line.currency), line.lowMinor, line.highMinor)}</ThemedText>
+                    </View>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {[LINE_STATUS[line.status], line.perPerson ? `na osobę × ${Math.max(doc.travelers.length, 1)}` : null, line.bookingRef ? bookings.get(line.bookingRef) : null, line.note].filter(Boolean).join(' · ')}
+                    </ThemedText>
+                  </View>
+                ))}
+            </View>
+          );
+        })}
+    </View>
+  );
+}
+
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
@@ -278,6 +342,10 @@ const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
   expense: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
+  details: { gap: Spacing.two, paddingTop: Spacing.one },
+  category: { gap: Spacing.half },
+  line: { borderLeftWidth: 2, paddingLeft: Spacing.two, marginLeft: Spacing.one, gap: Spacing.half },
+  lineTitle: { flexShrink: 1 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
   remove: { marginLeft: 'auto' },

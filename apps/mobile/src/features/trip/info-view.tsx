@@ -4,6 +4,7 @@ import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { DocumentsView } from '@/features/trip/documents-view';
 
 /**
  * Informacje praktyczne na telefonie — offline, z planu zapisanego w SQLite: numery alarmowe
@@ -32,7 +33,7 @@ function call(phone: string) {
   Linking.openURL(`tel:${number}`).catch(() => Alert.alert('Nie można zadzwonić', phone));
 }
 
-export function InfoView({ trip }: { trip: CachedTrip }) {
+export function InfoView({ trip, tripId, signedIn = false }: { trip: CachedTrip; tripId?: string; signedIn?: boolean }) {
   const doc = trip.state.doc;
   const emergency = doc.contacts.filter((contact) => contact.role === 'emergency');
   const others = doc.contacts.filter((contact) => contact.role !== 'emergency');
@@ -43,7 +44,11 @@ export function InfoView({ trip }: { trip: CachedTrip }) {
   const tasks = doc.tasks.filter((task) => task.status === 'open');
   const bookingTitle = (ref: string | undefined) => (ref === undefined ? undefined : doc.bookings.find((booking) => booking.ref === ref)?.title);
 
-  if (doc.contacts.length === 0 && notes.length === 0 && tasks.length === 0) {
+  // Dokumenty i kody na górze — po nie sięga się przy bramce, w pośpiechu.
+  const vault = tripId ? <DocumentsView trip={trip} tripId={tripId} online={signedIn} /> : null;
+  const hasVault = trip.live.documents.length > 0 || doc.bookings.some((booking) => booking.confirmationCode);
+
+  if (doc.contacts.length === 0 && notes.length === 0 && tasks.length === 0 && !hasVault) {
     return (
       <ThemedText themeColor="textSecondary" style={styles.pad}>
         Plan nie ma jeszcze informacji praktycznych. Na webie: „Informacje praktyczne” → „Przygotuj z AI”.
@@ -53,6 +58,7 @@ export function InfoView({ trip }: { trip: CachedTrip }) {
 
   return (
     <View style={styles.list}>
+      {vault}
       {emergency.length > 0 && (
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="smallBold">Numery alarmowe</ThemedText>

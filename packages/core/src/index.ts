@@ -19,6 +19,8 @@ export * from './plan-merge.ts';
 export * from './plan-info.ts';
 export * from './polyline.ts';
 export * from './coordinates.ts';
+export * from './documents.ts';
+export * from './code-raster.ts';
 export * from './booking-info.ts';
 export * from './offline-areas.ts';
 export * from './rates.ts';

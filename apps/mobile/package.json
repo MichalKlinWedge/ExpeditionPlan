@@ -10,6 +10,7 @@
     "@maplibre/maplibre-react-native": "^11.5.1",
     "@protomaps/basemaps": "^5.7.2",
     "@supabase/supabase-js": "^2.118.0",
+    "bwip-js": "^4.11.4",
     "expo": "~58.0.22",
     "expo-auth-session": "~58.0.16",
     "expo-battery": "~58.0.3",

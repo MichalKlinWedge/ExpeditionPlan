@@ -332,7 +332,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           {mode === 'wallet' ? (
             <WalletView trip={trip} tripId={tripId} canAdd={signedIn && canAddExpense} canEditAll={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           ) : mode === 'info' ? (
-            <InfoView trip={trip} />
+            <InfoView trip={trip} tripId={tripId} signedIn={signedIn} />
           ) : (
             <PackingView trip={trip} tripId={tripId} canEdit={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           )}
