@@ -1,6 +1,7 @@
 import {
   activeVariants as resolveVariants,
   addItem,
+  dayLodging,
   type DaySchedule,
   documentProblem,
   type DayWeather,
@@ -438,6 +439,8 @@ type Actions = {
 };
 
 /** Pasek z lewej karty punktu — kolor według rodzaju (jak kropki na osi dnia na webie). */
+/** Nocleg — jak pinezka bazy na mapie. */
+const LODGING = '#1B2A41';
 const KIND_COLOR: Record<string, string> = {
   visit: '#2E7D74',
   activity: '#2E7D74',
@@ -472,6 +475,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const byRef = new Map(doc.items.map((item) => [item.ref, item]));
   const base = day.baseRef === undefined ? undefined : places.get(day.baseRef)?.name;
+  const lodging = dayLodging(doc, dayRef);
   const sun = schedule?.facts.sun;
   const slack = schedule?.slack ? SLACK[schedule.slack] : undefined;
 
@@ -602,6 +606,26 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
           </ThemedView>
         );
       })}
+
+      {/* Nocleg na koniec dnia (baza dnia / rezerwacja tej nocy) — na mapie pinezka ⌂. */}
+      {schedule && lodging && (
+        <ThemedView type="backgroundElement" style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: LODGING }]}>
+          {lodging.booking?.checkInFrom ? <ThemedText style={[styles.time, { color: theme.text }]}>od {lodging.booking.checkInFrom}</ThemedText> : null}
+          <ThemedText type="smallBold" style={styles.itemTitle}>
+            🛏️ Nocleg: {lodging.name}
+          </ThemedText>
+          {lodging.booking && (lodging.booking.title !== lodging.name || lodging.booking.code) ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {[lodging.booking.title !== lodging.name ? lodging.booking.title : null, lodging.booking.code ? `kod ${lodging.booking.code}` : null].filter(Boolean).join(' · ')}
+            </ThemedText>
+          ) : null}
+          {!lodging.onMap && (
+            <ThemedText type="small" style={{ color: SOFT }}>
+              brak na mapie (miejsce bez współrzędnych)
+            </ThemedText>
+          )}
+        </ThemedView>
+      )}
 
       {actions && (
         <Pressable onPress={() => setEditing('new')} hitSlop={8}>

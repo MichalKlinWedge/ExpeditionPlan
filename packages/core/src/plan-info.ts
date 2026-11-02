@@ -47,6 +47,55 @@ export function missingOnMap(doc: Doc, item: Item): boolean {
   return place !== undefined && (place.lat === undefined || place.lng === undefined);
 }
 
+/** Nocleg na koniec dnia — w planie jako ostatnia pozycja, na mapie jako baza (⌂). */
+export type DayLodging = {
+  placeRef?: string;
+  name: string;
+  /** Rezerwacja noclegu obejmująca tę noc (`kind: lodging` albo pakiet z noclegiem). */
+  booking?: { ref: string; title: string; code?: string; checkInFrom?: string };
+  /** Miejsce ma współrzędne — jest na mapie. */
+  onMap: boolean;
+};
+
+const LIVE_BOOKING = new Set(['to_book', 'booked', 'paid', 'unknown', 'not_required']);
+
+/**
+ * Nocleg dnia: baza dnia (`day.baseRef`) i rezerwacja noclegu na tę noc (start ≤ data < koniec).
+ * Bez bazy — miejsce z rezerwacji. `null` = tej nocy nie ma noclegu (zwykle dzień powrotu).
+ */
+export function dayLodging(doc: Doc, dayRef: string): DayLodging | null {
+  const day = doc.days.find((each) => each.ref === dayRef);
+  if (day === undefined) return null;
+  const nights = doc.bookings.filter(
+    (booking) =>
+      (booking.kind === 'lodging' || booking.lodging !== undefined) &&
+      LIVE_BOOKING.has(booking.status) &&
+      booking.start !== undefined &&
+      booking.start.date <= day.date &&
+      day.date < (booking.end?.date ?? booking.start.date),
+  );
+  const booking = nights.find((each) => day.baseRef !== undefined && (each.startPlaceRef === day.baseRef || each.endPlaceRef === day.baseRef)) ?? nights[0];
+  const placeRef = day.baseRef ?? booking?.startPlaceRef;
+  if (placeRef === undefined && booking === undefined) return null;
+  const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
+  return {
+    ...(placeRef !== undefined ? { placeRef } : {}),
+    name: place?.name ?? booking!.title,
+    ...(booking !== undefined
+      ? {
+          booking: {
+            ref: booking.ref,
+            title: booking.title,
+            ...(booking.confirmationCode ? { code: booking.confirmationCode } : {}),
+            // Zameldowanie tylko pierwszej nocy rezerwacji.
+            ...(booking.start!.date === day.date && (booking.checkInFrom ?? booking.start!.time) ? { checkInFrom: booking.checkInFrom ?? booking.start!.time } : {}),
+          },
+        }
+      : {}),
+    onMap: place?.lat !== undefined && place.lng !== undefined,
+  };
+}
+
 export type MapCoverage = {
   /** Miejsca użyte w planie (punkty, bazy dni, końce przejazdów) — ile ma współrzędne. */
   places: { onMap: number; total: number };
@@ -165,7 +214,11 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     target.stops.push({ ref, n, title: item.title });
   });
   const base = pin(options.baseRef);
-  if (base !== undefined) base.base = true;
+  if (base !== undefined) {
+    base.base = true;
+    // Koniec dnia: z ostatniego miejsca do noclegu.
+    straightTo(at(base));
+  }
   if (options.pool) {
     for (const item of doc.items) {
       if (item.dayRef !== undefined) continue;

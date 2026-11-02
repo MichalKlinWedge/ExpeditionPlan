@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { dayMap, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
+import { dayLodging, dayMap, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
 import { encodePolyline, type LngLat } from '../polyline.ts';
 import { DocItem, TripDocument } from '../schemas/trip-document.ts';
 
@@ -38,6 +38,27 @@ describe('opis mapy w planie', () => {
   });
 });
 
+describe('nocleg dnia', () => {
+  it('baza dnia z rezerwacją tej nocy; zameldowanie tylko pierwszej nocy; ostatni dzień bez noclegu', () => {
+    expect(dayLodging(maroko, 'd1')).toEqual({
+      placeRef: 'p-riad',
+      name: 'Riad Lakhdar',
+      booking: expect.objectContaining({ ref: 'nocleg-riad' }),
+      onMap: true,
+    });
+    // Obóz to pakiet z noclegiem; miejsce bez współrzędnych.
+    expect(dayLodging(maroko, 'd2')).toMatchObject({ placeRef: 'p-agafay', booking: { ref: 'nocleg-agafay', checkInFrom: '15:00' }, onMap: false });
+    expect(dayLodging(maroko, 'd5')).toBeNull();
+  });
+
+  it('bez bazy dnia — miejsce z rezerwacji; odwołana rezerwacja się nie liczy', () => {
+    const noBase = TripDocument.parse({ ...maroko, days: maroko.days.map((day) => (day.ref === 'd1' ? { ...day, baseRef: undefined } : day)) });
+    expect(dayLodging(noBase, 'd1')).toMatchObject({ placeRef: 'p-riad', booking: { ref: 'nocleg-riad' } });
+    const cancelled = TripDocument.parse({ ...noBase, bookings: noBase.bookings.map((booking) => (booking.ref === 'nocleg-riad' ? { ...booking, status: 'cancelled' } : booking)) });
+    expect(dayLodging(cancelled, 'd1')).toBeNull();
+  });
+});
+
 describe('mapa dnia', () => {
   const d2 = ['d2-wyjscie', 'd2-medersa', 'd2-do-bahii', 'd2-bahia', 'd2-suki-dzien', 'd2-lunch'];
 
@@ -56,6 +77,8 @@ describe('mapa dnia', () => {
   it('baza dnia i punkty z puli w miejscach ze współrzędnymi', () => {
     const map = dayMap(maroko, ['d2-medersa'], { baseRef: 'p-riad', pool: true });
     expect(map.pins.find((pin) => pin.placeRef === 'p-riad')!.base).toBe(true);
+    // Dzień kończy się linią do noclegu.
+    expect(map.lines.at(-1)!.coordinates.at(-1)).toEqual(at('p-riad'));
     const pooled = maroko.items.filter((item) => item.dayRef === undefined && item.placeRef !== undefined && !missingOnMap(maroko, item));
     expect(map.pins.flatMap((pin) => pin.pool ?? []).map((each) => each.ref).sort()).toEqual(pooled.map((item) => item.ref).sort());
   });

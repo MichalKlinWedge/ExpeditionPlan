@@ -1,4 +1,4 @@
-import { dayMap, instantToZoned, type MapLine, type MapPin, scheduleDay, tripMapAreas, type TripDocument } from '@expeditionplan/core';
+import { dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, scheduleDay, tripMapAreas, type TripDocument } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip } from '@expeditionplan/sync';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
@@ -75,7 +75,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
     if (dayRef === undefined) return { pins: tripPins(doc), lines: [] as MapLine[] };
     try {
       const schedule = scheduleDay(doc, dayRef);
-      return dayMap(doc, schedule.items.map((item) => item.ref), { baseRef: doc.days.find((each) => each.ref === dayRef)?.baseRef });
+      return dayMap(doc, schedule.items.map((item) => item.ref), { baseRef: dayLodging(doc, dayRef)?.placeRef });
     } catch {
       return { pins: [], lines: [] as MapLine[] };
     }

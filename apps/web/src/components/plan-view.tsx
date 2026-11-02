@@ -5,6 +5,7 @@ import {
   addItem,
   addItemAtPin,
   dayItems,
+  dayLodging,
   dayMap,
   documentProblem as problem,
   dropItem,
@@ -139,7 +140,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
       mapRefs = dayItems(doc, mapDay.ref).map((item) => item.ref);
     }
   }
-  const map = dayMap(doc, mapRefs, { baseRef: mapDay?.baseRef, pool: true });
+  const map = dayMap(doc, mapRefs, { baseRef: mapDay ? dayLodging(doc, mapDay.ref)?.placeRef : undefined, pool: true });
   const mapKey = JSON.stringify([map.lines, map.pins.map((pin) => [pin.placeRef, pin.lat, pin.lng, pin.stops.map((stop) => stop.n), pin.pool?.length])]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- mapa przerysowuje się tylko przy zmianie tego, co pokazuje
   const stableMap = useMemo(() => map, [mapKey]);
@@ -339,7 +340,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
               <p className="text-xs text-zinc-500">
                 Numery = kolejność dnia. Linia ciągła: trasa po drogach („Przelicz przejazdy”), przerywana: prosto między miejscami
                 {map.pins.some((pin) => pin.pool) ? " · szare kropki: pula" : ""}
-                {map.pins.some((pin) => pin.base) ? " · fioletowa: baza dnia" : ""}
+                {map.pins.some((pin) => pin.base) ? " · fioletowa: nocleg" : ""}
                 {canEdit && map.pins.some((pin) => pin.movable) ? " · własne pinezki można przeciągnąć" : ""}.
               </p>
             )}
@@ -616,6 +617,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules,
   const notes = doc.notes.filter((note) => note.scope === "day" && note.targetRef === dayRef);
   const byRef = new Map(doc.items.map((item) => [item.ref, item]));
   const base = day.baseRef === undefined ? undefined : places.get(day.baseRef)?.name;
+  const lodging = dayLodging(doc, dayRef);
   const sun = schedule?.facts.sun;
 
   return (
@@ -764,6 +766,30 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules,
               </li>
             );
           })}
+          {/* Nocleg na koniec dnia (baza dnia / rezerwacja tej nocy) — na mapie fioletowa pinezka. */}
+          {lodging && (
+            <li className="relative flex flex-col border-l-2 border-zinc-200 pb-1.5 pl-4 dark:border-zinc-800">
+              <span aria-hidden="true" className="absolute top-1.5 -left-[7px] size-3 rounded-full bg-indigo-500 ring-2 ring-white dark:ring-zinc-900" />
+              <div className="flex gap-3">
+                <span className="w-28 shrink-0 font-semibold text-ink tabular-nums dark:text-zinc-100">{lodging.booking?.checkInFrom ? `od ${lodging.booking.checkInFrom}` : ""}</span>
+                <span>
+                  <span aria-hidden="true" className="mr-1.5">
+                    🛏️
+                  </span>
+                  <span className="font-medium">Nocleg: {lodging.name}</span>
+                  <span className="text-zinc-500">
+                    {lodging.booking && lodging.booking.title !== lodging.name ? ` · ${lodging.booking.title}` : ""}
+                    {lodging.booking?.code ? ` · kod ${lodging.booking.code}` : ""}
+                  </span>
+                  {!lodging.onMap && (
+                    <span title="Miejsce noclegu bez współrzędnych — „Uzupełnij współrzędne miejsc” albo własna pinezka" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                      brak na mapie
+                    </span>
+                  )}
+                </span>
+              </div>
+            </li>
+          )}
           {dnd?.dragging && (
             <li
               onDragOver={(event) => dnd.hover({ dayRef }, event)}

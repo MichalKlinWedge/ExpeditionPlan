@@ -207,7 +207,7 @@ function pinElement(pin: MapPin): HTMLElement {
   element.type = "button";
   element.className = "group cursor-pointer";
   const titles = [...pin.stops.map((stop) => `${stop.n}. ${stop.title}`), ...(pin.pool ?? []).map((each) => `pula: ${each.title}`)];
-  element.title = [pin.name, ...titles, ...(pin.base ? ["baza dnia"] : [])].join("\n");
+  element.title = [pin.name, ...titles, ...(pin.base ? ["nocleg"] : [])].join("\n");
   const face = document.createElement("span");
   const ring = "border-2 border-white shadow-md transition-[scale,box-shadow] group-data-[active=true]:scale-125 group-data-[active=true]:ring-4 group-data-[active=true]:ring-signal/60";
   if (pin.stops.length > 0) {

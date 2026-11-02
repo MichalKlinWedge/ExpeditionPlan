@@ -1,4 +1,4 @@
-import { dayMap, type DaySchedule, type TripDocument } from '@expeditionplan/core';
+import { dayLodging, dayMap, type DaySchedule, type TripDocument } from '@expeditionplan/core';
 import { Camera, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -19,7 +19,7 @@ export function DayMap({ doc, dayRef, schedule }: { doc: TripDocument; dayRef: s
   const theme = useTheme();
   const mapStyle = useMapStyle();
   const [selected, setSelected] = useState<string | null>(null);
-  const baseRef = doc.days.find((each) => each.ref === dayRef)?.baseRef;
+  const baseRef = dayLodging(doc, dayRef)?.placeRef;
   const refs = schedule.items.map((item) => item.ref).join(',');
   // Klucz z kolejności — przelicza się przy zmianie planu dnia, nie przy każdym odświeżeniu „teraz”.
   const view = useMemo(() => dayMap(doc, refs === '' ? [] : refs.split(','), { baseRef }), [doc, refs, baseRef]);
