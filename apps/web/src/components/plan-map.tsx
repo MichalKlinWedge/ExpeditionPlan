@@ -4,7 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { DayMap, MapLine, MapPin } from "@expeditionplan/core";
 import type { Map as MapLibreMap, Marker } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Mapa dnia w edytorze (MVP-3): pinezki z numerami kolejności z silnika, linia dnia (ciągła po
@@ -35,8 +35,16 @@ type Props = {
   editing?: MapEditing | null;
 };
 
-export function PlanMap({ map: data, fitKey, selected, onSelect, editing = null }: Props) {
+export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
+  // Dojazd i powrót (lot, długa droga) domyślnie ukryte — skala kraju gubi szczegóły na miejscu.
+  const [showTransit, setShowTransit] = useState(false);
+  const hasTransit = full.pins.some((pin) => pin.transit) || full.lines.some((line) => line.transit);
+  const data = useMemo(
+    () => (showTransit ? full : { ...full, pins: full.pins.filter((pin) => !pin.transit), lines: full.lines.filter((line) => !line.transit) }),
+    [full, showTransit],
+  );
+  const fitKey = `${dayKey}:${showTransit && hasTransit}`;
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const markers = useRef<{ pin: MapPin; marker: Marker }[]>([]);
@@ -162,6 +170,15 @@ export function PlanMap({ map: data, fitKey, selected, onSelect, editing = null 
       {/* Nie `absolute inset-0`: CSS MapLibre (poza warstwami Tailwinda) ustawia `position: relative`. */}
       <div ref={container} className="h-full w-full" />
       {failure && <p className="absolute inset-x-0 top-0 bg-red-50 p-2 text-xs text-red-700">Mapa się nie wczytała: {failure}</p>}
+      {hasTransit && !picking && (
+        <button
+          onClick={() => setShowTransit((value) => !value)}
+          aria-pressed={showTransit}
+          title={showTransit ? "Ukryj dojazd i powrót — mapa skupi się na miejscu" : "Pokaż dojazd i powrót (lot, długa droga)"}
+          className={`absolute top-2 left-2 rounded-full px-3 py-1 text-xs font-semibold shadow ${showTransit ? "bg-sea text-white" : "bg-white/95 text-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-200"}`}>
+          ✈ Dojazd i powrót
+        </button>
+      )}
       {picking && (
         <p className="absolute inset-x-4 top-4 rounded bg-white/90 p-2 text-center text-xs text-zinc-700 shadow dark:bg-zinc-900/90 dark:text-zinc-200">
           {picked === null ? "Kliknij mapę w miejscu nowego punktu." : "Wpisz nazwę pod mapą albo kliknij inne miejsce."}

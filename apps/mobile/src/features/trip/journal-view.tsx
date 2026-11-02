@@ -7,6 +7,7 @@ import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -34,9 +35,18 @@ type TravelerRow = { name: string; user_id: string | null };
 
 const hm = (iso: string, tz: string) => instantToZoned(Date.parse(iso), tz).time;
 
-export function JournalView({ trip, tripId, signedIn, userId, canEditAll, onChanged }: Props) {
+/** Dziennik z bezpiecznikiem — błąd widoku pokazuje się zamiast zamykać aplikację. */
+export function JournalView(props: Props) {
+  return (
+    <ErrorBoundary label="Dziennik">
+      <Journal {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function Journal({ trip, tripId, signedIn, userId, canEditAll, onChanged }: Props) {
   const doc = trip.state.doc;
-  const entries = (trip.live.journal as unknown as EntryRow[]).toSorted((a, b) => a.taken_at.localeCompare(b.taken_at));
+  const entries = [...(trip.live.journal as unknown as EntryRow[])].sort((a, b) => a.taken_at.localeCompare(b.taken_at));
   const travelers = trip.live.travelers as unknown as TravelerRow[];
   const author = (row: EntryRow) =>
     row.created_by == null || row.created_by === userId ? 'ja' : (travelers.find((each) => each.user_id === row.created_by)?.name ?? 'uczestnik');

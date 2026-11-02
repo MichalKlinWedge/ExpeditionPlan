@@ -10,7 +10,7 @@ import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { DayLines, PinCard, PinMarkers } from '@/features/map/map-parts';
+import { DayLines, hasTransit, PinCard, PinMarkers, TransitToggle, withoutTransit } from '@/features/map/map-parts';
 import { useMapStyle } from '@/features/map/map-style';
 import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
 import { useTheme } from '@/hooks/use-theme';
@@ -70,7 +70,8 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   useEffect(refreshStatuses, [refreshStatuses]);
 
   const dayRef = doc && day >= 0 ? doc.days[day]?.ref : undefined;
-  const view = useMemo(() => {
+  const [showTransit, setShowTransit] = useState(false);
+  const full = useMemo(() => {
     if (doc === null) return null;
     if (dayRef === undefined) return { pins: tripPins(doc), lines: [] as MapLine[] };
     try {
@@ -80,6 +81,8 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
       return { pins: [], lines: [] as MapLine[] };
     }
   }, [doc, dayRef]);
+  const transit = full !== null && hasTransit(full);
+  const view = useMemo(() => (full === null ? null : withoutTransit(full, showTransit)), [full, showTransit]);
 
   // Kamera obejmuje pinezki dnia (albo całą trasę) przy każdej zmianie widoku.
   useEffect(() => {
@@ -147,6 +150,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
           <DayLines lines={view.lines} id="day-lines" />
           <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} />
         </MapView>
+        {transit && <TransitToggle value={showTransit} onChange={setShowTransit} />}
         <Pressable onPress={() => void centerOnMe()} style={[styles.me, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]} hitSlop={6}>
           <ThemedText type="smallBold">◎</ThemedText>
         </Pressable>

@@ -1,6 +1,6 @@
 import type { MapLine, MapPin } from '@expeditionplan/core';
 import { GeoJSONSource, Layer, Marker } from '@maplibre/maplibre-react-native';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -13,6 +13,30 @@ import { useTheme } from '@/hooks/use-theme';
  */
 
 const BASE = '#1B2A41';
+
+/** Widok mapy bez dojazdu i powrotu (lot, długa droga) — skala kraju gubi szczegóły na miejscu. */
+export function withoutTransit<T extends { pins: MapPin[]; lines: MapLine[] }>(view: T, show: boolean): T {
+  return show ? view : { ...view, pins: view.pins.filter((pin) => !pin.transit), lines: view.lines.filter((line) => !line.transit) };
+}
+
+export const hasTransit = (view: { pins: MapPin[]; lines: MapLine[] }) => view.pins.some((pin) => pin.transit) || view.lines.some((line) => line.transit);
+
+/** Przełącznik „✈ Dojazd i powrót” w rogu mapy. */
+export function TransitToggle({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={() => onChange(!value)}
+      hitSlop={6}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      style={[styles.transit, value ? { backgroundColor: theme.accent } : { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}>
+      <ThemedText type="smallBold" style={{ color: value ? theme.onPrimary : theme.text }}>
+        ✈ Dojazd i powrót
+      </ThemedText>
+    </Pressable>
+  );
+}
 
 /** Trasy przejazdów (ORS) — linia ciągła; odcinki bez trasy — przerywana prosta. Dzieci `<Map>`. */
 export function DayLines({ lines, id }: { lines: MapLine[]; id: string }) {
@@ -71,6 +95,7 @@ export function PinCard({ pin, times, onClose, small = false }: { pin: MapPin; t
 }
 
 const styles = StyleSheet.create({
+  transit: { position: 'absolute', left: Spacing.two, top: Spacing.two, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: 6, elevation: 3 },
   pin: { minWidth: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, elevation: 3 },
   pinWide: { paddingHorizontal: 7 },
   pinText: { color: '#FFFFFF', fontSize: 12, lineHeight: 16, fontWeight: 800 },

@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { DayLines, PinCard, PinMarkers } from '@/features/map/map-parts';
+import { DayLines, hasTransit, PinCard, PinMarkers, TransitToggle, withoutTransit } from '@/features/map/map-parts';
 import { useMapStyle } from '@/features/map/map-style';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -22,7 +22,11 @@ export function DayMap({ doc, dayRef, schedule }: { doc: TripDocument; dayRef: s
   const baseRef = dayLodging(doc, dayRef)?.placeRef;
   const refs = schedule.items.map((item) => item.ref).join(',');
   // Klucz z kolejności — przelicza się przy zmianie planu dnia, nie przy każdym odświeżeniu „teraz”.
-  const view = useMemo(() => dayMap(doc, refs === '' ? [] : refs.split(','), { baseRef }), [doc, refs, baseRef]);
+  const full = useMemo(() => dayMap(doc, refs === '' ? [] : refs.split(','), { baseRef }), [doc, refs, baseRef]);
+  const [showTransit, setShowTransit] = useState(false);
+  const transit = hasTransit(full);
+  // Dzień złożony z samego dojazdu — pokazujemy go mimo wyłączonego przełącznika.
+  const view = withoutTransit(full, showTransit || full.pins.every((pin) => pin.transit));
   const times = new Map(schedule.items.map((item) => [item.ref, item.startLocal]));
 
   if (view.pins.length === 0) {
@@ -44,13 +48,14 @@ export function DayMap({ doc, dayRef, schedule }: { doc: TripDocument; dayRef: s
   return (
     <View style={styles.wrap}>
       <View style={[styles.square, { borderColor: theme.backgroundSelected }]}>
-        {/* Nowy dzień = nowa mapa z widokiem dopasowanym do jego pinezek. */}
-        <MapView key={dayRef} mapStyle={mapStyle} androidView="surface" onPress={() => setSelected(null)}>
+        {/* Nowy dzień albo przełączony dojazd = nowa mapa z widokiem dopasowanym do pinezek. */}
+        <MapView key={`${dayRef}:${showTransit}`} mapStyle={mapStyle} androidView="surface" onPress={() => setSelected(null)}>
           <Camera initialViewState={start} />
           <UserLocation accuracy />
           <DayLines lines={view.lines} id="plan-day" />
           <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} />
         </MapView>
+        {transit && <TransitToggle value={showTransit} onChange={setShowTransit} />}
       </View>
       {pin ? (
         <PinCard pin={pin} times={times} onClose={() => setSelected(null)} small />

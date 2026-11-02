@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { dayLodging, dayMap, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
+import { dayLodging, dayMap, isTransit, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
 import { encodePolyline, type LngLat } from '../polyline.ts';
 import { DocItem, TripDocument } from '../schemas/trip-document.ts';
 
@@ -72,6 +72,21 @@ describe('mapa dnia', () => {
     expect(map.lines[0]!.coordinates).toHaveLength(4);
     // Baza dnia 2 (Agafay) nie ma współrzędnych — nie ma jej na mapie.
     expect(map.pins.some((pin) => pin.base)).toBe(false);
+  });
+
+  it('dojazd i powrót (lot, przejazd ponad 250 km) da się ukryć — numery się nie zmieniają', () => {
+    const item = (ref: string) => maroko.items.find((each) => each.ref === ref)!;
+    expect(isTransit(maroko, item('d1-lotnisko-wro'))).toBe(true);
+    expect(isTransit(maroko, item('d5-wylot'))).toBe(true);
+    expect(isTransit(maroko, item('d1-a7'))).toBe(false);
+    const d1 = dayMap(maroko, maroko.items.filter((each) => each.dayRef === 'd1').map((each) => each.ref), { baseRef: 'p-riad' });
+    expect(d1.pins.filter((pin) => pin.transit).map((pin) => pin.placeRef)).toEqual(['p-wro']);
+    expect(d1.lines.filter((line) => line.transit)).toHaveLength(1);
+    expect(d1.numbers['d1-lotnisko-wro']).toBe(1);
+    const d5 = dayMap(maroko, maroko.items.filter((each) => each.dayRef === 'd5').map((each) => each.ref));
+    // Powrót: lotnisko w Agadirze (tylko odprawa i wylot) i Wrocław; zwrot auta (Sixt) zostaje.
+    expect(d5.pins.filter((pin) => pin.transit).map((pin) => pin.placeRef)).toEqual(['p-aga', 'p-wro']);
+    expect(d5.pins.find((pin) => pin.placeRef === 'p-sixt-aga')?.transit).toBeUndefined();
   });
 
   it('baza dnia i punkty z puli w miejscach ze współrzędnymi', () => {

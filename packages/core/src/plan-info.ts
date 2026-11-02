@@ -130,10 +130,26 @@ export type MapPin = {
   pool?: { ref: string; title: string }[];
   /** Własna pinezka użytkownika (`provider: 'user'`) — można ją przesunąć na mapie. */
   movable?: boolean;
+  /** Miejsce tylko dojazdu albo powrotu (lotnisko w domu, start długiej drogi) — mapa może je ukryć. */
+  transit?: boolean;
 };
 
 /** Kawałek linii dnia [lng, lat]: trasa po drogach z ORS (`routed`) albo prosta między miejscami. */
-export type MapLine = { coordinates: LngLat[]; routed: boolean };
+export type MapLine = { coordinates: LngLat[]; routed: boolean; transit?: boolean };
+
+/** Przejazd dłuższy niż tyle km to dojazd albo powrót, nie trasa dnia. */
+const TRANSIT_KM = 250;
+
+/**
+ * Dojazd albo powrót: lot (rezerwacja lotu albo przejazd samolotem, także odprawa i przylot
+ * z tą rezerwacją) albo przejazd dłuższy niż 250 km. Na mapie dnia można go ukryć — inaczej
+ * skala całego kraju gubi szczegóły na miejscu.
+ */
+export function isTransit(doc: Doc, item: Item): boolean {
+  if (item.bookingRef !== undefined && doc.bookings.find((booking) => booking.ref === item.bookingRef)?.kind === 'flight') return true;
+  if (item.kind !== 'transport' || item.leg === undefined) return false;
+  return item.leg.mode === 'flight' || (item.leg.distanceKm ?? 0) >= TRANSIT_KM;
+}
 
 export type DayMap = {
   pins: MapPin[];
@@ -173,13 +189,15 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
   };
   const at = (found: MapPin): LngLat => [found.lng, found.lat];
   const lines: MapLine[] = [];
+  /** Miejsca punktów poza dojazdem i powrotem — reszta pinezek to `transit`. */
+  const local = new Set<string>();
   let cursor: LngLat | undefined;
-  const straightTo = (point: LngLat) => {
+  const straightTo = (point: LngLat, transit = false) => {
     if (cursor !== undefined && (cursor[0] !== point[0] || cursor[1] !== point[1])) {
       const last = lines.at(-1);
       const end = last?.coordinates.at(-1);
-      if (last !== undefined && !last.routed && end?.[0] === cursor[0] && end[1] === cursor[1]) last.coordinates.push(point);
-      else lines.push({ coordinates: [cursor, point], routed: false });
+      if (last !== undefined && !last.routed && (last.transit ?? false) === transit && end?.[0] === cursor[0] && end[1] === cursor[1]) last.coordinates.push(point);
+      else lines.push({ coordinates: [cursor, point], routed: false, ...(transit ? { transit } : {}) });
     }
     cursor = point;
   };
@@ -197,16 +215,19 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     const item = items.get(ref);
     if (item === undefined) return;
     const leg = item.kind === 'transport' ? item.leg : undefined;
+    const transit = isTransit(doc, item);
     const from = pin(leg?.fromPlaceRef);
-    if (from !== undefined) straightTo(at(from));
+    if (from !== undefined) straightTo(at(from), transit);
     const target = pin(leg === undefined ? item.placeRef : (leg.toPlaceRef ?? item.placeRef));
+    // Miejsce używane tylko przez dojazd i powrót (np. lotnisko w domu) jest `transit`.
+    if (!transit) for (const found of [from, target]) if (found !== undefined) local.add(found.placeRef);
     const route = leg === undefined ? null : routeLine(leg, cursor, [target === undefined ? undefined : at(target), nextStart(index)]);
     if (route !== null) {
-      straightTo(route[0]!);
-      lines.push({ coordinates: route, routed: true });
+      straightTo(route[0]!, transit);
+      lines.push({ coordinates: route, routed: true, ...(transit ? { transit } : {}) });
       cursor = route.at(-1);
     } else if (target !== undefined) {
-      straightTo(at(target));
+      straightTo(at(target), transit);
     }
     if (target === undefined) return;
     const n = Object.keys(numbers).length + 1;
@@ -226,6 +247,7 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
       if (found !== undefined) (found.pool ??= []).push({ ref: item.ref, title: item.title });
     }
   }
+  for (const found of pins.values()) if (!local.has(found.placeRef) && !found.base && found.pool === undefined) found.transit = true;
   return { pins: [...pins.values()], lines, numbers };
 }
 
