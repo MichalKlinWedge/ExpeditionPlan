@@ -12,6 +12,7 @@ import {
   saveBooking,
   saveBudgetLine,
   saveContact,
+  fetchFx,
   saveFx,
   saveTask,
   setBookingItems,
@@ -872,6 +873,8 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
     if (result.ok) setOpen(false);
     return result;
   }, {});
+  const [fetched, setFetched] = useState<FormState>({});
+  const [fetching, startFetch] = useTransition();
   const summary = fx.length === 0 ? "brak kursów" : fx.map((each) => `1 ${each.currency} = ${each.rateToBase.toLocaleString("pl-PL", { maximumFractionDigits: 4 })} ${base}${each.date ? ` (${each.date})` : ""}`).join(" · ");
   if (!open) {
     return (
@@ -883,9 +886,14 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
             {" "}
             <button onClick={() => setOpen(true)} className={small}>
               zmień
+            </button>{" "}
+            <button disabled={fetching} onClick={() => startFetch(async () => setFetched(await fetchFx(tripId)))} className={small}>
+              {fetching ? "pobieram…" : "pobierz aktualne kursy"}
             </button>
           </>
         )}
+        {fetched.ok && <span className="text-green-700 dark:text-green-400"> {fetched.ok}</span>}
+        {fetched.error && <span className="text-red-600"> {fetched.error}</span>}
       </p>
     );
   }

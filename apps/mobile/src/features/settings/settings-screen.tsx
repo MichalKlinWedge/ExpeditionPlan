@@ -3,17 +3,21 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/session';
+import { disableReminders, enableReminders, remindersEnabled } from '@/features/trip/reminders';
 import { UpdateCard } from '@/features/updates/update-notice';
 import { supabase } from '@/lib/supabase';
 
-/** Ustawienia (zębatka na Start): konto i wersja aplikacji z ręcznym sprawdzeniem aktualizacji. */
+/** Ustawienia (zębatka na Start): konto, przypomnienia z planu i wersja aplikacji z ręcznym sprawdzeniem aktualizacji. */
 export function SettingsScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const session = useSession();
   const [name, setName] = useState<string | null>(null);
+  const [reminders, setReminders] = useState(remindersEnabled);
+  const [reminderInfo, setReminderInfo] = useState('');
   const userId = session?.user.id;
 
   // Imię z profilu; bez sieci zostaje sam e-mail.
@@ -61,6 +65,33 @@ export function SettingsScreen({ visible, onClose }: { visible: boolean; onClose
                   </>
                 ) : (
                   <ThemedText type="small">Niezalogowany — zaloguj się na ekranie Start.</ThemedText>
+                )}
+              </ThemedView>
+
+              <ThemedText type="smallBold">Przypomnienia</ThemedText>
+              <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedText type="small">
+                  Powiadomienia o zadaniach z planu („Sprawdź paszporty — 14 dni przed wyjazdem”) i dzień przed wyjazdem. Działają bez internetu.
+                </ThemedText>
+                <Button
+                  label={reminders ? 'Wyłącz przypomnienia' : 'Włącz przypomnienia'}
+                  variant={reminders ? 'secondary' : 'primary'}
+                  onPress={() =>
+                    void (reminders
+                      ? disableReminders().then(() => {
+                          setReminders(false);
+                          setReminderInfo('Przypomnienia wyłączone.');
+                        })
+                      : enableReminders().then(({ ok, count }) => {
+                          setReminders(ok);
+                          setReminderInfo(ok ? `Zaplanowano: ${count}. Nowe zadania dojdą po otwarciu planu.` : 'Brak zgody na powiadomienia — włącz je w ustawieniach Androida.');
+                        }))
+                  }
+                />
+                {reminderInfo !== '' && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {reminderInfo}
+                  </ThemedText>
                 )}
               </ThemedView>
 

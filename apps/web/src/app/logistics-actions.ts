@@ -1,6 +1,6 @@
 "use server";
 
-import { BookingKind, BudgetCategory, budgetSuggestions, parseMoney, PriceBasis, TripDocument } from "@expeditionplan/core";
+import { BookingKind, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, tripCurrencies, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -219,6 +219,9 @@ function compact(value: Record<string, unknown>): Record<string, unknown> | unde
  * na rezerwację wskazują punkty, noclegi dni i budżet; zamiast tego „anulowane”.
  */
 export async function saveBooking(tripId: string, ref: string | null, _prev: FormState, form: FormData): Promise<FormState> {
+  // Formularz ze strony otwartej przed wdrożeniem nowej wersji nie ma pól daty i ceny — zapis
+  // wyczyściłby je w rezerwacji. Bez pola `title` nie zapisujemy nic.
+  if (!form.has("title")) return { error: "Ta strona jest nieaktualna (nowa wersja aplikacji) — odśwież ją (Ctrl+F5) i zapisz jeszcze raz." };
   const status = text(form, "status");
   if (!BOOKING_STATUSES.includes(status)) return { error: "Wybierz status." };
   const title = text(form, "title");
@@ -372,4 +375,33 @@ export async function saveFx(tripId: string, _prev: FormState, form: FormData): 
   if ((data ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: "Zapisano kursy." };
+}
+
+/**
+ * „Pobierz aktualne kursy”: Frankfurter v2 (docs/USLUGI.md) dla walut wyjazdu — z budżetu,
+ * rezerwacji, kursów w planie i wydatków. Nowe kursy zastępują stare tych walut, inne zostają.
+ */
+export async function fetchFx(tripId: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
+  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
+  if (error) return { error: message(error) };
+  if (data === null) return { error: "Nie ma takiego wyjazdu." };
+  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const doc = stateFromPayload(payload).doc;
+  const spent = ((payload.tables.expenses ?? []) as { currency?: string; deleted_at: string | null }[]).filter((row) => row.deleted_at === null).map((row) => row.currency ?? "");
+  const currencies = tripCurrencies(doc, spent.filter((currency) => /^[A-Z]{3}$/.test(currency)));
+  if (currencies.length === 0) return { error: "Wyjazd nie ma walut innych niż bazowa." };
+  let fresh;
+  try {
+    fresh = await fetchRates(doc.trip.baseCurrency, currencies);
+  } catch (e) {
+    return { error: `Nie pobrano kursów: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  const fx = mergeRates(doc.trip.fx, fresh);
+  const { data: saved, error: saveError } = await supabase.from("trips").update({ fx }).eq("id", tripId).select("id");
+  if (saveError) return { error: message(saveError) };
+  if ((saved ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  refresh();
+  const missing = currencies.filter((currency) => !fresh.some((rate) => rate.currency === currency));
+  return { ok: `Pobrano kursy z ${fresh[0]?.date ?? "dziś"}: ${fresh.map((rate) => rate.currency).join(", ")}.${missing.length > 0 ? ` Bez kursu w źródle: ${missing.join(", ")}.` : ""}` };
 }

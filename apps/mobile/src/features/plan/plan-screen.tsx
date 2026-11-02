@@ -3,6 +3,7 @@ import {
   addItem,
   type DaySchedule,
   documentProblem,
+  type DayWeather,
   flightLine,
   flightOf,
   instantToZoned,
@@ -20,6 +21,8 @@ import {
   type Scenario,
   scheduleDay,
   type ScheduleWarning,
+  weatherLine,
+  weatherVariantHint,
 } from '@expeditionplan/core';
 import {
   type CachedTrip,
@@ -46,6 +49,8 @@ import { DayMap } from '@/features/plan/day-map';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { type DayEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
+import { scheduleTripReminders } from '@/features/trip/reminders';
+import { useTripWeather } from '@/features/trip/trip-weather';
 import { PackingView } from '@/features/trip/packing-view';
 import { WalletView } from '@/features/trip/wallet-view';
 import { useTheme } from '@/hooks/use-theme';
@@ -142,15 +147,18 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const placed = useRef(false);
 
   const state = trip?.state ?? null;
+  const weather = useTripWeather(tripId, state?.doc ?? null);
 
   const show = useCallback((next: CachedTrip) => {
     setTrip(next);
+    // Przypomnienia z zadań planu (jeśli włączone w Ustawieniach) — po każdym wczytaniu.
+    void scheduleTripReminders(tripId, next.state.doc).catch(() => undefined);
     setInvalid('');
     // Dzień ustawia się raz — odświeżenie nie przerzuca oglądanego dnia.
     if (!placed.current) setIndex(initialDay(next.state));
     placed.current = true;
     setSync({ busy: false, syncedAt: next.syncedAt });
-  }, []);
+  }, [tripId]);
 
   /** `quiet` — pobranie z sygnału Realtime, bez „Synchronizuję…” w statusie. */
   const load = useCallback(async (quiet = false) => {
@@ -355,6 +363,8 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               variants={variants}
               onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
               actions={actions}
+              weather={weather?.days[day.ref]}
+              weatherAt={weather?.fetchedAt}
               top={
                 instantToZoned(now, day.tz).date === day.date
                   ? (schedule) => (
@@ -397,6 +407,9 @@ type DayProps = {
   top?: (schedule: DaySchedule) => ReactNode;
   /** Tryb edycji (organizator, edytor); `null` = tylko odczyt. */
   actions: Actions | null;
+  /** Prognoza dnia (Open-Meteo) i kiedy pobrana — offline ostatnia zapisana. */
+  weather?: DayWeather;
+  weatherAt?: string;
 };
 
 type Actions = {
@@ -420,7 +433,7 @@ const KIND_COLOR: Record<string, string> = {
   decision: '#F59E0B',
 };
 
-function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayProps) {
+function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt }: DayProps) {
   const theme = useTheme();
   const { doc, inputs } = state;
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
@@ -456,6 +469,28 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayP
         {sun ? `wschód ${hm(sun.sunrise, day.tz)} · zachód ${hm(sun.sunset, day.tz)} · zmrok ${hm(sun.civilDusk, day.tz)}` : 'słońce: brak współrzędnych bazy'}
         {schedule?.facts.dst ? ' · zmiana czasu' : ''}
       </ThemedText>
+      {weather && (
+        <ThemedText type="smallBold" themeColor="accent">
+          {weatherLine(weather)}
+          {weatherAt ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {' '}
+              · prognoza z {new Date(weatherAt).toLocaleString('pl-PL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </ThemedText>
+          ) : null}
+        </ThemedText>
+      )}
+      {(() => {
+        const hint = weatherVariantHint(doc, dayRef, weather);
+        if (hint === null || active.has(hint.variantRef)) return null;
+        return (
+          <Pressable onPress={() => onChoose(hint.groupRef, hint.variantRef)} style={[styles.hint, { borderColor: theme.primary }]}>
+            <ThemedText type="small">
+              Zapowiada się niepogoda — {hint.group}: <ThemedText type="smallBold">„{hint.variant}”</ThemedText> (dotknij, żeby włączyć)
+            </ThemedText>
+          </Pressable>
+        );
+      })()}
       {slack && (
         <View style={[styles.badge, { borderColor: slack.color }]}>
           <ThemedText type="small" style={{ color: slack.color }}>
@@ -646,6 +681,7 @@ const styles = StyleSheet.create({
   time: { fontSize: 15, lineHeight: 20, fontWeight: 800, fontVariant: ['tabular-nums'] },
   itemTitle: { fontSize: 16, lineHeight: 22 },
   dayTitle: { fontSize: 20, lineHeight: 26, fontWeight: 800 },
+  hint: { borderWidth: 1.5, borderRadius: 12, padding: Spacing.two },
   child: { marginLeft: Spacing.four },
   nav: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.three },
   hidden: { opacity: 0 },

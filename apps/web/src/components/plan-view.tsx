@@ -26,9 +26,16 @@ import {
   scheduleDay,
   type TripDocument,
   updateItem,
+  type DayWeather,
+  fetchWeather,
+  localToday,
+  WEATHER_ATTRIBUTION,
+  weatherLine,
+  weatherPoints,
+  weatherVariantHint,
 } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { DayConstraints, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
@@ -90,6 +97,25 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const pool = doc.items.filter((item) => item.dayRef === undefined);
   const hydrated = useHydrated();
+  // Prognoza Open-Meteo z przeglądarki (limit per IP); dni poza horyzontem 16 dni jej nie mają.
+  const [weather, setWeather] = useState<Record<string, DayWeather>>({});
+  const weatherKey = weatherPoints(doc)
+    .map((point) => `${point.dayRef}@${point.lat.toFixed(2)},${point.lng.toFixed(2)}`)
+    .join("|");
+  useEffect(() => {
+    let cancelled = false;
+    void fetchWeather(weatherPoints(doc), localToday()).then(
+      (days) => {
+        if (!cancelled) setWeather(days);
+      },
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+    // `weatherKey` streszcza miejsca i dni — bez nowego zapytania przy każdej edycji punktu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weatherKey]);
   const [mapDayRef, setMapDay] = useState<string | undefined>(doc.days[0]?.ref);
   const mapDay = doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0];
   const [selected, setSelected] = useState<string | null>(null);
@@ -320,8 +346,10 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
               onShowOnMap={() => setMapDay(day.ref)}
               selected={selected}
               onSelect={(ref) => select(ref, "list")}
+              weather={weather[day.ref]}
             />
           ))}
+          {Object.keys(weather).length > 0 && <p className="text-xs text-zinc-500">{WEATHER_ATTRIBUTION}</p>}
 
           {(pool.length > 0 || (dnd?.dragging != null && doc.items.find((item) => item.ref === dnd.dragging)?.dayRef !== undefined)) && (
             <section
@@ -452,6 +480,8 @@ function AddItemForm({ onAdd, autoFocus = false }: { onAdd: (fields: Pick<Item, 
 }
 
 type DayProps = {
+  /** Prognoza dnia (Open-Meteo); brak — dzień poza horyzontem albo bez współrzędnych. */
+  weather?: DayWeather;
   doc: TripDocument;
   dayRef: string;
   options: Parameters<typeof scheduleDay>[2];
@@ -482,7 +512,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules, dnd, numbers, onShowOnMap, selected, onSelect }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules, dnd, numbers, onShowOnMap, selected, onSelect, weather }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -529,6 +559,18 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules,
           </span>
         )}
       </header>
+
+      {weather && <p className="text-sm font-semibold text-sea dark:text-teal-300">{weatherLine(weather)}</p>}
+      {(() => {
+        // Niepogoda w dniu z wariantem pogodowym — podpowiedź B (tylko przełączenie widoku, działa też w podglądzie).
+        const hint = weatherVariantHint(doc, dayRef, weather);
+        if (hint === null || active.has(hint.variantRef)) return null;
+        return (
+          <button onClick={() => onChoose(hint.groupRef, hint.variantRef)} className="self-start rounded-xl border-2 border-signal/60 bg-signal/5 px-3 py-1.5 text-left text-sm">
+            Zapowiada się niepogoda — {hint.group}: <strong>„{hint.variant}”</strong> (pokaż)
+          </button>
+        );
+      })()}
 
       {day.summary && <p className="text-sm text-zinc-600 dark:text-zinc-400">{day.summary}</p>}
 

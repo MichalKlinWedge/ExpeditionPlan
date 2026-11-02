@@ -1262,7 +1262,13 @@ isOneToOne: false
 "create_invite":
 { Args: { "p_days"?: number,"p_max_uses"?: number,"p_role"?: string,"p_trip": string }; Returns: string
                            },
+"create_public_share":
+{ Args: { "p_hide"?: Json,"p_trip": string }; Returns: string
+                           },
 "delete_trip":
+{ Args: { "p_trip": string }; Returns: undefined
+                           },
+"disable_public_share":
 { Args: { "p_trip": string }; Returns: undefined
                            },
 "import_trip":
@@ -1290,6 +1296,9 @@ isOneToOne: false
                            },
 "owns_expense":
 { Args: { "p_expense": string }; Returns: boolean
+                           },
+"public_trip":
+{ Args: { "p_token": string }; Returns: Json
                            },
 "pull_changes":
 { Args: { "p_since"?: number,"p_trip": string }; Returns: Json

@@ -1,15 +1,16 @@
 import { dayMap, instantToZoned, type MapLine, type MapPin, scheduleDay, tripMapAreas, type TripDocument } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip } from '@expeditionplan/sync';
-import { Camera, type CameraRef, GeoJSONSource, Layer, Map as MapView, Marker, UserLocation } from '@maplibre/maplibre-react-native';
+import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { DayLines, PinCard, PinMarkers } from '@/features/map/map-parts';
 import { useMapStyle } from '@/features/map/map-style';
 import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
 import { useTheme } from '@/hooks/use-theme';
@@ -21,7 +22,6 @@ import { localDb, remote } from '@/lib/local-db';
  * pobierane jednym przyciskiem. Plan z pamięci telefonu, więc działa bez sieci.
  */
 
-const BASE = '#1B2A41';
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 const shortDay = (date: string) => new Intl.DateTimeFormat('pl-PL', { weekday: 'short', day: 'numeric', month: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
 
@@ -129,7 +129,6 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
     const here = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
     camera.current?.flyTo({ center: [here.coords.longitude, here.coords.latitude], zoom: 15, duration: 600 });
   };
-  const navigate = (target: MapPin) => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}`);
 
   return (
     <View style={styles.fill}>
@@ -144,31 +143,8 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
         <MapView mapStyle={mapStyle} androidView="surface" onPress={() => setSelected(null)}>
           <Camera ref={camera} initialViewState={areas[0] ? { bounds: areas[0].bounds } : undefined} />
           <UserLocation accuracy />
-          {/* Trasy przejazdów (ORS) — linia ciągła; odcinki bez trasy — przerywana prosta. */}
-          {[true, false].map((routed) => {
-            const parts = view.lines.filter((line) => line.routed === routed && line.coordinates.length > 1);
-            if (parts.length === 0) return null;
-            return (
-              <GeoJSONSource key={String(routed)} id={`day-lines-${routed}`} data={{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: parts.map((line) => line.coordinates) } }}>
-                <Layer
-                  id={`day-lines-${routed}-layer`}
-                  type="line"
-                  style={routed ? { lineColor: theme.accent, lineWidth: 4, lineOpacity: 0.9 } : { lineColor: theme.accent, lineWidth: 3, lineOpacity: 0.7, lineDasharray: [2, 1.5] }}
-                />
-              </GeoJSONSource>
-            );
-          })}
-          {view.pins.map((each) => {
-            const active = each.placeRef === selected;
-            const label = each.stops.map((stop) => stop.n).join('·');
-            return (
-              <Marker key={each.placeRef} lngLat={[each.lng, each.lat]} anchor="center" onPress={() => setSelected(each.placeRef)}>
-                <View style={[styles.pin, { backgroundColor: active ? theme.primary : each.base ? BASE : theme.accent }, label.length > 2 && styles.pinWide]}>
-                  <ThemedText style={styles.pinText}>{label || (each.base ? '⌂' : '•')}</ThemedText>
-                </View>
-              </Marker>
-            );
-          })}
+          <DayLines lines={view.lines} id="day-lines" />
+          <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} />
         </MapView>
         <Pressable onPress={() => void centerOnMe()} style={[styles.me, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]} hitSlop={6}>
           <ThemedText type="smallBold">◎</ThemedText>
@@ -177,21 +153,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
 
       <ThemedView style={[styles.panel, { borderTopColor: theme.backgroundSelected }]}>
         {pin ? (
-          <View style={styles.block}>
-            <ThemedText type="smallBold" style={styles.title}>
-              {pin.name}
-              {pin.base ? ' · nocleg' : ''}
-            </ThemedText>
-            {pin.stops.map((stop) => (
-              <ThemedText key={stop.ref} type="small" themeColor="textSecondary">
-                {stop.n}. {times.get(stop.ref) ?? ''} {stop.title}
-              </ThemedText>
-            ))}
-            <View style={styles.row}>
-              <Button label="Nawiguj" variant="primary" onPress={() => navigate(pin)} />
-              <Button label="Zamknij" onPress={() => setSelected(null)} />
-            </View>
-          </View>
+          <PinCard pin={pin} times={times} onClose={() => setSelected(null)} />
         ) : (
           <View style={styles.block}>
             <ThemedText type="smallBold">Mapa offline</ThemedText>
@@ -221,12 +183,8 @@ const styles = StyleSheet.create({
   pad: { padding: Spacing.three },
   bar: { flexGrow: 0, flexShrink: 0 },
   chips: { flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
-  pin: { minWidth: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, elevation: 3 },
-  pinWide: { paddingHorizontal: 7 },
-  pinText: { color: '#FFFFFF', fontSize: 12, lineHeight: 16, fontWeight: 800 },
   me: { position: 'absolute', right: Spacing.three, top: Spacing.three, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 3 },
   panel: { padding: Spacing.three, borderTopWidth: 1, gap: Spacing.two },
   block: { gap: Spacing.one },
-  title: { fontSize: 17, lineHeight: 22 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingTop: Spacing.one },
 });

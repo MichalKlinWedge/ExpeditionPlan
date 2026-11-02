@@ -1,6 +1,6 @@
 import { BUDGET_CATEGORY, budgetSummary, formatMoney, parseMoney, walletSummary } from '@expeditionplan/core';
 import { type CachedTrip, type NewExpense, removeExpense, saveExpense } from '@expeditionplan/sync';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useLiveRates } from '@/features/trip/live-rates';
 import { localDb } from '@/lib/local-db';
 
 /**
@@ -55,9 +56,13 @@ const asExpense = (tripId: string, row: ExpenseRow): NewExpense & { id: string }
 const when = (iso: string) => new Date(iso).toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged }: Props) {
-  const doc = trip.state.doc;
-  const budget = budgetSummary(doc);
+  const planned = trip.state.doc;
   const expenses = [...(trip.live.expenses as unknown as ExpenseRow[])].sort((a, b) => b.paid_at.localeCompare(a.paid_at));
+  const spentIn = useMemo(() => [...new Set(expenses.map((each) => each.currency))], [expenses]);
+  const fx = useLiveRates(tripId, planned, spentIn);
+  // Przeliczenia na kursach z planu uzupełnionych pobranymi (offline — zapisanymi).
+  const doc = { ...planned, trip: { ...planned.trip, fx } };
+  const budget = budgetSummary(doc);
   const wallet = walletSummary(
     doc,
     expenses.map((each) => ({ amountMinor: Number(each.amount_minor), currency: each.currency, category: each.category })),
@@ -100,8 +105,13 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
           />
         )}
         {Object.entries(wallet.unconverted).map(([currency, minor]) => (
-          <Row key={currency} label="Bez kursu w planie" value={formatMoney(minor, currency)} />
+          <Row key={currency} label="Bez kursu (brak sieci?)" value={formatMoney(minor, currency)} />
         ))}
+        {fx.length > 0 && (
+          <ThemedText type="small" themeColor="textSecondary">
+            Kursy: {fx.map((rate) => `1 ${rate.currency} = ${rate.rateToBase.toLocaleString('pl-PL', { maximumFractionDigits: 4 })} ${budget.currency}${rate.date ? ` (${rate.date})` : ''}`).join(' · ')}
+          </ThemedText>
+        )}
         {Object.entries(wallet.byCategory)
           .sort((a, b) => b[1] - a[1])
           .map(([category, minor]) => (

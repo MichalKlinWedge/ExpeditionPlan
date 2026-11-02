@@ -6,6 +6,7 @@ import { AiPlanButton } from "@/components/ai-plan-button";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
 import { DownloadIcon, InfoIcon, NoteIcon, RouteIcon, SparkIcon, TicketIcon } from "@/components/icons";
+import { PublicShare } from "@/components/public-share";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -58,7 +59,7 @@ async function TripDetails({ params, searchParams }: { params: Promise<{ id: str
   const { id } = await params;
   const wantsEdit = await editMode(searchParams);
   const { supabase } = await requireUser(`/trips/${id}`);
-  const [trip, members, travelers, days, items, brief, mine] = await Promise.all([
+  const [trip, members, travelers, days, items, brief, mine, share] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, can_add_expenses, profiles(display_name)").eq("trip_id", id).order("created_at"),
     supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
@@ -66,6 +67,7 @@ async function TripDetails({ params, searchParams }: { params: Promise<{ id: str
     supabase.from("items").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
     supabase.from("trip_brief").select("id").eq("trip_id", id).maybeSingle(),
     supabase.from("my_trips").select("id, title, role").neq("id", id).order("start_date"),
+    supabase.from("public_shares").select("enabled, hide").eq("trip_id", id).maybeSingle(),
   ]);
   if (trip.data === null) notFound();
   const role = trip.data.role!;
@@ -148,6 +150,13 @@ async function TripDetails({ params, searchParams }: { params: Promise<{ id: str
         </ul>
         {role === "owner" && editing && <InviteForm tripId={id} />}
       </section>
+
+      {role === "owner" && editing && (
+        <section className={section}>
+          <h2 className={heading}>Publiczny link (tylko podgląd)</h2>
+          <PublicShare tripId={id} enabled={share.data?.enabled === true} hide={(share.data?.hide as { costs?: boolean; names?: boolean; lodgingAddress?: boolean } | null) ?? null} />
+        </section>
+      )}
 
       <section className={section}>
         <RemoveTripForm tripId={id} title={title} owner={role === "owner"} />
