@@ -8,12 +8,14 @@ import {
   addSuggestedBudgetLine,
   removeBudgetLine,
   removeContact,
+  removeShoppingItem,
   removeTask,
   saveBooking,
   saveBudgetLine,
   saveContact,
   fetchFx,
   saveFx,
+  saveShoppingItem,
   saveTask,
   setBookingItems,
   setTaskStatus,
@@ -926,5 +928,88 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
       </div>
       <Status state={state} />
     </form>
+  );
+}
+
+// --- Zakupy ---------------------------------------------------------------------------------
+
+type Shopping = Doc["packing"][number] & { bought: boolean };
+
+function ShoppingForm({ tripId, item, onDone }: { tripId: string; item?: Shopping; onDone?: () => void }) {
+  const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
+    const result = await saveShoppingItem(tripId, item?.ref ?? null, prev, form);
+    if (result.ok && onDone) onDone();
+    return result;
+  }, {});
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        <input name="title" required defaultValue={item?.title} placeholder="np. makaron, mleko UHT" className={`${input} min-w-40 flex-1`} aria-label="Co kupić" />
+        <input name="quantity" inputMode="decimal" defaultValue={item?.quantity} placeholder="ile" className={`${input} w-16`} aria-label="Ilość" />
+        <input name="unit" defaultValue={item?.unit} placeholder="kg, szt." className={`${input} w-20`} aria-label="Jednostka" />
+        <input name="note" defaultValue={item?.note} placeholder="na kolację dnia 1" className={`${input} min-w-32 flex-1`} aria-label="Uwagi" />
+      </div>
+      <div className="flex items-center gap-3">
+        <button disabled={pending} className={primary}>
+          {pending ? "Zapisuję…" : item ? "Zapisz" : "Dodaj"}
+        </button>
+        {onDone && (
+          <button type="button" onClick={onDone} className={small}>
+            anuluj
+          </button>
+        )}
+        <Status state={state} />
+      </div>
+    </form>
+  );
+}
+
+export function ShoppingList({ tripId, items, canEdit }: { tripId: string; items: Shopping[]; canEdit: boolean }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const remove = useAction();
+  return (
+    <div className="flex flex-col gap-2">
+      {items.length === 0 && <p className="text-zinc-500">Lista jest pusta.{canEdit ? " Dodaj, co kupić na wyjazd — na telefonie odhaczycie to w sklepie." : ""}</p>}
+      <ul className="flex flex-col gap-1">
+        {items.map((item) =>
+          editing === item.ref ? (
+            <li key={item.ref}>
+              <ShoppingForm tripId={tripId} item={item} onDone={() => setEditing(null)} />
+            </li>
+          ) : (
+            <li key={item.ref} className="flex flex-wrap items-baseline gap-x-2">
+              <span aria-label={item.bought ? "kupione" : "do kupienia"}>{item.bought ? "☑" : "☐"}</span>
+              <span className={item.bought ? "text-zinc-500 line-through" : "font-medium"}>{item.title}</span>
+              {item.quantity && (
+                <span>
+                  × {item.quantity.toLocaleString("pl-PL")}
+                  {item.unit ? ` ${item.unit}` : ""}
+                </span>
+              )}
+              {item.note && <span className="text-xs text-zinc-500">· {item.note}</span>}
+              {canEdit && (
+                <span className="text-zinc-500">
+                  <button onClick={() => setEditing(item.ref)} className={small}>
+                    edytuj
+                  </button>{" "}
+                  <button disabled={remove.pending} onClick={() => remove.run(() => removeShoppingItem(tripId, item.ref), `Usunąć „${item.title}” z listy?`)} className={small}>
+                    usuń
+                  </button>
+                </span>
+              )}
+            </li>
+          ),
+        )}
+      </ul>
+      <Status state={remove.state} />
+      {canEdit &&
+        (editing === "new" ? (
+          <ShoppingForm tripId={tripId} onDone={() => setEditing(null)} />
+        ) : (
+          <button onClick={() => setEditing("new")} className="self-start underline">
+            + Dodaj do zakupów
+          </button>
+        ))}
+    </div>
   );
 }

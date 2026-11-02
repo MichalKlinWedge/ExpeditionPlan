@@ -1,6 +1,6 @@
 "use server";
 
-import { BookingKind, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, tripCurrencies, TripDocument } from "@expeditionplan/core";
+import { BookingKind, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -8,14 +8,14 @@ import type { FormState } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 
 /**
- * Edycja budżetu, rezerwacji i zadań (strona „Rezerwacje, budżet i zadania”). Każda zmiana:
+ * Edycja budżetu, rezerwacji, zadań i listy zakupów (strona „Rezerwacje, budżet i zadania”). Każda zmiana:
  * dokument z bazy → zmiana jednego elementu → walidacja CAŁEGO dokumentu (odwołania, kwoty)
  * → zapis jednego wiersza. Nowy element dostaje klucz `id-<uuid>`, jak punkty z edytora planu.
  * O prawie do zapisu decyduje RLS (organizator, edytor).
  */
 
 type Doc = TripDocument;
-type Editable = "budgetLines" | "tasks" | "bookings" | "contacts";
+type Editable = "budgetLines" | "tasks" | "bookings" | "contacts" | "packing";
 type Element = { ref: string } & Record<string, unknown>;
 
 const message = (error: { message: string; code?: string }) => (error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message);
@@ -335,6 +335,28 @@ export async function saveContact(tripId: string, ref: string | null, _prev: For
 /** Usunięcie kontaktu (miękkie). Nic na kontakty nie wskazuje. */
 export async function removeContact(tripId: string, ref: string): Promise<FormState> {
   return change(tripId, "contacts", ref, () => null);
+}
+
+// --- Zakupy ---------------------------------------------------------------------------------
+
+/** Pozycja listy zakupów: wspólna rzecz listy pakowania w kategorii „zakupy” (odhaczana na telefonie). */
+export async function saveShoppingItem(tripId: string, ref: string | null, _prev: FormState, form: FormData): Promise<FormState> {
+  const title = text(form, "title");
+  if (title === "") return { error: "Podaj, co kupić." };
+  const quantity = Number(text(form, "quantity").replace(",", "."));
+  return change(tripId, "packing", ref, (_doc, current) => ({
+    ...(current ?? { ref: `id-${uuidv7()}` }),
+    category: SHOPPING_CATEGORY,
+    scope: "shared",
+    title,
+    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : undefined,
+    unit: optional(text(form, "unit")),
+    note: optional(text(form, "note")),
+  }));
+}
+
+export async function removeShoppingItem(tripId: string, ref: string): Promise<FormState> {
+  return change(tripId, "packing", ref, () => null);
 }
 
 // --- Budżet z planu i kursy -----------------------------------------------------------------

@@ -29,7 +29,7 @@ export default function TripPage(props: PageProps<"/trips/[id]">) {
 const DRAFT = "Szkic AI: ";
 
 /** Kafelek nawigacji wyjazdu: ikona, nazwa i podpowiedź (wszystkie równorzędne — to wejścia, nie zakładki). */
-function Tile({ href, icon, title, hint, download = false }: { href: string; icon: React.ReactNode; title: string; hint: string; download?: boolean }) {
+function Tile({ href, icon, title, hint }: { href: string; icon: React.ReactNode; title: string; hint: string }) {
   const className = "card group flex flex-col gap-1.5 p-4 transition hover:-translate-y-0.5 hover:border-sea";
   const body = (
     <>
@@ -38,12 +38,7 @@ function Tile({ href, icon, title, hint, download = false }: { href: string; ico
       <span className="text-xs text-zinc-500">{hint}</span>
     </>
   );
-  // Eksport to plik (route handler), nie strona — zwykły link.
-  return download ? (
-    <a href={href} className={className}>
-      {body}
-    </a>
-  ) : (
+  return (
     <Link href={href} className={className}>
       {body}
     </Link>
@@ -92,7 +87,8 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         </p>
       </div>
 
-      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {/* Przy dwóch kolumnach ostatni kafelek bez pary zajmuje cały wiersz. */}
+      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>:last-child:nth-child(odd)]:col-span-2">
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/plan`} icon={<RouteIcon />} title="Plan dzień po dniu" hint="godziny, trasy, słońce" />}
         <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, zadania" />
         <Tile href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
@@ -104,8 +100,13 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           <Tile href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />
         )}
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/print`} icon={<PrinterIcon />} title="Wydruk / PDF" hint="plan na papierze, bez telefonu" />}
-        <Tile href={`/trips/${id}/export`} icon={<DownloadIcon />} title="Pobierz JSON" hint="kopia całego planu" download />
       </nav>
+
+      {/* Eksport to plik (route handler), nie strona — zwykły link. */}
+      <a href={`/trips/${id}/export`} className="flex items-center gap-1.5 self-start text-sm text-zinc-500 underline hover:text-sea">
+        <DownloadIcon className="size-4" />
+        Pobierz kopię całego planu (JSON)
+      </a>
 
       {canEdit && brief.data !== null && <AiPlanButton tripId={id} />}
     </>
