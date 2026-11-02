@@ -3,7 +3,7 @@ import { type CachedTrip, cachedTrip, refreshTrip } from '@expeditionplan/sync';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
@@ -132,12 +132,13 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
 
   return (
     <View style={styles.fill}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bar} contentContainerStyle={styles.chips}>
-        <Chip active={day < 0} label="Cała trasa" onPress={() => setDay(-1)} />
+      {/* Wszystkie dni naraz (zawijane), bez przewijania w bok. */}
+      <View style={styles.chips}>
+        <Chip compact active={day < 0} label="Cała trasa" onPress={() => setDay(-1)} />
         {doc.days.map((each, index) => (
-          <Chip key={each.ref} active={index === day} label={shortDay(each.date)} onPress={() => setDay(index)} />
+          <Chip key={each.ref} compact active={index === day} label={shortDay(each.date)} onPress={() => setDay(index)} />
         ))}
-      </ScrollView>
+      </View>
 
       <View style={styles.fill}>
         <MapView mapStyle={mapStyle} androidView="surface" onPress={() => setSelected(null)}>
@@ -181,8 +182,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   pad: { padding: Spacing.three },
-  bar: { flexGrow: 0, flexShrink: 0 },
-  chips: { flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one + 2, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   me: { position: 'absolute', right: Spacing.three, top: Spacing.three, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 3 },
   panel: { padding: Spacing.three, borderTopWidth: 1, gap: Spacing.two },
   block: { gap: Spacing.one },

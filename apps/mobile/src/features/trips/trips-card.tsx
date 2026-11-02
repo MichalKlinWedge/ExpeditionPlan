@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
@@ -7,12 +8,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
 import { useTheme } from '@/hooks/use-theme';
-import { loadMyTrips, removeTrip, type Trip } from '@/features/trips/my-trips';
+import { loadMyTrips, removeTrip, setCurrentTrip, type Trip } from '@/features/trips/my-trips';
 import { supabase } from '@/lib/supabase';
 
 /**
  * Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy, kto ma dostęp
- * i wejście w plan dnia. Bez logowania (`signedIn = false`) — lista i plany z telefonu, do odczytu.
+ * i wejście w plan dnia albo na mapę. Rozwinięty wyjazd staje się wybranym także w zakładkach Plan i Mapa. Bez logowania (`signedIn = false`) — lista i plany z telefonu, do odczytu.
  * Z siecią właściciel usuwa wyjazd, pozostali z niego wychodzą.
  */
 
@@ -50,6 +51,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const toggle = async (id: string) => {
     if (open === id) return setOpen(null);
     setOpen(id);
+    setCurrentTrip(id);
     setDetails(null);
     if (!signedIn) return;
     const [travelers, members, days, items] = await Promise.all([
@@ -69,6 +71,11 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
       days: days.count ?? 0,
       items: items.count ?? 0,
     });
+  };
+
+  const showMap = (id: string) => {
+    setCurrentTrip(id);
+    router.navigate('/map');
   };
 
   const remove = (trip: Trip) => {
@@ -128,7 +135,10 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
               {details === null ? (
                 <>
                   {!offline && <ThemedText type="small">Wczytuję…</ThemedText>}
-                  <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
+                  <View style={styles.actions}>
+                    <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
+                    <AppButton label="Mapa →" onPress={() => showMap(trip.id!)} />
+                  </View>
                 </>
               ) : (
                 <>
@@ -136,7 +146,10 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
                     Plan: {details.days} dni, {details.items} punktów
                   </ThemedText>
                   {details.days > 0 && (
-                    <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
+                    <View style={styles.actions}>
+                      <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
+                      <AppButton label="Mapa →" onPress={() => showMap(trip.id!)} />
+                    </View>
                   )}
                   <ThemedText type="small">
                     Uczestnicy:{' '}
@@ -177,5 +190,6 @@ const styles = StyleSheet.create({
   tripTitle: { fontSize: 17, lineHeight: 22 },
   grow: { flex: 1 },
   details: { gap: Spacing.two },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   danger: { color: '#d32f2f', paddingTop: Spacing.one },
 });

@@ -56,10 +56,25 @@ export async function removeTrip(trip: Trip): Promise<string | null> {
   return null;
 }
 
-/** Wyjazd na start zakładek Plan i Mapa: trwający dziś, inaczej najbliższy nadchodzący, inaczej ostatni. */
+/** Domyślny wyjazd: trwający dziś, inaczej najbliższy nadchodzący, inaczej ostatni. */
 export function pickTrip(trips: Trip[]): string | null {
   const today = new Date().toISOString().slice(0, 10);
   const ongoing = trips.find((trip) => trip.start_date! <= today && today <= trip.end_date!);
   const upcoming = trips.find((trip) => trip.start_date! > today);
   return (ongoing ?? upcoming ?? trips.at(-1))?.id ?? null;
+}
+
+const CURRENT_KEY = 'current_trip';
+
+/**
+ * Wybrany wyjazd — wspólny dla zakładek Wyjazdy, Plan i Mapa (zapamiętany na telefonie). Bez
+ * wyboru albo gdy wybranego nie ma już na liście — `pickTrip`.
+ */
+export function currentTrip(trips: Trip[]): string | null {
+  const stored = localStorage.getItem(CURRENT_KEY);
+  return stored !== null && trips.some((trip) => trip.id === stored) ? stored : pickTrip(trips);
+}
+
+export function setCurrentTrip(id: string) {
+  localStorage.setItem(CURRENT_KEY, id);
 }

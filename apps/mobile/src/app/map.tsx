@@ -1,15 +1,15 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/session';
 import { TripMap } from '@/features/map/trip-map';
-import { loadMyTrips, pickTrip, type Trip } from '@/features/trips/my-trips';
+import { currentTrip, loadMyTrips, type Trip } from '@/features/trips/my-trips';
+import { TripSwitcher } from '@/features/trips/trip-switcher';
 import { isConfigured } from '@/lib/supabase';
 
 /**
@@ -26,7 +26,7 @@ export default function MapTab() {
     const result = await loadMyTrips(session !== null);
     setError(result.error);
     setTrips(result.trips);
-    setSelected((current) => (current !== null && result.trips.some((trip) => trip.id === current) ? current : pickTrip(result.trips)));
+    setSelected(currentTrip(result.trips));
   }, [session]);
 
   useFocusEffect(
@@ -48,13 +48,7 @@ export default function MapTab() {
           <ThemedText style={styles.pad}>{message}</ThemedText>
         ) : (
           <View style={styles.fill}>
-            {trips!.length > 1 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bar} contentContainerStyle={styles.chips}>
-                {trips!.map((trip) => (
-                  <Chip key={trip.id} active={trip.id === selected} label={trip.title!} onPress={() => setSelected(trip.id)} />
-                ))}
-              </ScrollView>
-            )}
+            <TripSwitcher trips={trips!} selected={selected} onSelect={setSelected} />
             <TripMap key={selected} tripId={selected} signedIn={session !== null} />
           </View>
         )}
@@ -66,6 +60,4 @@ export default function MapTab() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   pad: { padding: Spacing.three },
-  bar: { flexGrow: 0, flexShrink: 0 },
-  chips: { flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
 });
