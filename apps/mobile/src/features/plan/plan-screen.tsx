@@ -43,6 +43,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button as AppButton } from '@/components/button';
 import { Chip } from '@/components/chip';
+import { Segmented, Tabs } from '@/components/segmented';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -130,6 +131,7 @@ type PlanProps = {
 
 /** Plan jednego wyjazdu. */
 export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose, bottomInset = 0 }: PlanProps) {
+  const theme = useTheme();
   const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'info'>('plan');
   const [trip, setTrip] = useState<CachedTrip | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -320,12 +322,16 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
       </ThemedText>
       {error !== '' && <ThemedText style={[styles.pad, { color: HARD }]}>{error}</ThemedText>}
       {trip !== null && (
-        <View style={styles.chips}>
-          <Chip active={mode === 'plan'} label="Plan" onPress={() => setMode('plan')} />
-          <Chip active={mode === 'wallet'} label="Wydatki" onPress={() => setMode('wallet')} />
-          <Chip active={mode === 'packing'} label="Pakowanie" onPress={() => setMode('packing')} />
-          <Chip active={mode === 'info'} label="Info" onPress={() => setMode('info')} />
-        </View>
+        <Tabs
+          options={[
+            { value: 'plan', label: 'Plan' },
+            { value: 'wallet', label: 'Wydatki' },
+            { value: 'packing', label: 'Pakowanie' },
+            { value: 'info', label: 'Info' },
+          ]}
+          value={mode}
+          onChange={setMode}
+        />
       )}
       {trip !== null && mode !== 'plan' && (
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]} keyboardShouldPersistTaps="handled">
@@ -342,19 +348,29 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
 
       {mode === 'plan' && state !== null && day && (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsBar} contentContainerStyle={styles.chips}>
-            {days.map((each, at) => (
-              <Chip
-                key={each.ref}
-                active={at === index}
-                label={instantToZoned(now, each.tz).date === each.date ? `${at + 1}. dziś` : `${at + 1}. ${each.date.slice(8)}.${each.date.slice(5, 7)}`}
-                onPress={() => setIndex(at)}
+          {/* Dni i scenariusz na osobnym pasku — oddzielone od zakładek i od treści dnia. */}
+          <View style={[styles.dayBar, { backgroundColor: theme.backgroundElement, borderBottomColor: theme.backgroundSelected }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsBar} contentContainerStyle={styles.chips}>
+              {days.map((each, at) => (
+                <Chip
+                  key={each.ref}
+                  active={at === index}
+                  label={instantToZoned(now, each.tz).date === each.date ? `${at + 1}. dziś` : `${at + 1}. ${each.date.slice(8)}.${each.date.slice(5, 7)}`}
+                  onPress={() => setIndex(at)}
+                />
+              ))}
+            </ScrollView>
+            <View style={styles.scenario}>
+              <Segmented
+                label="Scenariusz"
+                options={[
+                  { value: 'optimistic', label: 'optymistyczny' },
+                  { value: 'pessimistic', label: 'pesymistyczny' },
+                ]}
+                value={scenario}
+                onChange={setScenario}
               />
-            ))}
-          </ScrollView>
-          <View style={styles.chips}>
-            <Chip active={scenario === 'optimistic'} label="optymistyczny" onPress={() => setScenario('optimistic')} />
-            <Chip active={scenario === 'pessimistic'} label="pesymistyczny" onPress={() => setScenario('pessimistic')} />
+            </View>
           </View>
           <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]}>
             <Day
@@ -674,6 +690,8 @@ const styles = StyleSheet.create({
   // ScrollView domyślnie ma flexShrink: 1 — pasek dni ściskał się w pionie i ucinał tekst.
   chipsBar: { flexGrow: 0, flexShrink: 0 },
   chips: { flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
+  dayBar: { borderBottomWidth: 1, paddingTop: Spacing.one, paddingBottom: Spacing.two },
+  scenario: { paddingHorizontal: Spacing.three, paddingTop: Spacing.one },
   content: { padding: Spacing.three, gap: Spacing.three },
   day: { gap: Spacing.two },
   badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three },
