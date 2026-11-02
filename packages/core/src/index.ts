@@ -18,3 +18,4 @@ export * from './plan-info.ts';
 export * from './polyline.ts';
 export * from './coordinates.ts';
 export * from './booking-info.ts';
+export * from './offline-areas.ts';

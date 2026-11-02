@@ -72,21 +72,31 @@ export function recordDelay(db: LocalDb, tripId: string, dayId: string, itemId: 
   return recordEvent(db, { tripId, dayId, itemId, kind: 'delay', minutes });
 }
 
+const expenseRow = (id: string, expense: NewExpense) => ({
+  id,
+  trip_id: expense.tripId,
+  amount_minor: expense.amountMinor,
+  currency: expense.currency,
+  category: expense.category ?? 'other',
+  payer_traveler_id: expense.payerTravelerId ?? null,
+  item_id: expense.itemId ?? null,
+  note: expense.note ?? null,
+  paid_at: expense.paidAt ?? new Date().toISOString(),
+});
+
 /** Nowy wydatek albo poprawka istniejącego (ten sam `id`). */
 export function saveExpense(db: LocalDb, expense: NewExpense): string {
   const id = expense.id ?? uuidv7();
-  enqueue(db, 'expenses', {
-    id,
-    trip_id: expense.tripId,
-    amount_minor: expense.amountMinor,
-    currency: expense.currency,
-    category: expense.category ?? 'other',
-    payer_traveler_id: expense.payerTravelerId ?? null,
-    item_id: expense.itemId ?? null,
-    note: expense.note ?? null,
-    paid_at: expense.paidAt ?? new Date().toISOString(),
-  });
+  enqueue(db, 'expenses', expenseRow(id, expense));
   return id;
+}
+
+/**
+ * Usunięcie wydatku — miękkie (`deleted_at`), przez outbox, więc działa bez sieci. Telefon od razu
+ * przestaje go liczyć (`cachedTrip` pomija wiersze z `deleted_at`). Prawo: RLS `expenses_update`.
+ */
+export function removeExpense(db: LocalDb, expense: NewExpense & { id: string }): void {
+  enqueue(db, 'expenses', { ...expenseRow(expense.id, expense), deleted_at: new Date().toISOString() });
 }
 
 /**

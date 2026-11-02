@@ -9,20 +9,13 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/session';
 import { Plan } from '@/features/plan/plan-screen';
-import { loadMyTrips, type Trip } from '@/features/trips/my-trips';
+import { loadMyTrips, pickTrip, type Trip } from '@/features/trips/my-trips';
 import { isConfigured } from '@/lib/supabase';
 
 /**
  * Zakładka Plan: od razu bieżący wyjazd na dzisiejszym dniu; obok plan dnia — wydatki i pakowanie. Bez logowania — plany z telefonu, do odczytu. Wybór wyjazdu: trwający dziś,
  * inaczej najbliższy nadchodzący, inaczej ostatni. Przy kilku wyjazdach — przełącznik u góry.
  */
-
-function pickTrip(trips: Trip[]): string | null {
-  const today = new Date().toISOString().slice(0, 10);
-  const ongoing = trips.find((trip) => trip.start_date! <= today && today <= trip.end_date!);
-  const upcoming = trips.find((trip) => trip.start_date! > today);
-  return (ongoing ?? upcoming ?? trips.at(-1))?.id ?? null;
-}
 
 export default function PlanTab() {
   const session = useSession();

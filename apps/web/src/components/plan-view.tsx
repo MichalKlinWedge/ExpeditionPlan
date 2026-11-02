@@ -10,6 +10,8 @@ import {
   dropItem,
   type DaySchedule,
   instantToZoned,
+  flightLine,
+  flightOf,
   legLabel,
   mapCoverage,
   missingOnMap,
@@ -532,6 +534,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, dnd, num
             const warnings = schedule.warnings.filter((warning) => warning.itemRef === item.ref);
             const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
             const leg = source === undefined ? null : legLabel(source);
+            const flight = source === undefined ? undefined : flightOf(doc, source);
+            const flightText = flight === undefined ? undefined : flightLine(flight);
             const offMap = source !== undefined && missingOnMap(doc, source);
             return (
               <li
@@ -576,6 +580,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, dnd, num
                     )}
                   </span>
                 </div>
+                {flightText && <p className="ml-31 text-xs font-semibold text-sea dark:text-teal-300">✈ {flightText}</p>}
                 {leg && <p className="ml-31 text-xs text-zinc-500">{leg}</p>}
                 {warnings.map((warning, index) => (
                   <p key={index} className={`ml-31 text-xs ${warning.severity === "hard" ? "text-red-600" : "text-amber-600"}`}>

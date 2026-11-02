@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { flushOutbox, pendingCount, recordDelay, saveExpense } from '../outbox.ts';
+import { flushOutbox, pendingCount, recordDelay, removeExpense, saveExpense } from '../outbox.ts';
 import { applyPull, pullChanges, serialPuller, syncTrip } from '../pull.ts';
 import { type PullPayload, type Remote, RemoteError, type ServerRow } from '../remote.ts';
 import { uuidv7 } from '../uuid.ts';
@@ -31,7 +31,7 @@ function fakeServer() {
       for (const row of rows) {
         if (table === 'schedule_events' && tables.schedule_events.has(row.id as string)) continue;
         version++;
-        (tables as Record<string, Map<string, ServerRow>>)[table]!.set(row.id as string, { ...(row as ServerRow), row_version: version, deleted_at: null });
+        (tables as Record<string, Map<string, ServerRow>>)[table]!.set(row.id as string, { ...(row as ServerRow), row_version: version, deleted_at: (row.deleted_at as string | undefined) ?? null });
       }
     },
   };
@@ -101,6 +101,21 @@ describe('outbox', () => {
 
     expect(server.pushes).toEqual([[id]]);
     expect(server.tables.expenses.get(id)?.amount_minor).toBe(250);
+  });
+
+  it('usunięty offline wydatek znika z telefonu od razu, a na serwer idzie jako miękkie usunięcie', async () => {
+    const db = nodeDb();
+    const server = fakeServer();
+    const expense = { tripId: TRIP, amountMinor: 100, currency: 'MAD', note: 'pomyłka' };
+    const id = saveExpense(db, expense);
+    removeExpense(db, { ...expense, id });
+    const local = db.all<{ data: string }>("select data from rows where tbl = 'expenses' and id = ?", [id])[0]!;
+    expect(JSON.parse(local.data).deleted_at).not.toBeNull();
+
+    await flushOutbox(db, server.remote);
+
+    expect(server.pushes).toEqual([[id]]);
+    expect(server.tables.expenses.get(id)?.deleted_at).not.toBeNull();
   });
 });
 

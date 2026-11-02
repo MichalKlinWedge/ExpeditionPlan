@@ -1,8 +1,9 @@
 import { BUDGET_CATEGORY, budgetSummary, formatMoney, parseMoney, walletSummary } from '@expeditionplan/core';
-import { type CachedTrip, saveExpense } from '@expeditionplan/sync';
+import { type CachedTrip, type NewExpense, removeExpense, saveExpense } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -20,15 +21,40 @@ type Props = {
   tripId: string;
   /** Prawo dodawania wydatków (`trip_members.can_add_expenses`, organizator zawsze). */
   canAdd: boolean;
+  /** Organizator i edytor poprawiają każdy wydatek; pozostali tylko własne (RLS `expenses_update`). */
+  canEditAll: boolean;
+  userId: string | null;
   /** Po zapisie: odświeżenie stanu z telefonu i wysyłka. */
   onChanged: () => void;
 };
 
-type ExpenseRow = { id: string; amount_minor: number; currency: string; category: string; note: string | null; paid_at: string; payer_traveler_id: string | null };
+type ExpenseRow = {
+  id: string;
+  amount_minor: number;
+  currency: string;
+  category: string;
+  note: string | null;
+  paid_at: string;
+  payer_traveler_id: string | null;
+  item_id?: string | null;
+  created_by?: string | null;
+};
+
+const asExpense = (tripId: string, row: ExpenseRow): NewExpense & { id: string } => ({
+  tripId,
+  id: row.id,
+  amountMinor: Number(row.amount_minor),
+  currency: row.currency,
+  category: row.category,
+  payerTravelerId: row.payer_traveler_id,
+  itemId: row.item_id ?? null,
+  note: row.note,
+  paidAt: row.paid_at,
+});
 
 const when = (iso: string) => new Date(iso).toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-export function WalletView({ trip, tripId, canAdd, onChanged }: Props) {
+export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged }: Props) {
   const doc = trip.state.doc;
   const budget = budgetSummary(doc);
   const expenses = [...(trip.live.expenses as unknown as ExpenseRow[])].sort((a, b) => b.paid_at.localeCompare(a.paid_at));
@@ -39,6 +65,10 @@ export function WalletView({ trip, tripId, canAdd, onChanged }: Props) {
   const money = (minor: number) => formatMoney(minor, budget.currency);
   const names = new Map(trip.live.travelers.map((row) => [row.id, row.name as string]));
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  // Wydatek bez `created_by` dodano na tym telefonie i jeszcze nie wrócił z serwera — jest „mój”.
+  const mine = (row: ExpenseRow) => row.created_by === undefined || row.created_by === null || row.created_by === userId;
+  const canChange = (row: ExpenseRow) => canEditAll || (canAdd && mine(row));
 
   return (
     <View style={styles.stack}>
@@ -98,21 +128,56 @@ export function WalletView({ trip, tripId, canAdd, onChanged }: Props) {
         />
       )}
 
-      {expenses.map((expense) => (
-        <ThemedView key={expense.id} type="backgroundElement" style={styles.expense}>
-          <View style={styles.row}>
-            <ThemedText type="smallBold">{formatMoney(Number(expense.amount_minor), expense.currency)}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {when(expense.paid_at)}
-            </ThemedText>
-          </View>
-          <ThemedText type="small" themeColor="textSecondary">
-            {BUDGET_CATEGORY[expense.category] ?? expense.category}
-            {expense.payer_traveler_id ? ` · płacił(a): ${names.get(expense.payer_traveler_id) ?? '?'}` : ''}
-            {expense.note ? ` · ${expense.note}` : ''}
-          </ThemedText>
-        </ThemedView>
-      ))}
+      {expenses.map((expense) =>
+        editing === expense.id ? (
+          <ExpenseForm
+            key={expense.id}
+            trip={trip}
+            initial={expense}
+            onCancel={() => setEditing(null)}
+            onSave={(changed) => {
+              saveExpense(localDb, { ...asExpense(tripId, expense), ...changed, id: expense.id });
+              setEditing(null);
+              onChanged();
+            }}
+            onRemove={() =>
+              Alert.alert('Usunąć wydatek?', `${formatMoney(Number(expense.amount_minor), expense.currency)}${expense.note ? ` — ${expense.note}` : ''}`, [
+                { text: 'Anuluj', style: 'cancel' },
+                {
+                  text: 'Usuń',
+                  style: 'destructive',
+                  onPress: () => {
+                    removeExpense(localDb, asExpense(tripId, expense));
+                    setEditing(null);
+                    onChanged();
+                  },
+                },
+              ])
+            }
+          />
+        ) : (
+          <Pressable key={expense.id} disabled={!canChange(expense)} onPress={() => setEditing(expense.id)}>
+            <ThemedView type="backgroundElement" style={styles.expense}>
+              <View style={styles.row}>
+                <ThemedText type="smallBold">{formatMoney(Number(expense.amount_minor), expense.currency)}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {when(expense.paid_at)}
+                </ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">
+                {BUDGET_CATEGORY[expense.category] ?? expense.category}
+                {expense.payer_traveler_id ? ` · płacił(a): ${names.get(expense.payer_traveler_id) ?? '?'}` : ''}
+                {expense.note ? ` · ${expense.note}` : ''}
+              </ThemedText>
+              {canChange(expense) && (
+                <ThemedText type="small" themeColor="accent">
+                  Dotknij, żeby poprawić albo usunąć
+                </ThemedText>
+              )}
+            </ThemedView>
+          </Pressable>
+        ),
+      )}
     </View>
   );
 }
@@ -128,17 +193,31 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-type NewExpense = { amountMinor: number; currency: string; category: string; payerTravelerId: string | null; note: string | null };
 
-function ExpenseForm({ trip, onCancel, onSave }: { trip: CachedTrip; onCancel: () => void; onSave: (expense: NewExpense) => void }) {
+type ExpenseFields = { amountMinor: number; currency: string; category: string; payerTravelerId: string | null; note: string | null };
+
+/** Nowy wydatek albo poprawka (`initial`) — wtedy także „Usuń”. */
+function ExpenseForm({
+  trip,
+  initial,
+  onCancel,
+  onSave,
+  onRemove,
+}: {
+  trip: CachedTrip;
+  initial?: ExpenseRow;
+  onCancel: () => void;
+  onSave: (expense: ExpenseFields) => void;
+  onRemove?: () => void;
+}) {
   const theme = useTheme();
   const doc = trip.state.doc;
-  const currencies = [doc.trip.baseCurrency, ...doc.trip.fx.map((each) => each.currency)];
-  const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState(currencies[0]!);
-  const [category, setCategory] = useState('food');
-  const [payer, setPayer] = useState<string | null>(null);
-  const [note, setNote] = useState('');
+  const currencies = [...new Set([doc.trip.baseCurrency, ...doc.trip.fx.map((each) => each.currency), ...(initial ? [initial.currency] : [])])];
+  const [amount, setAmount] = useState(initial ? (Number(initial.amount_minor) / 100).toFixed(2).replace('.', ',') : '');
+  const [currency, setCurrency] = useState(initial?.currency ?? currencies[0]!);
+  const [category, setCategory] = useState(initial?.category ?? 'food');
+  const [payer, setPayer] = useState<string | null>(initial?.payer_traveler_id ?? null);
+  const [note, setNote] = useState(initial?.note ?? '');
   const input = [styles.input, { color: theme.text, borderColor: theme.backgroundSelected }];
 
   const save = () => {
@@ -149,7 +228,7 @@ function ExpenseForm({ trip, onCancel, onSave }: { trip: CachedTrip; onCancel: (
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="smallBold">Nowy wydatek</ThemedText>
+      <ThemedText type="smallBold">{initial ? 'Popraw wydatek' : 'Nowy wydatek'}</ThemedText>
       <TextInput value={amount} onChangeText={setAmount} style={input} placeholder="Kwota" placeholderTextColor={theme.textSecondary} keyboardType="decimal-pad" autoFocus />
       <View style={styles.wrap}>
         {currencies.map((each) => (
@@ -175,13 +254,10 @@ function ExpenseForm({ trip, onCancel, onSave }: { trip: CachedTrip; onCancel: (
         </>
       )}
       <TextInput value={note} onChangeText={setNote} style={input} placeholder="Notatka (opcjonalnie)" placeholderTextColor={theme.textSecondary} />
-      <View style={styles.row}>
-        <Pressable onPress={onCancel} hitSlop={8}>
-          <ThemedText type="linkPrimary">Anuluj</ThemedText>
-        </Pressable>
-        <Pressable onPress={save} hitSlop={8}>
-          <ThemedText type="linkPrimary">Zapisz wydatek</ThemedText>
-        </Pressable>
+      <View style={styles.actions}>
+        <Button label={initial ? 'Zapisz zmiany' : 'Zapisz wydatek'} variant="primary" onPress={save} />
+        <Button label="Anuluj" onPress={onCancel} />
+        {onRemove && <Button label="Usuń" onPress={onRemove} small style={styles.remove} />}
       </View>
     </ThemedView>
   );
@@ -193,5 +269,7 @@ const styles = StyleSheet.create({
   expense: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
+  remove: { marginLeft: 'auto' },
   input: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
 });

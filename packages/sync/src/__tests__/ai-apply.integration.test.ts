@@ -4,6 +4,7 @@ import { afterAll, describe, expect, inject, it } from 'vitest';
 
 import { COLLECTIONS, refIndex, stateFromPayload } from '../document.ts';
 import { importTrip } from '../import.ts';
+import { flushOutbox, removeExpense, saveExpense } from '../outbox.ts';
 import { type ElementWrite, saveElements, saveMergeEdit } from '../plan-save.ts';
 import { uuidv7 } from '../uuid.ts';
 import { createDevice, createTestUser, loadFixture } from './helpers/harness.ts';
@@ -191,6 +192,17 @@ describe('Web — szkice AI i edytor logistyki zapisane w bazie', () => {
     expect(added).toMatchObject({ user_locked: false });
     const group = back.doc.variantGroups.find((each) => each.title === 'Plan na deszcz (test)')!;
     expect(back.doc.variants.filter((each) => each.groupRef === group.ref).map((each) => each.label)).toEqual(['Słońce', 'Deszcz']);
+  });
+
+  it('wydatek dodany i usunięty przez outbox: na serwerze miękko usunięty', async () => {
+    const { owner, tripId } = await ownTrip('dinara');
+    const expense = { tripId, amountMinor: 100, currency: 'EUR', note: 'pomyłka (test)' };
+    const id = saveExpense(owner.db, expense);
+    expect((await flushOutbox(owner.db, owner.remote)).error).toBeUndefined();
+    removeExpense(owner.db, { ...expense, id });
+    expect((await flushOutbox(owner.db, owner.remote)).error).toBeUndefined();
+    const { data } = await owner.client.from('expenses').select('id, deleted_at').eq('id', id).single();
+    expect(data?.deleted_at).not.toBeNull();
   });
 
   it('widz nie zapisze elementów, a konto bez zaproszenia nie założy wyjazdu', async () => {
