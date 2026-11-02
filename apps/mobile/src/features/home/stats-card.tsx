@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { loadMyTrips } from '@/features/trips/my-trips';
 import { localDb } from '@/lib/local-db';
 
@@ -30,6 +31,7 @@ function localCounts(ids: string[]): Local {
 }
 
 export function StatsCard({ signedIn }: { signedIn: boolean }) {
+  const theme = useTheme();
   const [data, setData] = useState<Data | null>(null);
 
   useFocusEffect(
@@ -56,29 +58,41 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
     <View style={styles.stack}>
       {stats.ongoing && (
         <Pressable onPress={() => router.navigate('/plan')}>
-          <ThemedView type="backgroundSelected" style={styles.hero}>
-            <ThemedText type="small" themeColor="textSecondary">
-              TRWA
+          <View style={[styles.hero, styles.ongoing, { backgroundColor: theme.primary }]}>
+            <ThemedText type="smallBold" style={styles.onPrimaryMuted}>
+              TRWA · DZIEŃ {stats.ongoing.dayNo} Z {stats.ongoing.days}
             </ThemedText>
-            <ThemedText type="subtitle" numberOfLines={2}>
+            <ThemedText type="subtitle" numberOfLines={2} style={styles.onPrimary}>
               {stats.ongoing.trip.title}
             </ThemedText>
-            <ThemedText>
-              Dzień {stats.ongoing.dayNo} z {stats.ongoing.days} · plan dnia →
+            <ThemedText type="smallBold" style={styles.onPrimary}>
+              Plan dnia →
             </ThemedText>
-          </ThemedView>
+          </View>
         </Pressable>
       )}
       {stats.next && (
-        <ThemedView type="backgroundElement" style={styles.hero}>
-          <ThemedText type="small" themeColor="textSecondary">
-            NAJBLIŻSZY WYJAZD
-          </ThemedText>
-          <ThemedText type="smallBold">{stats.next.trip.title}</ThemedText>
-          <ThemedText type="small">
-            {stats.next.inDays === 1 ? 'jutro' : `za ${days(stats.next.inDays)}`} · {shortDate(stats.next.trip.startDate)}–{shortDate(stats.next.trip.endDate)} · {days(stats.next.days)}
-          </ThemedText>
-        </ThemedView>
+        <Pressable onPress={() => router.navigate('/trips')}>
+          <ThemedView type="backgroundElement" style={[styles.hero, styles.next, { borderColor: theme.backgroundSelected }]}>
+            <View style={[styles.countdown, { backgroundColor: theme.accentSoft }]}>
+              <ThemedText style={[styles.countdownValue, { color: theme.primary }]}>{stats.next.inDays}</ThemedText>
+              <ThemedText type="small" themeColor="accent">
+                {stats.next.inDays === 1 ? 'dzień' : 'dni'}
+              </ThemedText>
+            </View>
+            <View style={styles.grow}>
+              <ThemedText type="small" themeColor="textSecondary">
+                NAJBLIŻSZY WYJAZD
+              </ThemedText>
+              <ThemedText type="smallBold" numberOfLines={2} style={styles.nextTitle}>
+                {stats.next.trip.title}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {stats.next.inDays === 1 ? 'jutro' : `za ${days(stats.next.inDays)}`} · {shortDate(stats.next.trip.startDate)}–{shortDate(stats.next.trip.endDate)} · {days(stats.next.days)}
+              </ThemedText>
+            </View>
+          </ThemedView>
+        </Pressable>
       )}
 
       <View style={styles.grid}>
@@ -90,7 +104,7 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
         <Tile value={stats.daysThisYear} label={`dni w ${year}`} />
       </View>
 
-      <ThemedView type="backgroundElement" style={styles.hero}>
+      <ThemedView type="backgroundElement" style={[styles.hero, styles.offline, { borderLeftColor: theme.accent }]}>
         <ThemedText type="small" themeColor="textSecondary">
           NA TELEFONIE (OFFLINE)
         </ThemedText>
@@ -109,9 +123,12 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
 }
 
 function Tile({ value, label }: { value: number; label: string }) {
+  const theme = useTheme();
   return (
-    <ThemedView type="backgroundElement" style={styles.tile}>
-      <ThemedText type="subtitle">{value}</ThemedText>
+    <ThemedView type="backgroundElement" style={[styles.tile, { borderColor: theme.backgroundSelected }]}>
+      <ThemedText type="subtitle" themeColor="accent">
+        {value}
+      </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {label}
       </ThemedText>
@@ -121,7 +138,16 @@ function Tile({ value, label }: { value: number; label: string }) {
 
 const styles = StyleSheet.create({
   stack: { gap: Spacing.three },
-  hero: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.one },
+  hero: { padding: Spacing.three, borderRadius: 16, gap: Spacing.one },
+  ongoing: { elevation: 4, gap: Spacing.two },
+  onPrimary: { color: '#FFFFFF' },
+  onPrimaryMuted: { color: '#FFFFFFCC' },
+  next: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, borderWidth: 1, elevation: 1 },
+  countdown: { width: 76, height: 76, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  countdownValue: { fontSize: 32, lineHeight: 36, fontWeight: 800 },
+  grow: { flex: 1, gap: 2 },
+  nextTitle: { fontSize: 17, lineHeight: 22 },
+  offline: { borderLeftWidth: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  tile: { flexBasis: '31%', flexGrow: 1, padding: Spacing.three, borderRadius: Spacing.three },
+  tile: { flexBasis: '31%', flexGrow: 1, padding: Spacing.three, borderRadius: 16, borderWidth: 1 },
 });

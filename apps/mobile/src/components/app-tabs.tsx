@@ -16,7 +16,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Start</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
+          src={require('@/assets/images/tabIcons/compass.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -24,7 +24,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="trips">
         <NativeTabs.Trigger.Label>Wyjazdy</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/trips.png')}
+          src={require('@/assets/images/tabIcons/suitcase.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -32,7 +32,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="plan">
         <NativeTabs.Trigger.Label>Plan</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/plan.png')}
+          src={require('@/assets/images/tabIcons/route.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -40,7 +40,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="map">
         <NativeTabs.Trigger.Label>Mapa</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
+          src={require('@/assets/images/tabIcons/map.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -48,7 +48,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="walk">
         <NativeTabs.Trigger.Label>Spacer</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
+          src={require('@/assets/images/tabIcons/walk.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>

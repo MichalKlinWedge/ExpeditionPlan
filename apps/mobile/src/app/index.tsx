@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TopoHeader } from '@/components/topo-header';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { LoginCard } from '@/features/auth/login-card';
 import { useSession } from '@/features/auth/session';
@@ -52,18 +53,18 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <ThemedText type="title" style={styles.title}>
-              Expedition Planer
-            </ThemedText>
-            <View style={styles.actions}>
-              <UpdateBadge />
-              <Pressable onPress={() => setSettings(true)} hitSlop={12} accessibilityLabel="Ustawienia">
-                <ThemedText style={styles.gear}>⚙︎</ThemedText>
-              </Pressable>
-            </View>
-          </View>
-          <ThemedText>Pocket Guide</ThemedText>
+          <TopoHeader
+            title="Expedition Planer"
+            subtitle="Pocket Guide"
+            actions={
+              <View style={styles.actions}>
+                <UpdateBadge />
+                <Pressable onPress={() => setSettings(true)} hitSlop={12} accessibilityLabel="Ustawienia">
+                  <ThemedText style={styles.gear}>⚙︎</ThemedText>
+                </Pressable>
+              </View>
+            }
+          />
           {message !== '' && <ThemedText type="small">{message}</ThemedText>}
           {!isConfigured && <ThemedText type="small">Brak adresu Supabase w tej wersji aplikacji (EXPO_PUBLIC_SUPABASE_URL).</ThemedText>}
           {isConfigured && session === undefined && <ThemedText type="small">Wczytuję…</ThemedText>}
@@ -80,8 +81,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', justifyContent: 'center' },
   safeArea: { flex: 1, maxWidth: MaxContentWidth },
   content: { gap: Spacing.three, padding: Spacing.four, paddingBottom: BottomTabInset + Spacing.three },
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
-  title: { flex: 1 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.two },
-  gear: { fontSize: 28, lineHeight: 34 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  gear: { fontSize: 28, lineHeight: 34, color: '#FFFFFF' },
 });

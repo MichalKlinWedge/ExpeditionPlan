@@ -2,7 +2,7 @@
 -- Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(54);
+select plan(57);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000001', 'owner@test.local'),
@@ -199,6 +199,10 @@ select ok(pg_temp.signup('{}') ? 'error', 'konto bez zaproszenia odrzucone');
 select ok(pg_temp.signup('{"invite": "zly-token"}') ? 'error', 'konto ze złym tokenem odrzucone');
 select is(pg_temp.signup('{"invite": "dobry-token"}'), '{}'::jsonb, 'konto z ważnym zaproszeniem przepuszczone');
 select is(has_function_privilege('authenticated', 'public.invite_token_valid(text)', 'execute'), false, 'sprawdzanie tokenu niedostępne dla klientów');
+select is((select count(*) from public.invite_preview('dobry-token')), 0::bigint, 'podgląd zaproszenia do usuniętego wyjazdu jest pusty');
+update public.trips set deleted_at = null where id = '10000000-0000-4000-8000-000000000001';
+select is((select title from public.invite_preview('dobry-token')), 'Maroko', 'podgląd zaproszenia: nazwa wyjazdu z ważnego tokenu');
+select is((select count(*) from public.invite_preview('zly-token')), 0::bigint, 'podgląd zaproszenia: zły token nic nie zwraca');
 
 select * from finish();
 rollback;

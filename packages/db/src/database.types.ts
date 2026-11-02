@@ -1268,6 +1268,11 @@ isOneToOne: false
 "import_trip":
 { Args: { "p_tables": Json,"p_trip": Json }; Returns: string
                            },
+"invite_preview":
+{ Args: { "p_token": string }; Returns: {
+              "end_date": string,"invited_by": string,"role": string,"start_date": string,"title": string
+            }[]
+                           },
 "invite_token_valid":
 { Args: { "p_token": string }; Returns: boolean
                            },
