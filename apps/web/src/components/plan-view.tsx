@@ -27,9 +27,10 @@ import {
   type TripDocument,
   updateItem,
 } from "@expeditionplan/core";
-import { savePlanEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
+import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import { useMemo, useState } from "react";
 
+import { DayConstraints, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { type LatLng, PlanMap } from "@/components/plan-map";
 import { createClient } from "@/lib/supabase/client";
@@ -139,6 +140,35 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
   const persist = async (edit: Edit) => {
     setIds(await savePlanEdit(createClient(), tripId, edit, ids));
   };
+
+  /** Warianty i ograniczenia (`plan-rules`): ta sama droga co `apply`, zapis przez `saveRulesEdit`. */
+  const onRules: OnRules | null = canEdit
+    ? (build) => {
+        let edit: ReturnType<typeof build>;
+        try {
+          edit = build(doc);
+        } catch (error) {
+          return setSaving({ pending: 0, error: error instanceof Error ? error.message : String(error) });
+        }
+        if (edit === null) return;
+        const invalid = problem(edit.doc);
+        if (invalid !== null) return setSaving({ pending: 0, error: `Nie zapisano: ${invalid}` });
+        const before = doc;
+        const next = edit;
+        setDoc(next.doc);
+        setSaving((current) => ({ pending: current.pending + 1 }));
+        void saveRulesEdit(createClient(), tripId, next, ids).then(
+          (known) => {
+            setIds(known);
+            setSaving((current) => ({ pending: current.pending - 1, ok: true }));
+          },
+          (error: unknown) => {
+            setDoc(before);
+            setSaving((current) => ({ pending: current.pending - 1, error: error instanceof Error ? error.message : String(error) }));
+          },
+        );
+      }
+    : null;
 
   const actions: Actions | null = canEdit
     ? {
@@ -284,6 +314,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
               onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
               places={places}
               actions={actions}
+              onRules={onRules}
               dnd={dnd}
               numbers={day.ref === mapDay?.ref ? map.numbers : null}
               onShowOnMap={() => setMapDay(day.ref)}
@@ -428,6 +459,8 @@ type DayProps = {
   onChoose: (groupRef: string, variantRef: string) => void;
   places: Map<string, TripDocument["places"][number]>;
   actions: Actions | null;
+  /** Warianty i ograniczenia — `null` dla widza. */
+  onRules: OnRules | null;
   dnd: Dnd | null;
   /** Numery punktów na mapie — tylko dla dnia, który jest na mapie. */
   numbers: Record<string, number> | null;
@@ -449,7 +482,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, dnd, numbers, onShowOnMap, selected, onSelect }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules, dnd, numbers, onShowOnMap, selected, onSelect }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -462,7 +495,6 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, dnd, num
     failure = error instanceof Error ? error.message : String(error);
   }
   const cuts = schedule?.slack === "negative" || schedule?.warnings.some((each) => each.severity === "hard") ? proposeCuts(doc, dayRef, options) : [];
-  const groups = doc.variantGroups.filter((group) => group.dayRef === dayRef && group.scope !== "trip" && group.scope !== "booking");
   const notes = doc.notes.filter((note) => note.scope === "day" && note.targetRef === dayRef);
   const byRef = new Map(doc.items.map((item) => [item.ref, item]));
   const base = day.baseRef === undefined ? undefined : places.get(day.baseRef)?.name;
@@ -500,23 +532,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, dnd, num
 
       {day.summary && <p className="text-sm text-zinc-600 dark:text-zinc-400">{day.summary}</p>}
 
-      {groups.map((group) => {
-        const options = doc.variants.filter((variant) => variant.groupRef === group.ref);
-        return (
-          <div key={group.ref} className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-zinc-500">{group.title}:</span>
-            {options.map((variant) => (
-              <button
-                key={variant.ref}
-                onClick={() => onChoose(group.ref, variant.ref)}
-                className={`rounded-full border-2 px-3 py-1 transition ${active.has(variant.ref) ? "border-sea bg-sea-light font-semibold text-sea dark:bg-sea/20 dark:text-teal-300" : "border-zinc-300 text-zinc-500 hover:border-sea dark:border-zinc-700"}`}>
-                {variant.label}
-                {variant.recommended ? " ★" : ""}
-              </button>
-            ))}
-          </div>
-        );
-      })}
+      <DayVariants doc={doc} dayRef={dayRef} active={active} onChoose={onChoose} onRules={onRules} />
 
       {failure && <p className="text-sm text-red-600">Nie udało się policzyć dnia: {failure}</p>}
 
@@ -605,6 +621,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, dnd, num
                       usuń
                     </button>
                     <MoveSelect doc={doc} current={dayRef} onMove={(target) => actions.moveTo(item.ref, target)} />
+                    {onRules && <ItemVariants doc={doc} dayRef={dayRef} itemRef={item.ref} onRules={onRules} />}
                   </div>
                 )}
                 {actions && source && editing === item.ref && (
@@ -639,6 +656,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, dnd, num
             {warning.message}
           </p>
         ))}
+
+      {schedule && <DayConstraints doc={doc} dayRef={dayRef} items={schedule.items} warnings={schedule.warnings} onRules={onRules} />}
 
       {actions && <AddItemForm onAdd={(fields) => actions.add(dayRef, fields)} />}
 

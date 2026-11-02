@@ -4,6 +4,7 @@ export * from './schemas/trip-brief.ts';
 export * from './schemas/trip-document.ts';
 export * from './schemas/ai-stages.ts';
 export * from './plan-edits.ts';
+export * from './plan-rules.ts';
 export * from './sort-key.ts';
 export * from './engine/now.ts';
 export * from './engine/opening-hours.ts';

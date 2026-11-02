@@ -436,7 +436,9 @@ function checkConstraints(
 
   doc.constraints.forEach((constraint, index) => {
     const target = constraint.itemRef === undefined ? undefined : byRef.get(constraint.itemRef);
-    const onDay = constraint.dayRef === day.ref || target !== undefined;
+    // Bez dnia, punktu i rezerwacji = cały wyjazd („bez jazdy po zmroku” z briefu) — każdy dzień.
+    const tripWide = constraint.dayRef === undefined && constraint.itemRef === undefined && constraint.bookingRef === undefined;
+    const onDay = tripWide || constraint.dayRef === day.ref || target !== undefined;
     if (!onDay) return;
     if (constraint.itemRef !== undefined && target === undefined) return; // punkt wycięty albo w innym wariancie
 
