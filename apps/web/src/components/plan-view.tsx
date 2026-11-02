@@ -408,7 +408,7 @@ function MoveSelect({ doc, current, onMove }: { doc: TripDocument; current: stri
     <select
       value=""
       onChange={(event) => onMove(event.target.value === "pool" ? null : event.target.value)}
-      className="ml-2 rounded border border-zinc-300 bg-transparent px-1 text-xs text-zinc-500 dark:border-zinc-700"
+      className="ml-2 max-w-36 rounded border border-zinc-300 bg-transparent px-1 text-xs text-zinc-500 dark:border-zinc-700"
       aria-label="Przenieś do">
       <option value="">przenieś…</option>
       {doc.days
@@ -605,7 +605,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules,
                   </p>
                 ))}
                 {actions && source && (
-                  <div className="ml-31 flex items-center gap-1 text-xs text-zinc-500">
+                  <div className="ml-31 flex min-w-0 flex-wrap items-center gap-1 text-xs text-zinc-500">
                     <button onClick={() => actions.move(item.ref, -1)} aria-label="Wyżej" className="px-1 hover:text-zinc-900 dark:hover:text-zinc-100">
                       ↑
                     </button>

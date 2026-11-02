@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { groundTrip, routeTrip } from "@/app/actions";
+import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlacePinner } from "@/components/place-pinner";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { PlanView } from "@/components/plan-view";
@@ -22,14 +23,15 @@ export default function PlanPage(props: PageProps<"/trips/[id]/plan">) {
   return (
     <Shell wide>
       <Suspense fallback={<Loading />}>
-        <Plan params={props.params} />
+        <Plan params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </Shell>
   );
 }
 
-async function Plan({ params }: { params: Promise<{ id: string }> }) {
+async function Plan({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
+  const wantsEdit = await editMode(searchParams);
   const { supabase } = await requireUser(`/trips/${id}/plan`);
   const [{ data, error }, membership] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
@@ -44,16 +46,21 @@ async function Plan({ params }: { params: Promise<{ id: string }> }) {
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
+  // Domyślnie podgląd; edycja po „Edytuj” (`?edit=1`).
+  const editing = canEdit && wantsEdit;
   const ids = refIndex((data as { tables: Parameters<typeof refIndex>[0] }).tables);
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
-          ← {state.doc.trip.title}
-        </Link>
-        <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="flex flex-col gap-1">
+          <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+            ← {state.doc.trip.title}
+          </Link>
+          <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
+        </div>
+        {canEdit && <EditToggle href={`/trips/${id}/plan`} editing={editing} />}
       </div>
-      {canEdit && (
+      {editing && (
         <div className="flex flex-col gap-2">
           <PlanActionButton run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
           <PlanActionButton run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
@@ -66,7 +73,7 @@ async function Plan({ params }: { params: Promise<{ id: string }> }) {
         state={state}
         tripId={id}
         ids={ids}
-        canEdit={canEdit}
+        canEdit={editing}
       />
     </>
   );

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
+import { EditToggle, editMode } from "@/components/edit-toggle";
 import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
 import { DownloadIcon, InfoIcon, NoteIcon, RouteIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
@@ -21,7 +22,7 @@ export default function TripPage(props: PageProps<"/trips/[id]">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <TripDetails params={props.params} />
+        <TripDetails params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </Shell>
   );
@@ -53,8 +54,9 @@ function Tile({ href, icon, title, hint, accent = false, download = false }: { h
   );
 }
 
-async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
+async function TripDetails({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
+  const wantsEdit = await editMode(searchParams);
   const { supabase } = await requireUser(`/trips/${id}`);
   const [trip, members, travelers, days, items, brief, mine] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
@@ -68,6 +70,8 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   if (trip.data === null) notFound();
   const role = trip.data.role!;
   const canEdit = role === "owner" || role === "editor";
+  // Domyślnie podgląd: uczestników i zaproszenia zmienia się po „Edytuj” (`?edit=1`).
+  const editing = canEdit && wantsEdit;
   const people = travelers.data ?? [];
   // Szkic AI → plan: ze szkicu link do planu o tej samej nazwie, z planu wybór szkicu (szkice AI na górze).
   const others = mine.data ?? [];
@@ -78,7 +82,10 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">{trip.data.title}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h1 className="text-3xl font-bold">{trip.data.title}</h1>
+          {canEdit && <EditToggle href={`/trips/${id}`} editing={editing} />}
+        </div>
         <p className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           <span className="chip">{tripDates(trip.data.start_date!, trip.data.end_date!)}</span>
           <span>{trip.data.primary_tz}</span>
@@ -127,7 +134,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
 
       <section className={section}>
         <h2 className={heading}>Uczestnicy</h2>
-        <TravelerList tripId={id} people={people} canEdit={canEdit} />
+        <TravelerList tripId={id} people={people} canEdit={editing} />
       </section>
 
       <section className={section}>
@@ -139,7 +146,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
             </li>
           ))}
         </ul>
-        {role === "owner" && <InviteForm tripId={id} />}
+        {role === "owner" && editing && <InviteForm tripId={id} />}
       </section>
 
       <section className={section}>

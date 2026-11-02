@@ -45,11 +45,12 @@ const CONDITION: Record<VariantGroup["conditionKind"], string> = {
   wellbeing: "samopoczucie",
 };
 
-const input = "field px-2 py-1 text-sm";
+// `min-w-0`: lista wyboru ma szerokość najdłuższej opcji i bez tego rozpycha kartę na telefonie.
+const input = "field min-w-0 px-2 py-1 text-sm";
 
 /** Termin decyzji: „15:00” (godzina dnia) albo „2026-12-28 20:00” (inna chwila, np. wieczór przed). */
 const deadline = (decideBy: NonNullable<VariantGroup["decideBy"]>) => ("time" in decideBy ? decideBy.time : decideBy.local.replace("T", " "));
-const label = "flex flex-col gap-1 text-xs text-zinc-500";
+const label = "flex min-w-0 flex-col gap-1 text-xs text-zinc-500";
 
 // --- Warianty --------------------------------------------------------------------------------
 
@@ -336,7 +337,7 @@ export function ItemVariants({ doc, dayRef, itemRef, onRules }: { doc: Doc; dayR
         title={group.title}
         aria-label={`W którym wariancie: ${group.title}`}
         className="ml-2 max-w-40 rounded border border-zinc-300 bg-transparent px-1 text-xs text-zinc-500 dark:border-zinc-700">
-        <option value="">we wszystkich wariantach</option>
+        <option value="">wszystkie warianty</option>
         {groupVariants(doc, group.ref).map((variant) => (
           <option key={variant.ref} value={variant.ref}>
             tylko: {variant.label}

@@ -75,3 +75,10 @@ export const PeakIcon = (props: Props) => (
     <path d="m8 10.5 1.5 1 1.5-1" />
   </Svg>
 );
+
+export const PencilIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M4 20h4L19 9l-4-4L4 16Z" />
+    <path d="m13.5 6.5 4 4" />
+  </Svg>
+);

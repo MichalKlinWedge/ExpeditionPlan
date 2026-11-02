@@ -14,6 +14,7 @@ export * from './engine/sun.ts';
 export * from './engine/time.ts';
 export * from './trip-stats.ts';
 export * from './budget.ts';
+export * from './budget-suggest.ts';
 export * from './plan-merge.ts';
 export * from './plan-info.ts';
 export * from './polyline.ts';

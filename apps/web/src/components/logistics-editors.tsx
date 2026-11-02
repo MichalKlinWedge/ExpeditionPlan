@@ -1,10 +1,22 @@
 "use client";
 
-import { BUDGET_CATEGORY, formatMoney, type TripDocument } from "@expeditionplan/core";
+import { BUDGET_CATEGORY, type BudgetSuggestion, formatMoney, type TripDocument } from "@expeditionplan/core";
 import { useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { removeBudgetLine, removeTask, saveBooking, saveBudgetLine, saveTask, setTaskStatus } from "@/app/logistics-actions";
+import {
+  addSuggestedBudgetLine,
+  removeBudgetLine,
+  removeContact,
+  removeTask,
+  saveBooking,
+  saveBudgetLine,
+  saveContact,
+  saveFx,
+  saveTask,
+  setBookingItems,
+  setTaskStatus,
+} from "@/app/logistics-actions";
 
 /**
  * Edycja na stronie „Rezerwacje, budżet i zadania”: każda zmiana to akcja serwera, która sprawdza
@@ -15,8 +27,10 @@ type Doc = TripDocument;
 type Line = Doc["budgetLines"][number];
 type Task = Doc["tasks"][number];
 type Booking = Doc["bookings"][number];
+type Contact = Doc["contacts"][number];
 
-const input = "field px-2 py-1 text-sm";
+// `min-w-0`: lista wyboru ma szerokość najdłuższej opcji i bez tego rozpycha kartę na telefonie.
+const input = "field min-w-0 px-2 py-1 text-sm";
 const small = "text-xs underline disabled:opacity-50";
 const primary = "btn-primary btn-sm";
 const minorText = (minor: number) => (minor / 100).toLocaleString("pl-PL", { useGrouping: false, maximumFractionDigits: 2 });
@@ -103,8 +117,8 @@ export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: stri
           <thead className="text-xs text-zinc-500">
             <tr>
               <th className="py-1 font-normal">Pozycja</th>
-              <th className="py-1 font-normal">Kategoria</th>
-              <th className="py-1 font-normal">Status</th>
+              <th className="hidden py-1 font-normal sm:table-cell">Kategoria</th>
+              <th className="hidden py-1 font-normal sm:table-cell">Status</th>
               <th className="py-1 text-right font-normal">Kwota</th>
               {canEdit && <th className="py-1" />}
             </tr>
@@ -122,10 +136,14 @@ export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: stri
                   <td className="py-1">
                     {line.title}
                     {line.perPerson ? <span className="text-zinc-500"> · na osobę</span> : null}
+                    {/* Na telefonie kategoria i status pod nazwą — pięć kolumn się nie mieści. */}
+                    <span className="block text-xs text-zinc-500 sm:hidden">
+                      {BUDGET_CATEGORY[line.category] ?? line.category} · {LINE_STATUS[line.status]}
+                    </span>
                     {line.note ? <span className="block text-xs text-zinc-500">{line.note}</span> : null}
                   </td>
-                  <td className="py-1 pr-3 text-zinc-500">{BUDGET_CATEGORY[line.category] ?? line.category}</td>
-                  <td className="py-1 pr-3 text-zinc-500">{LINE_STATUS[line.status]}</td>
+                  <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{BUDGET_CATEGORY[line.category] ?? line.category}</td>
+                  <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{LINE_STATUS[line.status]}</td>
                   <td className="py-1 text-right font-mono whitespace-nowrap">
                     {line.lowMinor === line.highMinor ? formatMoney(line.lowMinor, line.currency) : `${formatMoney(line.lowMinor, line.currency)} – ${formatMoney(line.highMinor, line.currency)}`}
                   </td>
@@ -133,7 +151,8 @@ export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: stri
                     <td className="py-1 pl-2 text-right whitespace-nowrap text-zinc-500">
                       <button onClick={() => setEditing(line.ref)} className={small}>
                         edytuj
-                      </button>{" "}
+                      </button>
+                      <br className="sm:hidden" />{" "}
                       <button disabled={remove.pending} onClick={() => remove.run(() => removeBudgetLine(tripId, line.ref), `Usunąć pozycję „${line.title}”?`)} className={small}>
                         usuń
                       </button>
@@ -162,18 +181,39 @@ export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: stri
 
 const TASK_KIND: Record<string, string> = { todo: "do zrobienia", question: "pytanie", decision: "decyzja" };
 
-function TaskForm({ tripId, task, onDone }: { tripId: string; task?: Task; onDone?: () => void }) {
+/** Listy do wyboru w formularzach (osoby, punkty, rezerwacje, dni, decyzje) — liczone na stronie. */
+export type Choices = {
+  travelers: { ref: string; name: string }[];
+  items: { ref: string; label: string }[];
+  bookings: { ref: string; title: string }[];
+  days: { ref: string; label: string }[];
+  groups: { ref: string; title: string }[];
+};
+
+const DUE: Record<string, string> = {
+  "": "bez terminu",
+  absolute: "do dnia",
+  before_trip: "N dni przed wyjazdem",
+  before_item: "N dni przed punktem",
+  before_booking: "przed rezerwacją",
+  on_trip: "w trakcie wyjazdu",
+};
+
+function TaskForm({ tripId, task, choices, onDone }: { tripId: string; task?: Task; choices: Choices; onDone?: () => void }) {
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = await saveTask(tripId, task?.ref ?? null, prev, form);
     if (result.ok && onDone) onDone();
     return result;
   }, {});
-  const dueDate = task?.due?.kind === "absolute" ? task.due.date : "";
+  const [kind, setKind] = useState(task?.kind ?? "todo");
+  const [dueKind, setDueKind] = useState<string>(task?.due?.kind ?? "");
+  const due = task?.due;
+  const dueTime = due && "time" in due ? (due.time ?? "") : "";
   return (
     <form action={action} className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
         <input name="title" required defaultValue={task?.title} placeholder="np. Kupić eSIM" className={`${input} min-w-48 flex-1`} aria-label="Zadanie" />
-        <select name="kind" defaultValue={task?.kind ?? "todo"} className={input} aria-label="Rodzaj">
+        <select name="kind" value={kind} onChange={(event) => setKind(event.target.value as Task["kind"])} className={input} aria-label="Rodzaj">
           {Object.entries(TASK_KIND).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
@@ -185,11 +225,94 @@ function TaskForm({ tripId, task, onDone }: { tripId: string; task?: Task; onDon
           <option value="normal">zwykłe</option>
           <option value="low">kiedyś</option>
         </select>
-        <input name="dueDate" type="date" defaultValue={dueDate} className={input} aria-label="Termin" />
       </div>
-      {task?.due !== undefined && task.due.kind !== "absolute" && <p className="text-xs text-zinc-500">Termin względny (np. „przed wyjazdem”) zostaje, chyba że wpiszesz datę.</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <select name="dueKind" value={dueKind} onChange={(event) => setDueKind(event.target.value)} className={input} aria-label="Rodzaj terminu">
+          {Object.entries(DUE).map(([key, name]) => (
+            <option key={key} value={key}>
+              {name}
+            </option>
+          ))}
+        </select>
+        {dueKind === "absolute" && <input name="dueDate" type="date" required defaultValue={due?.kind === "absolute" ? due.date : ""} className={input} aria-label="Data" />}
+        {(dueKind === "before_trip" || dueKind === "before_item") && (
+          <label className="flex items-center gap-1 text-xs text-zinc-500">
+            <input name="dueDays" type="number" min={0} defaultValue={due && "days" in due ? due.days : 1} className={`${input} w-16`} aria-label="Ile dni przed" /> dni przed
+          </label>
+        )}
+        {dueKind === "before_item" && (
+          <select name="dueItem" required defaultValue={due?.kind === "before_item" ? due.itemRef : ""} className={`${input} max-w-64`} aria-label="Punkt planu">
+            <option value="">— punkt planu —</option>
+            {choices.items.map((item) => (
+              <option key={item.ref} value={item.ref}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        )}
+        {dueKind === "before_booking" && (
+          <select name="dueBooking" required defaultValue={due?.kind === "before_booking" ? due.bookingRef : ""} className={`${input} max-w-64`} aria-label="Rezerwacja">
+            <option value="">— rezerwacja —</option>
+            {choices.bookings.map((booking) => (
+              <option key={booking.ref} value={booking.ref}>
+                {booking.title}
+              </option>
+            ))}
+          </select>
+        )}
+        {dueKind === "on_trip" && (
+          <select name="dueDay" defaultValue={due?.kind === "on_trip" ? (due.dayRef ?? "") : ""} className={input} aria-label="Dzień">
+            <option value="">— któregoś dnia —</option>
+            {choices.days.map((day) => (
+              <option key={day.ref} value={day.ref}>
+                {day.label}
+              </option>
+            ))}
+          </select>
+        )}
+        {(dueKind === "absolute" || dueKind === "on_trip") && <input name="dueTime" type="time" defaultValue={dueTime} className={input} aria-label="Godzina" />}
+      </div>
       <textarea name="body" defaultValue={task?.body} placeholder="opis (opcjonalnie)" rows={2} className={input} aria-label="Opis" />
-      {(task?.kind === "question" || task?.kind === "decision") && <textarea name="answer" defaultValue={task.answer} placeholder="odpowiedź / decyzja" rows={2} className={input} aria-label="Odpowiedź" />}
+      {(kind === "question" || kind === "decision") && <textarea name="answer" defaultValue={task?.answer} placeholder="odpowiedź / decyzja" rows={2} className={input} aria-label="Odpowiedź" />}
+      {choices.travelers.length > 0 && (
+        <fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+          <legend className="sr-only">Kto</legend>
+          kto:
+          {choices.travelers.map((traveler) => (
+            <label key={traveler.ref} className="flex items-center gap-1">
+              <input type="checkbox" name="assignee" value={traveler.ref} defaultChecked={task?.assigneeRefs.includes(traveler.ref)} /> {traveler.name}
+            </label>
+          ))}
+        </fieldset>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <select name="bookingRef" defaultValue={task?.bookingRef ?? ""} className={`${input} max-w-56`} aria-label="Dotyczy rezerwacji">
+          <option value="">— rezerwacja —</option>
+          {choices.bookings.map((booking) => (
+            <option key={booking.ref} value={booking.ref}>
+              {booking.title}
+            </option>
+          ))}
+        </select>
+        <select name="itemRef" defaultValue={task?.itemRef ?? ""} className={`${input} max-w-56`} aria-label="Dotyczy punktu">
+          <option value="">— punkt planu —</option>
+          {choices.items.map((item) => (
+            <option key={item.ref} value={item.ref}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        {kind === "decision" && (
+          <select name="variantGroupRef" defaultValue={task?.variantGroupRef ?? ""} className={`${input} max-w-56`} aria-label="Wybór w planie">
+            <option value="">— wybór w planie (warianty) —</option>
+            {choices.groups.map((group) => (
+              <option key={group.ref} value={group.ref}>
+                {group.title}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
       <div className="flex gap-2">
         <button disabled={pending} className={primary}>
           {pending ? "Zapisuję…" : task ? "Zapisz" : "Dodaj zadanie"}
@@ -204,8 +327,7 @@ function TaskForm({ tripId, task, onDone }: { tripId: string; task?: Task; onDon
     </form>
   );
 }
-
-export function TaskList({ tripId, tasks, describe, canEdit }: { tripId: string; tasks: Task[]; describe: Record<string, string>; canEdit: boolean }) {
+export function TaskList({ tripId, tasks, describe, choices, canEdit }: { tripId: string; tasks: Task[]; describe: Record<string, string>; choices: Choices; canEdit: boolean }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
@@ -215,7 +337,7 @@ export function TaskList({ tripId, tasks, describe, canEdit }: { tripId: string;
   const row = (task: Task) =>
     editing === task.ref ? (
       <li key={task.ref} className="card p-3">
-        <TaskForm tripId={tripId} task={task} onDone={() => setEditing(null)} />
+        <TaskForm tripId={tripId} task={task} choices={choices} onDone={() => setEditing(null)} />
       </li>
     ) : (
       <li key={task.ref} className="flex items-start gap-2">
@@ -256,7 +378,7 @@ export function TaskList({ tripId, tasks, describe, canEdit }: { tripId: string;
       <Status state={action.state} />
       {canEdit &&
         (adding ? (
-          <TaskForm tripId={tripId} onDone={() => setAdding(false)} />
+          <TaskForm tripId={tripId} choices={choices} onDone={() => setAdding(false)} />
         ) : (
           <button onClick={() => setAdding(true)} className="self-start underline">
             + Dodaj zadanie
@@ -274,59 +396,521 @@ export function TaskList({ tripId, tasks, describe, canEdit }: { tripId: string;
 
 // --- Rezerwacje -----------------------------------------------------------------------------
 
-export function BookingEditor({ tripId, booking, statuses }: { tripId: string; booking: Booking; statuses: Record<string, string> }) {
-  const [open, setOpen] = useState(false);
+const KINDS: Record<string, string> = {
+  flight: "lot",
+  train: "pociąg",
+  bus: "autobus",
+  ferry: "prom",
+  lodging: "nocleg",
+  car_rental: "wynajem auta",
+  transfer: "transfer",
+  driver_hire: "kierowca",
+  activity: "atrakcja",
+  package: "pakiet",
+  ticket: "bilet",
+  transit_pass: "karta komunikacji",
+  insurance: "ubezpieczenie",
+  esim: "eSIM",
+  luggage: "bagaż",
+  other: "inne",
+};
+const BASIS: Record<string, string> = { per_group: "za całość", per_person: "za osobę", per_night: "za noc", per_day: "za dobę", per_unit: "za sztukę" };
+const label = "flex min-w-0 flex-col gap-1 text-xs text-zinc-500";
+
+/** Rezerwacja: nowa albo zmiana. Pola zależne od rodzaju (lot, auto, nocleg) pokazują się po wyborze rodzaju. */
+function BookingForm({ tripId, booking, statuses, zones, onDone }: { tripId: string; booking?: Booking; statuses: Record<string, string>; zones: string[]; onDone: () => void }) {
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
-    const result = await saveBooking(tripId, booking.ref, prev, form);
-    if (result.ok) setOpen(false);
+    const result = await saveBooking(tripId, booking?.ref ?? null, prev, form);
+    if (result.ok) onDone();
     return result;
   }, {});
+  const [kind, setKind] = useState(booking?.kind ?? "lodging");
+  const refundable = booking?.refundable === true ? "yes" : booking?.refundable === false ? "no" : "";
+  const price = booking?.price;
+  const listId = `zones-${booking?.ref ?? "new"}`;
+  return (
+    <form action={action} className="mt-1 flex flex-col gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <datalist id={listId}>
+        {zones.map((zone) => (
+          <option key={zone} value={zone} />
+        ))}
+      </datalist>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <label className={`${label} sm:col-span-2`}>
+          Nazwa
+          <input name="title" required defaultValue={booking?.title} placeholder="np. Riad Lakhdar, noc 1" className={input} />
+        </label>
+        <label className={label}>
+          Rodzaj
+          <select name="kind" value={kind} onChange={(event) => setKind(event.target.value as Booking["kind"])} className={input}>
+            {Object.entries(KINDS).map(([key, name]) => (
+              <option key={key} value={key}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={label}>
+          Status
+          <select name="status" defaultValue={booking?.status ?? "to_book"} className={input}>
+            {Object.entries(statuses).map(([key, name]) => (
+              <option key={key} value={key}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={label}>
+          {kind === "flight" ? "Linia lotnicza" : "Firma / obiekt"}
+          <input name="provider" defaultValue={booking?.provider} className={input} />
+        </label>
+        <label className={label}>
+          Kod rezerwacji
+          <input name="confirmationCode" defaultValue={booking?.confirmationCode} className={input} />
+        </label>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-[auto_auto_1fr]">
+        {(["start", "end"] as const).map((part) => {
+          const time = booking?.[part];
+          return (
+            <div key={part} className="contents">
+              <label className={label}>
+                {part === "start" ? (kind === "lodging" ? "Zameldowanie — dzień" : "Początek") : kind === "lodging" ? "Wymeldowanie — dzień" : "Koniec"}
+                <input name={`${part}Date`} type="date" defaultValue={time?.date ?? ""} className={input} />
+              </label>
+              <label className={label}>
+                godzina
+                <input name={`${part}Time`} type="time" defaultValue={time?.time ?? ""} className={input} />
+              </label>
+              <label className={label}>
+                strefa czasowa
+                <input name={`${part}Tz`} list={listId} defaultValue={time?.tz ?? ""} placeholder="strefa wyjazdu" className={input} />
+              </label>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className={label}>
+          Cena od
+          <input name="priceLow" defaultValue={price ? minorText(price.minMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
+        </label>
+        <label className={label}>
+          do
+          <input name="priceHigh" defaultValue={price && price.maxMinor !== price.minMinor ? minorText(price.maxMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
+        </label>
+        <label className={label}>
+          waluta
+          <input name="priceCurrency" defaultValue={price?.currency ?? "PLN"} maxLength={3} className={`${input} w-16 uppercase`} />
+        </label>
+        <label className={label}>
+          za
+          <select name="priceBasis" defaultValue={price?.basis ?? "per_group"} className={input}>
+            {Object.entries(BASIS).map(([key, name]) => (
+              <option key={key} value={key}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-1 pb-1 text-xs text-zinc-500">
+          <input name="priceApprox" type="checkbox" defaultChecked={price?.approx ?? false} /> szacunek
+        </label>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className={label}>
+          Zapłacono
+          <input name="paidAmount" defaultValue={booking?.paid ? minorText(booking.paid.amountMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
+        </label>
+        <label className={label}>
+          waluta
+          <input name="paidCurrency" defaultValue={booking?.paid?.currency ?? price?.currency ?? "PLN"} maxLength={3} className={`${input} w-16 uppercase`} />
+        </label>
+        <label className={label}>
+          dnia
+          <input name="paidOn" type="date" defaultValue={booking?.paid?.date ?? ""} className={input} />
+        </label>
+        <label className={label}>
+          Płatność
+          <select name="payWhen" defaultValue={booking?.payWhen ?? ""} className={input}>
+            <option value="">—</option>
+            <option value="prepaid">z góry</option>
+            <option value="before_arrival">przed przyjazdem</option>
+            <option value="on_site">na miejscu</option>
+          </select>
+        </label>
+        <label className={label}>
+          czym
+          <select name="paymentMethod" defaultValue={booking?.paymentMethod ?? ""} className={input}>
+            <option value="">—</option>
+            <option value="cash">gotówka</option>
+            <option value="card">karta</option>
+            <option value="credit_card_only">tylko karta kredytowa</option>
+            <option value="online">online</option>
+          </select>
+        </label>
+        <label className={label}>
+          Zwrotna
+          <select name="refundable" defaultValue={refundable} className={input}>
+            <option value="">?</option>
+            <option value="yes">zwrotna</option>
+            <option value="no">bezzwrotna</option>
+          </select>
+        </label>
+        <label className={label}>
+          Darmowe odwołanie do
+          <input name="freeCancellationUntil" type="date" defaultValue={booking?.freeCancellationUntil ?? ""} className={input} />
+        </label>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className={label}>
+          Zgłoszeni dorośli
+          <input name="partyAdults" type="number" min={0} defaultValue={booking?.party?.adults ?? ""} className={`${input} w-20`} />
+        </label>
+        <label className={label}>
+          dzieci
+          <input name="partyChildren" type="number" min={0} defaultValue={booking?.party?.children ?? ""} className={`${input} w-20`} />
+        </label>
+        <label className={`${label} min-w-64 flex-1`}>
+          W cenie (po przecinku)
+          <input name="includes" defaultValue={booking?.includes.join(", ")} placeholder="np. śniadanie, quad, kolacja" className={input} />
+        </label>
+      </div>
+
+      {kind === "flight" && (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className={label}>
+            Nr lotu
+            <input name="flightNumber" defaultValue={booking?.flight?.number} placeholder="FR 2145" className={`${input} w-28 uppercase`} />
+          </label>
+          <label className={label}>
+            Z lotniska
+            <input name="fromAirport" defaultValue={booking?.flight?.fromAirport} placeholder="WRO" className={`${input} w-20 uppercase`} />
+          </label>
+          <label className={label}>
+            Do
+            <input name="toAirport" defaultValue={booking?.flight?.toAirport} placeholder="AGA" className={`${input} w-20 uppercase`} />
+          </label>
+          <label className={label}>
+            Bagaż
+            <input name="baggage" defaultValue={booking?.flight?.baggage} placeholder="1 × 20 kg" className={input} />
+          </label>
+        </div>
+      )}
+      {kind === "car_rental" && (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className={label}>
+            Klasa / model
+            <input name="carClass" defaultValue={booking?.car?.carClass} className={input} />
+          </label>
+          <label className={label}>
+            Limit km
+            <input name="kmLimit" type="number" min={1} defaultValue={booking?.car?.kmLimit ?? ""} className={`${input} w-24`} />
+          </label>
+          <label className={`${label} flex-1`}>
+            Godziny biura
+            <input name="officeHours" defaultValue={booking?.car?.officeHours} placeholder="np. 08:00–22:00" className={input} />
+          </label>
+        </div>
+      )}
+      {kind === "lodging" && (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className={label}>
+            Zameldowanie od
+            <input name="checkInFrom" type="time" defaultValue={booking?.checkInFrom ?? ""} className={input} />
+          </label>
+          <label className={label}>
+            Wymeldowanie do
+            <input name="checkOutUntil" type="time" defaultValue={booking?.checkOutUntil ?? ""} className={input} />
+          </label>
+          <label className={label}>
+            Pokoje
+            <input name="rooms" type="number" min={1} defaultValue={booking?.lodging?.rooms ?? ""} className={`${input} w-20`} />
+          </label>
+          <label className={`${label} flex-1`}>
+            Śniadanie
+            <input name="breakfast" defaultValue={booking?.lodging?.breakfast} placeholder="np. w cenie, 8:00–10:00" className={input} />
+          </label>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <button disabled={pending} className={primary}>
+          {pending ? "Zapisuję…" : booking ? "Zapisz" : "Dodaj rezerwację"}
+        </button>
+        <button type="button" onClick={onDone} className="text-sm underline">
+          Anuluj
+        </button>
+      </div>
+      <Status state={state} />
+    </form>
+  );
+}
+
+export function BookingEditor({ tripId, booking, statuses, zones }: { tripId: string; booking: Booking; statuses: Record<string, string>; zones: string[] }) {
+  const [open, setOpen] = useState(false);
   if (!open) {
     return (
-      <span className="text-zinc-500">
-        <button onClick={() => setOpen(true)} className={small}>
-          edytuj
-        </button>
-        {state.ok && <span className="ml-2 text-xs text-green-700 dark:text-green-400">{state.ok}</span>}
-      </span>
+      <button onClick={() => setOpen(true)} className={`${small} text-zinc-500`}>
+        edytuj
+      </button>
     );
   }
-  const refundable = booking.refundable === true ? "yes" : booking.refundable === false ? "no" : "";
+  return <BookingForm tripId={tripId} booking={booking} statuses={statuses} zones={zones} onDone={() => setOpen(false)} />;
+}
+
+export function NewBooking({ tripId, statuses, zones }: { tripId: string; statuses: Record<string, string>; zones: string[] }) {
+  const [open, setOpen] = useState(false);
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="self-start text-sm underline">
+        + Dodaj rezerwację
+      </button>
+    );
+  }
+  return <BookingForm tripId={tripId} statuses={statuses} zones={zones} onDone={() => setOpen(false)} />;
+}
+
+/** Punkty planu „w pakiecie” rezerwacji — zaznaczone wskazują rezerwację i mają płatność „w cenie”. */
+export function BookingItems({ tripId, bookingRef, items, chosen }: { tripId: string; bookingRef: string; items: { ref: string; label: string }[]; chosen: string[] }) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(chosen));
+  const action = useAction();
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className={`${small} text-zinc-500`}>
+        punkty w pakiecie{chosen.length > 0 ? ` (${chosen.length})` : ""}
+      </button>
+    );
+  }
   return (
-    <form action={action} className="mt-1 flex flex-col gap-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+    <div className="mt-1 flex flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+      <p className="text-xs text-zinc-500">Zaznacz punkty planu, które ta rezerwacja obejmuje — dostaną płatność „w cenie” i nie trafią osobno do budżetu.</p>
+      <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+        {items.map((item) => (
+          <li key={item.ref}>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={picked.has(item.ref)}
+                onChange={(event) => {
+                  const next = new Set(picked);
+                  if (event.target.checked) next.add(item.ref);
+                  else next.delete(item.ref);
+                  setPicked(next);
+                }}
+              />
+              {item.label}
+            </label>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2">
+        <button disabled={action.pending} onClick={() => action.run(async () => {
+          const result = await setBookingItems(tripId, bookingRef, [...picked]);
+          if (result.ok) setOpen(false);
+          return result;
+        })} className={primary}>
+          {action.pending ? "Zapisuję…" : "Zapisz"}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="text-sm underline">
+          Anuluj
+        </button>
+      </div>
+      <Status state={action.state} />
+    </div>
+  );
+}
+
+// --- Kontakty -------------------------------------------------------------------------------
+
+const ROLE: Record<string, string> = { host: "gospodarz", operator: "operator", rental: "wypożyczalnia", guide: "przewodnik", emergency: "alarmowy", venue: "miejsce", other: "inny" };
+
+function ContactForm({ tripId, contact, bookings, onDone }: { tripId: string; contact?: Contact; bookings: { ref: string; title: string }[]; onDone: () => void }) {
+  const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
+    const result = await saveContact(tripId, contact?.ref ?? null, prev, form);
+    if (result.ok) onDone();
+    return result;
+  }, {});
+  return (
+    <form action={action} className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
       <div className="flex flex-wrap gap-2">
-        <select name="status" defaultValue={booking.status} className={input} aria-label="Status">
-          {Object.entries(statuses).map(([key, name]) => (
+        <input name="name" required defaultValue={contact?.name} placeholder="np. Youssef (riad)" className={`${input} min-w-40 flex-1`} aria-label="Nazwa" />
+        <select name="role" defaultValue={contact?.role ?? "host"} className={input} aria-label="Rola">
+          {Object.entries(ROLE).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
             </option>
           ))}
         </select>
-        <input name="provider" defaultValue={booking.provider} placeholder={booking.kind === "flight" ? "linia lotnicza" : "firma / obiekt"} className={input} aria-label={booking.kind === "flight" ? "Linia lotnicza" : "Firma"} />
-        {booking.kind === "flight" && (
-          <>
-            <input name="flightNumber" defaultValue={booking.flight?.number} placeholder="nr lotu, np. FR 2145" className={`${input} w-40 uppercase`} aria-label="Numer lotu" />
-            <input name="baggage" defaultValue={booking.flight?.baggage} placeholder="bagaż, np. 1 × 20 kg" className={input} aria-label="Bagaż" />
-          </>
-        )}
-        <input name="confirmationCode" defaultValue={booking.confirmationCode} placeholder="kod rezerwacji" className={input} aria-label="Kod rezerwacji" />
-        <select name="refundable" defaultValue={refundable} className={input} aria-label="Zwrotna">
-          <option value="">zwrotna?</option>
-          <option value="yes">zwrotna</option>
-          <option value="no">bezzwrotna</option>
-        </select>
+        <input name="phone" type="tel" defaultValue={contact?.phone} placeholder="telefon, np. +212 600 000 000" className={input} aria-label="Telefon" />
+        <input name="email" type="email" defaultValue={contact?.email} placeholder="e-mail" className={input} aria-label="E-mail" />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-zinc-500">zapłacono</span>
-        <input name="paidAmount" defaultValue={booking.paid ? minorText(booking.paid.amountMinor) : ""} placeholder="kwota" inputMode="decimal" className={`${input} w-28`} aria-label="Zapłacona kwota" />
-        <input name="paidCurrency" defaultValue={booking.paid?.currency ?? booking.price?.currency ?? "PLN"} maxLength={3} className={`${input} w-16 uppercase`} aria-label="Waluta zapłaty" />
-        <input name="paidOn" type="date" defaultValue={booking.paid?.date ?? ""} className={input} aria-label="Data zapłaty" />
-        <span className="text-xs text-zinc-500">darmowe odwołanie do</span>
-        <input name="freeCancellationUntil" type="date" defaultValue={booking.freeCancellationUntil ?? ""} className={input} aria-label="Darmowe odwołanie do" />
+      <div className="flex flex-wrap gap-2">
+        <select name="bookingRef" defaultValue={contact?.bookingRef ?? ""} className={`${input} max-w-64`} aria-label="Rezerwacja">
+          <option value="">— przy całym wyjeździe —</option>
+          {bookings.map((booking) => (
+            <option key={booking.ref} value={booking.ref}>
+              {booking.title}
+            </option>
+          ))}
+        </select>
+        <input name="notes" defaultValue={contact?.notes} placeholder="notatka, np. mówi po francusku" className={`${input} min-w-40 flex-1`} aria-label="Notatka" />
       </div>
       <div className="flex gap-2">
         <button disabled={pending} className={primary}>
-          {pending ? "Zapisuję…" : "Zapisz"}
+          {pending ? "Zapisuję…" : contact ? "Zapisz" : "Dodaj kontakt"}
+        </button>
+        <button type="button" onClick={onDone} className="text-sm underline">
+          Anuluj
+        </button>
+      </div>
+      <Status state={state} />
+    </form>
+  );
+}
+
+export function Contacts({ tripId, contacts, bookings, canEdit }: { tripId: string; contacts: Contact[]; bookings: { ref: string; title: string }[]; canEdit: boolean }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const remove = useAction();
+  const titles = new Map(bookings.map((booking) => [booking.ref, booking.title]));
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      {contacts.length === 0 && <p className="text-zinc-500">Brak kontaktów.</p>}
+      <ul className="flex flex-col gap-2">
+        {contacts.map((contact) =>
+          editing === contact.ref ? (
+            <li key={contact.ref}>
+              <ContactForm tripId={tripId} contact={contact} bookings={bookings} onDone={() => setEditing(null)} />
+            </li>
+          ) : (
+            <li key={contact.ref} className="flex flex-wrap items-baseline gap-x-2">
+              <span className="font-medium">{contact.name}</span>
+              <span className="text-xs text-zinc-500">{ROLE[contact.role]}</span>
+              {contact.phone && (
+                <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="underline">
+                  {contact.phone}
+                </a>
+              )}
+              {contact.email && (
+                <a href={`mailto:${contact.email}`} className="underline">
+                  {contact.email}
+                </a>
+              )}
+              {contact.bookingRef && <span className="text-xs text-zinc-500">· {titles.get(contact.bookingRef) ?? "rezerwacja"}</span>}
+              {contact.notes && <span className="text-xs text-zinc-500">· {contact.notes}</span>}
+              {canEdit && (
+                <span className="text-zinc-500">
+                  <button onClick={() => setEditing(contact.ref)} className={small}>
+                    edytuj
+                  </button>{" "}
+                  <button disabled={remove.pending} onClick={() => remove.run(() => removeContact(tripId, contact.ref), `Usunąć kontakt „${contact.name}”?`)} className={small}>
+                    usuń
+                  </button>
+                </span>
+              )}
+            </li>
+          ),
+        )}
+      </ul>
+      <Status state={remove.state} />
+      {canEdit &&
+        (editing === "new" ? (
+          <ContactForm tripId={tripId} bookings={bookings} onDone={() => setEditing(null)} />
+        ) : (
+          <button onClick={() => setEditing("new")} className="self-start underline">
+            + Dodaj kontakt
+          </button>
+        ))}
+    </div>
+  );
+}
+
+// --- Budżet z planu i kursy -----------------------------------------------------------------
+
+/** Rezerwacje i punkty z ceną bez pozycji w budżecie — „Dodaj” robi z propozycji pozycję. */
+export function BudgetSuggestions({ tripId, suggestions }: { tripId: string; suggestions: BudgetSuggestion[] }) {
+  const action = useAction();
+  if (suggestions.length === 0) return null;
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer text-zinc-500">Ceny z planu bez pozycji w budżecie ({suggestions.length})</summary>
+      <p className="mt-1 text-xs text-zinc-500">Sprawdź, czy kwota nie jest już w pozycji zbiorczej (np. „Wstępy”), zanim dodasz.</p>
+      <ul className="mt-2 flex flex-col gap-1">
+        {suggestions.map((each) => (
+          <li key={`${each.source}:${each.ref}`} className="flex flex-wrap items-baseline gap-x-2">
+            <span>{each.title}</span>
+            <span className="text-xs text-zinc-500">
+              {each.source === "booking" ? "rezerwacja" : "punkt planu"} · {BUDGET_CATEGORY[each.line.category]} · {LINE_STATUS[each.line.status]}
+              {each.note ? ` · ${each.note}` : ""}
+            </span>
+            <span className="font-mono text-xs">
+              {each.line.lowMinor === each.line.highMinor ? formatMoney(each.line.lowMinor, each.line.currency) : `${formatMoney(each.line.lowMinor, each.line.currency)} – ${formatMoney(each.line.highMinor, each.line.currency)}`}
+            </span>
+            <button disabled={action.pending} onClick={() => action.run(() => addSuggestedBudgetLine(tripId, each.source, each.ref))} className={small}>
+              dodaj
+            </button>
+          </li>
+        ))}
+      </ul>
+      <Status state={action.state} />
+    </details>
+  );
+}
+
+/** Kursy walut wyjazdu: ile waluty bazowej za jednostkę i z kiedy — z nich sumy budżetu i portfela. */
+export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: string; fx: Doc["trip"]["fx"]; base: string; missing: string[]; canEdit: boolean }) {
+  const [open, setOpen] = useState(false);
+  // Stały klucz wiersza — pola są niekontrolowane, usunięcie środkowego nie może przesunąć wartości.
+  const [rows, setRows] = useState(() => [...fx.map((each) => ({ ...each })), ...missing.map((currency) => ({ currency, rateToBase: 0, date: undefined as string | undefined }))].map((row, key) => ({ ...row, key })));
+  const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
+    const result = await saveFx(tripId, prev, form);
+    if (result.ok) setOpen(false);
+    return result;
+  }, {});
+  const summary = fx.length === 0 ? "brak kursów" : fx.map((each) => `1 ${each.currency} = ${each.rateToBase.toLocaleString("pl-PL", { maximumFractionDigits: 4 })} ${base}${each.date ? ` (${each.date})` : ""}`).join(" · ");
+  if (!open) {
+    return (
+      <p className="text-xs text-zinc-500">
+        Kursy: {summary}
+        {missing.length > 0 && <span className="text-amber-700"> · bez kursu: {missing.join(", ")}</span>}
+        {canEdit && (
+          <>
+            {" "}
+            <button onClick={() => setOpen(true)} className={small}>
+              zmień
+            </button>
+          </>
+        )}
+      </p>
+    );
+  }
+  return (
+    <form action={action} className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+      <p className="text-xs text-zinc-500">Ile {base} za 1 jednostkę waluty — np. MAD 0,43. Data: z kiedy kurs (np. z dnia zakupu).</p>
+      {rows.map((row) => (
+        <div key={row.key} className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-zinc-500">1</span>
+          <input name="fxCurrency" defaultValue={row.currency} maxLength={3} placeholder="EUR" className={`${input} w-16 uppercase`} aria-label="Waluta" />
+          <span className="text-xs text-zinc-500">=</span>
+          <input name="fxRate" defaultValue={row.rateToBase > 0 ? String(row.rateToBase).replace(".", ",") : ""} inputMode="decimal" placeholder="4,27" className={`${input} w-24`} aria-label="Kurs" />
+          <span className="text-xs text-zinc-500">{base}</span>
+          <input name="fxDate" type="date" defaultValue={row.date ?? ""} className={input} aria-label="Data kursu" />
+          <button type="button" onClick={() => setRows(rows.filter((each) => each.key !== row.key))} className={small}>
+            usuń
+          </button>
+        </div>
+      ))}
+      <button type="button" onClick={() => setRows([...rows, { currency: "", rateToBase: 0, date: undefined, key: Math.max(-1, ...rows.map((each) => each.key)) + 1 }])} className={`${small} self-start`}>
+        + waluta
+      </button>
+      <div className="flex gap-2">
+        <button disabled={pending} className={primary}>
+          {pending ? "Zapisuję…" : "Zapisz kursy"}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="text-sm underline">
           Anuluj
