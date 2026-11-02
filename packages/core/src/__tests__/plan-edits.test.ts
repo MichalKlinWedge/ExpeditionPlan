@@ -101,6 +101,12 @@ describe('edycja planu (MVP-3)', () => {
     expect(movePlace(maroko, 'p-bahia', { lat: 0, lng: 0 })).toBeNull();
   });
 
+  it('miejsce bez współrzędnych dostaje własną pinezkę', () => {
+    const pinned = movePlace(maroko, 'p-warsztaty-tui', { lat: 31.5149, lng: -9.7701 })!;
+    expect(pinned.places).toEqual([{ place: expect.objectContaining({ ref: 'p-warsztaty-tui', lat: 31.5149, lng: -9.7701, provider: 'user' }) }]);
+    expect(documentProblem(pinned.doc)).toBeNull();
+  });
+
   it('usunięcie punktu wyrzucanego przez wariant: wariant przestaje go wyrzucać', () => {
     const edit = removeItem(maroko, 'd1-suki')!;
     const variant = edit.others?.find((each) => each.collection === 'variants');

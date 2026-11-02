@@ -160,11 +160,16 @@ export function addItemAtPin(
   return { ...edit, places: [{ place, created: true }] };
 }
 
-/** Przesunięcie własnej pinezki (`provider: 'user'`); miejsc z bazy (OSM, Geoapify) nie ruszamy. */
+/**
+ * Przesunięcie własnej pinezki (`provider: 'user'`) albo postawienie jej miejscu bez współrzędnych
+ * (wtedy staje się własną pinezką). Miejsc z bazy (OSM, Geoapify) ze współrzędnymi nie ruszamy.
+ */
 export function movePlace(doc: Doc, ref: string, at: { lat: number; lng: number }): PlanEdit | null {
   const found = doc.places.find((each) => each.ref === ref);
-  if (found === undefined || found.provider !== 'user') return null;
-  const place = { ...found, lat: round(at.lat), lng: round(at.lng) };
+  if (found === undefined) return null;
+  const located = found.lat !== undefined && found.lng !== undefined;
+  if (found.provider !== 'user' && located) return null;
+  const place = { ...found, lat: round(at.lat), lng: round(at.lng), provider: 'user' as const };
   return { doc: { ...doc, places: doc.places.map((each) => (each.ref === ref ? place : each)) }, changed: [], places: [{ place }] };
 }
 

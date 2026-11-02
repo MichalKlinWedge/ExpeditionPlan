@@ -128,8 +128,12 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
   const mapDay = showPool ? undefined : (doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0]);
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ ref: string; over: DropTarget | null } | null>(null);
-  /** Własna pinezka: tryb wskazywania na mapie i wskazane miejsce nowego punktu. */
-  const [pick, setPick] = useState<{ at: LatLng | null } | null>(null);
+  /** Własna pinezka: tryb wskazywania na mapie — miejsce nowego punktu albo pinezka dla miejsca bez współrzędnych (`place`). */
+  const [pick, setPick] = useState<{ at: LatLng | null; place?: { ref: string; name: string } } | null>(null);
+  const pinPlace = (ref: string, name: string) => {
+    setPick({ at: null, place: { ref, name } });
+    window.document.querySelector(".maplibregl-map")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
 
   // Kolejność na mapie = kolejność z silnika (warianty, pominięcia); przed hydratacją — z klucza.
   let mapRefs: string[] = [];
@@ -299,13 +303,26 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
                   ? {
                       picking: pick !== null,
                       picked: pick?.at ?? null,
-                      onPick: (at) => setPick({ at }),
+                      onPick: (at) => {
+                        if (pick?.place) {
+                          apply(movePlace(doc, pick.place.ref, at));
+                          setPick(null);
+                        } else setPick({ at });
+                      },
                       onMovePlace: (placeRef, at) => apply(movePlace(doc, placeRef, at)),
                     }
                   : null
               }
             />
-            {canEdit && mapDay !== undefined && (
+            {pick?.place && (
+              <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-2 text-sm">
+                <p className="text-xs text-zinc-500">Kliknij mapę tam, gdzie jest „{pick.place.name}” — potem pinezkę można przeciągnąć.</p>
+                <button onClick={() => setPick(null)} className="self-start text-xs underline">
+                  anuluj
+                </button>
+              </div>
+            )}
+            {canEdit && mapDay !== undefined && !pick?.place && (
               <div className="flex flex-col gap-2 text-sm">
                 {pick === null ? (
                   <button onClick={() => setPick({ at: null })} className="btn-secondary btn-sm self-start">
@@ -359,6 +376,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
               onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
               places={places}
               actions={actions}
+              onPin={canEdit ? pinPlace : null}
               onRules={onRules}
               dnd={dnd}
               numbers={map.numbers}
@@ -385,6 +403,10 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
                         <span>
                           {item.title} <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
                           {item.priority === "must" && <span className="text-zinc-500"> · koniecznie</span>}
+                          {missingOnMap(doc, item) && <span className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">brak na mapie</span>}
+                          {canEdit && missingOnMap(doc, item) && item.placeRef && (
+                            <PinButton onClick={() => pinPlace(item.placeRef!, doc.places.find((place) => place.ref === item.placeRef)?.name ?? item.title)} />
+                          )}
                         </span>
                         {actions && <MoveSelect doc={doc} current={undefined} onMove={(dayRef) => actions.moveTo(item.ref, dayRef)} />}
                       </li>
@@ -397,6 +419,15 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Przy „brak na mapie” w edycji: wskazanie miejsca kliknięciem w mapę. */
+function PinButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="ml-1.5 text-xs text-sea underline dark:text-teal-300">
+      postaw pinezkę
+    </button>
   );
 }
 
@@ -579,6 +610,8 @@ type DayProps = {
   onChoose: (groupRef: string, variantRef: string) => void;
   places: Map<string, TripDocument["places"][number]>;
   actions: Actions | null;
+  /** Postawienie pinezki miejscu bez współrzędnych — `null` dla widza. */
+  onPin: ((placeRef: string, name: string) => void) | null;
   /** Warianty i ograniczenia — `null` dla widza. */
   onRules: OnRules | null;
   dnd: Dnd | null;
@@ -601,7 +634,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules, dnd, numbers, selected, onSelect, weather }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -723,6 +756,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules,
                         brak na mapie
                       </span>
                     )}
+                    {offMap && onPin && source?.placeRef && <PinButton onClick={() => onPin(source.placeRef!, places.get(source.placeRef!)?.name ?? item.title)} />}
                   </span>
                 </div>
                 {flightText && <p className="ml-31 text-xs font-semibold text-sea dark:text-teal-300">✈ {flightText}</p>}
@@ -786,6 +820,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules,
                       brak na mapie
                     </span>
                   )}
+                  {!lodging.onMap && onPin && lodging.placeRef && <PinButton onClick={() => onPin(lodging.placeRef!, lodging.name)} />}
                 </span>
               </div>
             </li>
