@@ -4,12 +4,13 @@ import { Suspense } from "react";
 import { CompassIcon } from "./icons";
 import { UserMenu } from "./user-menu";
 
-/** Wspólna rama stron: granatowy pasek z poziomicami (nazwa aplikacji, użytkownik) i treść. */
-export function Shell({ children }: { children: React.ReactNode }) {
+/** Wspólna rama stron: granatowy pasek z poziomicami (nazwa aplikacji, użytkownik) i treść. `wide` — plan z mapą obok. */
+export function Shell({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
+  const width = wide ? "max-w-6xl" : "max-w-3xl";
   return (
     <div className="flex flex-1 flex-col">
       <header className="topo shadow-md">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-4 py-4">
+        <div className={`mx-auto flex w-full ${width} items-center justify-between gap-4 px-4 py-4`}>
           <Link href="/" className="flex items-center gap-2.5">
             <span className="flex size-9 items-center justify-center rounded-full bg-signal text-white shadow">
               <CompassIcon className="size-6" />
@@ -24,7 +25,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </Suspense>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">{children}</main>
+      <main className={`mx-auto flex w-full ${width} flex-col gap-6 px-4 py-8`}>{children}</main>
     </div>
   );
 }

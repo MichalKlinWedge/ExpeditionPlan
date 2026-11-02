@@ -66,3 +66,75 @@ export function mapCoverage(doc: Doc): MapCoverage {
     legs: { routed: routable.filter((item) => item.leg!.routed === true && item.durationMin === undefined).length, routable: routable.length },
   };
 }
+
+/** Pinezka mapy dnia: jedno miejsce, a przy nim punkty dnia z numerami kolejności. */
+export type MapPin = {
+  placeRef: string;
+  name: string;
+  lat: number;
+  lng: number;
+  stops: { ref: string; n: number; title: string }[];
+  /** Baza (nocleg) dnia. */
+  base?: boolean;
+  /** Punkty z puli w tym miejscu (bez numeru — poza dniem). */
+  pool?: { ref: string; title: string }[];
+};
+
+export type DayMap = {
+  pins: MapPin[];
+  /** Kolejne miejsca dnia [lng, lat] — linia prosta, nie trasa. */
+  path: [number, number][];
+  /** Numer punktu na mapie (tylko punkty z miejscem ze współrzędnymi). */
+  numbers: Record<string, number>;
+};
+
+/**
+ * Mapa dnia z kolejności podanej przez silnik (`refs` = punkty dnia po wariantach i pominięciach).
+ * Przejazd zaczyna się w miejscu „skąd” i kończy w „dokąd” — numer dostaje cel. Kilka punktów
+ * w tym samym miejscu (powrót do noclegu) to jedna pinezka z kilkoma numerami.
+ */
+export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: string; pool?: boolean } = {}): DayMap {
+  const places = new Map(doc.places.map((place) => [place.ref, place]));
+  const items = new Map(doc.items.map((item) => [item.ref, item]));
+  const pins = new Map<string, MapPin>();
+  const pin = (ref: string | undefined): MapPin | undefined => {
+    if (ref === undefined) return undefined;
+    const place = places.get(ref);
+    if (place?.lat === undefined || place.lng === undefined) return undefined;
+    let found = pins.get(ref);
+    if (found === undefined) {
+      found = { placeRef: ref, name: place.name, lat: place.lat, lng: place.lng, stops: [] };
+      pins.set(ref, found);
+    }
+    return found;
+  };
+  const path: [number, number][] = [];
+  const visit = (found: MapPin | undefined) => {
+    if (found === undefined) return;
+    const last = path.at(-1);
+    if (last?.[0] !== found.lng || last[1] !== found.lat) path.push([found.lng, found.lat]);
+  };
+  const numbers: Record<string, number> = {};
+  for (const ref of refs) {
+    const item = items.get(ref);
+    if (item === undefined) continue;
+    const isLeg = item.kind === 'transport' && item.leg !== undefined;
+    if (isLeg) visit(pin(item.leg!.fromPlaceRef));
+    const target = pin(isLeg ? (item.leg!.toPlaceRef ?? item.placeRef) : item.placeRef);
+    visit(target);
+    if (target === undefined) continue;
+    const n = Object.keys(numbers).length + 1;
+    numbers[ref] = n;
+    target.stops.push({ ref, n, title: item.title });
+  }
+  const base = pin(options.baseRef);
+  if (base !== undefined) base.base = true;
+  if (options.pool) {
+    for (const item of doc.items) {
+      if (item.dayRef !== undefined) continue;
+      const found = pin(item.placeRef);
+      if (found !== undefined) (found.pool ??= []).push({ ref: item.ref, title: item.title });
+    }
+  }
+  return { pins: [...pins.values()], path, numbers };
+}

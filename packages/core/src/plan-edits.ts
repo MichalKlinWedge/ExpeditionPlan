@@ -95,6 +95,28 @@ export function moveAfter(doc: Doc, ref: string, dayRef: string, afterRef: strin
   return { doc: replace(doc, changed), changed };
 }
 
+/**
+ * Przeciągnięcie w edytorze: do dnia `dayRef` przed punkt `nextRef` (brak = na koniec dnia) albo
+ * do puli (`dayRef: null`). W obrębie dnia punkt zostaje w swoim bloku; do innego dnia idzie bez
+ * bloku, jak przy „przenieś do…”. `null` = upuszczenie niczego nie zmienia.
+ */
+export function dropItem(doc: Doc, ref: string, dayRef: string | null, nextRef?: string): PlanEdit | null {
+  if (dayRef === null) return moveToDay(doc, ref, null);
+  const item = doc.items.find((each) => each.ref === ref);
+  if (item === undefined || ref === nextRef) return null;
+  const others = dayItems(doc, dayRef).filter((each) => each.ref !== ref);
+  const index = nextRef === undefined ? others.length : others.findIndex((each) => each.ref === nextRef);
+  if (index === -1) return null;
+  const sameDay = item.dayRef === dayRef;
+  if (sameDay) {
+    const current = dayItems(doc, dayRef).findIndex((each) => each.ref === ref);
+    if (current === index) return null;
+  }
+  const moved: Item = { ...item, planStatus: 'scheduled', parentRef: sameDay ? item.parentRef : undefined };
+  const changed = place(doc, dayRef, moved, others[index - 1]?.ref, others[index]?.ref);
+  return { doc: replace(doc, changed), changed };
+}
+
 export function updateItem(doc: Doc, ref: string, patch: Partial<Item>): PlanEdit | null {
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined) return null;

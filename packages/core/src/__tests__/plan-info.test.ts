@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
+import { dayMap, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
 import { DocItem, TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -34,5 +34,27 @@ describe('opis mapy w planie', () => {
     expect(coverage.legs.routable).toBeGreaterThan(0);
     const unplaced = maroko.items.find((item) => missingOnMap(maroko, item));
     expect(unplaced).toBeDefined();
+  });
+});
+
+describe('mapa dnia', () => {
+  const d2 = ['d2-wyjscie', 'd2-medersa', 'd2-do-bahii', 'd2-bahia', 'd2-suki-dzien', 'd2-lunch'];
+
+  it('numery w kolejności dnia, przejazd numerowany w celu, to samo miejsce = jedna pinezka', () => {
+    const map = dayMap(maroko, d2, { baseRef: 'p-agafay' });
+    expect(map.numbers).toEqual({ 'd2-wyjscie': 1, 'd2-medersa': 2, 'd2-do-bahii': 3, 'd2-bahia': 4, 'd2-suki-dzien': 5 });
+    expect(map.pins.map((pin) => pin.placeRef)).toEqual(['p-riad', 'p-medersa', 'p-bahia', 'p-jemaa']);
+    expect(map.pins.find((pin) => pin.placeRef === 'p-bahia')!.stops.map((stop) => stop.n)).toEqual([3, 4]);
+    // Medersa → (przejazd z Medersy) → Bahia: bez powtórzonego punktu na linii.
+    expect(map.path).toHaveLength(4);
+    // Baza dnia 2 (Agafay) nie ma współrzędnych — nie ma jej na mapie.
+    expect(map.pins.some((pin) => pin.base)).toBe(false);
+  });
+
+  it('baza dnia i punkty z puli w miejscach ze współrzędnymi', () => {
+    const map = dayMap(maroko, ['d2-medersa'], { baseRef: 'p-riad', pool: true });
+    expect(map.pins.find((pin) => pin.placeRef === 'p-riad')!.base).toBe(true);
+    const pooled = maroko.items.filter((item) => item.dayRef === undefined && item.placeRef !== undefined && !missingOnMap(maroko, item));
+    expect(map.pins.flatMap((pin) => pin.pool ?? []).map((each) => each.ref).sort()).toEqual(pooled.map((item) => item.ref).sort());
   });
 });

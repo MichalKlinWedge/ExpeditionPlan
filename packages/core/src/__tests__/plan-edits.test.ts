@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { addItem, dayItems, documentProblem, ItemInUseError, moveToDay, moveWithinDay, removeItem, removeItemClosingGap, updateItem } from '../plan-edits.ts';
+import { addItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, moveWithinDay, removeItem, removeItemClosingGap, updateItem } from '../plan-edits.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -39,6 +39,35 @@ describe('edycja planu (MVP-3)', () => {
     expect(refs(back.doc, 'd3').at(-1)).toBe(ref);
     expect(back.doc.items.find((each) => each.ref === ref)!.planStatus).toBe('scheduled');
     expect(documentProblem(back.doc)).toBeNull();
+  });
+
+  it('przeciąganie: przed punkt, na koniec dnia, do innego dnia i do puli', () => {
+    const [first, second, third] = refs(maroko, 'd2');
+    const up = dropItem(maroko, third!, 'd2', first)!;
+    expect(up.changed).toHaveLength(1);
+    expect(refs(up.doc, 'd2').slice(0, 3)).toEqual([third, first, second]);
+    expect(refs(dropItem(maroko, first!, 'd2')!.doc, 'd2').at(-1)).toBe(first);
+    expect(documentProblem(up.doc)).toBeNull();
+
+    const [target] = refs(maroko, 'd3');
+    const other = dropItem(maroko, second!, 'd3', target)!;
+    expect(refs(other.doc, 'd3')[0]).toBe(second);
+    expect(refs(other.doc, 'd2')).not.toContain(second);
+    expect(documentProblem(other.doc)).toBeNull();
+
+    const pooled = dropItem(maroko, second!, null)!;
+    expect(pooled.doc.items.find((each) => each.ref === second)!.dayRef).toBeUndefined();
+    const back = dropItem(pooled.doc, second!, 'd2', first)!;
+    expect(refs(back.doc, 'd2')[0]).toBe(second);
+    expect(back.doc.items.find((each) => each.ref === second)!.planStatus).toBe('scheduled');
+  });
+
+  it('przeciąganie bez zmiany kolejności nic nie zapisuje', () => {
+    const [first, second] = refs(maroko, 'd2');
+    expect(dropItem(maroko, first!, 'd2', second)).toBeNull();
+    expect(dropItem(maroko, first!, 'd2', first)).toBeNull();
+    expect(dropItem(maroko, refs(maroko, 'd2').at(-1)!, 'd2')).toBeNull();
+    expect(dropItem(maroko, first!, 'd2', 'nie-ma')).toBeNull();
   });
 
   it('zmiana czasu trwania przelicza dzień', () => {

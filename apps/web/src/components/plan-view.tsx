@@ -3,7 +3,10 @@
 import {
   activeVariants as resolveVariants,
   addItem,
+  dayItems,
+  dayMap,
   documentProblem as problem,
+  dropItem,
   type DaySchedule,
   instantToZoned,
   legLabel,
@@ -24,14 +27,15 @@ import { savePlanEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import { useMemo, useState } from "react";
 
 import { ItemEditor } from "@/components/item-editor";
+import { PlanMap } from "@/components/plan-map";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useRefreshOnReturn } from "@/lib/use-refresh-on-return";
 
 /**
- * Widok planu (MVP-3, tylko odczyt): dni z godzinami policzonymi przez silnik (§7), ostrzeżenia,
- * audyt zapasu, cięcia, słońce, warianty i pula. Silnik działa w przeglądarce — przełączenie
- * scenariusza albo wariantu przelicza dzień od razu, bez serwera.
+ * Widok planu (MVP-3): dni z godzinami policzonymi przez silnik (§7), ostrzeżenia, audyt zapasu,
+ * cięcia, słońce, warianty i pula, a obok mapa wybranego dnia. Silnik działa w przeglądarce —
+ * przełączenie scenariusza, wariantu albo przeciągnięcie punktu przelicza dzień od razu.
  */
 
 const KIND: Record<string, string> = {
@@ -80,6 +84,31 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
   const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs };
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const pool = doc.items.filter((item) => item.dayRef === undefined);
+  const hydrated = useHydrated();
+  const [mapDayRef, setMapDay] = useState<string | undefined>(doc.days[0]?.ref);
+  const mapDay = doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0];
+  const [selected, setSelected] = useState<string | null>(null);
+  const [drag, setDrag] = useState<{ ref: string; over: DropTarget | null } | null>(null);
+
+  // Kolejność na mapie = kolejność z silnika (warianty, pominięcia); przed hydratacją — z klucza.
+  let mapRefs: string[] = [];
+  if (mapDay !== undefined) {
+    try {
+      mapRefs = hydrated ? scheduleDay(doc, mapDay.ref, options).items.map((item) => item.ref) : dayItems(doc, mapDay.ref).map((item) => item.ref);
+    } catch {
+      mapRefs = dayItems(doc, mapDay.ref).map((item) => item.ref);
+    }
+  }
+  const map = dayMap(doc, mapRefs, { baseRef: mapDay?.baseRef, pool: true });
+  const mapKey = JSON.stringify([map.path, map.pins.map((pin) => [pin.placeRef, pin.stops.map((stop) => stop.n), pin.pool?.length])]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mapa przerysowuje się tylko przy zmianie tego, co pokazuje
+  const stableMap = useMemo(() => map, [mapKey]);
+
+  /** Punkt z listy albo z mapy: wyróżnienie w obu miejscach. */
+  const select = (ref: string, from: "list" | "map") => {
+    setSelected(ref);
+    if (from === "map") document.getElementById(`item-${ref}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   /**
    * Zmiana: najpierw w dokumencie (silnik przelicza od razu), potem zapis w tle. Dokument, który
@@ -121,6 +150,35 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
       }
     : null;
 
+  // Przeciąganie (HTML5 drag & drop, mysz): uchwyt ⠿ przy punkcie, cel = miejsce przed punktem,
+  // koniec dnia albo pula. Strzałki ↑↓ i „przenieś…” zostają — dla klawiatury i ekranów dotykowych.
+  const dnd: Dnd | null = canEdit
+    ? {
+        dragging: drag?.ref ?? null,
+        over: drag?.over ?? null,
+        start: (ref, event) => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", ref);
+          const row = event.currentTarget.closest("li");
+          if (row) event.dataTransfer.setDragImage(row, 16, 16);
+          setDrag({ ref, over: null });
+        },
+        hover: (target, event) => {
+          if (drag === null) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          if (drag.over?.dayRef !== target.dayRef || drag.over?.nextRef !== target.nextRef) setDrag({ ...drag, over: target });
+        },
+        drop: (target, event) => {
+          if (drag === null) return;
+          event.preventDefault();
+          setDrag(null);
+          apply(dropItem(doc, drag.ref, target.dayRef, target.nextRef));
+        },
+        end: () => setDrag(null),
+      }
+    : null;
+
   return (
     <div className="flex flex-col gap-6">
       {canEdit && (
@@ -142,40 +200,104 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
 
       <Coverage doc={doc} />
 
-      {doc.days.length === 0 && <p className="text-sm text-zinc-500">Plan nie ma jeszcze dni.</p>}
-      {doc.days.map((day) => (
-        <Day
-          key={day.ref}
-          doc={doc}
-          dayRef={day.ref}
-          options={options}
-          active={resolveVariants(doc, variants)}
-          onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
-          places={places}
-          actions={actions}
-        />
-      ))}
-
-      {pool.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold">Pula — poza dniami ({pool.length})</h2>
-          {Object.entries(Object.groupBy(pool, (item) => item.area ?? "bez obszaru")).map(([area, items]) => (
-            <div key={area} className="text-sm">
-              <p className="font-medium">{area}</p>
-              <ul className="ml-4 list-disc text-zinc-600 dark:text-zinc-400">
-                {items!.map((item) => (
-                  <li key={item.ref}>
-                    {item.title} <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
-                    {item.priority === "must" && <span className="text-zinc-500"> · koniecznie</span>}
-                    {actions && <MoveSelect doc={doc} current={undefined} onMove={(dayRef) => actions.moveTo(item.ref, dayRef)} />}
-                  </li>
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start">
+        {mapDay !== undefined && (
+          <aside className="flex flex-col gap-2 lg:sticky lg:top-8 lg:order-last">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-zinc-500">Mapa:</span>
+              <select value={mapDay.ref} onChange={(event) => setMapDay(event.target.value)} className="field min-w-0 flex-1 px-2 py-1" aria-label="Dzień na mapie">
+                {doc.days.map((day) => (
+                  <option key={day.ref} value={day.ref}>
+                    {weekday(day.date).replace(/^./, (first) => first.toUpperCase())}
+                    {day.title ? ` — ${day.title}` : ""}
+                  </option>
                 ))}
-              </ul>
+              </select>
             </div>
+            <PlanMap map={stableMap} selected={selected} onSelect={(ref) => select(ref, "map")} />
+            <p className="text-xs text-zinc-500">
+              Numery = kolejność dnia. Linia łączy kolejne miejsca prosto (czas przejazdu jest w planie)
+              {map.pins.some((pin) => pin.pool) ? " · szare kropki: pula" : ""}
+              {map.pins.some((pin) => pin.base) ? " · fioletowa: baza dnia" : ""}.
+            </p>
+          </aside>
+        )}
+
+        <div className="flex flex-col gap-6">
+          {doc.days.length === 0 && <p className="text-sm text-zinc-500">Plan nie ma jeszcze dni.</p>}
+          {doc.days.map((day) => (
+            <Day
+              key={day.ref}
+              doc={doc}
+              dayRef={day.ref}
+              options={options}
+              active={resolveVariants(doc, variants)}
+              onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
+              places={places}
+              actions={actions}
+              dnd={dnd}
+              numbers={day.ref === mapDay?.ref ? map.numbers : null}
+              onShowOnMap={() => setMapDay(day.ref)}
+              selected={selected}
+              onSelect={(ref) => select(ref, "list")}
+            />
           ))}
-        </section>
-      )}
+
+          {(pool.length > 0 || (dnd?.dragging != null && doc.items.find((item) => item.ref === dnd.dragging)?.dayRef !== undefined)) && (
+            <section
+              className={`flex flex-col gap-2 rounded-xl ${dnd?.dragging ? "border-2 border-dashed p-3" : ""} ${dnd?.over?.dayRef === null ? "border-sea bg-sea-light/40 dark:bg-sea/10" : "border-zinc-300 dark:border-zinc-700"}`}
+              onDragOver={dnd ? (event) => dnd.hover({ dayRef: null }, event) : undefined}
+              onDrop={dnd ? (event) => dnd.drop({ dayRef: null }, event) : undefined}>
+              <h2 className="text-lg font-semibold">Pula — poza dniami ({pool.length})</h2>
+              {dnd?.dragging && <p className="text-xs text-zinc-500">Upuść tutaj, żeby przenieść punkt do puli.</p>}
+              {Object.entries(Object.groupBy(pool, (item) => item.area ?? "bez obszaru")).map(([area, items]) => (
+                <div key={area} className="text-sm">
+                  <p className="font-medium">{area}</p>
+                  <ul className="ml-4 flex flex-col text-zinc-600 dark:text-zinc-400">
+                    {items!.map((item) => (
+                      <li key={item.ref} id={`item-${item.ref}`} className={`flex items-center gap-1 rounded ${selected === item.ref ? "bg-signal/10" : ""}`}>
+                        {dnd ? <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} /> : <span aria-hidden="true">•</span>}
+                        <span>
+                          {item.title} <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
+                          {item.priority === "must" && <span className="text-zinc-500"> · koniecznie</span>}
+                        </span>
+                        {actions && <MoveSelect doc={doc} current={undefined} onMove={(dayRef) => actions.moveTo(item.ref, dayRef)} />}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+/** Gdzie upuścić punkt: przed `nextRef` w dniu (brak = na koniec dnia) albo do puli (`dayRef: null`). */
+type DropTarget = { dayRef: string | null; nextRef?: string };
+
+type Dnd = {
+  dragging: string | null;
+  over: DropTarget | null;
+  start: (ref: string, event: React.DragEvent<HTMLElement>) => void;
+  hover: (target: DropTarget, event: React.DragEvent<HTMLElement>) => void;
+  drop: (target: DropTarget, event: React.DragEvent<HTMLElement>) => void;
+  end: () => void;
+};
+
+function DragHandle({ onStart, onEnd }: { onStart: (event: React.DragEvent<HTMLElement>) => void; onEnd: () => void }) {
+  return (
+    <span
+      draggable
+      onDragStart={onStart}
+      onDragEnd={onEnd}
+      title="Przeciągnij, żeby przenieść"
+      aria-hidden="true"
+      className="cursor-grab px-0.5 text-zinc-400 select-none hover:text-zinc-700 active:cursor-grabbing dark:hover:text-zinc-200">
+      ⠿
+    </span>
   );
 }
 
@@ -257,6 +379,12 @@ type DayProps = {
   onChoose: (groupRef: string, variantRef: string) => void;
   places: Map<string, TripDocument["places"][number]>;
   actions: Actions | null;
+  dnd: Dnd | null;
+  /** Numery punktów na mapie — tylko dla dnia, który jest na mapie. */
+  numbers: Record<string, number> | null;
+  onShowOnMap: () => void;
+  selected: string | null;
+  onSelect: (ref: string) => void;
 };
 
 /** Kolor kropki na osi dnia według rodzaju punktu. */
@@ -272,7 +400,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, dnd, numbers, onShowOnMap, selected, onSelect }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -303,6 +431,14 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayPro
             {base ? `baza: ${base} · ` : ""}
             {sun ? `wschód ${hm(sun.sunrise, day.tz)} · zachód ${hm(sun.sunset, day.tz)} · zmrok ${hm(sun.civilDusk, day.tz)}` : "słońce: brak współrzędnych bazy"}
             {schedule?.facts.dst ? " · zmiana czasu" : ""}
+            {" · "}
+            {numbers === null ? (
+              <button onClick={onShowOnMap} className="underline hover:text-zinc-900 dark:hover:text-zinc-100">
+                pokaż na mapie
+              </button>
+            ) : (
+              <span className="font-medium text-sea dark:text-teal-300">na mapie</span>
+            )}
           </p>
         </div>
         {schedule?.slack && (
@@ -337,21 +473,48 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayPro
 
       {schedule && (
         <ol className="flex flex-col gap-1 text-sm">
-          {schedule.items.map((item) => {
+          {schedule.items.map((item, index) => {
             const source = byRef.get(item.ref);
+            const n = numbers?.[item.ref];
+            // Górna połowa wiersza = przed tym punktem, dolna = przed następnym widocznym.
+            const target = (event: React.DragEvent<HTMLElement>): DropTarget => {
+              const box = event.currentTarget.getBoundingClientRect();
+              return event.clientY < box.top + box.height / 2 ? { dayRef, nextRef: item.ref } : { dayRef, nextRef: schedule!.items[index + 1]?.ref };
+            };
+            const dropHere = dnd?.over?.dayRef === dayRef && dnd.over.nextRef === item.ref && dnd.dragging !== item.ref;
             const warnings = schedule.warnings.filter((warning) => warning.itemRef === item.ref);
             const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
             const leg = source === undefined ? null : legLabel(source);
             const offMap = source !== undefined && missingOnMap(doc, source);
             return (
-              <li key={item.ref} className={`relative flex flex-col border-l-2 border-zinc-200 pb-1.5 pl-4 dark:border-zinc-800 ${source?.parentRef ? "ml-6" : ""}`}>
+              <li
+                key={item.ref}
+                id={`item-${item.ref}`}
+                onDragOver={dnd && source ? (event) => dnd.hover(target(event), event) : undefined}
+                onDrop={dnd && source ? (event) => dnd.drop(target(event), event) : undefined}
+                className={`relative flex flex-col border-l-2 border-zinc-200 pb-1.5 pl-4 dark:border-zinc-800 ${source?.parentRef ? "ml-6" : ""} ${selected === item.ref ? "rounded-r bg-signal/10" : ""} ${dnd?.dragging === item.ref ? "opacity-40" : ""}`}>
+                {dropHere && <span aria-hidden="true" className="absolute -top-0.5 right-0 left-2 h-1 rounded bg-sea" />}
                 <span aria-hidden="true" className={`absolute top-1.5 -left-[7px] size-3 rounded-full ring-2 ring-white dark:ring-zinc-900 ${DOT[item.kind] ?? "bg-zinc-400"}`} />
                 <div className="flex gap-3">
+                  {dnd && source && (
+                    <span className="-ml-3 w-3">
+                      <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} />
+                    </span>
+                  )}
                   <span className="w-28 shrink-0 font-semibold text-ink tabular-nums dark:text-zinc-100">
                     {item.startLocal}–{item.endLocal}
                     {item.endDate !== day.date ? "+1" : ""}
                   </span>
                   <span>
+                    {n !== undefined && (
+                      <button
+                        onClick={() => onSelect(item.ref)}
+                        title="Pokaż na mapie"
+                        aria-label={`${n} — pokaż na mapie`}
+                        className="mr-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sea px-1 align-text-bottom text-[10px] font-semibold text-white">
+                        {n}
+                      </button>
+                    )}
                     <span className="font-medium">{item.title}</span>
                     <span className="text-zinc-500">
                       {" "}
@@ -405,6 +568,14 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayPro
               </li>
             );
           })}
+          {dnd?.dragging && (
+            <li
+              onDragOver={(event) => dnd.hover({ dayRef }, event)}
+              onDrop={(event) => dnd.drop({ dayRef }, event)}
+              className={`rounded border-2 border-dashed px-3 py-2 text-center text-xs ${dnd.over?.dayRef === dayRef && dnd.over.nextRef === undefined ? "border-sea bg-sea-light/40 text-sea dark:bg-sea/10" : "border-zinc-300 text-zinc-500 dark:border-zinc-700"}`}>
+              Upuść na koniec dnia
+            </li>
+          )}
         </ol>
       )}
 
