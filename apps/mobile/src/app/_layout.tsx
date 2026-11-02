@@ -4,6 +4,7 @@ import '@/lib/polyfills';
 import { showLastCrash } from '@/lib/crash-log';
 // Zadania w tle (PoC-3) muszą się zarejestrować przy ładowaniu modułu, zanim ruszy nawigacja.
 import '@/poc/tasks';
+import '@/features/walk/guide-walk';
 
 import * as Notifications from 'expo-notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
@@ -14,6 +15,7 @@ import { useColorScheme } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 import { UpdateWatcher } from '@/features/updates/update-notice';
+import { GuideFromNotification } from '@/features/walk/guide-from-notification';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -30,6 +32,7 @@ export default function TabLayout() {
       <AnimatedSplashOverlay />
       <AppTabs />
       <UpdateWatcher />
+      <GuideFromNotification />
     </ThemeProvider>
   );
 }

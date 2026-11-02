@@ -36,7 +36,7 @@ function speechParts(text: string): string[] {
   });
 }
 
-type Props = { trip: CachedTrip; item: Item | null; onClose: () => void };
+type Props = { trip: CachedTrip; item: Item | null; onClose: () => void; /** Od razu czytaj przewodnik (powiadomienie ze spaceru). */ autoPlay?: boolean };
 
 /** Przewodnik punktu z wierszy `audio_guides` telefonu. */
 export function itemGuide(trip: CachedTrip, item: Item) {
@@ -53,13 +53,13 @@ export function prefetchGuideImages(trip: CachedTrip) {
   if (urls.length > 0) void Image.prefetch(urls, 'disk').catch(() => undefined);
 }
 
-export function ItemDetails({ trip, item, onClose }: Props) {
+export function ItemDetails({ trip, item, onClose, autoPlay = false }: Props) {
   return (
     <Modal visible={item !== null} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
-            {item !== null && <Details trip={trip} item={item} onClose={onClose} />}
+            {item !== null && <Details trip={trip} item={item} onClose={onClose} autoPlay={autoPlay} />}
           </SafeAreaView>
         </ThemedView>
       </SafeAreaProvider>
@@ -67,7 +67,7 @@ export function ItemDetails({ trip, item, onClose }: Props) {
   );
 }
 
-function Details({ trip, item, onClose }: { trip: CachedTrip; item: Item; onClose: () => void }) {
+function Details({ trip, item, onClose, autoPlay }: { trip: CachedTrip; item: Item; onClose: () => void; autoPlay: boolean }) {
   const doc = trip.state.doc;
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
@@ -94,6 +94,13 @@ function Details({ trip, item, onClose }: { trip: CachedTrip; item: Item; onClos
     );
     setSpeaking(true);
   };
+  useEffect(() => {
+    if (!autoPlay) return;
+    const timer = setTimeout(listen, 300);
+    return () => clearTimeout(timer);
+    // Tylko przy otwarciu z powiadomienia — `listen` zmienia się z każdym renderem.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlay]);
 
   return (
     <View style={styles.fill}>

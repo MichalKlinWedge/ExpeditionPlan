@@ -10,12 +10,14 @@ import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
+import { GuideWalkCard } from '@/features/walk/guide-walk-card';
 import { appendLog, clearLog, type LogEntry, logUri, readLog } from '@/poc/log';
 import { addPoint, type Point, walkPoints } from '@/poc/points';
 import { distanceM, GEOFENCE_RADIUS_M, GEOFENCE_TASK, WALK_RADIUS_M, WALK_TASK } from '@/poc/tasks';
 
 /**
- * PoC-3 — geofencing i bateria (PLAN_ETAPOWY.md). Dwa tryby na osobne spacery: geofence w tle
+ * Zakładka Spacer: na górze „Spacer z przewodnikiem” (powiadomienie przy opisanym miejscu, czytanie
+ * opisu), niżej diagnostyka PoC-3 — geofencing i bateria (PLAN_ETAPOWY.md). Dwa tryby na osobne spacery: geofence w tle
  * (100 m, ekran wygaszony) i „Tryb spaceru” (usługa pierwszoplanowa, dokładny GPS, 40 m).
  * „Jestem przy punkcie” zapisuje rzeczywistą chwilę dojścia — z niej liczy się opóźnienie wykrycia.
  */
@@ -125,7 +127,8 @@ export default function WalkScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView contentContainerStyle={styles.panel}>
-          <ThemedText type="subtitle">Spacer z geofencingiem</ThemedText>
+          <GuideWalkCard blocked={geofencing || walking} />
+          <ThemedText type="subtitle">Diagnostyka: geofencing (PoC-3)</ThemedText>
           <ThemedText type="small">
             {geofencing ? `Geofencing: aktywny (${GEOFENCE_RADIUS_M} m)` : walking ? `Tryb spaceru: aktywny (${WALK_RADIUS_M} m)` : 'Nic nie działa w tle.'}
             {battery === null ? '' : ` · bateria ${battery}%`}
