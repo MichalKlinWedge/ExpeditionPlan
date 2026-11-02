@@ -31,6 +31,7 @@ import {
   fetchWeather,
   localToday,
   WEATHER_ATTRIBUTION,
+  weatherIcon,
   weatherLine,
   weatherPoints,
   weatherVariantHint,
@@ -263,20 +264,24 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
 
       <Coverage doc={doc} />
 
+      {mapDay !== undefined && (
+        <DayTabs
+          doc={doc}
+          current={mapDay.ref}
+          onChoose={(ref) => {
+            setMapDay(ref);
+            setSelected(null);
+            setPick(null);
+          }}
+          weather={weather}
+          dnd={dnd}
+          below={canEdit}
+        />
+      )}
+
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start">
         {mapDay !== undefined && (
-          <aside className="flex flex-col gap-2 lg:sticky lg:top-8 lg:order-last">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-zinc-500">Mapa:</span>
-              <select value={mapDay.ref} onChange={(event) => setMapDay(event.target.value)} className="field min-w-0 flex-1 px-2 py-1" aria-label="Dzień na mapie">
-                {doc.days.map((day) => (
-                  <option key={day.ref} value={day.ref}>
-                    {weekday(day.date).replace(/^./, (first) => first.toUpperCase())}
-                    {day.title ? ` — ${day.title}` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <aside className="flex flex-col gap-2 lg:sticky lg:top-24 lg:order-last">
             <PlanMap
               map={stableMap}
               fitKey={mapDay.ref}
@@ -331,11 +336,11 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
 
         <div className="flex flex-col gap-6">
           {doc.days.length === 0 && <p className="text-sm text-zinc-500">Plan nie ma jeszcze dni.</p>}
-          {doc.days.map((day) => (
+          {mapDay !== undefined && (
             <Day
-              key={day.ref}
+              key={mapDay.ref}
               doc={doc}
-              dayRef={day.ref}
+              dayRef={mapDay.ref}
               options={options}
               active={resolveVariants(doc, variants)}
               onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
@@ -343,13 +348,12 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
               actions={actions}
               onRules={onRules}
               dnd={dnd}
-              numbers={day.ref === mapDay?.ref ? map.numbers : null}
-              onShowOnMap={() => setMapDay(day.ref)}
+              numbers={map.numbers}
               selected={selected}
               onSelect={(ref) => select(ref, "list")}
-              weather={weather[day.ref]}
+              weather={weather[mapDay.ref]}
             />
-          ))}
+          )}
           {Object.keys(weather).length > 0 && <p className="text-xs text-zinc-500">{WEATHER_ATTRIBUTION}</p>}
 
           {(pool.length > 0 || (dnd?.dragging != null && doc.items.find((item) => item.ref === dnd.dragging)?.dayRef !== undefined)) && (
@@ -395,6 +399,43 @@ type Dnd = {
   drop: (target: DropTarget, event: React.DragEvent<HTMLElement>) => void;
   end: () => void;
 };
+
+/**
+ * Wybór dnia: mini przyciski nad planem (data, pogoda). Widać jeden dzień, mapa pokazuje ten sam.
+ * Punkt przeciągnięty na przycisk dnia trafia na koniec tego dnia.
+ */
+function DayTabs({ doc, current, onChoose, weather, dnd, below }: { doc: TripDocument; current: string; onChoose: (ref: string) => void; weather: Record<string, DayWeather>; dnd: Dnd | null; below: boolean }) {
+  const short = (date: string) =>
+    new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
+  return (
+    // Pod paskiem „Zapisuję…” w trybie edycji; przewija się w bok, gdy dni jest dużo.
+    <nav aria-label="Dni planu" className={`sticky ${below ? "top-6" : "top-0"} z-10 -mx-4 flex gap-1.5 overflow-x-auto bg-[var(--background)] px-4 py-2`}>
+      {doc.days.map((day, index) => {
+        const active = day.ref === current;
+        const over = dnd?.dragging != null && dnd.over?.dayRef === day.ref && dnd.over.nextRef === undefined;
+        const sky = weather[day.ref];
+        return (
+          <button
+            key={day.ref}
+            onClick={() => onChoose(day.ref)}
+            onDragOver={dnd ? (event) => dnd.hover({ dayRef: day.ref }, event) : undefined}
+            onDrop={dnd ? (event) => dnd.drop({ dayRef: day.ref }, event) : undefined}
+            aria-current={active ? "true" : undefined}
+            title={day.title ? `${weekday(day.date)} — ${day.title}` : weekday(day.date)}
+            className={`flex shrink-0 flex-col items-center rounded-lg border px-2.5 py-1 text-xs leading-tight transition-colors ${
+              active ? "border-sea bg-sea text-white" : over ? "border-sea bg-sea-light/60 dark:bg-sea/20" : "border-zinc-300 hover:border-sea dark:border-zinc-700"
+            }`}>
+            <span className="font-semibold">Dzień {index + 1}</span>
+            <span className={active ? "text-white/85" : "text-zinc-500"}>
+              {short(day.date)}
+              {sky ? ` ${weatherIcon(sky.code)}` : ""}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
 
 function DragHandle({ onStart, onEnd }: { onStart: (event: React.DragEvent<HTMLElement>) => void; onEnd: () => void }) {
   return (
@@ -495,7 +536,6 @@ type DayProps = {
   dnd: Dnd | null;
   /** Numery punktów na mapie — tylko dla dnia, który jest na mapie. */
   numbers: Record<string, number> | null;
-  onShowOnMap: () => void;
   selected: string | null;
   onSelect: (ref: string) => void;
 };
@@ -513,7 +553,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules, dnd, numbers, onShowOnMap, selected, onSelect, weather }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules, dnd, numbers, selected, onSelect, weather }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -543,14 +583,6 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onRules,
             {base ? `baza: ${base} · ` : ""}
             {sun ? `wschód ${hm(sun.sunrise, day.tz)} · zachód ${hm(sun.sunset, day.tz)} · zmrok ${hm(sun.civilDusk, day.tz)}` : "słońce: brak współrzędnych bazy"}
             {schedule?.facts.dst ? " · zmiana czasu" : ""}
-            {" · "}
-            {numbers === null ? (
-              <button onClick={onShowOnMap} className="underline hover:text-zinc-900 dark:hover:text-zinc-100">
-                pokaż na mapie
-              </button>
-            ) : (
-              <span className="font-medium text-sea dark:text-teal-300">na mapie</span>
-            )}
           </p>
         </div>
         {schedule?.slack && (
