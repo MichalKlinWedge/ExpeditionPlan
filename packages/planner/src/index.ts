@@ -10,3 +10,4 @@ export * from './routing.ts';
 export * from './practical.ts';
 export * from './logistics.ts';
 export * from './tune.ts';
+export * from './wiki.ts';

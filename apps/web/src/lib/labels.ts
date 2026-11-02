@@ -26,3 +26,16 @@ export const BOOKING_KIND: Record<string, string> = {
   luggage: "bagaż",
   other: "inne",
 };
+
+/** Rodzaj punktu planu (`ItemKind`). */
+export const ITEM_KIND: Record<string, string> = {
+  visit: "zwiedzanie",
+  activity: "aktywność",
+  meal: "posiłek",
+  transport: "przejazd",
+  lodging: "nocleg",
+  errand: "sprawa",
+  meetup: "spotkanie",
+  free: "czas wolny",
+  decision: "decyzja",
+};

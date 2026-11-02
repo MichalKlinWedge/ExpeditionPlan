@@ -32,6 +32,7 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 | Google Play — lokalizacja w tle | publikacja w sklepie | — | formularz deklaracji + wideo ≤ 30 s + prominent disclosure; jedna funkcja w tle na aplikację | nie dotyczy MVP (APK); NIE bez przygotowania przy publikacji |
 | Android Geofencing | audio przy punkcie | 100 aktywnych geofence na aplikację i użytkownika urządzenia | promień ≥ 100 m (zalecane 100–150 m), opóźnienie ~2–3 min w tle | OK z warunkiem |
 | Gemini API (Google AI Studio) | AI: etapy planu, import, audio | darmowy limit per projekt, „best effort”, zmienny bez zapowiedzi (fora: ~20 zapytań/dzień dla 3.8 Flash, ~500 dla Flash-Lite; aktualne liczby tylko w AI Studio → Rate limits) | dane z darmowego limitu idą do ulepszania produktów Google, **ale w EOG/CH/UK obowiązują warunki płatne także dla darmowego limitu**; aplikacja dla użytkowników w EOG **tylko na Paid Services** (projekt z aktywnym rozliczeniem) | OK do testów (darmowy limit); produkcja = rozliczenia w projekcie Google Cloud (patrz §11) |
+| Wikipedia / Wikimedia Commons (API) | przewodnik po punkcie: artykuł, zdjęcia | brak kwot; zapytania po kolei, nie równolegle | identyfikujący User-Agent z kontaktem; tekst CC BY-SA 4.0 (opis pochodny z atrybucją i tą licencją), zdjęcia — licencja każdego pliku osobno | OK z warunkiem (atrybucja, patrz §12) |
 
 ---
 
@@ -290,6 +291,14 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - **Limity:** per projekt (nie per klucz), dzienne kasują się o północy czasu pacyficznego; strona dokumentacji nie podaje liczb dla darmowego poziomu — tylko AI Studio. Google nazywa darmowy poziom „best effort”; fora zgłaszają cięcia (Flash: 250 → ~20 zapytań/dzień). Poziom 1 (z rozliczeniem) — rzędu tysięcy zapytań dziennie.
 - **Ceny (Standard, USD / mln tokenów, wejście / wyjście z „myśleniem”):** 3.8 Flash 0,75 / 3,75 do 31.12.2026, od 1.01.2027 1,50 / 7,50; 3.5 Flash-Lite 0,30 / 2,50; 3.1 Flash-Lite 0,25 / 1,50. Batch i Flex — połowa.
 - **Klucz:** tylko w `.env.local` (narzędzia) i w sekretach Edge Functions (`GEMINI_API_KEY`); nigdy w przeglądarce ani w APK.
+
+## 12. Wikipedia i Wikimedia Commons (przewodnik, 4.11.2026)
+
+**Krótko:** darmowe API bez klucza; warunkiem jest atrybucja i licencja tekstu. Warunki spisane z dokumentacji Wikimedia znanej z wcześniejszych prac — **w tej sesji nie odczytano stron ponownie**, przed szerszym użyciem sprawdzić linki poniżej.
+
+- Zapytania: MediaWiki Action API (`https://<lang>.wikipedia.org/w/api.php`), bez klucza. Wymagany opisowy `User-Agent` z danymi kontaktowymi (polityka User-Agent Wikimedia: https://meta.wikimedia.org/wiki/User-Agent_policy); zapytania seryjnie, nie równolegle (https://www.mediawiki.org/wiki/API:Etiquette). W kodzie: `packages/planner/src/wiki.ts`, opisy hurtem po kolei.
+- Tekst artykułów: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). Streszczenie AI to utwór zależny — pokazujemy link do artykułu, licencję i informację, że streszczenie zrobiło AI.
+- Zdjęcia: pliki z Commons mają różne licencje (CC BY, CC BY-SA, PD, CC0). Pokazujemy tylko pliki z licencją w metadanych (`LicenseShortName`), z autorem i linkiem do strony pliku. Miniatury z `upload.wikimedia.org` / `thumb.wikimedia.org` (hotlinking dozwolony), na telefonie w pamięci podręcznej do użytku offline.
 
 ## Wnioski dla specyfikacji
 

@@ -38,6 +38,7 @@ import {
   weatherVariantHint,
 } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { DayConstraints, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
@@ -88,9 +89,16 @@ const weekday = (date: string) =>
 
 const hm = (instant: number | null | undefined, tz: string) => (instant == null ? "—" : instantToZoned(instant, tz).time);
 
-type Props = { state: TripState; tripId: string; ids: Record<string, string>; canEdit: boolean };
+type Props = {
+  state: TripState;
+  tripId: string;
+  ids: Record<string, string>;
+  canEdit: boolean;
+  /** Adres karty punktu bez klucza (`/trips/<id>/item/`); brak — tytuły bez linku (link publiczny). */
+  itemBase?: string;
+};
 
-export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
+export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
@@ -383,6 +391,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
               selected={selected}
               onSelect={(ref) => select(ref, "list")}
               weather={weather[mapDay.ref]}
+              itemBase={itemBase}
             />
           )}
           {Object.keys(weather).length > 0 && <p className="text-xs text-zinc-500">{WEATHER_ATTRIBUTION}</p>}
@@ -619,6 +628,7 @@ type DayProps = {
   numbers: Record<string, number> | null;
   selected: string | null;
   onSelect: (ref: string) => void;
+  itemBase?: string;
 };
 
 /** Kolor kropki na osi dnia według rodzaju punktu. */
@@ -634,7 +644,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -744,7 +754,13 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                         {itemIcon(doc, source)}
                       </span>
                     )}
-                    <span className="font-medium">{item.title}</span>
+                    {itemBase ? (
+                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Szczegóły i przewodnik" className="font-medium hover:text-sea hover:underline">
+                        {item.title}
+                      </Link>
+                    ) : (
+                      <span className="font-medium">{item.title}</span>
+                    )}
                     <span className="text-zinc-500">
                       {" "}
                       · {KIND[item.kind]}

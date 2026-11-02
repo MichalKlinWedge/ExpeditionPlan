@@ -49,6 +49,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayMap } from '@/features/plan/day-map';
+import { ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { type DayEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
@@ -139,6 +140,8 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const [now, setNow] = useState(() => Date.now());
   const [lastDelay, setLastDelay] = useState<{ itemRef: string; minutes: number } | null>(null);
   const [editMode, setEditMode] = useState(false);
+  /** Punkt otwarty w szczegółach (opis, przewodnik). */
+  const [detail, setDetail] = useState<PlanItem | null>(null);
   const [saving, setSaving] = useState(0);
   /** Id nowych punktów, zanim synchronizacja wpisze je do bazy telefonu. */
   const extraIds = useRef<Record<string, string>>({});
@@ -156,6 +159,7 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
 
   const show = useCallback((next: CachedTrip) => {
     setTrip(next);
+    prefetchGuideImages(next);
     // Przypomnienia z zadań planu (jeśli włączone w Ustawieniach) — po każdym wczytaniu.
     void scheduleTripReminders(tripId, next.state.doc).catch(() => undefined);
     setInvalid('');
@@ -387,6 +391,8 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               actions={actions}
               weather={weather?.days[day.ref]}
               weatherAt={weather?.fetchedAt}
+              onOpen={setDetail}
+              guided={trip === null ? undefined : new Set(trip.state.doc.items.filter((each) => itemGuide(trip, each) !== null).map((each) => each.ref))}
               top={
                 instantToZoned(now, day.tz).date === day.date
                   ? (schedule) => (
@@ -415,6 +421,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           </ScrollView>
         </>
       )}
+      {trip !== null && <ItemDetails trip={trip} item={detail} onClose={() => setDetail(null)} />}
     </View>
   );
 }
@@ -432,6 +439,10 @@ type DayProps = {
   /** Prognoza dnia (Open-Meteo) i kiedy pobrana — offline ostatnia zapisana. */
   weather?: DayWeather;
   weatherAt?: string;
+  /** Szczegóły punktu (dotknięcie nazwy). */
+  onOpen?: (item: PlanItem) => void;
+  /** Punkty z przewodnikiem — znaczek 📖. */
+  guided?: Set<string>;
 };
 
 type Actions = {
@@ -457,7 +468,7 @@ const KIND_COLOR: Record<string, string> = {
   decision: '#F59E0B',
 };
 
-function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt }: DayProps) {
+function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt, onOpen, guided }: DayProps) {
   const theme = useTheme();
   const { doc, inputs } = state;
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
@@ -565,10 +576,16 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
               {item.startLocal}–{item.endLocal}
               {item.endDate !== day.date ? ' +1' : ''}
             </ThemedText>
-            <ThemedText type="smallBold" style={styles.itemTitle}>
-              {source ? `${itemIcon(doc, source)} ` : ''}
-              {item.title}
-            </ThemedText>
+            <Pressable disabled={source === undefined || onOpen === undefined} onPress={() => source && onOpen?.(source)} hitSlop={4}>
+              <ThemedText type="smallBold" style={styles.itemTitle}>
+                {source ? `${itemIcon(doc, source)} ` : ''}
+                {item.title}
+                {guided?.has(item.ref) ? '  📖' : ''}
+                <ThemedText type="small" themeColor="accent">
+                  {'  ›'}
+                </ThemedText>
+              </ThemedText>
+            </Pressable>
             {flightText && (
               <ThemedText type="smallBold" themeColor="accent">
                 ✈ {flightText}

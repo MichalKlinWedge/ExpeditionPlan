@@ -97,14 +97,14 @@ isOneToOne: false
                   ]
                 },"audio_guides": {
                   Row: {
-                    "audience": string,"audio_path": string | null,"created_at": string,"deleted_at": string | null,"duration_s": number | null,"id": string,"item_id": string | null,"lang": string,"license": string | null,"place_id": string | null,"row_version": number,"sources": NonNullable<Json>,"status": string,"text": string,"title": string,"trigger_radius_m": number,"trip_id": string,"updated_at": string,"updated_by": string | null,"voice": string | null
+                    "audience": string,"audio_path": string | null,"content": NonNullable<Json>,"created_at": string,"deleted_at": string | null,"duration_s": number | null,"id": string,"item_id": string | null,"lang": string,"license": string | null,"place_id": string | null,"row_version": number,"sources": NonNullable<Json>,"status": string,"text": string,"title": string,"trigger_radius_m": number,"trip_id": string,"updated_at": string,"updated_by": string | null,"voice": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "audience"?: string,"audio_path"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"duration_s"?: number | null,"id": string,"item_id"?: string | null,"lang"?: string,"license"?: string | null,"place_id"?: string | null,"row_version"?: number,"sources"?: NonNullable<Json>,"status"?: string,"text": string,"title": string,"trigger_radius_m"?: number,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"voice"?: string | null
+                    "audience"?: string,"audio_path"?: string | null,"content"?: NonNullable<Json>,"created_at"?: string,"deleted_at"?: string | null,"duration_s"?: number | null,"id": string,"item_id"?: string | null,"lang"?: string,"license"?: string | null,"place_id"?: string | null,"row_version"?: number,"sources"?: NonNullable<Json>,"status"?: string,"text": string,"title": string,"trigger_radius_m"?: number,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"voice"?: string | null
                   }
                   Update: {
-                    "audience"?: string,"audio_path"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"duration_s"?: number | null,"id"?: string,"item_id"?: string | null,"lang"?: string,"license"?: string | null,"place_id"?: string | null,"row_version"?: number,"sources"?: NonNullable<Json>,"status"?: string,"text"?: string,"title"?: string,"trigger_radius_m"?: number,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"voice"?: string | null
+                    "audience"?: string,"audio_path"?: string | null,"content"?: NonNullable<Json>,"created_at"?: string,"deleted_at"?: string | null,"duration_s"?: number | null,"id"?: string,"item_id"?: string | null,"lang"?: string,"license"?: string | null,"place_id"?: string | null,"row_version"?: number,"sources"?: NonNullable<Json>,"status"?: string,"text"?: string,"title"?: string,"trigger_radius_m"?: number,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"voice"?: string | null
                   }
                   Relationships: [
                     {

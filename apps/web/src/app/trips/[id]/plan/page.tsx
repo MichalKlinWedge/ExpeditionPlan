@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { groundTrip, routeTrip } from "@/app/actions";
+import { describeTrip } from "@/app/guide-actions";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlacePinner } from "@/components/place-pinner";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -69,6 +70,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         <div className="flex flex-col gap-2">
           <PlanActionButton run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
           <PlanActionButton run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
+          <PlanActionButton run={describeTrip.bind(null, id)} label="Przygotuj opisy atrakcji (przewodnik)" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
           <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />
         </div>
       )}
@@ -79,6 +81,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         tripId={id}
         ids={ids}
         canEdit={editing}
+        itemBase={`/trips/${id}/item/`}
       />
     </>
   );
