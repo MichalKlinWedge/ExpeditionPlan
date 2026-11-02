@@ -481,14 +481,14 @@ isOneToOne: false
                   ]
                 },"items": {
                   Row: {
-                    "activity": Json | null,"ai_run_id": string | null,"area": string | null,"booking_group_id": string | null,"booking_id": string | null,"buffer_after_min": number | null,"created_at": string,"cut_rank": number | null,"day_id": string | null,"deleted_at": string | null,"description": string | null,"duration_max_min": number | null,"duration_min": number | null,"end_time": string | null,"id": string,"is_fixed": boolean | null,"kind": string,"leg": Json | null,"links": NonNullable<Json>,"notes": (string)[],"offset_min": number | null,"parent_id": string | null,"part_of_day": string | null,"participant_ids": (string)[] | null,"payment": string | null,"place_id": string | null,"plan_status": string,"price": Json | null,"priority": string | null,"ref": string | null,"relative_from": string | null,"replaces_item_ids": (string)[],"row_version": number,"sort_key": string | null,"source": string,"start_time": string | null,"status": string,"time_precision": string | null,"time_tz": string | null,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"user_locked": boolean,"variant_ids": (string)[],"weather": string | null
+                    "activity": Json | null,"ai_run_id": string | null,"area": string | null,"booking_group_id": string | null,"booking_id": string | null,"buffer_after_min": number | null,"created_at": string,"cut_rank": number | null,"day_id": string | null,"deleted_at": string | null,"description": string | null,"duration_max_min": number | null,"duration_min": number | null,"end_time": string | null,"id": string,"is_fixed": boolean | null,"kind": string,"leg": Json | null,"links": NonNullable<Json>,"notes": (string)[],"offset_min": number | null,"parent_id": string | null,"part_of_day": string | null,"participant_ids": (string)[] | null,"payment": string | null,"place_id": string | null,"plan_status": string,"price": Json | null,"priority": string | null,"ref": string | null,"relative_from": string | null,"replaces_item_ids": (string)[],"row_version": number,"self_cooked": boolean | null,"sort_key": string | null,"source": string,"start_time": string | null,"status": string,"time_precision": string | null,"time_tz": string | null,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"user_locked": boolean,"variant_ids": (string)[],"weather": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "activity"?: Json | null,"ai_run_id"?: string | null,"area"?: string | null,"booking_group_id"?: string | null,"booking_id"?: string | null,"buffer_after_min"?: number | null,"created_at"?: string,"cut_rank"?: number | null,"day_id"?: string | null,"deleted_at"?: string | null,"description"?: string | null,"duration_max_min"?: number | null,"duration_min"?: number | null,"end_time"?: string | null,"id": string,"is_fixed"?: boolean | null,"kind": string,"leg"?: Json | null,"links"?: NonNullable<Json>,"notes"?: (string)[],"offset_min"?: number | null,"parent_id"?: string | null,"part_of_day"?: string | null,"participant_ids"?: (string)[] | null,"payment"?: string | null,"place_id"?: string | null,"plan_status"?: string,"price"?: Json | null,"priority"?: string | null,"ref"?: string | null,"relative_from"?: string | null,"replaces_item_ids"?: (string)[],"row_version"?: number,"sort_key"?: string | null,"source"?: string,"start_time"?: string | null,"status"?: string,"time_precision"?: string | null,"time_tz"?: string | null,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"user_locked"?: boolean,"variant_ids"?: (string)[],"weather"?: string | null
+                    "activity"?: Json | null,"ai_run_id"?: string | null,"area"?: string | null,"booking_group_id"?: string | null,"booking_id"?: string | null,"buffer_after_min"?: number | null,"created_at"?: string,"cut_rank"?: number | null,"day_id"?: string | null,"deleted_at"?: string | null,"description"?: string | null,"duration_max_min"?: number | null,"duration_min"?: number | null,"end_time"?: string | null,"id": string,"is_fixed"?: boolean | null,"kind": string,"leg"?: Json | null,"links"?: NonNullable<Json>,"notes"?: (string)[],"offset_min"?: number | null,"parent_id"?: string | null,"part_of_day"?: string | null,"participant_ids"?: (string)[] | null,"payment"?: string | null,"place_id"?: string | null,"plan_status"?: string,"price"?: Json | null,"priority"?: string | null,"ref"?: string | null,"relative_from"?: string | null,"replaces_item_ids"?: (string)[],"row_version"?: number,"self_cooked"?: boolean | null,"sort_key"?: string | null,"source"?: string,"start_time"?: string | null,"status"?: string,"time_precision"?: string | null,"time_tz"?: string | null,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"user_locked"?: boolean,"variant_ids"?: (string)[],"weather"?: string | null
                   }
                   Update: {
-                    "activity"?: Json | null,"ai_run_id"?: string | null,"area"?: string | null,"booking_group_id"?: string | null,"booking_id"?: string | null,"buffer_after_min"?: number | null,"created_at"?: string,"cut_rank"?: number | null,"day_id"?: string | null,"deleted_at"?: string | null,"description"?: string | null,"duration_max_min"?: number | null,"duration_min"?: number | null,"end_time"?: string | null,"id"?: string,"is_fixed"?: boolean | null,"kind"?: string,"leg"?: Json | null,"links"?: NonNullable<Json>,"notes"?: (string)[],"offset_min"?: number | null,"parent_id"?: string | null,"part_of_day"?: string | null,"participant_ids"?: (string)[] | null,"payment"?: string | null,"place_id"?: string | null,"plan_status"?: string,"price"?: Json | null,"priority"?: string | null,"ref"?: string | null,"relative_from"?: string | null,"replaces_item_ids"?: (string)[],"row_version"?: number,"sort_key"?: string | null,"source"?: string,"start_time"?: string | null,"status"?: string,"time_precision"?: string | null,"time_tz"?: string | null,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"user_locked"?: boolean,"variant_ids"?: (string)[],"weather"?: string | null
+                    "activity"?: Json | null,"ai_run_id"?: string | null,"area"?: string | null,"booking_group_id"?: string | null,"booking_id"?: string | null,"buffer_after_min"?: number | null,"created_at"?: string,"cut_rank"?: number | null,"day_id"?: string | null,"deleted_at"?: string | null,"description"?: string | null,"duration_max_min"?: number | null,"duration_min"?: number | null,"end_time"?: string | null,"id"?: string,"is_fixed"?: boolean | null,"kind"?: string,"leg"?: Json | null,"links"?: NonNullable<Json>,"notes"?: (string)[],"offset_min"?: number | null,"parent_id"?: string | null,"part_of_day"?: string | null,"participant_ids"?: (string)[] | null,"payment"?: string | null,"place_id"?: string | null,"plan_status"?: string,"price"?: Json | null,"priority"?: string | null,"ref"?: string | null,"relative_from"?: string | null,"replaces_item_ids"?: (string)[],"row_version"?: number,"self_cooked"?: boolean | null,"sort_key"?: string | null,"source"?: string,"start_time"?: string | null,"status"?: string,"time_precision"?: string | null,"time_tz"?: string | null,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"user_locked"?: boolean,"variant_ids"?: (string)[],"weather"?: string | null
                   }
                   Relationships: [
                     {
@@ -535,6 +535,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "items_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "trips"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"journal_entries": {
+                  Row: {
+                    "body": string,"created_at": string,"created_by": string | null,"day_id": string | null,"deleted_at": string | null,"id": string,"item_id": string | null,"photo_path": string | null,"row_version": number,"taken_at": string,"trip_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body"?: string,"created_at"?: string,"created_by"?: string | null,"day_id"?: string | null,"deleted_at"?: string | null,"id": string,"item_id"?: string | null,"photo_path"?: string | null,"row_version"?: number,"taken_at": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"created_by"?: string | null,"day_id"?: string | null,"deleted_at"?: string | null,"id"?: string,"item_id"?: string | null,"photo_path"?: string | null,"row_version"?: number,"taken_at"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "journal_entries_day_id_fkey"
+      columns: ["day_id"]
+isOneToOne: false
+      referencedRelation: "days"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "journal_entries_item_id_fkey"
+      columns: ["item_id"]
+isOneToOne: false
+      referencedRelation: "items"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "journal_entries_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "journal_entries_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
       referencedRelation: "trips"
@@ -1302,6 +1340,9 @@ isOneToOne: false
                            },
 "pull_changes":
 { Args: { "p_since"?: number,"p_trip": string }; Returns: Json
+                           },
+"storage_trip":
+{ Args: { "p_name": string }; Returns: string
                            },
 "synced_tables":
 { Args: Record<PropertyKey, never>; Returns: (string)[]

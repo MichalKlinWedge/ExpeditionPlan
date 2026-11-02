@@ -116,6 +116,39 @@ export function saveExpenseSplits(db: LocalDb, tripId: string, expenseId: string
   }
 }
 
+export type JournalEntry = {
+  id?: string;
+  tripId: string;
+  dayId?: string | null;
+  itemId?: string | null;
+  body: string;
+  /** Ścieżka w buckecie `journal`: `<trip_id>/<entry_id>/<plik>` — plik wysyła się osobno. */
+  photoPath?: string | null;
+  takenAt?: string;
+};
+
+const journalRow = (id: string, entry: JournalEntry) => ({
+  id,
+  trip_id: entry.tripId,
+  day_id: entry.dayId ?? null,
+  item_id: entry.itemId ?? null,
+  body: entry.body,
+  photo_path: entry.photoPath ?? null,
+  taken_at: entry.takenAt ?? new Date().toISOString(),
+});
+
+/** Wpis dziennika (nowy albo poprawiony) — offline, przez outbox. Prawo: RLS `journal_insert` / `journal_update`. */
+export function saveJournalEntry(db: LocalDb, entry: JournalEntry): string {
+  const id = entry.id ?? uuidv7();
+  enqueue(db, 'journal_entries', journalRow(id, entry));
+  return id;
+}
+
+/** Usunięcie wpisu — miękkie (`deleted_at`). Plik zdjęcia zostaje w buckecie (bez twardych usunięć). */
+export function removeJournalEntry(db: LocalDb, entry: JournalEntry & { id: string }): void {
+  enqueue(db, 'journal_entries', { ...journalRow(entry.id, entry), deleted_at: new Date().toISOString() });
+}
+
 /** Wykonany przelew rozliczenia („Kuba oddał Ani 120 zł”) — pomniejsza saldo w `settle`. */
 export function recordSettlement(db: LocalDb, payment: { tripId: string; fromId: string; toId: string; amountMinor: number; currency: string }): string {
   const id = uuidv7();

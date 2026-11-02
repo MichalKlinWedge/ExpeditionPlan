@@ -171,7 +171,7 @@ export const SPECS: Record<Collection, Spec> = {
       ['dayRef', 'day_id'], 'sortKey', 'area', 'kind', 'planStatus', ['replacesRefs', 'replaces_item_ids', 'many'],
       ['variantRefs', 'variant_ids', 'many'], 'title', 'leg', ['parentRef', 'parent_id'], 'description', ['placeRef', 'place_id'],
       'durationMin', 'durationMaxMin', 'bufferAfterMin', 'isFixed', 'priority', 'cutRank', 'price', 'payment',
-      ['bookingRef', { bookings: 'booking_id', variantGroups: 'booking_group_id' }], 'weather', 'activity',
+      ['bookingRef', { bookings: 'booking_id', variantGroups: 'booking_group_id' }], 'weather', 'selfCooked', 'activity',
       ['participantRefs', 'participant_ids', 'many'], 'links', 'notes',
     ],
     ...itemTime,

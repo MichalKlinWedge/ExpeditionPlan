@@ -280,6 +280,8 @@ export const DocItem = z.object({
   /** Rezerwacja (pakiet, bilet) albo grupa porównania kandydatów — wtedy ten, który zostanie wybrany (A7). */
   bookingRef: Ref.optional(),
   weather: z.enum(['outdoor', 'indoor', 'any']).optional(),
+  /** Posiłek, który grupa robi sama (chatka, ognisko) — porcje i zakupy. Tylko przy `kind: meal`. */
+  selfCooked: z.boolean().optional(),
   activity: z
     .object({
       distanceKm: z.number().nonnegative().optional(),

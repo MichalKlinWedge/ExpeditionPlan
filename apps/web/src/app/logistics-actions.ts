@@ -15,7 +15,7 @@ import { requireUser } from "@/lib/auth";
  */
 
 type Doc = TripDocument;
-type Editable = "budgetLines" | "tasks" | "bookings" | "contacts" | "packing";
+type Editable = "budgetLines" | "tasks" | "bookings" | "contacts" | "packing" | "items";
 type Element = { ref: string } & Record<string, unknown>;
 
 const message = (error: { message: string; code?: string }) => (error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message);
@@ -357,6 +357,11 @@ export async function saveShoppingItem(tripId: string, ref: string | null, _prev
 
 export async function removeShoppingItem(tripId: string, ref: string): Promise<FormState> {
   return change(tripId, "packing", ref, () => null);
+}
+
+/** Posiłek „gotujemy sami” (albo nie) — tylko ta jedna flaga punktu planu. */
+export async function setSelfCooked(tripId: string, ref: string, value: boolean): Promise<FormState> {
+  return change(tripId, "items", ref, (_doc, current) => (current?.kind === "meal" ? { ...current, selfCooked: value || undefined } : "To nie jest posiłek."));
 }
 
 // --- Budżet z planu i kursy -----------------------------------------------------------------

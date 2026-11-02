@@ -11,6 +11,7 @@ import {
   removeShoppingItem,
   removeTask,
   saveBooking,
+  setSelfCooked,
   saveBudgetLine,
   saveContact,
   fetchFx,
@@ -961,6 +962,18 @@ function ShoppingForm({ tripId, item, onDone }: { tripId: string; item?: Shoppin
         <Status state={state} />
       </div>
     </form>
+  );
+}
+
+/** „Gotujemy sami” przy posiłku — zapis od razu. */
+export function SelfCookedToggle({ tripId, itemRef, value }: { tripId: string; itemRef: string; value: boolean }) {
+  const toggle = useAction();
+  return (
+    <label className="inline-flex items-center gap-1 text-xs">
+      <input type="checkbox" checked={value} disabled={toggle.pending} onChange={(event) => toggle.run(() => setSelfCooked(tripId, itemRef, event.target.checked))} />
+      gotujemy sami
+      {toggle.state.error && <span className="text-red-600"> {toggle.state.error}</span>}
+    </label>
   );
 }
 

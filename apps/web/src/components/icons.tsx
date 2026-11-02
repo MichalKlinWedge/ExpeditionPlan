@@ -137,3 +137,11 @@ export const PrinterIcon = (props: Props) => (
     <path d="M17 11.5h.01" />
   </Svg>
 );
+
+export const BookIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v15H5.5A1.5 1.5 0 0 0 4 20.5Z" />
+    <path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v15h5.5a1.5 1.5 0 0 1 1.5 1.5Z" />
+    <path d="M7 8h2M15 8h2M15 11h2" />
+  </Svg>
+);

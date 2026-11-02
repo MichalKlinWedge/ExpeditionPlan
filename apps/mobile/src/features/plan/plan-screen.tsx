@@ -52,6 +52,7 @@ import { DayMap } from '@/features/plan/day-map';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { type DayEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
+import { JournalView } from '@/features/trip/journal-view';
 import { scheduleTripReminders } from '@/features/trip/reminders';
 import { useTripWeather } from '@/features/trip/trip-weather';
 import { PackingView } from '@/features/trip/packing-view';
@@ -133,7 +134,7 @@ type PlanProps = {
 /** Plan jednego wyjazdu. */
 export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose, bottomInset = 0 }: PlanProps) {
   const theme = useTheme();
-  const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'info'>('plan');
+  const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'journal' | 'info'>('plan');
   const [trip, setTrip] = useState<CachedTrip | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [lastDelay, setLastDelay] = useState<{ itemRef: string; minutes: number } | null>(null);
@@ -328,6 +329,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
             { value: 'plan', label: 'Plan' },
             { value: 'wallet', label: 'Wydatki' },
             { value: 'packing', label: 'Pakowanie' },
+            { value: 'journal', label: 'Dziennik' },
             { value: 'info', label: 'Info' },
           ]}
           value={mode}
@@ -340,6 +342,8 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
             <WalletView trip={trip} tripId={tripId} canAdd={signedIn && canAddExpense} canEditAll={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           ) : mode === 'info' ? (
             <InfoView trip={trip} tripId={tripId} signedIn={signedIn} />
+          ) : mode === 'journal' ? (
+            <JournalView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canEditAll={signedIn && canAct} onChanged={afterLocalWrite} />
           ) : (
             <PackingView trip={trip} tripId={tripId} canEdit={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           )}

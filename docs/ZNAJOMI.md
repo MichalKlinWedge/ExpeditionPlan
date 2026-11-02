@@ -42,7 +42,7 @@ poprawiają zaproszone plany.
    to ten sam adres.
 2. **Zainstaluj aplikację** z linku do APK. Android zapyta o zgodę na instalację z tego źródła
    (przeglądarka → „Zezwalaj z tego źródła”) — to normalne dla aplikacji spoza Sklepu Play.
-3. **Zaloguj się w aplikacji „Expedition Planer”** tym samym kontem (Google albo ten sam e-mail).
+3. **Zaloguj się w aplikacji „Expedition Planner”** tym samym kontem (Google albo ten sam e-mail).
    Wyjazd pojawi się w zakładce „Wyjazdy”.
 4. **Przed wyjazdem otwórz plan raz z internetem** — od tej chwili działa offline: plan dnia,
    mapa, informacje praktyczne (numery alarmowe), wydatki. Wydatki dodane bez zasięgu wyślą się same,

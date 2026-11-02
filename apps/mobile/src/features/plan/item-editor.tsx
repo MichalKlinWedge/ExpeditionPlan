@@ -63,6 +63,7 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
   const [kind, setKind] = useState<Item['kind']>(item?.kind ?? 'visit');
   const [time, setTime] = useState(timeText(item));
   const [duration, setDuration] = useState(item?.durationMin?.toString() ?? (item === null ? '60' : ''));
+  const [selfCooked, setSelfCooked] = useState(item?.selfCooked === true);
   const [problem, setProblem] = useState('');
   const input = [styles.input, { color: theme.text, borderColor: theme.backgroundSelected }];
 
@@ -70,7 +71,12 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
     if (title.trim() === '') return setProblem('Podaj nazwę punktu.');
     if (time.trim() !== '' && !HHMM.test(time.trim())) return setProblem('Godzina w formacie GG:MM, np. 09:30.');
     if (duration.trim() !== '' && !(Number(duration) >= 0)) return setProblem('Czas trwania w minutach.');
-    const fields: ItemFields = { title: title.trim(), kind, durationMin: duration.trim() === '' ? undefined : Math.round(Number(duration)) };
+    const fields: ItemFields = {
+      title: title.trim(),
+      kind,
+      durationMin: duration.trim() === '' ? undefined : Math.round(Number(duration)),
+      selfCooked: kind === 'meal' && selfCooked ? true : undefined,
+    };
     // Godzina zmienia się tylko, gdy zmieniło się pole — inaczej zostaje precyzja z planu (pora dnia, przedział…).
     if (time.trim() !== timeText(item)) {
       const tz = item?.time && 'tz' in item.time ? item.time.tz : undefined;
@@ -115,6 +121,15 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
             </Pressable>
           ))}
         </View>
+        {kind === 'meal' && (
+          <Pressable
+            onPress={() => setSelfCooked(!selfCooked)}
+            style={[styles.chip, styles.self, { borderColor: selfCooked ? theme.text : theme.backgroundSelected, backgroundColor: selfCooked ? theme.backgroundSelected : 'transparent' }]}>
+            <ThemedText type="small" themeColor={selfCooked ? 'text' : 'textSecondary'}>
+              {selfCooked ? '☑' : '☐'} 🍳 gotujemy sami (porcje i zakupy)
+            </ThemedText>
+          </Pressable>
+        )}
         <ThemedText type="small" themeColor="textSecondary">
           Godzina (puste = zaraz po poprzednim)
         </ThemedText>
@@ -166,6 +181,7 @@ export function DayPicker({ doc, current, visible, onCancel, onPick }: { doc: Tr
 }
 
 const styles = StyleSheet.create({
+  self: { alignSelf: 'flex-start' },
   fill: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   title: { flex: 1, textAlign: 'center' },

@@ -1,4 +1,4 @@
-import { headcount, isShopping, mealList, SHOPPING_CATEGORY } from '@expeditionplan/core';
+import { headcount, isShopping, mealList, selfCookedTotals, SHOPPING_CATEGORY } from '@expeditionplan/core';
 import { type CachedTrip, setPacked, uuidv7 } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -79,6 +79,8 @@ export function PackingView({ trip, tripId, canEdit, userId, onChanged }: Props)
   const shoppingCount = doc.packing.filter(isShopping).length;
   const meals = shopping ? mealList(doc) : [];
   const people = headcount(doc);
+  const own = selfCookedTotals(meals);
+  const portions = (each: { adults: number; children: number }) => `${each.adults} dor.${each.children > 0 ? ` + ${each.children} dz.` : ''}`;
   const choose = (next: 'packing' | 'shopping') => {
     setList(next);
     setAdding(false);
@@ -101,11 +103,17 @@ export function PackingView({ trip, tripId, canEdit, userId, onChanged }: Props)
             </ThemedText>
           ) : (
             meals.map((meal) => (
-              <ThemedText key={meal.itemRef} type="small" themeColor="textSecondary">
-                Dzień {meal.dayNo}: {meal.title}
+              <ThemedText key={meal.itemRef} type="small" themeColor={meal.selfCooked ? 'text' : 'textSecondary'}>
+                {meal.selfCooked ? '🍳 ' : ''}Dzień {meal.dayNo}: {meal.title}
                 {meal.place ? ` · ${meal.place}` : ''}
+                {meal.selfCooked ? ` · porcje: ${portions(meal.people)}` : ''}
               </ThemedText>
             ))
+          )}
+          {own.meals > 0 && (
+            <ThemedText type="smallBold">
+              Gotujecie sami: {own.meals} · razem porcji: {portions(own)}
+            </ThemedText>
           )}
         </ThemedView>
       )}

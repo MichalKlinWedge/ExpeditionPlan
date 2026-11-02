@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { CompareIcon, DownloadIcon, InfoIcon, NoteIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { BookIcon, CompareIcon, DownloadIcon, InfoIcon, NoteIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -93,6 +93,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, zadania" />
         <Tile href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
         <Tile href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />
+        {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />}
         <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.count ?? 0} os. jedzie · ${members.count ?? 0} z dostępem`} />
         {canEdit && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />}
         <Tile href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />
