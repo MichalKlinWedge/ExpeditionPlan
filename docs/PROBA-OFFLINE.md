@@ -38,15 +38,22 @@ Wyłącz tryb samolotowy, otwórz aplikację (albo przełącz się do niej).
 - [ ] Na webie w „Rezerwacje i budżet” podsumowanie wydatków uwzględnia 1 MAD z kroku 2.
 - [ ] Na drugim telefonie (albo po ponownym zalogowaniu) odhaczona rzecz z pakowania jest odhaczona.
 
-## 4. Mapa — wiadomo, czego brakuje
+## 4. Mapa wyjazdu
 
-Zakładka **Mapa** to wciąż ekran próbny (PoC-2): trzy stałe regiony (Wrocław, Marakesz, Góry
-Bystrzyckie), bez punktów planu. Dla Maroka:
+Z internetem (najlepiej Wi-Fi):
 
-- [ ] Marakesz: Mapa → „Marakesz” → „Pobierz paczkę (OpenFreeMap)” **z internetem**; potem w trybie
-      samolotowym mapa medyny ma się wyświetlać.
-- [ ] Reszta trasy (Agadir, Essaouira, Sidi Kaouki, Imsouane) **nie ma mapy offline w aplikacji** —
-      na wszelki wypadek pobierz ten obszar w Google Maps / Organic Maps (mapy offline).
+- [ ] Mapa → wyjazd → „Pobierz mapę wyjazdu”: pobiera się kilka obszarów (cała trasa + okolice
+      miejsc planu); na końcu „X z X obszarów na telefonie”.
+- [ ] Panel wymienia obszary — czy są wszystkie miejsca, gdzie będziecie? Brakujące miejsce zwykle
+      nie ma współrzędnych: na webie „Uzupełnij współrzędne” albo przypnij je ręcznie, potem pobierz ponownie.
+
+W trybie samolotowym:
+
+- [ ] Mapa się wyświetla dla „Cała trasa” i dla każdego dnia; przybliżenie w mieście jest ostre.
+- [ ] Pinezki dnia mają numery jak w planie; dotknięcie pokazuje punkty z godzinami.
+- [ ] ◎ pokazuje Twoją pozycję (GPS działa bez internetu).
+- [ ] „Nawiguj” otwiera Google Maps — bez internetu nawigacja działa tylko, jeśli ten obszar
+      pobrałeś też w Google Maps (mapy offline) — warto to zrobić dla tras samochodowych.
 
 ## Co zapisać
 

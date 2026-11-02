@@ -6,8 +6,8 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useMapStyle } from '@/features/map/map-style';
 import { useTheme } from '@/hooks/use-theme';
-import { OPENFREEMAP_STYLE } from '@/poc/map-styles';
 
 /**
  * Kwadratowa mapa pod planem dnia: pinezki z numerami kolejności z silnika (ta sama `dayMap` co
@@ -19,6 +19,7 @@ const BASE = '#1B2A41';
 
 export function DayMap({ doc, dayRef, schedule }: { doc: TripDocument; dayRef: string; schedule: DaySchedule }) {
   const theme = useTheme();
+  const mapStyle = useMapStyle();
   const [selected, setSelected] = useState<string | null>(null);
   const baseRef = doc.days.find((each) => each.ref === dayRef)?.baseRef;
   const refs = schedule.items.map((item) => item.ref).join(',');
@@ -47,7 +48,7 @@ export function DayMap({ doc, dayRef, schedule }: { doc: TripDocument; dayRef: s
     <View style={styles.wrap}>
       <View style={[styles.square, { borderColor: theme.backgroundSelected }]}>
         {/* Nowy dzień = nowa mapa z widokiem dopasowanym do jego pinezek. */}
-        <MapView key={dayRef} mapStyle={OPENFREEMAP_STYLE} androidView="surface" onPress={() => setSelected(null)}>
+        <MapView key={dayRef} mapStyle={mapStyle} androidView="surface" onPress={() => setSelected(null)}>
           <Camera initialViewState={start} />
           <UserLocation accuracy />
           {[true, false].map((routed) => {

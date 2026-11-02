@@ -10,10 +10,10 @@ import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useMapStyle } from '@/features/map/map-style';
 import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
 import { useTheme } from '@/hooks/use-theme';
 import { localDb, remote } from '@/lib/local-db';
-import { OPENFREEMAP_STYLE } from '@/poc/map-styles';
 
 /**
  * Mapa wyjazdu: pinezki dnia z numerami kolejności (ta sama `dayMap` co na webie), cała trasa,
@@ -39,6 +39,7 @@ function tripPins(doc: TripDocument): MapPin[] {
 export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolean }) {
   const theme = useTheme();
   const camera = useRef<CameraRef>(null);
+  const mapStyle = useMapStyle();
   // Plan z pamięci telefonu od razu (offline); komponent dostaje `key` = wyjazd, więc wystarczy raz.
   const [initial] = useState(() => {
     try {
@@ -140,7 +141,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
       </ScrollView>
 
       <View style={styles.fill}>
-        <MapView mapStyle={OPENFREEMAP_STYLE} androidView="surface" onPress={() => setSelected(null)}>
+        <MapView mapStyle={mapStyle} androidView="surface" onPress={() => setSelected(null)}>
           <Camera ref={camera} initialViewState={areas[0] ? { bounds: areas[0].bounds } : undefined} />
           <UserLocation accuracy />
           {/* Trasy przejazdów (ORS) — linia ciągła; odcinki bez trasy — przerywana prosta. */}
