@@ -61,4 +61,4 @@ Mobile: always `npx expo install <pkg>` inside `apps/mobile` (SDK-compatible ver
 
 - New files use LF (`.gitattributes` enforces `eol=lf`); never rewrite an existing file's line endings.
 - Mobile is Android-only: don't add `*.web.tsx` variants.
-- Distribution follows FormaSync: EAS channels `preview` (own phone) / `friends`, OTA with `runtimeVersion: appVersion` — bump `version` only together with a new APK.
+- Distribution follows FormaSync: EAS channels `preview` (own phone) / `friends`, OTA with `runtimeVersion: appVersion` — bump `version` only together with a new APK. Friends' install/update flow: `docs/ZNAJOMI.md`.

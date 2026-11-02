@@ -18,11 +18,16 @@ type Doc = TripDocument;
 type Day = Doc['days'][number];
 type Place = Doc['places'][number];
 
-export type MergeCreated = { collection: 'places'; element: Place } | { collection: 'days'; element: Day } | { collection: 'items'; element: PlanItem };
+export type MergeCreated =
+  | { collection: 'places'; element: Place }
+  | { collection: 'days'; element: Day }
+  | { collection: 'variantGroups'; element: Doc['variantGroups'][number] }
+  | { collection: 'variants'; element: Doc['variants'][number] }
+  | { collection: 'items'; element: PlanItem };
 
 export type MergeEdit = {
   doc: Doc;
-  /** Nowe elementy w kolejności zapisu: miejsca, dni, punkty. */
+  /** Nowe elementy w kolejności zapisu: miejsca, dni, grupy wariantów, warianty, punkty. */
   created: MergeCreated[];
   /** Punkty poprawione przy usuwaniu innych (blok, „zamiast”). */
   changed: PlanItem[];

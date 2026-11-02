@@ -151,7 +151,7 @@ describe('Web — szkice AI i edytor logistyki zapisane w bazie', () => {
     expect(normalize((await pull()).doc)).toEqual(normalize(next));
   });
 
-  it('etap 3: łatka z czatu (pula, przeniesienie, nowy punkt z nowym miejscem, zmiana pola) — punkt zablokowany nietknięty', async () => {
+  it('etap 3: łatka z czatu (pula, przeniesienie, nowy punkt z nowym miejscem, zmiana pola, plan B na dzień) — punkt zablokowany nietknięty', async () => {
     const { owner, tripId, pull } = await ownTrip();
     const before = await pull();
     const [d2, d3] = [before.doc.days[1]!.ref, before.doc.days[2]!.ref];
@@ -165,10 +165,20 @@ describe('Web — szkice AI i edytor logistyki zapisane w bazie', () => {
         { op: 'add_item', dayRef: d2, afterItemRef: lockedRef, item: { title: 'Kawa (test)', kind: 'meal', durationMin: 30, place: 'Kawiarnia testowa', searchName: 'Test Cafe' } },
         { op: 'set_field', itemRef: day2[3]!, field: 'title', value: 'Nowa nazwa (test)' },
         { op: 'set_field', itemRef: lockedRef, field: 'title', value: 'Nie wolno' },
+        {
+          op: 'add_variant',
+          dayRef: d3,
+          title: 'Plan na deszcz (test)',
+          conditionKind: 'weather',
+          mainLabel: 'Słońce',
+          label: 'Deszcz',
+          replacesItemRefs: [dayItems(before.doc, d3)[0]!.ref],
+          items: [{ title: 'Muzeum (test)', kind: 'visit', durationMin: 60 }],
+        },
       ],
     });
     const applied = applyPatch(before.doc, patch, new Set([lockedRef]), uuidv7);
-    expect(applied.results.map((result) => result.ok)).toEqual([true, true, true, true, false]);
+    expect(applied.results.map((result) => result.ok)).toEqual([true, true, true, true, false, true]);
     const checked = TripDocument.parse(applied.doc);
     await saveMergeEdit(owner.client, tripId, patchDiff(before.doc, checked), before.ids);
 
@@ -179,6 +189,8 @@ describe('Web — szkice AI i edytor logistyki zapisane w bazie', () => {
     expect(back.doc.places.some((place) => place.name === 'Kawiarnia testowa')).toBe(true);
     const added = back.tables.items!.find((row) => row.title === 'Kawa (test)');
     expect(added).toMatchObject({ user_locked: false });
+    const group = back.doc.variantGroups.find((each) => each.title === 'Plan na deszcz (test)')!;
+    expect(back.doc.variants.filter((each) => each.groupRef === group.ref).map((each) => each.label)).toEqual(['Słońce', 'Deszcz']);
   });
 
   it('widz nie zapisze elementów, a konto bez zaproszenia nie założy wyjazdu', async () => {

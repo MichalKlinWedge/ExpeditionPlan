@@ -76,10 +76,14 @@ export async function saveMergeEdit(client: SupabaseClient, tripId: string, edit
   };
 
   // Wiersz bez `ref` dostaje w dokumencie klucz `id-<uuid>` — ten sam, który nadał plan-merge.
-  // Dni składają się w dokumencie po dacie, więc nowy dzień nie potrzebuje `sort_key`.
+  // Dni i punkty mają własną kolejność (data, `sortKey`); reszta idzie na koniec w kolejności zapisu
+  // — bez tego warianty wracałyby w przypadkowej kolejności, a silnik bierze pierwszy jako domyślny.
+  const stamp = Date.now().toString(36);
+  let order = 0;
   for (const { collection, element } of edit.created) {
     const row: Record<string, unknown> = { ...rowForUpdate(collection, element, index), id: index.idOf(element.ref), trip_id: tripId };
     if (collection === 'items') Object.assign(row, { source: 'ai', user_locked: false });
+    else if (!SPECS[collection].ownOrder) row.sort_key = `z${stamp}${String(order++).padStart(3, '0')}`;
     check(await client.from(SPECS[collection].table).insert(row));
   }
   for (const item of edit.changed) {

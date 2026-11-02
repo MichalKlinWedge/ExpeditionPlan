@@ -17,7 +17,7 @@ export type Preview = {
   days: { date: string; before: string; after: string }[];
 };
 
-const EXAMPLES = ["Dzień 2 jest za męczący — wytnij coś mniej ważnego", "Dodaj obiad w okolicy placu ok. 13:00", "Przenieś Pałac Bahia na rano"];
+const EXAMPLES = ["Dzień 2 jest za męczący — wytnij coś mniej ważnego", "Dodaj obiad w okolicy placu ok. 13:00", "Dzień 3: plan B na deszcz"];
 
 export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Turn[]; preview: Preview | null }) {
   const [state, action, pending] = useActionState(proposePatch.bind(null, tripId), {});

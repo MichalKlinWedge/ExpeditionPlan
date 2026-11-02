@@ -230,6 +230,26 @@ export const PatchOp = z.discriminatedUnion('op', [
     field: z.enum(['title', 'durationMin', 'start', 'description']),
     value: z.union([z.string(), z.number()]),
   }),
+  /**
+   * Plan B dla dnia (pogoda, zamknięcie, samopoczucie): obecny plan dnia zostaje wariantem A,
+   * wariant B zastępuje wskazane punkty nowymi. Nic nie znika z planu — decyzję podejmuje się na miejscu.
+   */
+  z.object({
+    op: z.literal('add_variant'),
+    dayRef: Ref,
+    /** Nazwa decyzji: „Plan na deszcz”, „Jeśli wąwóz zamknięty”. */
+    title: text,
+    conditionKind: z.enum(['weather', 'closure', 'wellbeing', 'schedule_slip', 'choice']),
+    /** Kiedy wybrać B: „pada od rana”, „wiatr powyżej 40 km/h”. */
+    conditionText: z.string().optional(),
+    /** Nazwa obecnego planu dnia (A) i nowego wariantu (B). */
+    mainLabel: text,
+    label: text,
+    /** Punkty dnia, które B zastępuje (w A zostają). Pusto = B tylko dokłada punkty na końcu dnia. */
+    replacesItemRefs: z.array(Ref).max(8).default([]),
+    /** Punkty tylko w B, w kolejności — trafiają w miejsce pierwszego zastępowanego. */
+    items: z.array(PatchItem).min(1).max(6),
+  }),
 ]);
 
 export const PlanPatch = z.object({

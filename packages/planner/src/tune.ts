@@ -54,10 +54,17 @@ export function tuneContext(doc: Doc, locked: ReadonlySet<string>) {
     ...(locked.has(item.ref) ? { locked: true } : {}),
     ...(item.variantRefs.length > 0 ? { variantOnly: true } : {}),
   });
+  const variantsOf = (dayRef: string) =>
+    doc.variantGroups
+      .filter((group) => group.dayRef === dayRef && group.scope !== 'booking')
+      .map((group) => ({ title: group.title, options: doc.variants.filter((variant) => variant.groupRef === group.ref).map((variant) => variant.label) }));
   return {
     title: doc.trip.title,
     travelers: doc.travelers.map((each) => ({ name: each.name, age: each.age })),
-    days: doc.days.map((day) => ({ ref: day.ref, date: day.date, title: day.title, items: dayItems(doc, day.ref).map(describe) })),
+    days: doc.days.map((day) => {
+      const variants = variantsOf(day.ref);
+      return { ref: day.ref, date: day.date, title: day.title, items: dayItems(doc, day.ref).map(describe), ...(variants.length > 0 ? { variants } : {}) };
+    }),
     pool: doc.items.filter((item) => item.dayRef === undefined).map(describe),
   };
 }
@@ -72,7 +79,8 @@ export function tunePrompt(doc: Doc, locked: ReadonlySet<string>, history: ChatT
     '3. Punkty z `locked: true` zmienił człowiek — NIE ruszaj ich; jeśli polecenie tego wymaga, napisz to w `message`.',
     '4. `remove_item` domyślnie przenosi punkt do puli (`toPool: true`); `toPool: false` tylko, gdy człowiek wprost każe usunąć.',
     '5. `add_item`/`replace_item`: realny czas trwania, godzina tylko gdy ważna (otwarcie, zachód, rezerwacja); `place` po polsku i `searchName` z OpenStreetMap dla konkretnego miejsca.',
-    '6. Jeśli czegoś nie da się zrobić albo dzień się nie zmieści — powiedz to w `message` zamiast udawać. Piszesz po polsku.',
+    '6. Plan B / alternatywa „jeśli pada”, „jeśli zamknięte”, „jeśli dzieci zmęczone” → `add_variant`: obecny plan dnia zostaje wariantem A (`mainLabel`), wariant B zastępuje `replacesItemRefs` punktami `items`. Nie usuwaj punktów, żeby zrobić alternatywę; nie dubluj wariantu, który dzień już ma (`variants`).',
+    '7. Jeśli czegoś nie da się zrobić albo dzień się nie zmieści — powiedz to w `message` zamiast udawać. Piszesz po polsku.',
     '',
     'JSON Schema:',
     schemaOf(PlanPatch),
@@ -192,6 +200,58 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
           text = `Zamień „${target!.title}” na „${op.with.title}”`;
           break;
         }
+        case 'add_variant': {
+          if (!current.days.some((day) => day.ref === op.dayRef)) {
+            fail(`Nie ma dnia „${op.dayRef}”.`);
+            continue;
+          }
+          const list = dayItems(current, op.dayRef);
+          const missing = op.replacesItemRefs.filter((ref) => !list.some((item) => item.ref === ref));
+          if (missing.length > 0) {
+            fail(`Wariant „${op.label}”: punktów ${missing.join(', ')} nie ma w tym dniu.`);
+            continue;
+          }
+          const groupRef = `id-${newId()}`;
+          const mainRef = `id-${newId()}`;
+          const altRef = `id-${newId()}`;
+          let draft: Doc = {
+            ...current,
+            variantGroups: [
+              ...current.variantGroups,
+              { ref: groupRef, scope: 'day', dayRef: op.dayRef, title: op.title, conditionKind: op.conditionKind, ...(op.conditionText ? { conditionText: op.conditionText } : {}) },
+            ],
+            // A pierwszy: bez wyboru silnik liczy dzień tak jak dotąd.
+            variants: [
+              ...current.variants,
+              { ref: mainRef, groupRef, label: op.mainLabel, pros: [], cons: [], excludesRefs: [] },
+              { ref: altRef, groupRef, label: op.label, pros: [], cons: [], excludesRefs: op.replacesItemRefs },
+            ],
+          };
+          // Nowe punkty w miejsce pierwszego zastępowanego (bez zastępowanych — na koniec dnia).
+          const first = list.findIndex((item) => op.replacesItemRefs.includes(item.ref));
+          let after: string | null = first === -1 ? (list.at(-1)?.ref ?? null) : first === 0 ? null : list[first - 1]!.ref;
+          for (const input of op.items) {
+            const placed = placeFor(draft, input, newId);
+            const time = timeOf(input);
+            const added = addItem(placed.doc, op.dayRef, newId(), {
+              title: input.title,
+              kind: input.kind,
+              variantRefs: [altRef],
+              ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
+              ...(time ? { time } : {}),
+              ...(placed.ref ? { placeRef: placed.ref } : {}),
+              ...(input.description ? { description: input.description } : {}),
+            });
+            const moved = moveAfter(added.doc, added.created!.ref, op.dayRef, after);
+            if (moved === null) throw new Error('nie da się wstawić punktu wariantu');
+            draft = moved.doc;
+            after = added.created!.ref;
+          }
+          next = draft;
+          const replaced = op.replacesItemRefs.map((ref) => `„${title(ref)}”`).join(', ');
+          text = `Wariant na ${dayName(op.dayRef)} — ${op.title}: „${op.mainLabel}” albo „${op.label}” (${op.items.map((each) => `„${each.title}”`).join(', ')}${replaced ? ` zamiast ${replaced}` : ''})`;
+          break;
+        }
         case 'set_field': {
           const patchFields: Partial<Item> =
             op.field === 'durationMin'
@@ -223,7 +283,7 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
   return { doc: current, results };
 }
 
-/** Różnica dwóch dokumentów jako zapis (`saveMergeEdit`): nowe miejsca i punkty, zmienione punkty, usunięte, poprawione warianty/źródła. */
+/** Różnica dwóch dokumentów jako zapis (`saveMergeEdit`): nowe miejsca, warianty i punkty, zmienione punkty, usunięte, poprawione warianty/źródła. */
 export function patchDiff(before: Doc, after: Doc): MergeEdit {
   const old = new Map(before.items.map((item) => [item.ref, item]));
   const now = new Map(after.items.map((item) => [item.ref, item]));
@@ -238,6 +298,8 @@ export function patchDiff(before: Doc, after: Doc): MergeEdit {
     doc: after,
     created: [
       ...after.places.filter((place) => !oldPlaces.has(place.ref)).map((element) => ({ collection: 'places' as const, element })),
+      ...after.variantGroups.filter((group) => !before.variantGroups.some((each) => each.ref === group.ref)).map((element) => ({ collection: 'variantGroups' as const, element })),
+      ...after.variants.filter((variant) => !before.variants.some((each) => each.ref === variant.ref)).map((element) => ({ collection: 'variants' as const, element })),
       ...after.items.filter((item) => !old.has(item.ref)).map((element) => ({ collection: 'items' as const, element })),
     ],
     changed: after.items.filter((item) => old.has(item.ref) && !same(old.get(item.ref), item)),
