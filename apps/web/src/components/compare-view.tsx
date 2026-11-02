@@ -46,7 +46,7 @@ const SLACK: Record<string, { label: string; tone: string }> = {
 const weekday = (date: string) =>
   new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
-const button = "rounded-md border border-zinc-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-zinc-700";
+const button = "btn-secondary btn-sm";
 const key = (title: string) => title.trim().toLocaleLowerCase("pl");
 
 function schedule(doc: TripDocument, dayRef: string | undefined): DaySchedule | null {
@@ -113,7 +113,7 @@ export function CompareView({ tripId, plan: initialPlan, ids: initialIds, locked
         const inPlan = new Set(pair.plan.map((item) => key(item.title)));
         const missing = pair.draft.filter((item) => inAllVariants(item) && !inPlan.has(key(item.title)));
         return (
-          <section key={pair.date} className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <section key={pair.date} className="flex flex-col gap-3 card p-4">
             <header className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-lg font-semibold first-letter:uppercase">{weekday(pair.date)}</h2>
               {pair.draft.length > 0 && (

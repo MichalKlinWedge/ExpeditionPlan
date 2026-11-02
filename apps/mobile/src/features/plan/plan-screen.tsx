@@ -35,6 +35,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button as AppButton } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -44,7 +45,6 @@ import { type DayEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
 import { PackingView } from '@/features/trip/packing-view';
 import { WalletView } from '@/features/trip/wallet-view';
-import { useTheme } from '@/hooks/use-theme';
 import { localDb, remote } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
 
@@ -584,12 +584,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayP
 }
 
 function EditButton({ label, onPress }: { label: string; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable onPress={onPress} hitSlop={4} style={[styles.editButton, { borderColor: theme.backgroundSelected }]}>
-      <ThemedText type="small">{label}</ThemedText>
-    </Pressable>
-  );
+  return <AppButton label={label} onPress={onPress} small />;
 }
 
 function Warnings({ list }: { list: ScheduleWarning[] }) {
@@ -620,5 +615,4 @@ const styles = StyleSheet.create({
   nav: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.three },
   hidden: { opacity: 0 },
   edit: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingTop: Spacing.two },
-  editButton: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
 });

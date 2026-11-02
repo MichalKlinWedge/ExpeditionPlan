@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace", "apps/web"],
       "port": 3000
+    },
+    {
+      "name": "web-local",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web:local"],
+      "port": 3000
     }
   ]
 }

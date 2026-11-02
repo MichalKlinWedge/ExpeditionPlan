@@ -3,9 +3,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Location from 'expo-location';
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
@@ -164,9 +165,7 @@ function Row({ children }: { children: React.ReactNode }) {
 
 function Button({ label, onPress, active }: { label: string; onPress: () => void; active?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={[styles.button, active && styles.active]}>
-      <ThemedText type="small">{label}</ThemedText>
-    </Pressable>
+    <AppButton label={label} onPress={onPress} variant={active ? 'accent' : 'secondary'} small />
   );
 }
 
@@ -178,8 +177,6 @@ const styles = StyleSheet.create({
   controls: { flex: 1 },
   panel: { padding: Spacing.three, gap: Spacing.two, paddingBottom: BottomTabInset + Spacing.three },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, alignItems: 'center' },
-  button: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: '#8888' },
-  active: { backgroundColor: '#208AEF33', borderColor: '#208AEF' },
   input: { flex: 1, minWidth: 160, borderWidth: 1, borderColor: '#8888', borderRadius: Spacing.two, padding: Spacing.two, color: '#888' },
   check: { flex: 1 },
 });

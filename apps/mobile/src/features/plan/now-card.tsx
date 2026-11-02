@@ -1,10 +1,10 @@
 import { type DaySchedule, nowAndNext } from '@expeditionplan/core';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 
 /**
  * „Teraz / następny” na górze dzisiejszego dnia. Przyciski zapisują zdarzenia dnia (outbox, działa
@@ -82,17 +82,11 @@ export function NowCard({ schedule, now, onEvent, lastDelay }: Props) {
 }
 
 function Action({ label, onPress }: { label: string; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable onPress={onPress} style={[styles.action, { borderColor: theme.text }]}>
-      <ThemedText type="small">{label}</ThemedText>
-    </Pressable>
-  );
+  return <AppButton label={label} onPress={onPress} small />;
 }
 
 const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.three },
   block: { gap: Spacing.one },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingTop: Spacing.one },
-  action: { borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
 });

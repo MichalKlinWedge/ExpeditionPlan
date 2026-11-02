@@ -2,6 +2,7 @@ import * as Updates from 'expo-updates';
 import { useEffect, useState } from 'react';
 import { Alert, AppState, Pressable, StyleSheet } from 'react-native';
 
+import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -90,17 +91,14 @@ export function UpdateCard() {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
       <ThemedText type="small">{bundle}</ThemedText>
-      <Pressable onPress={check} disabled={busy} style={[styles.button, busy && styles.disabled]}>
-        <ThemedText type="small">{busy ? 'Sprawdzam…' : 'Sprawdź aktualizację'}</ThemedText>
-      </Pressable>
+      <AppButton label={busy ? 'Sprawdzam…' : 'Sprawdź aktualizację'} onPress={check} disabled={busy} />
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   card: { alignSelf: 'stretch', padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
-  button: { alignSelf: 'flex-start', paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: '#8888' },
   disabled: { opacity: 0.4 },
-  badge: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: '#3c87f7' },
+  badge: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8692C' },
   badgeText: { color: '#ffffff', fontSize: 18, lineHeight: 22, fontWeight: 700 },
 });

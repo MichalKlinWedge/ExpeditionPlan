@@ -10,8 +10,8 @@ export function Chip({ active, label, onPress }: { active: boolean; label: strin
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.chip, { borderColor: active ? theme.text : theme.backgroundSelected, backgroundColor: active ? theme.backgroundSelected : 'transparent' }]}>
-      <ThemedText type="small" themeColor={active ? 'text' : 'textSecondary'}>
+      style={[styles.chip, active ? { borderColor: theme.accent, backgroundColor: theme.accent } : { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}>
+      <ThemedText type={active ? 'smallBold' : 'small'} style={active ? { color: theme.onPrimary } : { color: theme.textSecondary }}>
         {label}
       </ThemedText>
     </Pressable>
@@ -19,5 +19,5 @@ export function Chip({ active, label, onPress }: { active: boolean; label: strin
 }
 
 const styles = StyleSheet.create({
-  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
+  chip: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: 6 },
 });

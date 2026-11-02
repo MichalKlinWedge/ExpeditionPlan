@@ -7,20 +7,32 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+/**
+ * Motyw „Kompas i mapa” (wspólny z webem): papier mapy, granat nawigacyjny, pomarańcz sygnałowy
+ * na głównych akcjach (`primary`), morska zieleń jako akcent (`accent` — wybór, linki).
+ */
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#1B2A41',
+    background: '#F7F3EA',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#E4DCC9',
+    textSecondary: '#5F6B7A',
+    primary: '#E8692C',
+    onPrimary: '#FFFFFF',
+    accent: '#2E7D74',
+    accentSoft: '#D8ECE8',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F1EBDD',
+    background: '#0F1A2B',
+    backgroundElement: '#1B2A41',
+    backgroundSelected: '#34425A',
+    textSecondary: '#9CA6B5',
+    primary: '#E8692C',
+    onPrimary: '#FFFFFF',
+    accent: '#5FC2B5',
+    accentSoft: '#1E3B3F',
   },
 } as const;
 

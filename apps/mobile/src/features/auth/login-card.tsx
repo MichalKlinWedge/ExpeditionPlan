@@ -1,7 +1,8 @@
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 
+import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -49,9 +50,7 @@ export function LoginCard() {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
       <ThemedText type="subtitle">Logowanie</ThemedText>
-      <Pressable onPress={google} disabled={busy} style={[styles.button, busy && styles.disabled]}>
-        <ThemedText type="small">Zaloguj przez Google</ThemedText>
-      </Pressable>
+      <AppButton label="Zaloguj przez Google" onPress={google} disabled={busy} />
       <ThemedText type="small">albo link na e-mail</ThemedText>
       <TextInput
         value={email}
@@ -62,9 +61,7 @@ export function LoginCard() {
         placeholderTextColor="#888"
         style={styles.input}
       />
-      <Pressable onPress={magicLink} disabled={busy || !validEmail} style={[styles.button, (busy || !validEmail) && styles.disabled]}>
-        <ThemedText type="small">Wyślij link</ThemedText>
-      </Pressable>
+      <AppButton label="Wyślij link" onPress={magicLink} disabled={busy || !validEmail} variant="primary" />
       {status !== '' && <ThemedText type="small">{status}</ThemedText>}
     </ThemedView>
   );
@@ -72,7 +69,5 @@ export function LoginCard() {
 
 const styles = StyleSheet.create({
   card: { alignSelf: 'stretch', padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
-  button: { alignSelf: 'flex-start', paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: '#8888' },
-  disabled: { opacity: 0.4 },
-  input: { borderWidth: 1, borderColor: '#8888', borderRadius: Spacing.two, padding: Spacing.two, color: '#888' },
+  input: { borderWidth: 1.5, borderColor: '#CFC4AB', borderRadius: 10, padding: Spacing.two, color: '#5F6B7A', backgroundColor: '#FFFFFF' },
 });

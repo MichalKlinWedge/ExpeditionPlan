@@ -1,26 +1,164 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Motyw „Kompas i mapa”: tło jak papier mapy, tekst w granacie nawigacyjnym, pomarańcz sygnałowy
+ * na głównych akcjach, morska zieleń jako drugi akcent. Skala `zinc` jest przemalowana — jasne
+ * odcienie to papier, ciemne to granat — więc istniejące klasy `zinc-*` od razu pasują do motywu.
+ */
+@theme {
+  --color-zinc-50: #fbf8f1;
+  --color-zinc-100: #f1ebdd;
+  --color-zinc-200: #e4dcc9;
+  --color-zinc-300: #cfc4ab;
+  --color-zinc-400: #9c9584;
+  --color-zinc-500: #5f6b7a;
+  --color-zinc-600: #4a5566;
+  --color-zinc-700: #34425a;
+  --color-zinc-800: #243248;
+  --color-zinc-900: #1b2a41;
+  --color-zinc-950: #101b2c;
+
+  --color-paper: #f7f3ea;
+  --color-ink: #1b2a41;
+  --color-signal: #e8692c;
+  --color-signal-dark: #c9531b;
+  --color-sea: #2e7d74;
+  --color-sea-light: #d8ece8;
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-bitter), Georgia, serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --surface: #ffffff;
+  --line: var(--color-zinc-200);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f1a2b;
+    --foreground: #f1ebdd;
+    --surface: var(--color-zinc-900);
+    --line: var(--color-zinc-800);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Poziomice: linie warstwic jak na mapie topograficznej (nagłówek, puste stany). */
+.topo {
+  background-color: var(--color-ink);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='160' viewBox='0 0 600 160'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.09' stroke-width='1.2'%3E%3Cpath d='M-20 120 C 60 90 120 140 200 110 S 340 60 420 95 S 560 140 640 100'/%3E%3Cpath d='M-20 100 C 70 70 130 118 210 90 S 345 42 425 76 S 560 120 640 82'/%3E%3Cpath d='M-20 80 C 80 52 140 96 220 70 S 350 24 430 57 S 560 100 640 64'/%3E%3Cpath d='M-20 60 C 90 34 150 74 230 50 S 355 6 435 38 S 560 80 640 46'/%3E%3Cpath d='M-20 40 C 100 16 160 52 240 30 S 360 -12 440 19 S 560 60 640 28'/%3E%3Cpath d='M-20 140 C 50 110 110 160 190 130 S 335 78 415 114 S 560 160 640 118'/%3E%3Cellipse cx='470' cy='120' rx='46' ry='18'/%3E%3Cellipse cx='470' cy='120' rx='26' ry='9'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 600px 160px;
+  color: #fbf8f1;
+}
+
+@layer components {
+  .btn-primary,
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: 0.75rem;
+    padding: 0.55rem 1.1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    transition:
+      background-color 120ms,
+      border-color 120ms,
+      color 120ms,
+      transform 120ms,
+      box-shadow 120ms;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--color-signal);
+    color: #fff;
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.12),
+      0 6px 16px -8px rgb(232 105 44 / 0.75);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-signal-dark);
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--foreground);
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-sea);
+    color: var(--color-sea);
+  }
+  .btn-sm {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 0.6rem;
+  }
+  .btn-primary:disabled,
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible,
+  .field:focus-visible {
+    outline: 2px solid var(--color-sea);
+    outline-offset: 2px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    box-shadow:
+      0 1px 2px rgb(27 42 65 / 0.05),
+      0 10px 24px -18px rgb(27 42 65 / 0.35);
+  }
+
+  .field {
+    background: var(--surface);
+    border: 1px solid var(--color-zinc-300);
+    border-radius: 0.6rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    .field {
+      border-color: var(--color-zinc-700);
+    }
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--color-sea-light);
+    color: var(--color-sea);
+  }
+  @media (prefers-color-scheme: dark) {
+    .chip {
+      background: rgb(46 125 116 / 0.25);
+      color: #9fd8cf;
+    }
+  }
 }

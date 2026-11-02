@@ -33,7 +33,7 @@ const PRECISION: Record<string, string> = {
 
 const PARTS: Record<string, string> = { morning: "rano", midday: "południe", afternoon: "popołudnie", evening: "wieczór", night: "noc" };
 
-const input = "w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700";
+const input = "w-full field px-2 py-1 text-sm";
 const label = "flex flex-col gap-1 text-xs text-zinc-500";
 
 const num = (text: string) => (text.trim() === "" ? undefined : Math.max(0, Math.round(Number(text))));
@@ -226,8 +226,8 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
         stała godzina
       </label>
       <div className="col-span-2 flex gap-2 sm:col-span-4">
-        <button className="rounded-md bg-zinc-900 px-3 py-1 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">Zapisz</button>
-        <button type="button" onClick={onCancel} className="rounded-md border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-700">
+        <button className="btn-primary btn-sm">Zapisz</button>
+        <button type="button" onClick={onCancel} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>

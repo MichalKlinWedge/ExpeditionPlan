@@ -6,8 +6,8 @@ import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, im
 
 /** Formularze MVP-1 — stan i błędy z akcji serwera przez `useActionState`. */
 
-const input = "w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm dark:border-zinc-700";
-const button = "rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900";
+const input = "w-full field px-3 py-2 text-sm";
+const button = "btn-primary";
 const label = "flex flex-col gap-1 text-sm";
 
 function Status({ state }: { state: FormState }) {
@@ -133,7 +133,7 @@ export function TravelerForm({ tripId, guardians, traveler, onDone }: { tripId: 
           {pending ? "Zapisuję…" : traveler ? "Zapisz" : "Dodaj"}
         </button>
         {traveler && onDone && (
-          <button type="button" onClick={onDone} className="rounded-md border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700">
+          <button type="button" onClick={onDone} className="btn-secondary">
             Anuluj
           </button>
         )}
@@ -164,7 +164,7 @@ export function TravelerList({ tripId, people, canEdit }: { tripId: string; peop
         <ul className="flex flex-col gap-2 text-sm">
           {people.map((person) =>
             editing === person.id ? (
-              <li key={person.id} className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+              <li key={person.id} className="card p-3">
                 <TravelerForm tripId={tripId} guardians={guardians} traveler={person} onDone={() => setEditing(null)} />
               </li>
             ) : (
@@ -261,7 +261,7 @@ export function SamplesButton() {
     <form action={action} className="flex flex-col gap-2">
       <button
         disabled={pending}
-        className="self-start rounded-md border border-zinc-300 px-4 py-2 text-sm disabled:opacity-50 dark:border-zinc-700">
+        className="btn-secondary self-start">
         {pending ? "Dodaję przykłady…" : "Dodaj przykładowe wyjazdy"}
       </button>
       <Status state={state} />

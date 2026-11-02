@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SamplesButton } from "@/components/forms";
+import { PeakIcon, PlusIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -29,30 +30,53 @@ async function TripList() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Wyjazdy</h1>
         {canCreateTrips && (
-          <Link href="/trips/new" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
+          <Link href="/trips/new" className="btn-primary">
+            <PlusIcon className="size-4" />
             Nowy wyjazd
           </Link>
         )}
       </div>
       {data.length === 0 ? (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          {canCreateTrips ? "Nie masz jeszcze wyjazdów." : "Nie masz jeszcze dostępu do żadnego wyjazdu. Poproś organizatora o link zaproszenia i otwórz go, będąc zalogowanym."}
-        </p>
+        <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center">
+          <PeakIcon className="size-10 text-sea" />
+          <p className="max-w-md text-zinc-600 dark:text-zinc-400">
+            {canCreateTrips ? "Nie masz jeszcze wyjazdów — zacznij od nowego albo dodaj przykładowe." : "Nie masz jeszcze dostępu do żadnego wyjazdu. Poproś organizatora o link zaproszenia i otwórz go, będąc zalogowanym."}
+          </p>
+        </div>
       ) : (
-        <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
-          {data.map((trip) => (
-            <li key={trip.id}>
-              <Link href={`/trips/${trip.id}`} className="flex items-baseline justify-between gap-4 py-3 hover:opacity-80">
-                <span className="font-medium">{trip.title}</span>
-                <span className="text-right text-sm text-zinc-500">
-                  {tripDates(trip.start_date!, trip.end_date!)} · {ROLE[trip.role!]}
-                </span>
-              </Link>
-            </li>
-          ))}
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {data.map((trip) => {
+            const draft = trip.title!.startsWith(DRAFT);
+            return (
+              <li key={trip.id}>
+                <Link
+                  href={`/trips/${trip.id}`}
+                  className={`card group flex h-full flex-col gap-2 p-4 transition hover:-translate-y-0.5 hover:border-sea ${draft ? "border-dashed" : ""}`}>
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="font-display text-lg leading-snug font-semibold group-hover:text-sea">{draft ? trip.title!.slice(DRAFT.length) : trip.title}</span>
+                    {draft ? <span className="chip shrink-0">szkic AI</span> : <Countdown start={trip.start_date!} end={trip.end_date!} />}
+                  </span>
+                  <span className="mt-auto text-sm text-zinc-500">
+                    {tripDates(trip.start_date!, trip.end_date!)} · {ROLE[trip.role!]}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
       {canCreateTrips && <SamplesButton />}
     </>
   );
+}
+
+const DRAFT = "Szkic AI: ";
+
+/** „za 54 dni” / „trwa” / „za nami” — data dzisiejsza w strefie przeglądarki nie jest potrzebna, wystarczy dzień. */
+function Countdown({ start, end }: { start: string; end: string }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const days = Math.round((Date.parse(start) - Date.parse(today)) / 86_400_000);
+  const label = today > end ? "za nami" : days <= 0 ? "trwa" : days === 1 ? "jutro" : `za ${days} dni`;
+  const tone = today > end ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" : days <= 0 ? "bg-signal text-white" : "";
+  return <span className={`chip shrink-0 ${tone}`}>{label}</span>;
 }

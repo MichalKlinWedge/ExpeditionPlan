@@ -36,7 +36,7 @@ export function PlanActionButton({ run, label, note }: { run: () => Promise<Form
   return (
     <div className="flex flex-col gap-1 text-sm">
       <div className="flex flex-wrap items-center gap-3">
-        <button onClick={click} disabled={pending} className="rounded-md border border-zinc-300 px-3 py-1 disabled:opacity-50 dark:border-zinc-700">
+        <button onClick={click} disabled={pending} className="btn-secondary btn-sm">
           {pending ? `${label}… ${seconds} s` : label}
         </button>
         <span className="text-xs text-zinc-500">{note}</span>

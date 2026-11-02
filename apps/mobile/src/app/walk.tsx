@@ -3,9 +3,10 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
@@ -170,9 +171,7 @@ function Row({ children }: { children: React.ReactNode }) {
 
 function Button({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} style={[styles.button, disabled && styles.disabled]}>
-      <ThemedText type="small">{label}</ThemedText>
-    </Pressable>
+    <AppButton label={label} onPress={onPress} disabled={disabled} small />
   );
 }
 
@@ -181,7 +180,5 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   panel: { padding: Spacing.three, gap: Spacing.two, paddingBottom: BottomTabInset + Spacing.three },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  button: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: '#8888' },
-  disabled: { opacity: 0.4 },
   mono: { fontFamily: 'monospace' },
 });

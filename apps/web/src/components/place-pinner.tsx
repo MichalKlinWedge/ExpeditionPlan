@@ -32,8 +32,8 @@ export function PlacePinner({ tripId, places }: { tripId: string; places: OffMap
   );
 }
 
-const input = "min-w-0 flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700";
-const button = "rounded-md border border-zinc-300 px-3 py-1 disabled:opacity-50 dark:border-zinc-700";
+const input = "min-w-0 flex-1 field px-2 py-1";
+const button = "btn-secondary btn-sm";
 
 function PlaceRow({ tripId, place, onSaved }: { tripId: string; place: OffMapPlace; onSaved: (result: FormState) => void }) {
   const [coords, setCoords] = useState("");

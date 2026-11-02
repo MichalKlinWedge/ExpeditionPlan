@@ -104,7 +104,7 @@ function due(task: Task, doc: Doc): string | null {
   }
 }
 
-const card = "flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800";
+const card = "flex flex-col gap-3 card p-4";
 const heading = "text-lg font-semibold";
 
 async function Logistics({ params }: { params: Promise<{ id: string }> }) {

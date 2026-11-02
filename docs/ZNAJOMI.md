@@ -18,7 +18,8 @@ Web jest wspólny: https://expedition-plan.vercel.app.
    Pierwszy build zakłada kanał `friends` w EAS.
 
 2. **Zaproszenie do wyjazdu**: na webie, strona wyjazdu → „Kto ma dostęp” → rola **widz** (podgląd)
-   albo **edytor** → „Utwórz link”. Link `…/join/<token>` jest jednorazowy i ważny 14 dni — każdy znajomy dostaje własny.
+   albo **edytor**, „Ile osób” (domyślnie 1) → „Utwórz link” → „Kopiuj link”. Link `…/join/<token>` jest ważny
+   14 dni i pokazuje się tylko raz (w bazie zostaje sam skrót).
 
 3. **Aktualizacja u znajomych** — po sprawdzeniu zmiany u siebie (`npm run ota --workspace apps/mobile`):
 

@@ -39,7 +39,7 @@ const ROLE: Record<string, string> = {
   venue: "obiekt",
   other: "inny",
 };
-const card = "flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800";
+const card = "flex flex-col gap-3 card p-4";
 
 async function Practical({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

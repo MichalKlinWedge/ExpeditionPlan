@@ -144,7 +144,7 @@ export function PracticalReview({ tripId, runId, info, checks }: { tripId: strin
         <button
           disabled={pending || total === 0}
           onClick={() => start(async () => setResult(await applyPractical(tripId, runId, pick)))}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900">
+          className="btn-primary">
           {pending ? "Dodaję…" : `Dodaj zaznaczone do planu (${total})`}
         </button>
         {result.error && <span className="text-red-600">{result.error}</span>}

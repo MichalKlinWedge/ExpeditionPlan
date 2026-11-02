@@ -29,7 +29,7 @@ export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Tu
       {turns.length > 0 && (
         <ol className="flex flex-col gap-2">
           {turns.map((turn, i) => (
-            <li key={i} className={`max-w-[85%] rounded-lg px-3 py-2 whitespace-pre-line ${turn.role === "user" ? "self-end bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "self-start bg-zinc-100 dark:bg-zinc-900"}`}>
+            <li key={i} className={`max-w-[85%] rounded-lg px-3 py-2 whitespace-pre-line ${turn.role === "user" ? "self-end bg-ink text-white dark:bg-sea" : "self-start bg-zinc-100 dark:bg-zinc-900"}`}>
               {turn.content}
             </li>
           ))}
@@ -71,7 +71,7 @@ export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Tu
             <button
               disabled={deciding || !preview.results.some((result) => result.ok)}
               onClick={() => start(async () => setDecision(await acceptPatch(tripId, preview.runId)))}
-              className="rounded-md bg-zinc-900 px-4 py-1.5 font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900">
+              className="btn-primary">
               {deciding ? "Zapisuję…" : "Zastosuj"}
             </button>
             <button disabled={deciding} onClick={() => start(async () => setDecision(await rejectPatch(tripId, preview.runId)))} className="underline disabled:opacity-50">
@@ -90,14 +90,14 @@ export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Tu
           onChange={(event) => setCommand(event.target.value)}
           rows={2}
           placeholder="Co zmienić w planie? Np. „dzień 3 za długi, przesuń coś na dzień 4”"
-          className="rounded-md border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+          className="field px-3 py-2"
         />
         <div className="flex flex-wrap items-center gap-2">
-          <button disabled={pending || command.trim() === ""} className="rounded-md bg-zinc-900 px-4 py-1.5 font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900">
+          <button disabled={pending || command.trim() === ""} className="btn-primary">
             {pending ? "AI myśli…" : "Zaproponuj zmiany"}
           </button>
           {EXAMPLES.map((example) => (
-            <button key={example} type="button" onClick={() => setCommand(example)} className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+            <button key={example} type="button" onClick={() => setCommand(example)} className="rounded-full border border-sea/40 px-2.5 py-0.5 text-xs font-medium text-sea hover:bg-sea-light dark:text-teal-300 dark:hover:bg-sea/20">
               {example}
             </button>
           ))}

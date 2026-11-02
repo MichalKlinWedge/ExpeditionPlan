@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
 import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
+import { DownloadIcon, InfoIcon, NoteIcon, RouteIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -26,9 +27,31 @@ export default function TripPage(props: PageProps<"/trips/[id]">) {
   );
 }
 
-const section = "flex flex-col gap-3";
+const section = "card flex flex-col gap-3 p-5";
 const DRAFT = "Szkic AI: ";
-const heading = "text-lg font-semibold";
+const heading = "text-xl font-semibold";
+
+/** Kafelek nawigacji wyjazdu: ikona, nazwa i podpowiedź; `accent` — główne wejście (plan). */
+function Tile({ href, icon, title, hint, accent = false, download = false }: { href: string; icon: React.ReactNode; title: string; hint: string; accent?: boolean; download?: boolean }) {
+  const className = `card group flex flex-col gap-1.5 p-4 transition hover:-translate-y-0.5 hover:border-sea ${accent ? "border-signal/60 bg-signal/5" : ""}`;
+  const body = (
+    <>
+      <span className={`flex size-9 items-center justify-center rounded-xl ${accent ? "bg-signal text-white" : "bg-sea-light text-sea dark:bg-sea/20 dark:text-teal-300"}`}>{icon}</span>
+      <span className="font-semibold group-hover:text-sea">{title}</span>
+      <span className="text-xs text-zinc-500">{hint}</span>
+    </>
+  );
+  // Eksport to plik (route handler), nie strona — zwykły link.
+  return download ? (
+    <a href={href} className={className}>
+      {body}
+    </a>
+  ) : (
+    <Link href={href} className={className}>
+      {body}
+    </Link>
+  );
+}
 
 async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -54,39 +77,30 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{trip.data.title}</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          {tripDates(trip.data.start_date!, trip.data.end_date!)} · {trip.data.primary_tz} · {trip.data.base_currency} · Twoja rola: {ROLE[role]}
-        </p>
-        <p className="text-sm text-zinc-500">
-          Plan: {days.count ?? 0} dni, {items.count ?? 0} punktów.
-        </p>
-        <p className="flex gap-4 text-sm">
-          {(days.count ?? 0) > 0 && (
-            <Link href={`/trips/${id}/plan`} className="underline">
-              Plan dzień po dniu
-            </Link>
-          )}
-          <Link href={`/trips/${id}/logistics`} className="underline">
-            Rezerwacje, budżet i zadania
-          </Link>
-          <Link href={`/trips/${id}/practical`} className="underline">
-            Informacje praktyczne
-          </Link>
-          {canEdit && (days.count ?? 0) > 0 && (
-            <Link href={`/trips/${id}/tune`} className="underline">
-              Dostrajanie z AI
-            </Link>
-          )}
-          <Link href={`/trips/${id}/brief`} className="underline">
-            {brief.data ? "Brief wyjazdu — zmień" : "Uzupełnij brief wyjazdu (dla AI)"}
-          </Link>
-          <a href={`/trips/${id}/export`} className="underline">
-            Pobierz JSON
-          </a>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold">{trip.data.title}</h1>
+        <p className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <span className="chip">{tripDates(trip.data.start_date!, trip.data.end_date!)}</span>
+          <span>{trip.data.primary_tz}</span>
+          <span>·</span>
+          <span>{trip.data.base_currency}</span>
+          <span>·</span>
+          <span>Twoja rola: {ROLE[role]}</span>
+          <span>·</span>
+          <span>
+            {days.count ?? 0} dni, {items.count ?? 0} punktów
+          </span>
         </p>
       </div>
+
+      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/plan`} icon={<RouteIcon />} title="Plan dzień po dniu" hint="godziny, trasy, słońce" accent />}
+        <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, zadania" />
+        <Tile href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />
+        {canEdit && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />}
+        <Tile href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />
+        <Tile href={`/trips/${id}/export`} icon={<DownloadIcon />} title="Pobierz JSON" hint="kopia całego planu" download />
+      </nav>
 
       {canEdit && brief.data !== null && <AiPlanButton tripId={id} />}
 
@@ -100,14 +114,14 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       {canEdit && source === undefined && drafts.length > 0 && (
         <form action={`/trips/${id}/compare`} className="flex flex-wrap items-center gap-2 text-sm">
           <label htmlFor="draft">Porównaj ze szkicem:</label>
-          <select id="draft" name="draft" defaultValue={drafts.find((other) => other.title === `${DRAFT}${title}`)?.id} className="rounded-md border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700">
+          <select id="draft" name="draft" defaultValue={drafts.find((other) => other.title === `${DRAFT}${title}`)?.id} className="field px-2 py-1">
             {drafts.map((other) => (
               <option key={other.id} value={other.id!}>
                 {other.title}
               </option>
             ))}
           </select>
-          <button className="rounded-md border border-zinc-300 px-3 py-1 dark:border-zinc-700">Porównaj</button>
+          <button className="btn-secondary btn-sm">Porównaj</button>
         </form>
       )}
 

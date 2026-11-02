@@ -16,9 +16,9 @@ type Line = Doc["budgetLines"][number];
 type Task = Doc["tasks"][number];
 type Booking = Doc["bookings"][number];
 
-const input = "rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700";
+const input = "field px-2 py-1 text-sm";
 const small = "text-xs underline disabled:opacity-50";
-const primary = "rounded-md bg-zinc-900 px-3 py-1 text-sm text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900";
+const primary = "btn-primary btn-sm";
 const minorText = (minor: number) => (minor / 100).toLocaleString("pl-PL", { useGrouping: false, maximumFractionDigits: 2 });
 
 function Status({ state }: { state: FormState }) {
@@ -214,7 +214,7 @@ export function TaskList({ tripId, tasks, describe, canEdit }: { tripId: string;
   const closed = tasks.filter((task) => task.status !== "open");
   const row = (task: Task) =>
     editing === task.ref ? (
-      <li key={task.ref} className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <li key={task.ref} className="card p-3">
         <TaskForm tripId={tripId} task={task} onDone={() => setEditing(null)} />
       </li>
     ) : (

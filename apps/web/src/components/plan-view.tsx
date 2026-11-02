@@ -134,7 +134,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
           <button
             key={each}
             onClick={() => setScenario(each)}
-            className={`rounded-full border px-3 py-1 ${scenario === each ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900" : "border-zinc-300 dark:border-zinc-700"}`}>
+            className={`rounded-full border px-3 py-1 ${scenario === each ? "border-sea bg-sea text-white" : "border-zinc-300 dark:border-zinc-700"}`}>
             {each === "optimistic" ? "optymistyczny (krótsze czasy)" : "pesymistyczny (dłuższe czasy)"}
           </button>
         ))}
@@ -234,17 +234,17 @@ function AddItemForm({ onAdd }: { onAdd: (fields: Pick<Item, "title" | "kind"> &
         onAdd({ title: title.trim(), kind, durationMin: Number(duration) || undefined });
         setTitle("");
       }}>
-      <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nowy punkt" className="flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700" />
-      <select value={kind} onChange={(event) => setKind(event.target.value as Item["kind"])} className="rounded-md border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700">
+      <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nowy punkt" className="flex-1 field px-2 py-1" />
+      <select value={kind} onChange={(event) => setKind(event.target.value as Item["kind"])} className="field px-2 py-1">
         {Object.entries(KIND).map(([key, name]) => (
           <option key={key} value={key}>
             {name}
           </option>
         ))}
       </select>
-      <input value={duration} onChange={(event) => setDuration(event.target.value)} type="number" min={0} className="w-20 rounded-md border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700" aria-label="Czas trwania w minutach" />
+      <input value={duration} onChange={(event) => setDuration(event.target.value)} type="number" min={0} className="w-20 field px-2 py-1" aria-label="Czas trwania w minutach" />
       <span className="text-xs text-zinc-500">min</span>
-      <button className="rounded-md border border-zinc-300 px-3 py-1 dark:border-zinc-700">Dodaj</button>
+      <button className="btn-secondary btn-sm">Dodaj</button>
     </form>
   );
 }
@@ -257,6 +257,19 @@ type DayProps = {
   onChoose: (groupRef: string, variantRef: string) => void;
   places: Map<string, TripDocument["places"][number]>;
   actions: Actions | null;
+};
+
+/** Kolor kropki na osi dnia według rodzaju punktu. */
+const DOT: Record<string, string> = {
+  visit: "bg-sea",
+  activity: "bg-sea",
+  meal: "bg-signal",
+  meetup: "bg-signal",
+  transport: "bg-zinc-700 dark:bg-zinc-300",
+  lodging: "bg-indigo-500",
+  errand: "bg-zinc-400",
+  free: "bg-emerald-500",
+  decision: "bg-amber-500",
 };
 
 function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayProps) {
@@ -279,7 +292,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayPro
   const sun = schedule?.facts.sun;
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+    <section className="flex flex-col gap-3 card p-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold first-letter:uppercase">
@@ -311,7 +324,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayPro
               <button
                 key={variant.ref}
                 onClick={() => onChoose(group.ref, variant.ref)}
-                className={`rounded-full border px-3 py-1 ${active.has(variant.ref) ? "border-zinc-900 font-medium dark:border-zinc-100" : "border-zinc-300 text-zinc-500 dark:border-zinc-700"}`}>
+                className={`rounded-full border-2 px-3 py-1 transition ${active.has(variant.ref) ? "border-sea bg-sea-light font-semibold text-sea dark:bg-sea/20 dark:text-teal-300" : "border-zinc-300 text-zinc-500 hover:border-sea dark:border-zinc-700"}`}>
                 {variant.label}
                 {variant.recommended ? " ★" : ""}
               </button>
@@ -331,14 +344,15 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions }: DayPro
             const leg = source === undefined ? null : legLabel(source);
             const offMap = source !== undefined && missingOnMap(doc, source);
             return (
-              <li key={item.ref} className={`flex flex-col ${source?.parentRef ? "ml-6 border-l border-zinc-200 pl-3 dark:border-zinc-800" : ""}`}>
+              <li key={item.ref} className={`relative flex flex-col border-l-2 border-zinc-200 pb-1.5 pl-4 dark:border-zinc-800 ${source?.parentRef ? "ml-6" : ""}`}>
+                <span aria-hidden="true" className={`absolute top-1.5 -left-[7px] size-3 rounded-full ring-2 ring-white dark:ring-zinc-900 ${DOT[item.kind] ?? "bg-zinc-400"}`} />
                 <div className="flex gap-3">
-                  <span className="w-28 shrink-0 font-mono text-zinc-600 dark:text-zinc-400">
+                  <span className="w-28 shrink-0 font-semibold text-ink tabular-nums dark:text-zinc-100">
                     {item.startLocal}–{item.endLocal}
                     {item.endDate !== day.date ? "+1" : ""}
                   </span>
                   <span>
-                    {item.title}
+                    <span className="font-medium">{item.title}</span>
                     <span className="text-zinc-500">
                       {" "}
                       · {KIND[item.kind]}

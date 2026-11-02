@@ -90,10 +90,10 @@ const FIXED_KIND: Record<string, string> = {
 
 const STEPS = ["Cel i miejsce", "Styl i transport", "Ograniczenia", "Już ustalone", "Podsumowanie"];
 
-const input = "w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm dark:border-zinc-700";
+const input = "w-full field px-3 py-2 text-sm";
 const label = "flex flex-col gap-1 text-sm";
-const button = "rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900";
-const secondary = "rounded-md border border-zinc-300 px-4 py-2 text-sm disabled:opacity-50 dark:border-zinc-700";
+const button = "btn-primary";
+const secondary = "btn-secondary";
 
 const lines = (text: string) => text.split("\n").map((line) => line.trim()).filter(Boolean);
 const number = (text: string) => (text.trim() === "" ? undefined : Number(text));
@@ -108,7 +108,7 @@ function Choices({ options, value, onChange }: { options: Record<string, string>
             key={key}
             type="button"
             onClick={() => onChange(on ? value.filter((each) => each !== key) : [...value, key])}
-            className={`rounded-full border px-3 py-1 text-sm ${on ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900" : "border-zinc-300 dark:border-zinc-700"}`}>
+            className={`rounded-full border px-3 py-1 text-sm ${on ? "border-sea bg-sea text-white" : "border-zinc-300 dark:border-zinc-700"}`}>
             {name}
           </button>
         );

@@ -33,12 +33,12 @@ export function AiPlanButton({ tripId }: { tripId: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+    <div className="flex flex-col gap-2 card p-4">
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={run}
           disabled={pending}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900">
+          className="btn-primary">
           {pending ? `AI planuje… ${seconds} s` : "Zaplanuj z AI"}
         </button>
         <span className="text-xs text-zinc-500">
