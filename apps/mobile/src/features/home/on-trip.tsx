@@ -1,5 +1,5 @@
-import { instantToZoned, nowAndNext, scheduleDay, type TripDocument, weatherIcon, weatherLine } from '@expeditionplan/core';
-import { cachedTrip, type TripState } from '@expeditionplan/sync';
+import { instantToZoned, nowAndNext, type PlanItem, scheduleDay, type TripDocument, weatherIcon, weatherLine } from '@expeditionplan/core';
+import { type CachedTrip, cachedTrip } from '@expeditionplan/sync';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
@@ -7,12 +7,14 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { useTripWeather } from '@/features/trip/trip-weather';
 import { localDb } from '@/lib/local-db';
 
 /**
  * Tryb „w trasie” na Starcie: dla trwającego wyjazdu — teraz i następny punkt dnia, pogoda,
- * „Nawiguj” do następnego miejsca i do noclegu. Z bazy telefonu (działa offline), zegar co 30 s.
+ * „Nawiguj” do następnego miejsca i do noclegu, „Poczytaj” — przewodnik po miejscu (gdy ma opis).
+ * Z bazy telefonu (działa offline), zegar co 30 s.
  * Godziny jak w planie: scenariusz optymistyczny, warianty i zdarzenia dnia z bazy.
  */
 
@@ -34,20 +36,23 @@ export function OnTrip({ tripId }: { tripId: string }) {
     return () => clearInterval(tick);
   }, []);
   // Przy każdym wejściu na Start — opóźnienia i pominięcia z planu zmieniają godziny.
-  const [state, setState] = useState<TripState | null>(null);
+  const [trip, setTrip] = useState<CachedTrip | null>(null);
+  const [reading, setReading] = useState<PlanItem | null>(null);
   useFocusEffect(
     useCallback(() => {
       try {
-        setState(cachedTrip(localDb, tripId)?.state ?? null);
+        const found = cachedTrip(localDb, tripId);
+        setTrip(found);
+        if (found !== null) prefetchGuideImages(found);
       } catch {
-        setState(null);
+        setTrip(null);
       }
     }, [tripId]),
   );
-  const weather = useTripWeather(tripId, state?.doc ?? null);
-  if (state === null) return null;
+  const weather = useTripWeather(tripId, trip?.state.doc ?? null);
+  if (trip === null) return null;
 
-  const { doc, inputs } = state;
+  const { doc, inputs } = trip.state;
   const day = doc.days.find((each) => instantToZoned(now, each.tz).date === each.date);
   if (day === undefined) return null;
   let view: ReturnType<typeof nowAndNext> | null = null;
@@ -62,6 +67,11 @@ export function OnTrip({ tripId }: { tripId: string }) {
   const goTo = target === null ? null : placeOf(doc, target.ref);
   const base = day.baseRef === undefined ? undefined : doc.places.find((place) => place.ref === day.baseRef);
   const lodging = base?.lat !== undefined && base.lng !== undefined ? { lat: base.lat, lng: base.lng } : null;
+  // Przewodnik: najpierw następny punkt (tam idziecie), potem bieżący.
+  const readable = [view?.next, view?.current].flatMap((each) => {
+    const item = each ? doc.items.find((other) => other.ref === each.ref) : undefined;
+    return item !== undefined && itemGuide(trip, item) !== null ? [item] : [];
+  })[0];
 
   return (
     <View style={styles.block}>
@@ -102,6 +112,8 @@ export function OnTrip({ tripId }: { tripId: string }) {
           {lodging !== null && <Button small label="Do noclegu" onPress={() => navigate(lodging)} />}
         </View>
       )}
+      {readable !== undefined && <Button small label={`📖 Poczytaj: ${readable.title}`} onPress={() => setReading(readable)} style={styles.read} />}
+      <ItemDetails trip={trip} item={reading} onClose={() => setReading(null)} />
     </View>
   );
 }
@@ -112,4 +124,5 @@ const styles = StyleSheet.create({
   muted: { color: '#FFFFFFCC' },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.one },
   grow: { flexShrink: 1 },
+  read: { alignSelf: 'flex-start', marginTop: Spacing.one },
 });
