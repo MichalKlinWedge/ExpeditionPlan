@@ -2,7 +2,7 @@
   "expo": {
     "name": "Expedition Planner",
     "slug": "expeditionplan",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "expeditionplan",
@@ -45,7 +45,15 @@
       ],
       "expo-notifications",
       "expo-web-browser",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Aparat służy do zdjęć w dzienniku wyjazdu.",
+          "photosPermission": "Zdjęcia z galerii można dodać do dziennika wyjazdu.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

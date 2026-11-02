@@ -1,6 +1,6 @@
 import { instantToZoned } from '@expeditionplan/core';
 import { type CachedTrip, removeJournalEntry, saveJournalEntry, uuidv7 } from '@expeditionplan/sync';
-import { getDocumentAsync } from 'expo-document-picker';
+import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -172,13 +172,16 @@ function NewEntry({ trip, tripId, onDone, onSaved }: { trip: CachedTrip; tripId:
   const [photo, setPhoto] = useState<{ uri: string; mimeType: string; extension: string } | null>(null);
   const days = trip.state.doc.days;
 
-  const pick = async () => {
-    const result = await getDocumentAsync({ type: 'image/*', copyToCacheDirectory: true });
+  // Aparat albo galeria; kompresja JPEG (0.7) — kilkaset KB zamiast kilku MB do wysłania.
+  const pick = async (source: 'camera' | 'library') => {
+    if (source === 'camera' && !(await requestCameraPermissionsAsync()).granted) return Alert.alert('Brak dostępu do aparatu', 'Zezwól aplikacji na aparat w ustawieniach telefonu.');
+    const options = { mediaTypes: ['images' as const], quality: 0.7 };
+    const result = source === 'camera' ? await launchCameraAsync(options) : await launchImageLibraryAsync(options);
     const asset = result.canceled ? undefined : result.assets[0];
     if (asset === undefined) return;
     const mimeType = asset.mimeType ?? 'image/jpeg';
-    const extension = (asset.name.split('.').pop() ?? mimeType.split('/')[1] ?? 'jpg').toLowerCase();
-    if ((asset.size ?? 0) > 15 * 1024 * 1024) return Alert.alert('Za duże zdjęcie', 'Zdjęcie może mieć najwyżej 15 MB.');
+    const extension = (asset.fileName?.split('.').pop() ?? mimeType.split('/')[1] ?? 'jpg').toLowerCase().replace('jpeg', 'jpg');
+    if ((asset.fileSize ?? 0) > 15 * 1024 * 1024) return Alert.alert('Za duże zdjęcie', 'Zdjęcie może mieć najwyżej 15 MB.');
     setPhoto({ uri: asset.uri, mimeType, extension });
   };
 
@@ -219,7 +222,8 @@ function NewEntry({ trip, tripId, onDone, onSaved }: { trip: CachedTrip; tripId:
       )}
       {photo !== null && <Image source={{ uri: photo.uri }} style={styles.photo} contentFit="cover" />}
       <View style={styles.wrap}>
-        <Button small label={photo === null ? '📷 Dodaj zdjęcie' : 'Zmień zdjęcie'} onPress={() => void pick()} />
+        <Button small label="📷 Zrób zdjęcie" onPress={() => void pick('camera')} />
+        <Button small label="🖼 Z galerii" onPress={() => void pick('library')} />
         {photo !== null && <Button small label="Bez zdjęcia" onPress={() => setPhoto(null)} />}
       </View>
       <View style={styles.meta}>

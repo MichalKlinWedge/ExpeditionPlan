@@ -1,6 +1,8 @@
-import { flightLine, flightOf, type GuideRow, guideFor, itemIcon, legLabel, type PlanItem as Item } from '@expeditionplan/core';
+import { flightLine, flightOf, type GuideRow, guideFor, guideText, itemIcon, legLabel, type PlanItem as Item } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Image } from 'expo-image';
+import * as Speech from 'expo-speech';
+import { useEffect, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,7 +15,26 @@ import { Spacing } from '@/constants/theme';
  * Szczegóły punktu na telefonie: miejsce z „Nawiguj”, opis, notatki, linki i przewodnik
  * (opis, ciekawostki, historia, zdjęcia z Commons). Tekst przewodnika jest w bazie telefonu —
  * offline zawsze; zdjęcia z pamięci podręcznej (pobierane po synchronizacji, `prefetchGuideImages`).
+ * „Posłuchaj” czyta przewodnik syntezatorem mowy telefonu (`expo-speech`, offline, jeśli telefon
+ * ma polski głos); zamknięcie szczegółów przerywa czytanie.
  */
+
+/** Tekst na kawałki mieszczące się w limicie syntezatora — po akapitach, a za długie po zdaniach. */
+function speechParts(text: string): string[] {
+  const limit = Math.min(Speech.maxSpeechInputLength || 4000, 3500);
+  return text.split(/\n\n+/).flatMap((paragraph) => {
+    if (paragraph.length <= limit) return [paragraph];
+    const parts: string[] = [];
+    let current = '';
+    for (const sentence of paragraph.split(/(?<=[.!?])\s+/)) {
+      if ((current + ' ' + sentence).length > limit && current !== '') {
+        parts.push(current);
+        current = sentence;
+      } else current = current === '' ? sentence : `${current} ${sentence}`;
+    }
+    return current === '' ? parts : [...parts, current];
+  });
+}
 
 type Props = { trip: CachedTrip; item: Item | null; onClose: () => void };
 
@@ -55,6 +76,24 @@ function Details({ trip, item, onClose }: { trip: CachedTrip; item: Item; onClos
   const guide = itemGuide(trip, item);
   const notes = doc.notes.filter((note) => note.scope === 'item' && note.targetRef === item.ref).map((note) => (note.title ? `${note.title}: ${note.body}` : note.body));
   const open = (url: string) => void Linking.openURL(url);
+  const [speaking, setSpeaking] = useState(false);
+  useEffect(
+    () => () => {
+      void Speech.stop();
+    },
+    [],
+  );
+  const listen = () => {
+    if (guide === null) return;
+    void Speech.stop();
+    if (speaking) return setSpeaking(false);
+    const parts = speechParts(`${guide.title}.\n\n${guideText(guide)}`);
+    const finished = () => setSpeaking(false);
+    parts.forEach((part, i) =>
+      Speech.speak(part, { language: 'pl-PL', rate: 0.95, ...(i === parts.length - 1 ? { onDone: finished } : {}), onStopped: finished, onError: finished }),
+    );
+    setSpeaking(true);
+  };
 
   return (
     <View style={styles.fill}>
@@ -98,9 +137,12 @@ function Details({ trip, item, onClose }: { trip: CachedTrip; item: Item; onClos
 
         {guide !== null && (
           <View style={styles.guide}>
-            <ThemedText type="smallBold" themeColor="accent">
-              PRZEWODNIK
-            </ThemedText>
+            <View style={styles.row}>
+              <ThemedText type="smallBold" themeColor="accent" style={styles.grow}>
+                PRZEWODNIK
+              </ThemedText>
+              <Button small variant={speaking ? 'accent' : 'secondary'} label={speaking ? '■ Zatrzymaj' : '▶ Posłuchaj'} onPress={listen} />
+            </View>
             <ThemedText>{guide.summary}</ThemedText>
             {guide.images.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.images}>
