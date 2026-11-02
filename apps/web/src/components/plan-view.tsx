@@ -79,6 +79,9 @@ const STATUS: Record<string, string> = {
   scheduled: "w planie",
 };
 
+/** Wybór widoku „pula” zamiast dnia. */
+const POOL = "pool";
+
 const weekday = (date: string) =>
   new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
@@ -118,8 +121,10 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
     // `weatherKey` streszcza miejsca i dni — bez nowego zapytania przy każdej edycji punktu.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherKey]);
-  const [mapDayRef, setMapDay] = useState<string | undefined>(doc.days[0]?.ref);
-  const mapDay = doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0];
+  // Widok: jeden dzień albo pula (`POOL`); mapa pokazuje to samo.
+  const [mapDayRef, setMapDay] = useState<string | undefined>(doc.days[0]?.ref ?? (pool.length > 0 ? POOL : undefined));
+  const showPool = mapDayRef === POOL;
+  const mapDay = showPool ? undefined : (doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0]);
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ ref: string; over: DropTarget | null } | null>(null);
   /** Własna pinezka: tryb wskazywania na mapie i wskazane miejsce nowego punktu. */
@@ -264,10 +269,11 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
 
       <Coverage doc={doc} />
 
-      {mapDay !== undefined && (
+      {(mapDay !== undefined || showPool) && (
         <DayTabs
           doc={doc}
-          current={mapDay.ref}
+          current={mapDay?.ref ?? POOL}
+          pool={pool.length > 0 || canEdit ? pool.length : null}
           onChoose={(ref) => {
             setMapDay(ref);
             setSelected(null);
@@ -280,11 +286,11 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
       )}
 
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start">
-        {mapDay !== undefined && (
+        {(mapDay !== undefined || showPool) && (
           <aside className="flex flex-col gap-2 lg:sticky lg:top-24 lg:order-last">
             <PlanMap
               map={stableMap}
-              fitKey={mapDay.ref}
+              fitKey={mapDay?.ref ?? POOL}
               selected={selected}
               onSelect={(ref) => select(ref, "map")}
               editing={
@@ -298,7 +304,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
                   : null
               }
             />
-            {canEdit && (
+            {canEdit && mapDay !== undefined && (
               <div className="flex flex-col gap-2 text-sm">
                 {pick === null ? (
                   <button onClick={() => setPick({ at: null })} className="btn-secondary btn-sm self-start">
@@ -325,12 +331,18 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
                 )}
               </div>
             )}
-            <p className="text-xs text-zinc-500">
-              Numery = kolejność dnia. Linia ciągła: trasa po drogach („Przelicz przejazdy”), przerywana: prosto między miejscami
-              {map.pins.some((pin) => pin.pool) ? " · szare kropki: pula" : ""}
-              {map.pins.some((pin) => pin.base) ? " · fioletowa: baza dnia" : ""}
-              {canEdit && map.pins.some((pin) => pin.movable) ? " · własne pinezki można przeciągnąć" : ""}.
-            </p>
+            {showPool ? (
+              <p className="text-xs text-zinc-500">
+                Szare kropki: punkty z puli{canEdit && map.pins.some((pin) => pin.movable) ? " · własne pinezki można przeciągnąć" : ""}.
+              </p>
+            ) : (
+              <p className="text-xs text-zinc-500">
+                Numery = kolejność dnia. Linia ciągła: trasa po drogach („Przelicz przejazdy”), przerywana: prosto między miejscami
+                {map.pins.some((pin) => pin.pool) ? " · szare kropki: pula" : ""}
+                {map.pins.some((pin) => pin.base) ? " · fioletowa: baza dnia" : ""}
+                {canEdit && map.pins.some((pin) => pin.movable) ? " · własne pinezki można przeciągnąć" : ""}.
+              </p>
+            )}
           </aside>
         )}
 
@@ -356,13 +368,12 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit }: Props) {
           )}
           {Object.keys(weather).length > 0 && <p className="text-xs text-zinc-500">{WEATHER_ATTRIBUTION}</p>}
 
-          {(pool.length > 0 || (dnd?.dragging != null && doc.items.find((item) => item.ref === dnd.dragging)?.dayRef !== undefined)) && (
-            <section
-              className={`flex flex-col gap-2 rounded-xl ${dnd?.dragging ? "border-2 border-dashed p-3" : ""} ${dnd?.over?.dayRef === null ? "border-sea bg-sea-light/40 dark:bg-sea/10" : "border-zinc-300 dark:border-zinc-700"}`}
-              onDragOver={dnd ? (event) => dnd.hover({ dayRef: null }, event) : undefined}
-              onDrop={dnd ? (event) => dnd.drop({ dayRef: null }, event) : undefined}>
+          {showPool && (
+            <section className="flex flex-col gap-2 card p-4">
               <h2 className="text-lg font-semibold">Pula — poza dniami ({pool.length})</h2>
-              {dnd?.dragging && <p className="text-xs text-zinc-500">Upuść tutaj, żeby przenieść punkt do puli.</p>}
+              {pool.length === 0 && (
+                <p className="text-sm text-zinc-500">Pula jest pusta. Punkt trafia tu przez „przenieś… → do puli” albo po przeciągnięciu na przycisk „Pula”.</p>
+              )}
               {Object.entries(Object.groupBy(pool, (item) => item.area ?? "bez obszaru")).map(([area, items]) => (
                 <div key={area} className="text-sm">
                   <p className="font-medium">{area}</p>
@@ -402,9 +413,27 @@ type Dnd = {
 
 /**
  * Wybór dnia: mini przyciski nad planem (data, pogoda). Widać jeden dzień, mapa pokazuje ten sam.
- * Punkt przeciągnięty na przycisk dnia trafia na koniec tego dnia.
+ * Ostatni przycisk to pula (punkty poza dniami). Punkt przeciągnięty na przycisk dnia trafia
+ * na koniec tego dnia, na „Pulę” — do puli.
  */
-function DayTabs({ doc, current, onChoose, weather, dnd, below }: { doc: TripDocument; current: string; onChoose: (ref: string) => void; weather: Record<string, DayWeather>; dnd: Dnd | null; below: boolean }) {
+function DayTabs({
+  doc,
+  current,
+  pool,
+  onChoose,
+  weather,
+  dnd,
+  below,
+}: {
+  doc: TripDocument;
+  current: string;
+  /** Liczba punktów w puli; `null` = bez przycisku „Pula”. */
+  pool: number | null;
+  onChoose: (ref: string) => void;
+  weather: Record<string, DayWeather>;
+  dnd: Dnd | null;
+  below: boolean;
+}) {
   const short = (date: string) =>
     new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
   return (
@@ -433,6 +462,24 @@ function DayTabs({ doc, current, onChoose, weather, dnd, below }: { doc: TripDoc
           </button>
         );
       })}
+      {pool !== null && (
+        <button
+          onClick={() => onChoose(POOL)}
+          onDragOver={dnd ? (event) => dnd.hover({ dayRef: null }, event) : undefined}
+          onDrop={dnd ? (event) => dnd.drop({ dayRef: null }, event) : undefined}
+          aria-current={current === POOL ? "true" : undefined}
+          title="Punkty poza dniami"
+          className={`flex shrink-0 flex-col items-center rounded-lg border border-dashed px-2.5 py-1 text-xs leading-tight transition-colors ${
+            current === POOL
+              ? "border-solid border-sea bg-sea text-white"
+              : dnd?.dragging != null && dnd.over?.dayRef === null
+                ? "border-sea bg-sea-light/60 dark:bg-sea/20"
+                : "border-zinc-400 hover:border-sea dark:border-zinc-600"
+          }`}>
+          <span className="font-semibold">Pula</span>
+          <span className={current === POOL ? "text-white/85" : "text-zinc-500"}>{pool} pkt</span>
+        </button>
+      )}
     </nav>
   );
 }
