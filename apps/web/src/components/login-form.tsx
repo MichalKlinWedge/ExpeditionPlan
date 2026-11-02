@@ -31,8 +31,14 @@ export function LoginForm() {
   const magicLink = async (event: React.FormEvent) => {
     event.preventDefault();
     setPending(true);
-    const { error } = await createClient().auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo() } });
+    // Nowe konto tylko z linku zaproszenia (`/join/…`); poza nim link dostają istniejące konta.
+    const invited = next.startsWith("/join/");
+    const { error } = await createClient().auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo(), shouldCreateUser: invited } });
     setPending(false);
+    if (error && /signups? not allowed/i.test(error.message)) {
+      setStatus({ error: "Nie ma konta z tym adresem. Konto zakłada się z linku zaproszenia od organizatora wyjazdu." });
+      return;
+    }
     setStatus(error ? { error: error.message } : { ok: `Wysłałem link logowania na ${email}. Otwórz go w tej przeglądarce.` });
   };
 

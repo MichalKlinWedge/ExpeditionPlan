@@ -14,12 +14,15 @@ const NO_SESSION = { auth: { persistSession: false, autoRefreshToken: false } } 
 
 export type TestUser = { id: string; email: string; password: string };
 
-/** Konto testowe w lokalnym Supabase, z losowym adresem i hasłem na każde uruchomienie. */
-export async function createTestUser(env: LocalSupabase, label: string): Promise<TestUser> {
+/**
+ * Konto testowe w lokalnym Supabase, z losowym adresem i hasłem na każde uruchomienie. Domyślnie
+ * może zakładać wyjazdy (`trip_creator`); `creator: false` = konto bez zaproszenia.
+ */
+export async function createTestUser(env: LocalSupabase, label: string, { creator = true } = {}): Promise<TestUser> {
   const admin = createClient(env.url, env.secretKey, NO_SESSION);
   const email = `${label}-${uuidv7()}@test.local`;
   const password = crypto.randomUUID();
-  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { trip_creator: creator } });
   if (error) throw error;
   return { id: data.user.id, email, password };
 }

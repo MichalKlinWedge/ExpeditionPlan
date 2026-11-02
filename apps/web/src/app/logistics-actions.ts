@@ -1,8 +1,7 @@
 "use server";
 
 import { BudgetCategory, parseMoney, TripDocument } from "@expeditionplan/core";
-import { type Collection, COLLECTIONS, refIndex, rowForUpdate, SPECS, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
@@ -43,22 +42,11 @@ async function change(tripId: string, collection: Editable, ref: string | null, 
     return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
   }
 
-  const ids = refIndex(payload.tables);
-  if (current === undefined) ids[element.ref] = element.ref.slice(3);
-  const owner = new Map<string, Collection>();
-  for (const each of COLLECTIONS) for (const item of checked.data[each] as { ref?: string }[]) if (item.ref) owner.set(item.ref, each);
-  const index = { idOf: (key: string) => ids[key]!, collectionOf: (key: string) => owner.get(key) };
-  // Tabela po nazwie z SPECS — bez typów wygenerowanych dla każdej z osobna.
-  const table = (supabase as unknown as SupabaseClient).from(SPECS[collection].table);
-  const id = index.idOf(element.ref);
-  const result = remove
-    ? await table.update({ deleted_at: new Date().toISOString() }).eq("id", id).eq("trip_id", tripId).select("id")
-    : current === undefined
-      ? await table.insert({ ...rowForUpdate(collection, element, index), id, trip_id: tripId, sort_key: `z${Date.now().toString(36)}` }).select("id")
-      : await table.update(rowForUpdate(collection, element, index)).eq("id", id).eq("trip_id", tripId).select("id");
-  if (result.error) return { error: message(result.error) };
-  // RLS odrzuca UPDATE bez błędu (0 wierszy).
-  if ((result.data ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  try {
+    await saveElements(supabase, tripId, checked.data, [{ collection, element, op: remove ? "remove" : current === undefined ? "insert" : "update" }], refIndex(payload.tables));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
   refresh();
   return { ok: remove ? "Usunięto." : "Zapisano." };
 }

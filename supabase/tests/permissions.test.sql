@@ -2,7 +2,7 @@
 -- Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(48);
+select plan(50);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000001', 'owner@test.local'),
@@ -11,13 +11,15 @@ insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000004', 'obcy@test.local'),
   ('00000000-0000-4000-8000-000000000005', 'drugi-z-linku@test.local');
 
-create function pg_temp.login(p_user uuid) returns void language sql as $$
+-- `p_creator`: konto z flagą `trip_creator` w app_metadata (może zakładać wyjazdy).
+create function pg_temp.login(p_user uuid, p_creator boolean default false) returns void language sql as $$
   select set_config('role', 'authenticated', true),
-         set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true)
+         set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated',
+           'app_metadata', json_build_object('trip_creator', p_creator))::text, true)
 $$;
 
 -- ── Właściciel: wyjazd, uczestnicy, plan, sejf ───────────────────────────────────────────────
-select pg_temp.login('00000000-0000-4000-8000-000000000001');
+select pg_temp.login('00000000-0000-4000-8000-000000000001', true);
 
 insert into public.trips (id, title, start_date, end_date, primary_tz, base_currency)
 values ('10000000-0000-4000-8000-000000000001', 'Maroko', '2026-12-26', '2026-12-31', 'Africa/Casablanca', 'PLN');
@@ -144,6 +146,10 @@ select is(public.pull_changes('10000000-0000-4000-8000-000000000001', 0), null::
 select throws_ok($$insert into public.items (id, trip_id, ref, kind, title, plan_status)
   values ('30000000-0000-4000-8000-000000000009', '10000000-0000-4000-8000-000000000001', 'x', 'visit', 'X', 'candidate')$$,
   '42501', null, 'obcy nie dopisze punktu');
+select is(public.can_create_trips(), false, 'konto bez flagi trip_creator nie zakłada wyjazdów');
+select throws_ok($$insert into public.trips (id, title, start_date, end_date, primary_tz, base_currency)
+  values ('10000000-0000-4000-8000-000000000009', 'Cudzy', '2026-12-26', '2026-12-31', 'Europe/Warsaw', 'PLN')$$,
+  '42501', null, 'obcy nie założy własnego wyjazdu (konta tylko z zaproszenia)');
 
 -- ── Wyjście z wyjazdu ────────────────────────────────────────────────────────────────────────
 select pg_temp.login('00000000-0000-4000-8000-000000000003');

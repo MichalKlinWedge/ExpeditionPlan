@@ -1,4 +1,4 @@
-import type { MergeEdit, PlanEdit } from '@expeditionplan/core';
+import type { MergeEdit, PlanEdit, TripDocument } from '@expeditionplan/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { type Collection, COLLECTIONS, rowForUpdate, SPECS } from './document.ts';
@@ -90,6 +90,49 @@ export async function saveMergeEdit(client: SupabaseClient, tripId: string, edit
   }
   if (edit.removed.length > 0) {
     check(await client.from('items').update({ deleted_at: new Date().toISOString() }).in('id', edit.removed.map(index.idOf)));
+  }
+  return known;
+}
+
+export type ElementWrite = { collection: Collection; element: { ref: string } & Record<string, unknown>; op: 'insert' | 'update' | 'remove' };
+
+/**
+ * Zapis pojedynczych elementów spoza planu dnia: notatki, kontakty, pakowanie, zadania i źródła
+ * (etap 5 AI), grupy porównania z wariantami i rezerwacjami-kandydatami (etap 4), budżet, zadania
+ * i rezerwacje z edytora logistyki. `doc` to dokument PO zmianie, już zwalidowany — z niego idą
+ * odwołania między elementami. Nowy element ma klucz `id-<uuid>` (wiersz dostaje to id i pusty
+ * `ref`). Zapisy idą w kolejności `writes` (klucze obce: grupa → wariant → rezerwacja). RLS
+ * odrzuca UPDATE bez błędu, więc 0 zmienionych wierszy to brak uprawnień.
+ */
+export async function saveElements(client: SupabaseClient, tripId: string, doc: TripDocument, writes: ElementWrite[], ids: Record<string, string>): Promise<Record<string, string>> {
+  const owner = new Map<string, Collection>();
+  for (const collection of COLLECTIONS) {
+    for (const element of doc[collection] as { ref?: string }[]) if (element.ref) owner.set(element.ref, collection);
+  }
+  const known = { ...ids };
+  for (const write of writes) if (write.op === 'insert') known[write.element.ref] = write.element.ref.slice(3);
+  const index = {
+    idOf: (ref: string) => {
+      const id = known[ref];
+      if (id === undefined) throw new Error(`Brak id dla „${ref}”`);
+      return id;
+    },
+    collectionOf: (ref: string) => owner.get(ref),
+  };
+  // Nowe elementy na końcu listy, w kolejności zapisu.
+  const stamp = Date.now().toString(36);
+  let order = 0;
+  for (const { collection, element, op } of writes) {
+    const table = client.from(SPECS[collection].table);
+    const id = index.idOf(element.ref);
+    const { data, error } =
+      op === 'remove'
+        ? await table.update({ deleted_at: new Date().toISOString() }).eq('id', id).eq('trip_id', tripId).select('id')
+        : op === 'insert'
+          ? await table.insert({ ...rowForUpdate(collection, element, index), id, trip_id: tripId, sort_key: `z${stamp}${String(order++).padStart(3, '0')}` }).select('id')
+          : await table.update(rowForUpdate(collection, element, index)).eq('id', id).eq('trip_id', tripId).select('id');
+    if (error) throw new RemoteError(error.code === '42501' ? 'Brak uprawnień do tej zmiany.' : error.message, error.code);
+    if ((data ?? []).length === 0) throw new RemoteError('Brak uprawnień do tej zmiany.', '42501');
   }
   return known;
 }

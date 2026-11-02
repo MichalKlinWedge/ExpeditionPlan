@@ -3,8 +3,7 @@
 import { PracticalInfo, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { mergePractical, type PracticalDraft, type PracticalPick, practicalInfo } from "@expeditionplan/planner";
-import { type Collection, COLLECTIONS, refIndex, rowForUpdate, SPECS, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
@@ -89,17 +88,11 @@ export async function applyPractical(tripId: string, runId: string, pick: Practi
   const checked = TripDocument.safeParse(doc);
   if (!checked.success) return { error: `Nie zapisano: ${checked.error.issues[0]?.message ?? ""}` };
 
-  const ids = refIndex(loaded.payload.tables);
-  for (const entry of created) ids[entry.element.ref!] = entry.element.ref!.slice(3);
-  const owner = new Map<string, Collection>();
-  for (const each of COLLECTIONS) for (const element of checked.data[each] as { ref?: string }[]) if (element.ref) owner.set(element.ref, each);
-  const index = { idOf: (key: string) => ids[key]!, collectionOf: (key: string) => owner.get(key) };
-  const db = loaded.supabase as unknown as SupabaseClient;
-  let order = 0;
-  for (const entry of created) {
-    const row = { ...rowForUpdate(entry.collection, entry.element, index), id: index.idOf(entry.element.ref!), trip_id: tripId, sort_key: `z${Date.now().toString(36)}${String(order++).padStart(3, "0")}` };
-    const { error } = await db.from(SPECS[entry.collection].table).insert(row);
-    if (error) return { error: `Dodano ${order - 1} z ${created.length}, potem błąd: ${message(error)}` };
+  const writes = created.map((entry) => ({ collection: entry.collection, element: entry.element as ElementWrite["element"], op: "insert" as const }));
+  try {
+    await saveElements(loaded.supabase, tripId, checked.data, writes, refIndex(loaded.payload.tables));
+  } catch (e) {
+    return { error: `Nie zapisano: ${e instanceof Error ? e.message : String(e)}` };
   }
   await loaded.supabase.from("ai_runs").update({ status: "accepted" }).eq("id", runId);
   refresh();

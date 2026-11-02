@@ -1247,6 +1247,9 @@ isOneToOne: false
 "can_add_expense":
 { Args: { "p_trip": string }; Returns: boolean
                            },
+"can_create_trips":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "can_edit_trip":
 { Args: { "p_trip": string }; Returns: boolean
                            },

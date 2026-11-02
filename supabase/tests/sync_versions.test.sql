@@ -8,15 +8,17 @@ insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000002', 'viewer@test.local'),
   ('00000000-0000-4000-8000-000000000003', 'obcy@test.local');
 
-create function pg_temp.login(p_user uuid) returns void language sql as $$
+-- `p_creator`: konto z flagą `trip_creator` w app_metadata (może zakładać wyjazdy).
+create function pg_temp.login(p_user uuid, p_creator boolean default false) returns void language sql as $$
   select set_config('role', 'authenticated', true),
-         set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true)
+         set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated',
+           'app_metadata', json_build_object('trip_creator', p_creator))::text, true)
 $$;
 
 select is((select count(*) from public.profiles where id::text like '00000000-0000-4000-8000-00000000000_'), 3::bigint, 'konto dostaje profil');
 
 -- ── Właściciel tworzy wyjazd ─────────────────────────────────────────────────────────────────
-select pg_temp.login('00000000-0000-4000-8000-000000000001');
+select pg_temp.login('00000000-0000-4000-8000-000000000001', true);
 
 insert into public.trips (id, title, start_date, end_date, primary_tz, base_currency)
 values ('10000000-0000-4000-8000-000000000001', 'Test', '2026-12-26', '2026-12-31', 'Africa/Casablanca', 'PLN');

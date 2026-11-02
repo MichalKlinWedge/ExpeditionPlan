@@ -20,8 +20,8 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const NO_SESSION = { auth: { persistSession: false, autoRefreshToken: false } } as const;
 
 export const DEV_USERS = {
-  organizer: { email: 'organizator@expeditionplan.test', password: 'expeditionplan-dev', name: 'Organizator' },
-  viewer: { email: 'widz@expeditionplan.test', password: 'expeditionplan-dev', name: 'Widz' },
+  organizer: { email: 'organizator@expeditionplan.test', password: 'expeditionplan-dev', name: 'Organizator', creator: true },
+  viewer: { email: 'widz@expeditionplan.test', password: 'expeditionplan-dev', name: 'Widz', creator: false },
 };
 
 function localSupabase() {
@@ -39,6 +39,8 @@ async function signIn(env: ReturnType<typeof localSupabase>, user: (typeof DEV_U
     password: user.password,
     email_confirm: true,
     user_metadata: { full_name: user.name },
+    // Zakładać wyjazdy może tylko konto z flagą (migracja trip_creators); widz tylko ogląda.
+    app_metadata: { trip_creator: user.creator },
   });
   if (created.error && created.error.code !== 'email_exists') throw created.error;
   const client = createClient(env.url, env.publishableKey, NO_SESSION);

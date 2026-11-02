@@ -3,8 +3,7 @@
 import { LogisticsCandidates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { type LogisticsDraft, logisticsCandidates, mergeLogistics } from "@expeditionplan/planner";
-import { type Collection, COLLECTIONS, refIndex, rowForUpdate, SPECS, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
@@ -89,17 +88,11 @@ export async function applyCandidates(tripId: string, runId: string, groupIndexe
   const checked = TripDocument.safeParse(doc);
   if (!checked.success) return { error: `Nie zapisano: ${checked.error.issues[0]?.message ?? ""}` };
 
-  const ids = refIndex(loaded.payload.tables);
-  for (const entry of created) ids[entry.element.ref] = entry.element.ref.slice(3);
-  const owner = new Map<string, Collection>();
-  for (const each of COLLECTIONS) for (const element of checked.data[each] as { ref?: string }[]) if (element.ref) owner.set(element.ref, each);
-  const index = { idOf: (key: string) => ids[key]!, collectionOf: (key: string) => owner.get(key) };
-  const db = loaded.supabase as unknown as SupabaseClient;
-  let order = 0;
-  for (const entry of created) {
-    const row = { ...rowForUpdate(entry.collection, entry.element, index), id: index.idOf(entry.element.ref), trip_id: tripId, sort_key: `z${Date.now().toString(36)}${String(order++).padStart(3, "0")}` };
-    const { error } = await db.from(SPECS[entry.collection].table).insert(row);
-    if (error) return { error: `Zapisano ${order - 1} z ${created.length}, potem błąd: ${message(error)}` };
+  const writes = created.map((entry) => ({ collection: entry.collection, element: entry.element as ElementWrite["element"], op: "insert" as const }));
+  try {
+    await saveElements(loaded.supabase, tripId, checked.data, writes, refIndex(loaded.payload.tables));
+  } catch (e) {
+    return { error: `Nie zapisano: ${e instanceof Error ? e.message : String(e)}` };
   }
   await loaded.supabase.from("ai_runs").update({ status: "accepted" }).eq("id", runId);
   refresh();
@@ -126,16 +119,14 @@ export async function chooseCandidate(tripId: string, groupRef: string, variantR
   };
   const checked = TripDocument.safeParse(next);
   if (!checked.success) return { error: `Nie zapisano: ${checked.error.issues[0]?.message ?? ""}` };
-  const ids = refIndex(payload.tables);
-  const owner = new Map<string, Collection>();
-  for (const each of COLLECTIONS) for (const element of checked.data[each] as { ref?: string }[]) if (element.ref) owner.set(element.ref, each);
-  const index = { idOf: (key: string) => ids[key]!, collectionOf: (key: string) => owner.get(key) };
-  const db = supabase as unknown as SupabaseClient;
-  const writes: [Collection, { ref: string } & Record<string, unknown>][] = [["variantGroups", nextGroup], ...nextBookings.map((each) => ["bookings", each] as [Collection, typeof each])];
-  for (const [collection, element] of writes) {
-    const { data, error } = await db.from(SPECS[collection].table).update(rowForUpdate(collection, element, index)).eq("id", index.idOf(element.ref)).select("id");
-    if (error) return { error: message(error) };
-    if ((data ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  const writes: ElementWrite[] = [
+    { collection: "variantGroups", element: nextGroup, op: "update" },
+    ...nextBookings.map((each) => ({ collection: "bookings" as const, element: each as ElementWrite["element"], op: "update" as const })),
+  ];
+  try {
+    await saveElements(supabase, tripId, checked.data, writes, refIndex(payload.tables));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
   }
   refresh();
   return { ok: `Wybrano. Kandydat ma status „do rezerwacji” — zarezerwuj go i zmień status w rezerwacjach.` };

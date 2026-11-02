@@ -11,7 +11,7 @@ import { z } from "zod";
 
 import { aiAccessError, plannerDeps, routeLookup } from "@/lib/ai";
 import { countriesFor } from "@/lib/countries";
-import { requireUser } from "@/lib/auth";
+import { NO_CREATE, requireUser } from "@/lib/auth";
 import { SAMPLE_PLANS } from "@/lib/sample-plans";
 
 /**
@@ -43,7 +43,8 @@ const NewTrip = z
 export async function createTrip(_prev: FormState, form: FormData): Promise<FormState> {
   const parsed = NewTrip.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
-  const { supabase } = await requireUser("/trips/new");
+  const { supabase, canCreateTrips } = await requireUser("/trips/new");
+  if (!canCreateTrips) return { error: NO_CREATE };
   const id = uuidv7();
   const { error } = await supabase.from("trips").insert({
     id,
@@ -234,7 +235,8 @@ const BRIEF_FIELDS: Record<string, string> = {
 
 /** Pięć planów wzorcowych na moje konto; pomija te, które już mam (po tytule). */
 export async function importSamples(): Promise<FormState> {
-  const { supabase } = await requireUser("/");
+  const { supabase, canCreateTrips } = await requireUser("/");
+  if (!canCreateTrips) return { error: NO_CREATE };
   const { data: mine, error } = await supabase.from("my_trips").select("title").eq("role", "owner");
   if (error) return { error: message(error) };
   const titles = new Set(mine.map((trip) => trip.title));
@@ -255,7 +257,8 @@ export async function importSamples(): Promise<FormState> {
 
 /** Plik JSON z „Pobierz JSON” (albo inny `TripDocument`) jako NOWY wyjazd na moim koncie. */
 export async function importTripFile(_prev: FormState, form: FormData): Promise<FormState> {
-  const { supabase } = await requireUser("/trips/new");
+  const { supabase, canCreateTrips } = await requireUser("/trips/new");
+  if (!canCreateTrips) return { error: NO_CREATE };
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Wybierz plik JSON." };
   if (file.size > 1_000_000) return { error: "Plik jest za duży (najwyżej 1 MB — limit akcji serwera)." };
