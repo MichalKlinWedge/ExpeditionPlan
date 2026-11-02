@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
+import { useTheme } from '@/hooks/use-theme';
 import { loadMyTrips, removeTrip, type Trip } from '@/features/trips/my-trips';
 import { supabase } from '@/lib/supabase';
 
@@ -24,6 +26,7 @@ type Details = {
 };
 
 export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; signedIn: boolean; userId: string | null }) {
+  const theme = useTheme();
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [error, setError] = useState('');
   const [offline, setOffline] = useState(false);
@@ -93,7 +96,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   };
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <View style={styles.card}>
       <ThemedText type="subtitle">Wyjazdy</ThemedText>
       {error !== '' && <ThemedText type="small">{error}</ThemedText>}
       {offline && (
@@ -108,21 +111,24 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
         </ThemedText>
       )}
       {trips?.map((trip) => (
-        <View key={trip.id} style={styles.trip}>
-          <Pressable onPress={() => void toggle(trip.id!)}>
-            <ThemedText>{trip.title}</ThemedText>
-            <ThemedText type="small">
-              {trip.start_date} – {trip.end_date} · {ROLE[trip.role!]}
-            </ThemedText>
+        <ThemedView key={trip.id} type="backgroundElement" style={[styles.trip, { borderColor: open === trip.id ? theme.accent : theme.backgroundSelected }]}>
+          <Pressable onPress={() => void toggle(trip.id!)} style={styles.tripHead}>
+            <View style={styles.grow}>
+              <ThemedText type="smallBold" style={styles.tripTitle}>
+                {trip.title}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {trip.start_date} – {trip.end_date} · {ROLE[trip.role!]}
+              </ThemedText>
+            </View>
+            <ThemedText themeColor="accent">{open === trip.id ? '▾' : '▸'}</ThemedText>
           </Pressable>
           {open === trip.id && (
             <View style={styles.details}>
               {details === null ? (
                 <>
                   {!offline && <ThemedText type="small">Wczytuję…</ThemedText>}
-                  <Pressable onPress={() => setPlan(trip.id)} hitSlop={8}>
-                    <ThemedText type="linkPrimary">Plan dzień po dniu →</ThemedText>
-                  </Pressable>
+                  <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
                 </>
               ) : (
                 <>
@@ -130,9 +136,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
                     Plan: {details.days} dni, {details.items} punktów
                   </ThemedText>
                   {details.days > 0 && (
-                    <Pressable onPress={() => setPlan(trip.id)} hitSlop={8}>
-                      <ThemedText type="linkPrimary">Plan dzień po dniu →</ThemedText>
-                    </Pressable>
+                    <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
                   )}
                   <ThemedText type="small">
                     Uczestnicy:{' '}
@@ -152,7 +156,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
               )}
             </View>
           )}
-        </View>
+        </ThemedView>
       ))}
       <PlanScreen
         tripId={plan}
@@ -162,13 +166,16 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
         userId={userId}
         onClose={() => setPlan(null)}
       />
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { alignSelf: 'stretch', padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
-  trip: { gap: Spacing.one, paddingVertical: Spacing.one },
-  details: { gap: Spacing.one, paddingLeft: Spacing.two },
+  card: { alignSelf: 'stretch', gap: Spacing.three },
+  trip: { borderRadius: 16, borderWidth: 1.5, padding: Spacing.three, gap: Spacing.two },
+  tripHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  tripTitle: { fontSize: 17, lineHeight: 22 },
+  grow: { flex: 1 },
+  details: { gap: Spacing.two },
   danger: { color: '#d32f2f', paddingTop: Spacing.one },
 });

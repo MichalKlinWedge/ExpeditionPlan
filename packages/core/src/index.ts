@@ -16,3 +16,4 @@ export * from './budget.ts';
 export * from './plan-merge.ts';
 export * from './plan-info.ts';
 export * from './coordinates.ts';
+export * from './booking-info.ts';

@@ -1,4 +1,4 @@
-import { budgetSummary, formatMoney, LogisticsCandidates, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { budgetSummary, flightLine, formatMoney, LogisticsCandidates, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -265,7 +265,9 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                   {canEdit && <BookingEditor tripId={id} booking={booking} statuses={statuses} />}
                 </div>
                 <p className="text-zinc-600 dark:text-zinc-400">
-                  {[when(booking), booking.provider, cost, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · ")}
+                  {[when(booking), booking.kind === "flight" ? flightLine(booking) : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · "), cost]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 {(booking.refundable === false || cancelSoon || booking.payWhen === "on_site" || booking.includes.length > 0) && (
                   <p className="text-xs text-zinc-500">

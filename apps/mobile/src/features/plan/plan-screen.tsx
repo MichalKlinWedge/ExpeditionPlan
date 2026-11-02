@@ -3,6 +3,8 @@ import {
   addItem,
   type DaySchedule,
   documentProblem,
+  flightLine,
+  flightOf,
   instantToZoned,
   ItemInUseError,
   legLabel,
@@ -45,6 +47,7 @@ import { type DayEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
 import { PackingView } from '@/features/trip/packing-view';
 import { WalletView } from '@/features/trip/wallet-view';
+import { useTheme } from '@/hooks/use-theme';
 import { localDb, remote } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
 
@@ -403,7 +406,21 @@ type Actions = {
   remove: (ref: string) => void;
 };
 
+/** Pasek z lewej karty punktu — kolor według rodzaju (jak kropki na osi dnia na webie). */
+const KIND_COLOR: Record<string, string> = {
+  visit: '#2E7D74',
+  activity: '#2E7D74',
+  meal: '#E8692C',
+  meetup: '#E8692C',
+  transport: '#34425A',
+  lodging: '#6366F1',
+  errand: '#9C9584',
+  free: '#10B981',
+  decision: '#F59E0B',
+};
+
 function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayProps) {
+  const theme = useTheme();
   const { doc, inputs } = state;
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
@@ -429,7 +446,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayP
 
   return (
     <View style={styles.day}>
-      <ThemedText type="smallBold">
+      <ThemedText style={styles.dayTitle}>
         {weekday(day.date)}
         {day.title ? ` — ${day.title}` : ''}
       </ThemedText>
@@ -476,13 +493,25 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions }: DayP
         const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
         const leg = source === undefined ? null : legLabel(source);
         const offMap = source !== undefined && missingOnMap(doc, source);
+        const flight = source === undefined ? undefined : flightOf(doc, source);
+        const flightText = flight === undefined ? undefined : flightLine(flight);
         return (
-          <ThemedView key={item.ref} type="backgroundElement" style={[styles.item, source?.parentRef !== undefined && styles.child]}>
-            <ThemedText type="code">
+          <ThemedView
+            key={item.ref}
+            type="backgroundElement"
+            style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: KIND_COLOR[item.kind] ?? theme.textSecondary }, source?.parentRef !== undefined && styles.child]}>
+            <ThemedText style={[styles.time, { color: theme.text }]}>
               {item.startLocal}–{item.endLocal}
               {item.endDate !== day.date ? ' +1' : ''}
             </ThemedText>
-            <ThemedText>{item.title}</ThemedText>
+            <ThemedText type="smallBold" style={styles.itemTitle}>
+              {item.title}
+            </ThemedText>
+            {flightText && (
+              <ThemedText type="smallBold" themeColor="accent">
+                ✈ {flightText}
+              </ThemedText>
+            )}
             <ThemedText type="small" themeColor="textSecondary">
               {KIND[item.kind]}
               {place && place !== item.title ? ` · ${place}` : ''}
@@ -610,7 +639,10 @@ const styles = StyleSheet.create({
   badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three },
   group: { gap: Spacing.one },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  item: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
+  item: { padding: Spacing.three, borderRadius: 14, gap: 2, borderWidth: 1, borderLeftWidth: 5 },
+  time: { fontSize: 15, lineHeight: 20, fontWeight: 800, fontVariant: ['tabular-nums'] },
+  itemTitle: { fontSize: 16, lineHeight: 22 },
+  dayTitle: { fontSize: 20, lineHeight: 26, fontWeight: 800 },
   child: { marginLeft: Spacing.four },
   nav: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.three },
   hidden: { opacity: 0 },

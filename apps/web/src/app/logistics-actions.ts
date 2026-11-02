@@ -52,6 +52,13 @@ async function change(tripId: string, collection: Editable, ref: string | null, 
 }
 
 const text = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
+
+type Flight = { number?: string; fromAirport?: string; toAirport?: string; baggage?: string };
+function flightFields(current: Flight | undefined, form: FormData): Flight | undefined {
+  const next = { ...current, number: optional(text(form, "flightNumber").toUpperCase()), baggage: optional(text(form, "baggage")) };
+  const kept = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined));
+  return Object.keys(kept).length > 0 ? kept : undefined;
+}
 const optional = (value: string) => (value === "" ? undefined : value);
 
 // --- Budżet ---------------------------------------------------------------------------------
@@ -143,6 +150,9 @@ export async function saveBooking(tripId: string, ref: string, _prev: FormState,
   return change(tripId, "bookings", ref, (_doc, current) => ({
     ...current!,
     status,
+    provider: optional(text(form, "provider")),
+    // Lot: numer i bagaż (lotniska zostają z dokumentu); pusty formularz nie zostawia pustego obiektu.
+    ...(current!.kind === "flight" ? { flight: flightFields(current!.flight as Flight | undefined, form) } : {}),
     confirmationCode: optional(text(form, "confirmationCode")),
     paid: paid === null ? undefined : { amountMinor: paid, currency, ...(paidOn ? { date: paidOn } : {}) },
     freeCancellationUntil: optional(freeCancel),

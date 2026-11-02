@@ -302,6 +302,13 @@ export function BookingEditor({ tripId, booking, statuses }: { tripId: string; b
             </option>
           ))}
         </select>
+        <input name="provider" defaultValue={booking.provider} placeholder={booking.kind === "flight" ? "linia lotnicza" : "firma / obiekt"} className={input} aria-label={booking.kind === "flight" ? "Linia lotnicza" : "Firma"} />
+        {booking.kind === "flight" && (
+          <>
+            <input name="flightNumber" defaultValue={booking.flight?.number} placeholder="nr lotu, np. FR 2145" className={`${input} w-40 uppercase`} aria-label="Numer lotu" />
+            <input name="baggage" defaultValue={booking.flight?.baggage} placeholder="bagaż, np. 1 × 20 kg" className={input} aria-label="Bagaż" />
+          </>
+        )}
         <input name="confirmationCode" defaultValue={booking.confirmationCode} placeholder="kod rezerwacji" className={input} aria-label="Kod rezerwacji" />
         <select name="refundable" defaultValue={refundable} className={input} aria-label="Zwrotna">
           <option value="">zwrotna?</option>
