@@ -48,7 +48,9 @@ describe('MVP-1 — plan w bazie, widz z linku', () => {
     const pulled = await viewer.client.rpc('pull_changes', { p_trip: tripId, p_since: 0 });
     expect(pulled.error).toBeNull();
     const back = stateFromPayload(pulled.data).doc;
-    expect({ ...back, items: byRef(back.items) }).toEqual({ ...doc, items: byRef(doc.items) });
+    // Ograniczenia i notatki bez klucza wracają z kluczem z id wiersza (`id-<uuid>`) — reszta bez zmian.
+    const keyless = <T extends { ref?: string }>(list: T[], original: T[]) => list.map((each, i) => (original[i]?.ref === undefined && each.ref?.startsWith('id-') ? (({ ref: _, ...rest }) => rest)(each) : each));
+    expect({ ...back, items: byRef(back.items), constraints: keyless(back.constraints, doc.constraints), notes: keyless(back.notes, doc.notes) }).toEqual({ ...doc, items: byRef(doc.items) });
 
     const item = rows.tables.items![0]!;
     const update = await viewer.client.from('items').update({ title: 'Zmienione' }).eq('id', item.id as string).select();

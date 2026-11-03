@@ -2,8 +2,8 @@ import { moveToDay, type PlanItem } from './plan-edits.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
- * Warianty i ograniczenia w edytorze planu (MVP-3) jako czyste funkcje: nowy dokument, zapisy
- * elementów (grupy wariantów, warianty, ograniczenia) i punkty, które zmieniły się przy okazji
+ * Warianty, ograniczenia i notatki dnia w edytorze planu (MVP-3) jako czyste funkcje: nowy dokument,
+ * zapisy elementów (grupy wariantów, warianty, ograniczenia, notatki) i punkty, które zmieniły się przy okazji
  * (przypisanie do wariantu, powrót do puli). Usuwanie nie zostawia wiszących odwołań: punkt,
  * który był tylko w usuwanym wariancie, wraca do puli, a nie trafia do wszystkich wariantów.
  */
@@ -13,11 +13,13 @@ type Item = PlanItem;
 export type VariantGroup = Doc['variantGroups'][number];
 export type Variant = Doc['variants'][number];
 export type Constraint = Doc['constraints'][number];
+export type Note = Doc['notes'][number];
 
 export type RuleWrite =
   | { collection: 'variantGroups'; element: VariantGroup; op: 'insert' | 'update' | 'remove' }
   | { collection: 'variants'; element: Variant; op: 'insert' | 'update' | 'remove' }
-  | { collection: 'constraints'; element: Constraint & { ref: string }; op: 'insert' | 'update' | 'remove' };
+  | { collection: 'constraints'; element: Constraint & { ref: string }; op: 'insert' | 'update' | 'remove' }
+  | { collection: 'notes'; element: Note & { ref: string }; op: 'insert' | 'update' | 'remove' };
 
 export type RulesEdit = {
   doc: Doc;
@@ -250,6 +252,34 @@ export function removeConstraint(doc: Doc, ref: string): RulesEdit | null {
     writes: [{ collection: 'constraints', element: { ...constraint, ref }, op: 'remove' }],
     changed: [],
   };
+}
+
+// --- Notatki dnia ----------------------------------------------------------------------------
+
+/** Treść notatki z formularza; zasięg i cel (dzień) dopisuje funkcja. */
+export type NoteFields = { title?: string; body: string; kind: Note['kind'] };
+
+/** Notatki dnia w kolejności z dokumentu (także ocena zapasu z planu wzorcowego). */
+export const dayNotes = (doc: Doc, dayRef: string) => doc.notes.filter((note) => note.scope === 'day' && note.targetRef === dayRef);
+
+export function addDayNote(doc: Doc, newId: () => string, dayRef: string, fields: NoteFields): RulesEdit {
+  const note = clean({ ...fields, scope: 'day' as const, targetRef: dayRef, ref: `id-${newId()}` });
+  return { doc: { ...doc, notes: [...doc.notes, note] }, writes: [{ collection: 'notes', element: note, op: 'insert' }], changed: [] };
+}
+
+/** Zmiana tytułu, treści i rodzaju — zasięg, cel i temat zostają. */
+export function updateNote(doc: Doc, ref: string, fields: NoteFields): RulesEdit | null {
+  const current = doc.notes.find((each) => each.ref === ref);
+  if (current === undefined) return null;
+  const { title: _, ...rest } = current;
+  const note = clean({ ...rest, ...fields, ref });
+  return { doc: { ...doc, notes: swap(doc.notes, [note]) }, writes: [{ collection: 'notes', element: note, op: 'update' }], changed: [] };
+}
+
+export function removeNote(doc: Doc, ref: string): RulesEdit | null {
+  const note = doc.notes.find((each) => each.ref === ref);
+  if (note === undefined) return null;
+  return { doc: { ...doc, notes: doc.notes.filter((each) => each.ref !== ref) }, writes: [{ collection: 'notes', element: { ...note, ref }, op: 'remove' }], changed: [] };
 }
 
 /**

@@ -30,7 +30,15 @@ describe('dokument ↔ wiersze tabel (MVP-1)', () => {
     const doc = load(slug);
     const server = asServer(rowsFromDocument(doc, uuidv7(), uuidv7));
     const back = documentFromRows(server.trip, server.tables);
-    expect({ ...back, items: byRef(back.items) }).toEqual({ ...doc, items: byRef(doc.items) });
+    // Ograniczenia i notatki bez klucza wracają z kluczem z id wiersza (`id-<uuid>`) — reszta bez zmian.
+    const keyless = <T extends { ref?: string }>(list: T[], original: T[]) =>
+      list.map((each, i) => {
+        if (original[i]?.ref !== undefined) return each;
+        expect(each.ref).toMatch(/^id-/);
+        const { ref: _, ...rest } = each;
+        return rest as T;
+      });
+    expect({ ...back, items: byRef(back.items), constraints: keyless(back.constraints, doc.constraints), notes: keyless(back.notes, doc.notes) }).toEqual({ ...doc, items: byRef(doc.items) });
   });
 
   it('linia trasy przejazdu (`leg.geometry`) i własna pinezka wracają z bazy bez zmian', () => {

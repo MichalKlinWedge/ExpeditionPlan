@@ -7,16 +7,20 @@ import { itemsForDay, scheduleDay } from '../engine/schedule.ts';
 import { documentProblem } from '../plan-edits.ts';
 import {
   addConstraint,
+  addDayNote,
   addDayVariantGroup,
   addVariant,
   chainRules,
   dayConstraints,
+  dayNotes,
   itemVariant,
   removeConstraint,
+  removeNote,
   removeVariant,
   removeVariantGroup,
   setItemVariant,
   updateConstraint,
+  updateNote,
   updateVariant,
   updateVariantGroup,
 } from '../plan-rules.ts';
@@ -161,5 +165,26 @@ describe('ograniczenia w edytorze', () => {
     const dark = (doc: TripDocument) => scheduleDay(doc, 'd3').warnings.filter((each) => each.kind === 'constraint' && each.message.includes('po zmroku'));
     expect(dark(late)).toHaveLength(1);
     expect(dark({ ...late, constraints: [] })).toHaveLength(0);
+  });
+});
+
+describe('notatki dnia w edytorze', () => {
+  const doc = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
+  const keyed = { ...doc, notes: doc.notes.map((note, i) => ({ ...note, ref: note.ref ?? `id-n${i}` })) };
+
+  it('dodanie, zmiana (zasięg i cel zostają) i usunięcie — dokument dalej przechodzi walidację', () => {
+    const added = addDayNote(keyed, () => 'nowa', 'd2', { body: 'Woda w plecaku', kind: 'tip' });
+    expect(dayNotes(added.doc, 'd2').at(-1)).toMatchObject({ ref: 'id-nowa', scope: 'day', targetRef: 'd2', body: 'Woda w plecaku' });
+    expect(added.writes).toEqual([{ collection: 'notes', element: expect.objectContaining({ ref: 'id-nowa' }), op: 'insert' }]);
+
+    const changed = updateNote(added.doc, 'id-nowa', { title: 'Upał', body: 'Dwie butelki wody', kind: 'warning' })!;
+    expect(changed.doc.notes.find((note) => note.ref === 'id-nowa')).toMatchObject({ scope: 'day', targetRef: 'd2', title: 'Upał', kind: 'warning' });
+    expect(updateNote(changed.doc, 'id-nowa', { body: 'Bez tytułu', kind: 'info' })!.doc.notes.find((note) => note.ref === 'id-nowa')!.title).toBeUndefined();
+
+    const removed = removeNote(changed.doc, 'id-nowa')!;
+    expect(removed.doc.notes.some((note) => note.ref === 'id-nowa')).toBe(false);
+    expect(removed.writes[0]!.op).toBe('remove');
+    expect(TripDocument.safeParse(removed.doc).success).toBe(true);
+    expect(removeNote(removed.doc, 'id-nowa')).toBeNull();
   });
 });

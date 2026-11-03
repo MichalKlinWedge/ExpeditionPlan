@@ -274,8 +274,12 @@ const alive = (row: Row) => row.deleted_at === null || row.deleted_at === undefi
 /** Wiersze tabel (po nazwie tabeli) → dokument. Usunięte wiersze się pomija. */
 export type TableRows = Record<string, Row[]>;
 
-/** Kolekcje, w których `ref` jest opcjonalny — tu wiersz bez klucza zostaje bez niego. */
-const OPTIONAL_REF = new Set<Collection>(['legs', 'constraints', 'notes']);
+/**
+ * Kolekcje, w których wiersz bez `ref` zostaje bez klucza (przejścia — nikt ich nie edytuje po kluczu).
+ * Ograniczenia i notatki dostają klucz z `id` jak reszta — inaczej te z importu i dodane w edytorze
+ * (wiersz z pustym `ref`) nie dałyby się po odświeżeniu zmienić ani usunąć.
+ */
+const OPTIONAL_REF = new Set<Collection>(['legs']);
 
 /**
  * Klucz dokumentu wiersza. Wiersze z UI (uczestnik dodany na webie, później edytor) nie mają

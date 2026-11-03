@@ -70,9 +70,8 @@ describe('Web — szkice AI i edytor logistyki zapisane w bazie', () => {
     await saveElements(owner.client, tripId, checked, inserts(created), before.ids);
 
     const back = (await pull()).doc;
-    // Notatki mają `ref` opcjonalny: wiersz bez `ref` wraca bez klucza `id-…` (OPTIONAL_REF).
-    const expected = { ...checked, notes: checked.notes.map(({ ref, ...note }) => (ref?.startsWith('id-') ? note : { ref, ...note })) };
-    expect(normalize(back)).toEqual(normalize(expected));
+    // Nowe notatki mają klucz `id-<uuid>` (wiersz z pustym `ref`) i z nim wracają z bazy.
+    expect(normalize(back)).toEqual(normalize(checked));
     expect(back.contacts.find((contact) => contact.role === 'emergency' && contact.phone === '112')).toBeDefined();
   });
 

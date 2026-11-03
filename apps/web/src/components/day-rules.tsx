@@ -2,23 +2,29 @@
 
 import {
   addConstraint,
+  addDayNote,
   addDayVariantGroup,
   addVariant,
   chainRules,
   type Constraint,
   type ConstraintFields,
   dayConstraints,
+  dayNotes,
   dayVariantGroups,
   groupVariants,
   itemVariant,
   removeConstraint,
+  removeNote,
   removeVariant,
   removeVariantGroup,
   type RulesEdit,
   type ScheduleWarning,
   setItemVariant,
   type TripDocument,
+  type Note,
+  type NoteFields,
   updateConstraint,
+  updateNote,
   updateVariant,
   updateVariantGroup,
   type VariantGroup,
@@ -27,7 +33,7 @@ import { uuidv7 } from "@expeditionplan/sync";
 import { useState } from "react";
 
 /**
- * Warianty i ograniczenia dnia w edytorze planu (MVP-3). Zmiany idą przez `plan-rules`
+ * Warianty, ograniczenia i notatki dnia w edytorze planu (MVP-3). Zmiany idą przez `plan-rules`
  * w packages/core — widok planu przelicza dzień od razu i zapisuje w tle (`onRules`).
  * Bez `onRules` (widz) — tylko odczyt.
  */
@@ -575,6 +581,121 @@ function ConstraintForm({ dayRef, items, initial, submit, onSave, onCancel }: Fo
       <div className="flex gap-2">
         <button className="btn-secondary btn-sm">{submit}</button>
         <button type="button" onClick={onCancel} className="text-xs text-zinc-500 underline">
+          anuluj
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// --- Notatki dnia ----------------------------------------------------------------------------
+
+const NOTE_KIND: Partial<Record<Note["kind"], string>> = { info: "informacja", tip: "wskazówka", warning: "uwaga", safety: "bezpieczeństwo", practical: "praktyczne", rationale: "uzasadnienie", slack_audit: "ocena zapasu" };
+/** Rodzaje do wyboru w formularzu (uzasadnienie i ocenę zapasu pisze AI albo import). */
+const NOTE_KINDS: Note["kind"][] = ["info", "tip", "warning", "safety", "practical"];
+
+/** Notatki dnia: odczyt, a w edycji — zmiana treści, usunięcie i nowa notatka. */
+export function DayNotes({ doc, dayRef, onRules }: { doc: Doc; dayRef: string; onRules: OnRules | null }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const notes = dayNotes(doc, dayRef);
+  if (notes.length === 0 && onRules === null) return null;
+  return (
+    <details className="text-sm" open={onRules !== null || undefined}>
+      <summary className="cursor-pointer text-zinc-500">Notatki dnia ({notes.length})</summary>
+      <ul className="mt-2 flex flex-col gap-2">
+        {notes.map((note, index) => {
+          const key = note.ref ?? `#${index}`;
+          return (
+            <li key={key} className="flex flex-col gap-1">
+              {editing === key && note.ref ? (
+                <NoteForm
+                  initial={note}
+                  submit="Zapisz"
+                  onCancel={() => setEditing(null)}
+                  onSave={(fields) => {
+                    onRules?.((current) => updateNote(current, note.ref!, fields));
+                    setEditing(null);
+                  }}
+                />
+              ) : (
+                <div className="whitespace-pre-line text-zinc-600 dark:text-zinc-400">
+                  {note.kind !== "info" && NOTE_KIND[note.kind] ? <span className="mr-1 rounded bg-zinc-100 px-1 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{NOTE_KIND[note.kind]}</span> : null}
+                  {note.title ? <span className="font-medium">{note.title}: </span> : null}
+                  {note.body}
+                  {onRules && note.ref && (
+                    <span className="ml-1 text-xs text-zinc-500">
+                      <button onClick={() => setEditing(key)} className="px-1 underline">
+                        zmień
+                      </button>
+                      <button onClick={() => window.confirm("Usunąć tę notatkę?") && onRules((current) => removeNote(current, note.ref!))} className="px-1 underline">
+                        usuń
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {onRules && (
+        <div className="mt-2">
+          {editing === "new" ? (
+            <NoteForm
+              submit="Dodaj"
+              onCancel={() => setEditing(null)}
+              onSave={(fields) => {
+                onRules((current) => addDayNote(current, uuidv7, dayRef, fields));
+                setEditing(null);
+              }}
+            />
+          ) : (
+            <button onClick={() => setEditing("new")} className="text-xs text-zinc-500 underline">
+              + notatka
+            </button>
+          )}
+        </div>
+      )}
+    </details>
+  );
+}
+
+function NoteForm({ initial, submit, onSave, onCancel }: { initial?: Note; submit: string; onSave: (fields: NoteFields) => void; onCancel: () => void }) {
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [body, setBody] = useState(initial?.body ?? "");
+  const [kind, setKind] = useState<Note["kind"]>(initial?.kind ?? "info");
+  const kinds = NOTE_KINDS.includes(kind) ? NOTE_KINDS : [...NOTE_KINDS, kind];
+  return (
+    <form
+      className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (body.trim() === "") return;
+        onSave({ kind, body: body.trim(), ...(title.trim() ? { title: title.trim() } : {}) });
+      }}>
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+        <label className={label}>
+          Tytuł (opcjonalnie)
+          <input value={title} onChange={(event) => setTitle(event.target.value)} className={input} />
+        </label>
+        <label className={label}>
+          Rodzaj
+          <select value={kind} onChange={(event) => setKind(event.target.value as Note["kind"])} className={input}>
+            {kinds.map((each) => (
+              <option key={each} value={each}>
+                {NOTE_KIND[each] ?? each}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label className={label}>
+        Treść
+        <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={3} required className={input} />
+      </label>
+      <div className="flex gap-3">
+        <button className="btn-secondary btn-sm">{submit}</button>
+        <button type="button" onClick={onCancel} className="text-xs underline">
           anuluj
         </button>
       </div>
