@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { addItem, addItemAtPin, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, removeItem, removeItemClosingGap, updateItem } from '../plan-edits.ts';
+import { addItem, addItemAtPin, addPoolItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, removeItem, removeItemClosingGap, updateItem } from '../plan-edits.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -84,6 +84,20 @@ describe('edycja planu (MVP-3)', () => {
     expect(documentProblem(added.doc)).toBeNull();
     const removed = removeItem(added.doc, added.created!.ref)!;
     expect(removed.doc.items.some((each) => each.ref === added.created!.ref)).toBe(false);
+  });
+
+  it('pula: nowy pomysł bez dnia, kandydat, na końcu puli; z nazwą miejsca — nowe miejsce bez współrzędnych', () => {
+    const ids = { itemId: '01a19366-0000-7000-8000-000000000004', placeId: '01a19366-0000-7000-8000-000000000005' };
+    const added = addPoolItem(maroko, ids, { title: 'Ogrody Majorelle', kind: 'visit', area: 'Marrakesz', description: 'Jeśli zostanie czas' }, ' Jardin Majorelle ');
+    expect(added.created).toMatchObject({ ref: `id-${ids.itemId}`, planStatus: 'candidate', placeRef: `id-${ids.placeId}`, area: 'Marrakesz' });
+    expect(added.created!.dayRef).toBeUndefined();
+    expect(added.places).toEqual([{ created: true, place: { ref: `id-${ids.placeId}`, name: 'Jardin Majorelle', provider: 'unknown', links: [] } }]);
+    const pool = added.doc.items.filter((item) => item.dayRef === undefined && item.sortKey !== undefined).sort((a, b) => a.sortKey!.localeCompare(b.sortKey!));
+    expect(pool.at(-1)!.ref).toBe(added.created!.ref);
+    expect(documentProblem(added.doc)).toBeNull();
+    const bare = addPoolItem(maroko, { itemId: '01a19366-0000-7000-8000-000000000006' }, { title: 'Hammam', kind: 'activity' });
+    expect(bare.places).toBeUndefined();
+    expect(bare.created!.placeRef).toBeUndefined();
   });
 
   it('własna pinezka: nowe miejsce provider: user i punkt w nim; przesunięcie tylko własnych pinezek', () => {

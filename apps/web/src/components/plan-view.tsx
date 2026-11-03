@@ -4,6 +4,7 @@ import {
   activeVariants as resolveVariants,
   addItem,
   addItemAtPin,
+  addPoolItem,
   dayItems,
   dayLodging,
   dayMap,
@@ -237,6 +238,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
         moveTo: (ref, dayRef) => apply(moveToDay(doc, ref, dayRef)),
         update: (ref, patch) => apply(updateItem(doc, ref, patch)),
         add: (dayRef, fields) => apply(addItem(doc, dayRef, uuidv7(), fields)),
+        addToPool: (fields, placeName) => apply(addPoolItem(doc, { itemId: uuidv7(), placeId: uuidv7() }, fields, placeName)),
         remove: (ref) => {
           try {
             apply(removeItemClosingGap(doc, ref));
@@ -416,8 +418,11 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
             <section className="flex flex-col gap-2 card p-4">
               <h2 className="text-lg font-semibold">Pula — poza dniami ({pool.length})</h2>
               {pool.length === 0 && (
-                <p className="text-sm text-zinc-500">Pula jest pusta. Punkt trafia tu przez „przenieś… → do puli” albo po przeciągnięciu na przycisk „Pula”.</p>
+                <p className="text-sm text-zinc-500">
+                  Pula jest pusta. Dodaj tu atrakcje, miejsca i pomysły na później — albo przenieś punkt z dnia („przenieś… → do puli”, przeciągnięcie na przycisk „Pula”).
+                </p>
               )}
+              {actions && <PoolAddForm areas={[...new Set(doc.items.flatMap((item) => (item.area ? [item.area] : [])))]} onAdd={actions.addToPool} />}
               {Object.entries(Object.groupBy(pool, (item) => item.area ?? "bez obszaru")).map(([area, items]) => (
                 <div key={area} className="text-sm">
                   <p className="font-medium">{area}</p>
@@ -592,6 +597,8 @@ type Actions = {
   moveTo: (ref: string, dayRef: string | null) => void;
   update: (ref: string, patch: Partial<Item>) => void;
   add: (dayRef: string, fields: Pick<Item, "title" | "kind"> & Partial<Item>) => void;
+  /** Nowy punkt w puli; `placeName` — nowe miejsce (bez współrzędnych). */
+  addToPool: (fields: Pick<Item, "title" | "kind"> & Partial<Item>, placeName?: string) => void;
   remove: (ref: string) => void;
 };
 
@@ -640,6 +647,79 @@ function AddItemForm({ onAdd, autoFocus = false }: { onAdd: (fields: Pick<Item, 
       <input value={duration} onChange={(event) => setDuration(event.target.value)} type="number" min={0} className="w-20 field px-2 py-1" aria-label="Czas trwania w minutach" />
       <span className="text-xs text-zinc-500">min</span>
       <button className="btn-secondary btn-sm">Dodaj</button>
+    </form>
+  );
+}
+
+/**
+ * Dodawanie do puli: atrakcja, miejsce albo pomysł — bez dnia, jako „kandydat”. Nazwa miejsca tworzy
+ * miejsce bez współrzędnych: potem „Uzupełnij współrzędne miejsc” albo pinezka przy „brak na mapie”.
+ */
+function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToPool"] }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [kind, setKind] = useState<Item["kind"]>("visit");
+  const [place, setPlace] = useState("");
+  const [area, setArea] = useState("");
+  const [description, setDescription] = useState("");
+  const [duration, setDuration] = useState("");
+  if (!open)
+    return (
+      <button onClick={() => setOpen(true)} className="self-start text-sm text-sea underline dark:text-teal-300">
+        + Dodaj do puli (atrakcja, miejsce, pomysł)
+      </button>
+    );
+  return (
+    <form
+      className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (title.trim() === "") return;
+        onAdd(
+          {
+            title: title.trim(),
+            kind,
+            ...(area.trim() ? { area: area.trim() } : {}),
+            ...(description.trim() ? { description: description.trim() } : {}),
+            ...(Number(duration) > 0 ? { durationMin: Number(duration) } : {}),
+          },
+          place,
+        );
+        setTitle("");
+        setPlace("");
+        setDescription("");
+        setDuration("");
+      }}>
+      <div className="flex flex-wrap gap-2">
+        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Co? np. Park Güell, kolacja na dachu, kajaki" autoFocus className="min-w-48 flex-1 field px-2 py-1" />
+        <select value={kind} onChange={(event) => setKind(event.target.value as Item["kind"])} className="field px-2 py-1" aria-label="Rodzaj">
+          {Object.entries(KIND).map(([key, name]) => (
+            <option key={key} value={key}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <input value={place} onChange={(event) => setPlace(event.target.value)} placeholder="Miejsce (opcjonalnie) — nazwa do znalezienia na mapie" className="min-w-48 flex-1 field px-2 py-1" />
+        <input value={area} onChange={(event) => setArea(event.target.value)} placeholder="Obszar (np. Marrakesz)" list="pool-areas" className="w-44 field px-2 py-1" />
+        <datalist id="pool-areas">
+          {areas.map((each) => (
+            <option key={each} value={each} />
+          ))}
+        </datalist>
+        <input value={duration} onChange={(event) => setDuration(event.target.value)} type="number" min={0} placeholder="min" className="w-20 field px-2 py-1" aria-label="Czas trwania w minutach" />
+      </div>
+      <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} placeholder="Opis, dlaczego warto, warunki (opcjonalnie)" className="field px-2 py-1" />
+      <div className="flex items-center gap-3">
+        <button className="btn-primary btn-sm" disabled={title.trim() === ""}>
+          Dodaj do puli
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="text-xs underline">
+          zamknij
+        </button>
+        <span className="text-xs text-zinc-500">Miejsce bez współrzędnych: potem „Uzupełnij współrzędne miejsc” albo pinezka.</span>
+      </div>
     </form>
   );
 }

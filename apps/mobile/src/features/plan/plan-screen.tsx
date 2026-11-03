@@ -55,6 +55,7 @@ import { DayMap } from '@/features/plan/day-map';
 import { ContactList } from '@/features/plan/item-facts';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
+import { PoolView } from '@/features/plan/pool-view';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
 import { TasksView } from '@/features/trip/tasks-view';
@@ -336,6 +337,9 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
   const variants = useMemo(() => ({ ...state?.inputs.activeVariants, ...overrides }), [state, overrides]);
   const days = state?.doc.days ?? [];
   const day = days[index];
+  /** Pula — chip po ostatnim dniu (`index === days.length`): punkty poza dniami. */
+  const poolCount = state?.doc.items.filter((item) => item.dayRef === undefined && item.parentRef === undefined).length ?? 0;
+  const showPool = days.length > 0 && index === days.length;
 
   return (
     <View style={styles.fill}>
@@ -399,7 +403,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
       )}
       {mode === 'plan' && state !== null && days.length === 0 && <ThemedText style={styles.pad}>Plan nie ma jeszcze dni.</ThemedText>}
 
-      {mode === 'plan' && state !== null && day && (
+      {mode === 'plan' && state !== null && (day || showPool) && (
         <>
           {/* Dni i scenariusz na osobnym pasku — oddzielone od zakładek i od treści dnia. */}
           <View style={[styles.dayBar, { backgroundColor: theme.backgroundElement, borderBottomColor: theme.backgroundSelected }]}>
@@ -412,6 +416,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                   onPress={() => setIndex(at)}
                 />
               ))}
+              {(poolCount > 0 || actions !== null) && <Chip active={showPool} label={`Pula (${poolCount})`} onPress={() => setIndex(days.length)} />}
             </ScrollView>
             <View style={styles.scenario}>
               <Segmented
@@ -426,50 +431,64 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
             </View>
           </View>
           <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]}>
-            <Day
-              state={state}
-              dayRef={day.ref}
-              scenario={scenario}
-              variants={variants}
-              onChoose={choose}
-              actions={actions}
-              weather={weather?.days[day.ref]}
-              weatherAt={weather?.fetchedAt}
-              onOpen={(item) => {
-                setDetailPlay(false);
-                setDetail(item);
-              }}
-              guides={trip === null ? undefined : guidedPlaces(trip)}
-              onGuide={(item, play) => {
-                setDetailPlay(play);
-                setDetail(item);
-              }}
-              guided={trip === null ? undefined : new Set(trip.state.doc.items.filter((each) => itemGuide(trip, each) !== null).map((each) => each.ref))}
-              top={
-                instantToZoned(now, day.tz).date === day.date
-                  ? (schedule) => (
-                      <NowCard
-                        schedule={schedule}
-                        now={now}
-                        lastEvent={lastEvent}
-                        onEvent={signedIn && canAct ? (itemRef, event) => record(day.ref, itemRef, event) : null}
-                      />
-                    )
-                  : undefined
-              }
-            />
-            <View style={styles.nav}>
-              <Pressable disabled={index === 0} onPress={() => setIndex(index - 1)} hitSlop={12}>
-                <ThemedText type="linkPrimary" style={index === 0 && styles.hidden}>
-                  ← poprzedni dzień
-                </ThemedText>
-              </Pressable>
-              <Pressable disabled={index === days.length - 1} onPress={() => setIndex(index + 1)} hitSlop={12}>
-                <ThemedText type="linkPrimary" style={index === days.length - 1 && styles.hidden}>
-                  następny dzień →
-                </ThemedText>
-              </Pressable>
-            </View>
+            {showPool && trip !== null && (
+              <PoolView
+                trip={trip}
+                onMove={actions === null ? null : (ref, dayRef) => actions.moveTo(ref, dayRef)}
+                onOpen={(item) => {
+                  setDetailPlay(false);
+                  setDetail(item);
+                }}
+              />
+            )}
+            {day && (
+              <>
+                <Day
+                  state={state}
+                  dayRef={day.ref}
+                  scenario={scenario}
+                  variants={variants}
+                  onChoose={choose}
+                  actions={actions}
+                  weather={weather?.days[day.ref]}
+                  weatherAt={weather?.fetchedAt}
+                  onOpen={(item) => {
+                    setDetailPlay(false);
+                    setDetail(item);
+                  }}
+                  guides={trip === null ? undefined : guidedPlaces(trip)}
+                  onGuide={(item, play) => {
+                    setDetailPlay(play);
+                    setDetail(item);
+                  }}
+                  guided={trip === null ? undefined : new Set(trip.state.doc.items.filter((each) => itemGuide(trip, each) !== null).map((each) => each.ref))}
+                  top={
+                    instantToZoned(now, day.tz).date === day.date
+                      ? (schedule) => (
+                          <NowCard
+                            schedule={schedule}
+                            now={now}
+                            lastEvent={lastEvent}
+                            onEvent={signedIn && canAct ? (itemRef, event) => record(day.ref, itemRef, event) : null}
+                          />
+                        )
+                      : undefined
+                  }
+                />
+                <View style={styles.nav}>
+                  <Pressable disabled={index === 0} onPress={() => setIndex(index - 1)} hitSlop={12}>
+                    <ThemedText type="linkPrimary" style={index === 0 && styles.hidden}>
+                      ← poprzedni dzień
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable disabled={index === days.length - 1} onPress={() => setIndex(index + 1)} hitSlop={12}>
+                    <ThemedText type="linkPrimary" style={index === days.length - 1 && styles.hidden}>
+                      następny dzień →
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </>
+            )}
             <SyncStatus text={status} />
           </ScrollView>
         </>

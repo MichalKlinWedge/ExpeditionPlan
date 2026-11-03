@@ -145,6 +145,33 @@ export function addItem(doc: Doc, dayRef: string, id: string, fields: Pick<Item,
 }
 
 /**
+ * Nowy punkt w puli (atrakcja, miejsce, pomysł na później): bez dnia, status „kandydat”, na końcu
+ * puli. Z nazwą miejsca — nowe miejsce bez współrzędnych (potem „Uzupełnij współrzędne” albo pinezka).
+ */
+export function addPoolItem(doc: Doc, ids: { itemId: string; placeId?: string }, fields: Pick<Item, 'title' | 'kind'> & Partial<Item>, placeName?: string): PlanEdit {
+  const last = doc.items.filter((item) => item.dayRef === undefined && item.sortKey !== undefined).sort((a, b) => a.sortKey!.localeCompare(b.sortKey!)).at(-1);
+  const name = placeName?.trim();
+  const place: PlanPlace | undefined = name && ids.placeId ? { ref: `id-${ids.placeId}`, name, provider: 'unknown', links: [] } : undefined;
+  const item: Item = {
+    replacesRefs: [],
+    variantRefs: [],
+    links: [],
+    notes: [],
+    ...fields,
+    planStatus: 'candidate',
+    ref: `id-${ids.itemId}`,
+    ...(place ? { placeRef: place.ref } : {}),
+    sortKey: last?.sortKey === undefined ? keyBetween() : keyBetween(last.sortKey),
+  };
+  return {
+    doc: { ...doc, places: place ? [...doc.places, place] : doc.places, items: [...doc.items, item] },
+    changed: [],
+    created: item,
+    ...(place ? { places: [{ place, created: true as const }] } : {}),
+  };
+}
+
+/**
  * Własna pinezka na mapie: nowe miejsce `provider: 'user'` ze współrzędnymi i punkt w nim na końcu
  * dnia. Nazwa miejsca = tytuł punktu. `itemId` i `placeId` to uuid nowych wierszy.
  */
