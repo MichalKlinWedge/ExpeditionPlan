@@ -1,4 +1,5 @@
-import { fetchTripNews, newsRows, type NewsSummary, summarizeNews } from "@expeditionplan/sync";
+import { instantToZoned, tripReadiness } from "@expeditionplan/core";
+import { fetchTripNews, newsRows, type NewsSummary, refIndex, stateFromPayload, summarizeNews } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,6 +8,7 @@ import { Suspense } from "react";
 import { AiPlanButton } from "@/components/ai-plan-button";
 import { BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PhoneIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
+import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
 import { TripNews } from "@/components/trip-news";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -14,7 +16,7 @@ import { ROLE, tripDates } from "@/lib/labels";
 /**
  * Wyjazd: podsumowanie i kafelki wejść (plan, rezerwacje, informacje, uczestnicy i dostęp,
  * porównanie ze szkicem, AI, brief, eksport) oraz „Zaplanuj z AI”, gdy jest brief. Na górze
- * „Co nowego od ostatniej wizyty” (zmiany innych osób).
+ * „Co nowego od ostatniej wizyty” (zmiany innych osób) i — do końca wyjazdu — „Gotowość do wyjazdu”.
  */
 
 // Planowanie z AI (akcja serwera na tej stronie) trwa do kilku minut.
@@ -64,10 +66,39 @@ async function loadNews(client: SupabaseClient, tripId: string): Promise<NewsSum
   }
 }
 
+/**
+ * Braki planu przed wyjazdem (`tripReadiness`) i kto bez konta / bez telefonu (statystyki RPC oddaje
+ * tylko organizatorowi — u innych lista telefonów jest pusta, a strona i tak jej nie pokazuje). Po wyjeździe — null.
+ */
+async function loadReadiness(client: SupabaseClient, tripId: string) {
+  try {
+    const { data, error } = await client.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
+    if (error || data === null) return null;
+    const payload = data as Parameters<typeof stateFromPayload>[0];
+    const { doc } = stateFromPayload(payload);
+    const today = instantToZoned(new Date().getTime(), doc.trip.primaryTz).date;
+    if (today > doc.trip.endDate) return null;
+    const refById = new Map(Object.entries(refIndex(payload.tables)).map(([ref, id]) => [id, ref]));
+    const vault = new Set(
+      (payload.tables.documents ?? []).filter((row) => row.deleted_at === null && typeof row.booking_id === "string").map((row) => refById.get(row.booking_id as string) ?? ""),
+    );
+    const stats = await client.rpc("trip_member_stats", { p_trip: tripId });
+    const members = (stats.data ?? []) as { email: string | null; display_name: string | null; last_seen_phone_at: string | null }[];
+    const people: ReadinessPeople = {
+      withoutAccount: (payload.tables.travelers ?? []).filter((row) => row.deleted_at === null && (row.user_id ?? null) === null).map((row) => String(row.name)),
+      withoutPhone: members.filter((member) => member.last_seen_phone_at === null).map((member) => member.display_name ?? member.email ?? "?"),
+    };
+    const daysLeft = Math.round((Date.parse(doc.trip.startDate) - Date.parse(today)) / 86_400_000);
+    return { issues: tripReadiness(doc, today, vault), daysLeft, people };
+  } catch {
+    return null;
+  }
+}
+
 async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}`);
-  const [trip, members, travelers, days, items, brief, mine, tasks, news] = await Promise.all([
+  const [trip, members, travelers, days, items, brief, mine, tasks, news, readiness] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id", { count: "exact", head: true }).eq("trip_id", id),
     supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
@@ -77,6 +108,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("my_trips").select("id, title, role").neq("id", id).order("start_date"),
     supabase.from("tasks").select("id", { count: "exact", head: true }).eq("trip_id", id).eq("status", "open").is("deleted_at", null),
     loadNews(supabase as unknown as SupabaseClient, id),
+    loadReadiness(supabase as unknown as SupabaseClient, id),
   ]);
   if (trip.data === null) notFound();
   const role = trip.data.role!;
@@ -109,6 +141,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       </div>
 
       {news !== null && <TripNews tripId={id} news={news} now={new Date().getTime()} />}
+      {readiness !== null && !title.startsWith(DRAFT) && <TripReadiness tripId={id} issues={readiness.issues} daysLeft={readiness.daysLeft} people={role === "owner" ? readiness.people : null} />}
 
       {/* Przy dwóch kolumnach ostatni kafelek bez pary zajmuje cały wiersz. */}
       <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>:last-child:nth-child(odd)]:col-span-2">

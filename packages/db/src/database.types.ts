@@ -1055,17 +1055,23 @@ isOneToOne: true
                   ]
                 },"trip_invites": {
                   Row: {
-                    "created_at": string,"created_by": string,"expires_at": string,"id": string,"max_uses": number,"revoked_at": string | null,"role": string,"token_hash": string,"trip_id": string,"used_count": number
+                    "created_at": string,"created_by": string,"expires_at": string,"id": string,"max_uses": number,"revoked_at": string | null,"role": string,"token_hash": string,"traveler_id": string | null,"trip_id": string,"used_count": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string,"expires_at"?: string,"id"?: string,"max_uses"?: number,"revoked_at"?: string | null,"role": string,"token_hash": string,"trip_id": string,"used_count"?: number
+                    "created_at"?: string,"created_by"?: string,"expires_at"?: string,"id"?: string,"max_uses"?: number,"revoked_at"?: string | null,"role": string,"token_hash": string,"traveler_id"?: string | null,"trip_id": string,"used_count"?: number
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string,"expires_at"?: string,"id"?: string,"max_uses"?: number,"revoked_at"?: string | null,"role"?: string,"token_hash"?: string,"trip_id"?: string,"used_count"?: number
+                    "created_at"?: string,"created_by"?: string,"expires_at"?: string,"id"?: string,"max_uses"?: number,"revoked_at"?: string | null,"role"?: string,"token_hash"?: string,"traveler_id"?: string | null,"trip_id"?: string,"used_count"?: number
                   }
                   Relationships: [
                     {
+      foreignKeyName: "trip_invites_traveler_id_fkey"
+      columns: ["traveler_id"]
+isOneToOne: false
+      referencedRelation: "travelers"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "trip_invites_trip_id_fkey"
       columns: ["trip_id"]
 isOneToOne: false
@@ -1304,7 +1310,7 @@ isOneToOne: false
 { Args: { "p_trip": string,"p_visibility": string,"p_visible_to": (string)[] }; Returns: boolean
                            },
 "create_invite":
-{ Args: { "p_days"?: number,"p_max_uses"?: number,"p_role"?: string,"p_trip": string }; Returns: string
+{ Args: { "p_days"?: number,"p_max_uses"?: number,"p_role"?: string,"p_traveler"?: string,"p_trip": string }; Returns: string
                            },
 "create_public_share":
 { Args: { "p_hide"?: Json,"p_trip": string }; Returns: string

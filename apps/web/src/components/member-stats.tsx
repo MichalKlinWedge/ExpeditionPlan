@@ -1,11 +1,13 @@
 import { MemberAccess } from "@/components/member-access";
 import { TravelerAccount } from "@/components/traveler-account";
+import { TravelerInvite } from "@/components/traveler-invite";
 import { ROLE } from "@/lib/labels";
 
 /**
  * Kto ma dostęp i czy korzysta (tylko organizator): e-mail, rola, kiedy i z którego linku dołączył,
  * ostatnie logowanie, ostatnio na webie i w telefonie, zmiany w planie, przypisany uczestnik.
- * Pod spodem linki zaproszeń (użycia, ważność) i uczestnicy bez konta. Dane z `trip_member_stats`.
+ * Pod spodem uczestnicy bez konta z „Zaproś” (link dla tej osoby i gotowa wiadomość) i linki zaproszeń
+ * (użycia, ważność). Dane z `trip_member_stats`.
  */
 
 export type MemberStat = {
@@ -25,7 +27,7 @@ export type MemberStat = {
   travelers: string[];
 };
 
-export type InviteStat = { id: string; role: string; created_at: string; expires_at: string; used_count: number; max_uses: number; revoked_at: string | null };
+export type InviteStat = { id: string; role: string; created_at: string; expires_at: string; used_count: number; max_uses: number; revoked_at: string | null; traveler_id: string | null };
 type Traveler = { id: string; name: string };
 
 const date = (iso: string) => new Date(iso).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" });
@@ -41,7 +43,23 @@ export function ago(iso: string | null, now: number): string {
   return date(iso);
 }
 
-export function MemberStats({ tripId, members, invites, travelers, editing, now }: { tripId: string; members: MemberStat[]; invites: InviteStat[]; travelers: Traveler[]; editing: boolean; now: number }) {
+export function MemberStats({
+  tripId,
+  trip,
+  members,
+  invites,
+  travelers,
+  editing,
+  now,
+}: {
+  tripId: string;
+  trip: { title: string; dates: string };
+  members: MemberStat[];
+  invites: InviteStat[];
+  travelers: Traveler[];
+  editing: boolean;
+  now: number;
+}) {
   const inviteOf = new Map(invites.map((invite) => [invite.id, invite]));
   const linked = new Set(members.flatMap((member) => member.travelers));
   const without = travelers.filter((each) => !linked.has(each.id));
@@ -118,9 +136,22 @@ export function MemberStats({ tripId, members, invites, travelers, editing, now 
       {!editing && members.length > 1 && <p className="text-xs text-zinc-500">Zmiana dostępu (widz ↔ edytor, wydatki, odebranie) i przypisanie konta do uczestnika — po „Edytuj”.</p>}
 
       {without.length > 0 && (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Bez konta (albo nieprzypisani): {without.map((each) => each.name).join(", ")}
-        </p>
+        <div className="flex flex-col gap-1">
+          <h3 className="font-medium">Bez konta (albo nieprzypisani)</h3>
+          <ul className="flex flex-col gap-2">
+            {without.map((each) => {
+              // Ostatni ważny, niewykorzystany link dla tej osoby — żeby nie wysyłać drugiego bez potrzeby.
+              const pending = invites.filter((invite) => invite.traveler_id === each.id && invite.revoked_at === null && invite.used_count < invite.max_uses && new Date(invite.expires_at).getTime() > now).at(-1);
+              return (
+                <li key={each.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-medium">{each.name}</span>
+                  {pending && <span className="text-xs text-zinc-500">zaproszenie z {date(pending.created_at)} czeka (ważne do {date(pending.expires_at)})</span>}
+                  <TravelerInvite tripId={tripId} travelerId={each.id} name={each.name} tripTitle={trip.title} dates={trip.dates} />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       {invites.length > 0 && (
@@ -132,7 +163,8 @@ export function MemberStats({ tripId, members, invites, travelers, editing, now 
               const state = invite.revoked_at ? "cofnięty" : new Date(invite.expires_at).getTime() < now ? "wygasł" : invite.used_count >= invite.max_uses ? "wykorzystany" : `ważny do ${date(invite.expires_at)}`;
               return (
                 <li key={invite.id}>
-                  {date(invite.created_at)} · {ROLE[invite.role] ?? invite.role} · użyty {invite.used_count} z {invite.max_uses} · <span className="text-zinc-500">{state}</span>
+                  {date(invite.created_at)} · {ROLE[invite.role] ?? invite.role}
+                  {invite.traveler_id && ` · dla: ${travelers.find((each) => each.id === invite.traveler_id)?.name ?? "?"}`} · użyty {invite.used_count} z {invite.max_uses} · <span className="text-zinc-500">{state}</span>
                   {joined.length > 0 && <span className="text-zinc-500"> · dołączyli: {joined.map((member) => member.display_name ?? member.email ?? "?").join(", ")}</span>}
                 </li>
               );

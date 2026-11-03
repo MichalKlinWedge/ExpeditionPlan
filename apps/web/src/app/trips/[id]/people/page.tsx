@@ -8,7 +8,7 @@ import { type InviteStat, type MemberStat, MemberStats } from "@/components/memb
 import { PublicShare } from "@/components/public-share";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { ROLE } from "@/lib/labels";
+import { ROLE, tripDates } from "@/lib/labels";
 
 /**
  * Uczestnicy i dostęp: kto jedzie (uczestnicy), kto ma dostęp do planu (role), zaproszenie linkiem,
@@ -34,7 +34,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
   const wantsEdit = await editMode(searchParams);
   const { supabase } = await requireUser(`/trips/${id}/people`);
   const [trip, members, travelers, share] = await Promise.all([
-    supabase.from("my_trips").select("title, role").eq("id", id).maybeSingle(),
+    supabase.from("my_trips").select("title, role, start_date, end_date").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, can_add_expenses, profiles(display_name)").eq("trip_id", id).order("created_at"),
     supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
     supabase.from("public_shares").select("enabled, hide").eq("trip_id", id).maybeSingle(),
@@ -49,7 +49,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
     role === "owner"
       ? await Promise.all([
           supabase.rpc("trip_member_stats", { p_trip: id }),
-          supabase.from("trip_invites").select("id, role, created_at, expires_at, used_count, max_uses, revoked_at").eq("trip_id", id).order("created_at"),
+          supabase.from("trip_invites").select("id, role, created_at, expires_at, used_count, max_uses, revoked_at, traveler_id").eq("trip_id", id).order("created_at"),
         ])
       : [null, null];
   const now = new Date().getTime();
@@ -76,6 +76,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
         {stats?.data ? (
           <MemberStats
             tripId={id}
+            trip={{ title, dates: tripDates(trip.data.start_date!, trip.data.end_date!) }}
             members={stats.data as unknown as MemberStat[]}
             invites={(invites?.data ?? []) as InviteStat[]}
             travelers={(travelers.data ?? []).map((each) => ({ id: each.id, name: each.name }))}

@@ -38,3 +38,4 @@ export * from './gpx.ts';
 export * from './guide-links.ts';
 export * from './settle.ts';
 export * from './field-log.ts';
+export * from './trip-readiness.ts';

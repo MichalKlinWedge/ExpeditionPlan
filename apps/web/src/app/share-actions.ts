@@ -71,3 +71,18 @@ export async function removeMember(tripId: string, userId: string): Promise<Form
   refresh();
   return { ok: "Dostęp odebrany." };
 }
+
+export type TravelerInviteState = FormState & { token?: string; apkUrl?: string };
+
+/**
+ * Zaproszenie dla jednej osoby z planu (jednorazowe, 14 dni): po dołączeniu konto samo zostaje
+ * przypisane do tego uczestnika. Link do APK dla znajomych z `FRIENDS_APK_URL` (adres strony EAS, nie sekret).
+ */
+export async function inviteTraveler(tripId: string, travelerId: string, role: "editor" | "viewer"): Promise<TravelerInviteState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/people`);
+  const { data, error } = await supabase.rpc("create_invite", { p_trip: tripId, p_role: role === "editor" ? "editor" : "viewer", p_days: 14, p_max_uses: 1, p_traveler: travelerId });
+  if (error) return { error: error.code === "42501" ? "Zaprasza tylko organizator." : error.message };
+  refresh();
+  const apkUrl = process.env.FRIENDS_APK_URL;
+  return { token: data, ...(apkUrl ? { apkUrl } : {}) };
+}
