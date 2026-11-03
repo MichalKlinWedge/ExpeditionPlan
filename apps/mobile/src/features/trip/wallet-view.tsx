@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { BudgetPaceCard } from '@/features/trip/budget-pace-card';
 import { useLiveRates } from '@/features/trip/live-rates';
 import { SettleView } from '@/features/trip/settle-view';
 import { localDb } from '@/lib/local-db';
@@ -72,6 +73,15 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
   );
   const money = (minor: number) => formatMoney(minor, budget.currency);
   const names = new Map(trip.live.travelers.map((row) => [row.id, row.name as string]));
+  // Wydatek przypięty do punktu liczy się w dniu tego punktu (id z bazy → ref z planu).
+  const refOf = new Map(Object.entries(trip.ids).map(([ref, id]) => [id, ref]));
+  const paceExpenses = expenses.map((each) => ({
+    amountMinor: Number(each.amount_minor),
+    currency: each.currency,
+    category: each.category,
+    paidAt: each.paid_at,
+    ...(each.item_id && refOf.has(each.item_id) ? { itemRef: refOf.get(each.item_id)! } : {}),
+  }));
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   // Wydatek bez `created_by` dodano na tym telefonie i jeszcze nie wrócił z serwera — jest „mój”.
@@ -124,6 +134,8 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
             </ThemedText>
           ))}
       </ThemedView>
+
+      <BudgetPaceCard doc={doc} expenses={paceExpenses} />
 
       {canAdd && !adding && (
         <Pressable onPress={() => setAdding(true)} hitSlop={8}>

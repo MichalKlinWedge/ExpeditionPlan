@@ -35,6 +35,7 @@ import {
   weatherIcon,
   weatherLine,
   weatherPoints,
+  weatherAlerts,
   weatherVariantHint,
 } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
@@ -492,6 +493,7 @@ function DayTabs({
 }) {
   const short = (date: string) =>
     new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
+  const alerts = new Set(weatherAlerts(doc, weather, localToday()).map((alert) => alert.dayRef));
   return (
     // Pod paskiem „Zapisuję…” w trybie edycji; przewija się w bok, gdy dni jest dużo.
     <nav aria-label="Dni planu" className={`sticky ${below ? "top-6" : "top-0"} z-10 -mx-4 flex gap-1.5 overflow-x-auto bg-[var(--background)] px-4 py-2`}>
@@ -514,6 +516,7 @@ function DayTabs({
             <span className={active ? "text-white/85" : "text-zinc-500"}>
               {short(day.date)}
               {sky ? ` ${weatherIcon(sky.code)}` : ""}
+              {alerts.has(day.ref) ? " ⚠" : ""}
             </span>
           </button>
         );
@@ -702,6 +705,17 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
       </header>
 
       {weather && <p className="text-sm font-semibold text-sea dark:text-teal-300">{weatherLine(weather)}</p>}
+      {(() => {
+        // „Go / no-go”: niepogoda w ciągu 2 dni, a w dniu są punkty pod gołym niebem.
+        const alert = weather ? weatherAlerts(doc, { [dayRef]: weather }, localToday())[0] : undefined;
+        if (alert === undefined) return null;
+        return (
+          <p className="rounded-xl border-2 border-signal/60 bg-signal/5 px-3 py-1.5 text-sm">
+            <strong>⚠ Go / no-go:</strong> pod gołym niebem — {alert.outdoor.join(", ")}.
+            {alert.hint ? "" : " Plan nie ma wariantu na pogodę."}
+          </p>
+        );
+      })()}
       {(() => {
         // Niepogoda w dniu z wariantem pogodowym — podpowiedź B (tylko przełączenie widoku, działa też w podglądzie).
         const hint = weatherVariantHint(doc, dayRef, weather);

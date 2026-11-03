@@ -1,4 +1,4 @@
-import { dayAlerts, tripReminders, type TripDocument } from '@expeditionplan/core';
+import { dayAlerts, goNoGoReminders, tripReminders, type TripDocument } from '@expeditionplan/core';
 import { cachedTrip } from '@expeditionplan/sync';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
@@ -9,7 +9,8 @@ import { localDb } from '@/lib/local-db';
 
 /**
  * Przypomnienia z planu jako powiadomienia lokalne (działają offline, packages/core): zadania
- * z terminem (`tripReminders`, najwyżej 30) i oś dnia (`dayAlerts`: „Za 15 min: …”, termin decyzji
+ * z terminem (`tripReminders`, najwyżej 30), „go / no-go” pogody 2 dni przed dniem pod gołym niebem
+ * (`goNoGoReminders`) i oś dnia (`dayAlerts`: „Za 15 min: …”, termin decyzji
  * wariantu — najbliższe 25, osobny kanał „Plan dnia”). Włączane w Ustawieniach; przeliczane przy
  * każdym wczytaniu planu i po każdym zdarzeniu dnia (opóźnienie, pominięcie, wybór wariantu) —
  * godziny z silnika razem z zapisami czekającymi w outboxie, więc działa też bez sieci.
@@ -56,6 +57,9 @@ async function reschedule(tripId: string, doc: TripDocument): Promise<number> {
   const list = [
     ...tripReminders(doc, now)
       .slice(0, PER_TRIP)
+      .map((reminder) => ({ ...reminder, channelId: CHANNEL })),
+    ...goNoGoReminders(doc, now)
+      .slice(0, 10)
       .map((reminder) => ({ ...reminder, channelId: CHANNEL })),
     ...dayAlerts(doc, inputs, now).map((reminder) => ({ ...reminder, channelId: DAY_CHANNEL })),
   ];

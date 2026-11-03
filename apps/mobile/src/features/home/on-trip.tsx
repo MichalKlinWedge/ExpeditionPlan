@@ -8,6 +8,7 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
+import { WeatherAlertList } from '@/features/home/weather-alerts';
 import { useTripWeather } from '@/features/trip/trip-weather';
 import { localDb } from '@/lib/local-db';
 
@@ -85,6 +86,7 @@ export function OnTrip({ tripId }: { tripId: string }) {
           {weatherIcon(sky.code)} {weatherLine(sky)}
         </ThemedText>
       )}
+      <WeatherAlertList doc={doc} days={weather?.days} onPrimary />
       {view?.current && (
         <ThemedText type="small" style={styles.text}>
           <ThemedText type="smallBold" style={styles.text}>

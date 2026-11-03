@@ -1,4 +1,4 @@
-import { BUDGET_CATEGORY, budgetSuggestions, budgetSummary, flightLine, formatMoney, LogisticsCandidates, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, flightLine, formatMoney, instantToZoned, LogisticsCandidates, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -148,6 +148,20 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
   );
   const money = (minor: number) => formatMoney(minor, budget.currency);
   const range = (low: number, high: number) => (low === high ? money(low) : `${money(low)} – ${money(high)}`);
+  // Plan a wydatki dzień po dniu: punkt wydatku (id → ref) i „dziś” w strefie wyjazdu.
+  const tripToday = instantToZoned(new Date().getTime(), doc.trip.primaryTz).date;
+  const refOf = new Map(Object.entries(refIndex(payload.tables)).map(([ref, rowId]) => [rowId, ref]));
+  const pace = budgetPace(
+    doc,
+    expenses.map((row) => ({
+      amountMinor: Number(row.amount_minor),
+      currency: row.currency as string,
+      category: row.category as string,
+      paidAt: row.paid_at as string,
+      ...(row.item_id && refOf.has(row.item_id as string) ? { itemRef: refOf.get(row.item_id as string)! } : {}),
+    })),
+    tripToday,
+  );
   const bookings = doc.bookings.filter((booking) => booking.status !== "candidate" && booking.status !== "idea");
   const candidates = doc.bookings.length - bookings.length;
   const packaged = new Map<string, Doc["items"]>();
@@ -278,6 +292,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           Portfel — wydane na miejscu: <span className="font-medium">{money(wallet.spentMinor)}</span>
           <span className="text-zinc-500"> ({wallet.count} wydatków z telefonu)</span>
         </p>
+        {pace.plannedHighMinor > 0 && <PaceTable pace={pace} today={tripToday} money={money} range={range} />}
         <Settlement doc={doc} tables={payload.tables as unknown as Parameters<typeof Settlement>[0]["tables"]} />
       </section>
 
@@ -365,5 +380,71 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-zinc-500">{label}</dt>
       <dd className="font-medium">{value}</dd>
     </div>
+  );
+}
+
+const WEEKDAY = ["nd.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."];
+const dayDate = (date: string) => `${WEEKDAY[new Date(`${date}T12:00:00Z`).getUTCDay()]} ${Number(date.slice(8))}.${date.slice(5, 7)}`;
+
+/** Plan „do wydania” kontra wydatki z telefonu: tempo, prognoza, kategorie i dni ponad plan. */
+function PaceTable({ pace, today, money, range }: { pace: ReturnType<typeof budgetPace>; today: string; money: (minor: number) => string; range: (low: number, high: number) => string }) {
+  const perDay = Math.round(pace.plannedHighMinor / Math.max(pace.days.length, 1));
+  const forecastOver = pace.forecastMinor !== null && pace.forecastMinor > pace.plannedHighMinor;
+  const over = pace.categories.filter((each) => each.over);
+  return (
+    <details className="text-sm" open={pace.elapsedDays > 0}>
+      <summary className="cursor-pointer font-medium">
+        Plan a wydatki dzień po dniu
+        {forecastOver ? <span className="ml-2 text-signal">⚠ prognoza ponad plan</span> : null}
+      </summary>
+      <div className="mt-2 flex flex-col gap-2">
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Do wydania na miejscu: {range(pace.plannedLowMinor, pace.plannedHighMinor)} (wygodnie {money(perDay)} dziennie)
+          {pace.elapsedDays > 0 && (
+            <>
+              {" "}
+              · średnio wydajecie {money(Math.round((pace.spentMinor - pace.outsideMinor) / pace.elapsedDays))} dziennie ·{" "}
+              <span className={forecastOver ? "font-semibold text-signal" : "font-semibold"}>prognoza na koniec {money(pace.forecastMinor!)}</span>
+            </>
+          )}
+        </p>
+        {over.map((each) => (
+          <p key={each.category} className="text-signal">
+            ⚠ {BUDGET_CATEGORY[each.category] ?? each.category}: wydane {money(each.spentMinor)} z planu {range(each.plannedLowMinor, each.plannedHighMinor)}
+          </p>
+        ))}
+        <table className="w-full max-w-md text-left">
+          <thead className="text-xs text-zinc-500">
+            <tr>
+              <th className="py-1 font-normal">Dzień</th>
+              <th className="py-1 text-right font-normal">Plan (wygodnie)</th>
+              <th className="py-1 text-right font-normal">Wydane</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pace.days.map((day, index) => (
+              <tr key={day.dayRef} className={`border-t border-zinc-200 dark:border-zinc-800 ${day.date === today ? "font-semibold" : ""}`}>
+                <td className="py-1">
+                  Dzień {index + 1} · {dayDate(day.date)}
+                </td>
+                <td className="py-1 text-right">{money(day.plannedHighMinor)}</td>
+                <td className={`py-1 text-right ${day.over ? "text-signal" : ""}`}>
+                  {day.over ? "⚠ " : ""}
+                  {day.spentMinor > 0 ? money(day.spentMinor) : "—"}
+                </td>
+              </tr>
+            ))}
+            {pace.outsideMinor > 0 && (
+              <tr className="border-t border-zinc-200 text-zinc-500 dark:border-zinc-800">
+                <td className="py-1">Poza dniami planu</td>
+                <td />
+                <td className="py-1 text-right">{money(pace.outsideMinor)}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <p className="text-xs text-zinc-500">Plan dnia = pozycje przypięte do punktów tego dnia + równa część pozycji bez dnia. Pozycje zapłacone przed wyjazdem nie wchodzą.</p>
+      </div>
+    </details>
   );
 }
