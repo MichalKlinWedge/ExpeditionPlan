@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { CompassIcon } from "./icons";
+import { RememberDetails } from "./remember-details";
 import { TripNav } from "./trip-nav";
 import { UserMenu } from "./user-menu";
 
@@ -31,6 +32,10 @@ export function Shell({ children, wide = false }: { children: React.ReactNode; w
         <TripNav width={width} />
       </Suspense>
       <main className={`mx-auto flex w-full ${width} flex-col gap-6 px-4 py-8`}>{children}</main>
+      {/* Zwijane sekcje pamiętają stan (localStorage, osobno dla każdej strony). */}
+      <Suspense fallback={null}>
+        <RememberDetails />
+      </Suspense>
     </div>
   );
 }
