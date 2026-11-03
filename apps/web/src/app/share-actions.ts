@@ -28,3 +28,16 @@ export async function disableShare(tripId: string): Promise<FormState> {
   refresh();
   return { ok: "Link wyłączony — nikt już z niego nie otworzy planu." };
 }
+
+/**
+ * Przypisanie konta do uczestnika planu (`travelers.user_id`) albo odpięcie (`userId = null`) —
+ * organizator, przez `link_traveler_account` (jedno konto = jeden uczestnik).
+ */
+export async function linkTravelerAccount(tripId: string, travelerId: string, userId: string | null): Promise<FormState> {
+  if (travelerId === "") return {};
+  const { supabase } = await requireUser(`/trips/${tripId}/people`);
+  const { error } = await supabase.rpc("link_traveler_account", { p_trip: tripId, p_traveler: travelerId, p_user: userId as string });
+  if (error) return { error: error.code === "42501" ? "Konto do uczestnika przypisuje organizator." : error.message };
+  refresh();
+  return { ok: "Zapisano." };
+}

@@ -185,6 +185,11 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
     try {
       const fresh = await refreshTrip(localDb, remote, tripId);
       show(fresh);
+      // „Ostatnio w telefonie” dla organizatora — bez czekania; błąd (np. przed migracją) bez znaczenia.
+      void supabase.rpc('touch_trip', { p_trip: tripId, p_client: 'phone' }).then(
+        () => undefined,
+        () => undefined,
+      );
       if (fresh.rejected.length > 0) {
         Alert.alert('Serwer nie przyjął zmiany', `${fresh.rejected.length === 1 ? 'Jeden zapis' : `${fresh.rejected.length} zapisy`} z telefonu wycofano — brak uprawnień albo dane już się zmieniły.
 

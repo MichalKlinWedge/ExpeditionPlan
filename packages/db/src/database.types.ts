@@ -1081,17 +1081,23 @@ isOneToOne: false
                   ]
                 },"trip_members": {
                   Row: {
-                    "can_add_expenses": boolean,"created_at": string,"role": string,"trip_id": string,"user_id": string
+                    "can_add_expenses": boolean,"created_at": string,"invite_id": string | null,"last_seen_phone_at": string | null,"last_seen_web_at": string | null,"role": string,"trip_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "can_add_expenses"?: boolean,"created_at"?: string,"role": string,"trip_id": string,"user_id": string
+                    "can_add_expenses"?: boolean,"created_at"?: string,"invite_id"?: string | null,"last_seen_phone_at"?: string | null,"last_seen_web_at"?: string | null,"role": string,"trip_id": string,"user_id": string
                   }
                   Update: {
-                    "can_add_expenses"?: boolean,"created_at"?: string,"role"?: string,"trip_id"?: string,"user_id"?: string
+                    "can_add_expenses"?: boolean,"created_at"?: string,"invite_id"?: string | null,"last_seen_phone_at"?: string | null,"last_seen_web_at"?: string | null,"role"?: string,"trip_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "trip_members_invite_id_fkey"
+      columns: ["invite_id"]
+isOneToOne: false
+      referencedRelation: "trip_invites"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "trip_members_profile_fkey"
       columns: ["user_id"]
 isOneToOne: false
@@ -1332,6 +1338,9 @@ isOneToOne: false
 "leave_trip":
 { Args: { "p_trip": string }; Returns: undefined
                            },
+"link_traveler_account":
+{ Args: { "p_traveler": string,"p_trip": string,"p_user": string }; Returns: undefined
+                           },
 "owns_expense":
 { Args: { "p_expense": string }; Returns: boolean
                            },
@@ -1349,6 +1358,12 @@ isOneToOne: false
                            },
 "token_digest":
 { Args: { "p_token": string }; Returns: string
+                           },
+"touch_trip":
+{ Args: { "p_client": string,"p_trip": string }; Returns: undefined
+                           },
+"trip_member_stats":
+{ Args: { "p_trip": string }; Returns: Json
                            },
 "trip_role":
 { Args: { "p_trip": string }; Returns: string

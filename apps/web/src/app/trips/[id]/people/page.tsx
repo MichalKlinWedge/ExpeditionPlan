@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
+import { type InviteStat, type MemberStat, MemberStats } from "@/components/member-stats";
 import { PublicShare } from "@/components/public-share";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -12,6 +13,7 @@ import { ROLE } from "@/lib/labels";
 /**
  * Uczestnicy i dostęp: kto jedzie (uczestnicy), kto ma dostęp do planu (role), zaproszenie linkiem,
  * publiczny link „tylko podgląd” i na dole usunięcie wyjazdu (właściciel) albo wyjście z niego.
+ * Organizator widzi też statystyki dostępu: kto z linku, kiedy ostatnio w aplikacji, który uczestnik.
  * Domyślnie podgląd; zmiany po „Edytuj” (`?edit=1`).
  */
 export default function PeoplePage(props: PageProps<"/trips/[id]/people">) {
@@ -42,6 +44,15 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
   const canEdit = role === "owner" || role === "editor";
   const editing = canEdit && wantsEdit;
   const title = trip.data.title!;
+  // Statystyki dostępu i linki zaproszeń — tylko organizator (RPC sprawdza to samo).
+  const [stats, invites] =
+    role === "owner"
+      ? await Promise.all([
+          supabase.rpc("trip_member_stats", { p_trip: id }),
+          supabase.from("trip_invites").select("id, role, created_at, expires_at, used_count, max_uses, revoked_at").eq("trip_id", id).order("created_at"),
+        ])
+      : [null, null];
+  const now = new Date().getTime();
 
   return (
     <>
@@ -62,13 +73,24 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
 
       <section className={section}>
         <h2 className={heading}>Kto ma dostęp</h2>
-        <ul className="flex flex-col gap-1 text-sm">
-          {(members.data ?? []).map((member) => (
-            <li key={member.user_id}>
-              {member.profiles?.display_name ?? "?"} <span className="text-zinc-500">· {ROLE[member.role]}</span>
-            </li>
-          ))}
-        </ul>
+        {stats?.data ? (
+          <MemberStats
+            tripId={id}
+            members={stats.data as unknown as MemberStat[]}
+            invites={(invites?.data ?? []) as InviteStat[]}
+            travelers={(travelers.data ?? []).map((each) => ({ id: each.id, name: each.name }))}
+            editing={editing}
+            now={now}
+          />
+        ) : (
+          <ul className="flex flex-col gap-1 text-sm">
+            {(members.data ?? []).map((member) => (
+              <li key={member.user_id}>
+                {member.profiles?.display_name ?? "?"} <span className="text-zinc-500">· {ROLE[member.role]}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         {role === "owner" && editing && <InviteForm tripId={id} />}
         {role === "owner" && !editing && <p className="text-xs text-zinc-500">Zaproszenie linkiem — po „Edytuj”.</p>}
       </section>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
@@ -48,6 +49,10 @@ function Tile({ href, icon, title, hint }: { href: string; icon: React.ReactNode
 async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}`);
+  // „Ostatnio na webie” (statystyki organizatora) — po wysłaniu strony; błąd (np. przed migracją) bez znaczenia.
+  after(async () => {
+    await supabase.rpc("touch_trip", { p_trip: id, p_client: "web" });
+  });
   const [trip, members, travelers, days, items, brief, mine, tasks] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id", { count: "exact", head: true }).eq("trip_id", id),
