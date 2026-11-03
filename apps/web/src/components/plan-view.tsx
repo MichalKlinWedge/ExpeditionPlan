@@ -46,6 +46,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DayConstraints, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { type LatLng, PlanMap } from "@/components/plan-map";
+import { POOL_FILTER, POOL_GROUP, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolQuery } from "@/lib/pool";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useRefreshOnReturn } from "@/lib/use-refresh-on-return";
@@ -149,6 +150,9 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
     window.history.replaceState(null, "", url);
   }, [mapDayRef]);
   const showPool = mapDayRef === POOL;
+  const [poolQuery, setPoolQuery] = useState<PoolQuery>({ groupBy: "area", filters: [], text: "" });
+  const guidedRefs = new Set(guided ?? []);
+  const poolShown = poolGroups(doc, pool, guidedRefs, poolQuery);
   const mapDay = showPool ? undefined : (doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0]);
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ ref: string; over: DropTarget | null } | null>(null);
@@ -423,11 +427,15 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                 </p>
               )}
               {actions && <PoolAddForm areas={[...new Set(doc.items.flatMap((item) => (item.area ? [item.area] : [])))]} onAdd={actions.addToPool} />}
-              {Object.entries(Object.groupBy(pool, (item) => item.area ?? "bez obszaru")).map(([area, items]) => (
-                <div key={area} className="text-sm">
-                  <p className="font-medium">{area}</p>
+              {pool.length > 0 && <PoolToolbar doc={doc} pool={pool} guided={guidedRefs} query={poolQuery} onChange={setPoolQuery} />}
+              {pool.length > 0 && poolShown.length === 0 && <p className="text-sm text-zinc-500">Żaden punkt puli nie pasuje do filtrów.</p>}
+              {poolShown.map(({ key, label, items }) => (
+                <div key={key} className="text-sm">
+                  <p className="font-medium">
+                    {label} <span className="font-normal text-zinc-500">({items.length})</span>
+                  </p>
                   <ul className="ml-4 flex flex-col text-zinc-600 dark:text-zinc-400">
-                    {items!.map((item) => (
+                    {items.map((item) => (
                       <li key={item.ref} id={`item-${item.ref}`} className={`flex items-center gap-1 rounded ${selected === item.ref ? "bg-signal/10" : ""}`}>
                         {dnd ? <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} /> : <span aria-hidden="true">•</span>}
                         <span>
@@ -721,6 +729,38 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
         <span className="text-xs text-zinc-500">Miejsce bez współrzędnych: potem „Uzupełnij współrzędne miejsc” albo pinezka.</span>
       </div>
     </form>
+  );
+}
+
+/** Grupowanie i filtry puli (z licznikami) oraz szukanie po tytule, opisie, miejscu i notatkach. */
+function PoolToolbar({ doc, pool, guided, query, onChange }: { doc: TripDocument; pool: TripDocument["items"]; guided: ReadonlySet<string>; query: PoolQuery; onChange: (query: PoolQuery) => void }) {
+  const toggle = (filter: PoolFilter) =>
+    onChange({ ...query, filters: query.filters.includes(filter) ? query.filters.filter((each) => each !== filter) : [...query.filters.filter((each) => !(filter === "guided" && each === "unguided") && !(filter === "unguided" && each === "guided")), filter] });
+  const chip = (active: boolean) => `rounded-full border px-2.5 py-0.5 text-xs ${active ? "border-sea bg-sea text-white" : "border-zinc-300 hover:border-sea dark:border-zinc-700"}`;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+      <span className="flex items-center gap-1.5">
+        <span className="text-xs text-zinc-500">grupuj:</span>
+        {(Object.keys(POOL_GROUP) as PoolGroupBy[]).map((key) => (
+          <button key={key} onClick={() => onChange({ ...query, groupBy: key })} aria-pressed={query.groupBy === key} className={chip(query.groupBy === key)}>
+            {POOL_GROUP[key]}
+          </button>
+        ))}
+      </span>
+      <span className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-zinc-500">pokaż:</span>
+        {(Object.keys(POOL_FILTER) as PoolFilter[]).map((key) => {
+          const count = poolCount(doc, pool, guided, key);
+          if (count === 0 && !query.filters.includes(key)) return null;
+          return (
+            <button key={key} onClick={() => toggle(key)} aria-pressed={query.filters.includes(key)} className={chip(query.filters.includes(key))}>
+              {POOL_FILTER[key]} ({count})
+            </button>
+          );
+        })}
+      </span>
+      <input value={query.text} onChange={(event) => onChange({ ...query, text: event.target.value })} placeholder="Szukaj w puli…" className="w-48 field px-2 py-1 text-sm" aria-label="Szukaj w puli" />
+    </div>
   );
 }
 
