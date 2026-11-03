@@ -16,12 +16,16 @@ import { createClient } from "./supabase/server";
  * Pozostali mają podgląd i ręczną edycję; własne klucze użytkowników to plan na później.
  */
 export async function aiAccessError(): Promise<string | null> {
+  const { data } = await (await createClient()).auth.getClaims();
+  return aiAccessFor(String(data?.claims.email ?? ""));
+}
+
+/** To samo dla e-maila z tokenu (żądania z telefonu: `Authorization: Bearer`, bez cookies). */
+export function aiAccessFor(email: string): string | null {
   const list = process.env.AI_ALLOWED_EMAILS;
   if (list === undefined || list.trim() === "") return process.env.NODE_ENV === "production" ? "AI jest wyłączone na tym serwerze." : null;
-  const { data } = await (await createClient()).auth.getClaims();
-  const email = String(data?.claims.email ?? "").toLowerCase();
   const allowed = list.split(",").map((each) => each.trim().toLowerCase());
-  return email !== "" && allowed.includes(email) ? null : "AI i wyszukiwanie miejsc są na razie dostępne tylko dla właściciela aplikacji.";
+  return email !== "" && allowed.includes(email.toLowerCase()) ? null : "AI i wyszukiwanie miejsc są na razie dostępne tylko dla właściciela aplikacji.";
 }
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
@@ -43,6 +47,14 @@ export function plannerDeps(): { deps: Omit<PlannerDeps, "primaryTz" | "onUsage"
       ...(route ? { route } : {}),
     },
   };
+}
+
+/** Sam Gemini (bez wyszukiwania miejsc) — paragony, opisy; `null` bez klucza. */
+export function geminiClient() {
+  const gemini = process.env.GEMINI_API_KEY ?? "";
+  if (gemini === "") return null;
+  const model = process.env.AI_MODEL_GEMINI || DEFAULT_GEMINI_MODEL;
+  return { model, client: createAiClient({ keys: { GEMINI: gemini }, models: { GEMINI: model }, defaultProvider: "GEMINI" }) };
 }
 
 /** Trasy OpenRouteService; `null` bez klucza (wtedy zostają czasy szacowane przez AI). */

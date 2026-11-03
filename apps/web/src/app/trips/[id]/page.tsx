@@ -108,6 +108,10 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <DownloadIcon className="size-4" />
         Pobierz kopię całego planu (JSON)
       </a>
+      <a href={`/trips/${id}/calendar`} className="flex items-center gap-1.5 self-start text-sm text-zinc-500 underline hover:text-sea">
+        <DownloadIcon className="size-4" />
+        Dodaj plan do kalendarza (.ics — Google Calendar, telefon)
+      </a>
 
       {canEdit && brief.data !== null && <AiPlanButton tripId={id} />}
     </>

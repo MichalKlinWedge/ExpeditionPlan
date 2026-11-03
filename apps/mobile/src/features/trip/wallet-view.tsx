@@ -1,7 +1,8 @@
 import { BUDGET_CATEGORY, budgetSummary, formatMoney, parseMoney, walletSummary } from '@expeditionplan/core';
 import { type CachedTrip, type NewExpense, removeExpense, saveExpense, saveExpenseSplits } from '@expeditionplan/sync';
+import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
@@ -12,6 +13,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLiveRates } from '@/features/trip/live-rates';
 import { SettleView } from '@/features/trip/settle-view';
 import { localDb } from '@/lib/local-db';
+import { readReceiptPhoto } from '@/lib/web-api';
 
 /**
  * Budżet i portfel wyjazdu na telefonie: „zapłacone / do wydania” z planu, wydatki z trasy
@@ -131,6 +133,7 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
       {canAdd && adding && (
         <ExpenseForm
           trip={trip}
+          tripId={tripId}
           onCancel={() => setAdding(false)}
           onSave={({ splitIds, ...expense }) => {
             const id = saveExpense(localDb, { tripId, ...expense });
@@ -273,18 +276,23 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 
-/** `splitIds` — na kogo dzieli się wydatek; pusto = na wszystkich. */
-type ExpenseFields = { amountMinor: number; currency: string; category: string; payerTravelerId: string | null; note: string | null; splitIds: string[] };
+/** `splitIds` — na kogo dzieli się wydatek; pusto = na wszystkich. `paidAt` — data z paragonu. */
+type ExpenseFields = { amountMinor: number; currency: string; category: string; payerTravelerId: string | null; note: string | null; splitIds: string[]; paidAt?: string };
 
-/** Nowy wydatek albo poprawka (`initial`) — wtedy także „Usuń”. */
+/**
+ * Nowy wydatek albo poprawka (`initial`) — wtedy także „Usuń”. Przy nowym „📷 Paragon”: zdjęcie
+ * idzie do Planner Hub (Gemini), a odczytane pola wypełniają formularz — zapisuje człowiek.
+ */
 function ExpenseForm({
   trip,
+  tripId,
   initial,
   onCancel,
   onSave,
   onRemove,
 }: {
   trip: CachedTrip;
+  tripId?: string;
   initial?: ExpenseRow;
   onCancel: () => void;
   onSave: (expense: ExpenseFields) => void;
@@ -292,7 +300,8 @@ function ExpenseForm({
 }) {
   const theme = useTheme();
   const doc = trip.state.doc;
-  const currencies = [...new Set([doc.trip.baseCurrency, ...doc.trip.fx.map((each) => each.currency), ...(initial ? [initial.currency] : [])])];
+  const [extraCurrency, setExtraCurrency] = useState<string | null>(null);
+  const currencies = [...new Set([doc.trip.baseCurrency, ...doc.trip.fx.map((each) => each.currency), ...(initial ? [initial.currency] : []), ...(extraCurrency ? [extraCurrency] : [])])];
   const [amount, setAmount] = useState(initial ? (Number(initial.amount_minor) / 100).toFixed(2).replace('.', ',') : '');
   const [currency, setCurrency] = useState(initial?.currency ?? currencies[0]!);
   const [category, setCategory] = useState(initial?.category ?? 'food');
@@ -309,17 +318,67 @@ function ExpenseForm({
   );
   const toggle = (id: string) => setForWhom((current) => (current.includes(id) ? current.filter((each) => each !== id) : [...current, id]));
   const [note, setNote] = useState(initial?.note ?? '');
+  const [paidAt, setPaidAt] = useState<string | undefined>(undefined);
+  const [reading, setReading] = useState(false);
   const input = [styles.input, { color: theme.text, borderColor: theme.backgroundSelected }];
 
   const save = () => {
     const minor = parseMoney(amount);
     if (minor === null || minor === 0) return Alert.alert('Kwota', 'Podaj kwotę, np. 45 albo 12,50.');
-    onSave({ amountMinor: minor, currency, category, payerTravelerId: payer, note: note.trim() || null, splitIds: forWhom });
+    onSave({ amountMinor: minor, currency, category, payerTravelerId: payer, note: note.trim() || null, splitIds: forWhom, ...(paidAt ? { paidAt } : {}) });
+  };
+
+  // Zdjęcie przycięte do paragonu, mocno skompresowane — base64 musi się zmieścić w limicie żądania.
+  const scan = async (source: 'camera' | 'library') => {
+    if (tripId === undefined) return;
+    if (source === 'camera' && !(await requestCameraPermissionsAsync()).granted) return Alert.alert('Brak dostępu do aparatu', 'Zezwól aplikacji na aparat w ustawieniach telefonu.');
+    const options = { mediaTypes: ['images' as const], quality: 0.4, base64: true, allowsEditing: true };
+    const result = source === 'camera' ? await launchCameraAsync(options) : await launchImageLibraryAsync(options);
+    const asset = result.canceled ? undefined : result.assets[0];
+    if (asset?.base64 == null) return;
+    if (asset.base64.length > 4_000_000) return Alert.alert('Za duże zdjęcie', 'Przytnij zdjęcie do samego paragonu albo zrób je z mniejszej odległości.');
+    setReading(true);
+    try {
+      const draft = await readReceiptPhoto(tripId, currencies, { mimeType: asset.mimeType === 'image/png' ? 'image/png' : 'image/jpeg', data: asset.base64 });
+      if (draft === null) return Alert.alert('Paragon', 'Na zdjęciu nie widzę paragonu.');
+      if (draft.amountMinor !== null) setAmount((draft.amountMinor / 100).toFixed(2).replace('.', ','));
+      if (draft.currency !== null) {
+        if (!currencies.includes(draft.currency)) setExtraCurrency(draft.currency);
+        setCurrency(draft.currency);
+      }
+      if (draft.category !== null && draft.category in BUDGET_CATEGORY) setCategory(draft.category);
+      if (draft.merchant !== null && note.trim() === '') setNote(draft.merchant);
+      // Data z paragonu (południe czasu telefonu), gdy to nie dziś — wydatek dopisany po fakcie.
+      const today = new Date().toLocaleDateString('sv-SE');
+      setPaidAt(draft.date !== null && draft.date !== today ? new Date(`${draft.date}T12:00:00`).toISOString() : undefined);
+      if (draft.amountMinor === null) Alert.alert('Paragon', 'Nie odczytałem kwoty — wpisz ją ręcznie.');
+    } catch (e) {
+      Alert.alert('Paragon', e instanceof Error ? e.message : String(e));
+    } finally {
+      setReading(false);
+    }
   };
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
       <ThemedText type="smallBold">{initial ? 'Popraw wydatek' : 'Nowy wydatek'}</ThemedText>
+      {initial === undefined && tripId !== undefined && (
+        <View style={styles.actions}>
+          <Button label="📷 Paragon" small disabled={reading} onPress={() => void scan('camera')} />
+          <Button label="🖼 Z galerii" small disabled={reading} onPress={() => void scan('library')} />
+          {reading && <ActivityIndicator />}
+          {reading && (
+            <ThemedText type="small" themeColor="textSecondary">
+              Czytam paragon…
+            </ThemedText>
+          )}
+          {paidAt !== undefined && !reading && (
+            <ThemedText type="small" themeColor="textSecondary">
+              z dnia {new Date(paidAt).toLocaleDateString('pl-PL')}
+            </ThemedText>
+          )}
+        </View>
+      )}
       <TextInput value={amount} onChangeText={setAmount} style={input} placeholder="Kwota" placeholderTextColor={theme.textSecondary} keyboardType="decimal-pad" autoFocus />
       <View style={styles.wrap}>
         {currencies.map((each) => (

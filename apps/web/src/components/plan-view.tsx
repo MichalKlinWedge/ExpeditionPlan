@@ -96,9 +96,11 @@ type Props = {
   canEdit: boolean;
   /** Adres karty punktu bez klucza (`/trips/<id>/item/`); brak — tytuły bez linku (link publiczny). */
   itemBase?: string;
+  /** Punkty (`ref`) z gotowym opisem przewodnika. */
+  guided?: string[];
 };
 
-export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase }: Props) {
+export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
@@ -392,6 +394,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase }: 
               onSelect={(ref) => select(ref, "list")}
               weather={weather[mapDay.ref]}
               itemBase={itemBase}
+              guided={guided}
             />
           )}
           {Object.keys(weather).length > 0 && <p className="text-xs text-zinc-500">{WEATHER_ATTRIBUTION}</p>}
@@ -629,6 +632,7 @@ type DayProps = {
   selected: string | null;
   onSelect: (ref: string) => void;
   itemBase?: string;
+  guided?: string[];
 };
 
 /** Kolor kropki na osi dnia według rodzaju punktu. */
@@ -644,7 +648,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -761,6 +765,16 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     ) : (
                       <span className="font-medium">{item.title}</span>
                     )}
+                    {guided?.includes(item.ref) &&
+                      (itemBase ? (
+                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
+                          📖 opis
+                        </Link>
+                      ) : (
+                        <span title="Opis przewodnika gotowy" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea">
+                          📖 opis
+                        </span>
+                      ))}
                     <span className="text-zinc-500">
                       {" "}
                       · {KIND[item.kind]}

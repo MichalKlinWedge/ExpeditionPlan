@@ -1,4 +1,4 @@
-import { placesOffMap } from "@expeditionplan/core";
+import { type GuideRow, guideFor, placesOffMap } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -50,6 +50,12 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
   // Domyślnie podgląd; edycja po „Edytuj” (`?edit=1`).
   const editing = canEdit && wantsEdit;
   const ids = refIndex((data as { tables: Parameters<typeof refIndex>[0] }).tables);
+  // Punkty z gotowym przewodnikiem (własnym albo swojego miejsca) — znaczek 📖 w planie.
+  const guides = (data as { tables: { audio_guides?: GuideRow[] } }).tables.audio_guides ?? [];
+  const guided = state.doc.items.flatMap((item) => {
+    const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
+    return guideFor(guides, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]) === null ? [] : [item.ref];
+  });
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -82,6 +88,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         ids={ids}
         canEdit={editing}
         itemBase={`/trips/${id}/item/`}
+        guided={guided}
       />
     </>
   );
