@@ -1,3 +1,4 @@
+import { localToday } from '@expeditionplan/core';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -15,7 +16,8 @@ import { supabase } from '@/lib/supabase';
 /**
  * Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy, kto ma dostęp
  * i wejście w plan dnia albo na mapę. Rozwinięty wyjazd staje się wybranym także w zakładkach Plan i Mapa. Bez logowania (`signedIn = false`) — lista i plany z telefonu, do odczytu.
- * Z siecią właściciel usuwa wyjazd, pozostali z niego wychodzą.
+ * Z siecią właściciel usuwa wyjazd, pozostali z niego wychodzą. Wyjazdy po dacie końca — w zwiniętym
+ * „Archiwum” pod wyjazdami przed nami (najnowsze na górze).
  */
 
 const ROLE: Record<string, string> = { owner: 'właściciel', editor: 'edytor', viewer: 'widz' };
@@ -35,6 +37,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const [open, setOpen] = useState<string | null>(null);
   const [details, setDetails] = useState<Details | null>(null);
   const [plan, setPlan] = useState<string | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const load = useCallback(async () => {
     const result = await loadMyTrips(signedIn);
@@ -103,6 +106,67 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
     );
   };
 
+  const today = localToday();
+  const ahead = trips?.filter((trip) => trip.end_date! >= today) ?? [];
+  const archive = (trips?.filter((trip) => trip.end_date! < today) ?? []).sort((a, b) => b.start_date!.localeCompare(a.start_date!));
+
+  const tripCard = (trip: Trip) => (
+    <ThemedView key={trip.id} type="backgroundElement" style={[styles.trip, { borderColor: open === trip.id ? theme.accent : theme.backgroundSelected }]}>
+      <Pressable onPress={() => void toggle(trip.id!)} style={styles.tripHead}>
+        <View style={styles.grow}>
+          <ThemedText type="smallBold" style={styles.tripTitle}>
+            {trip.title}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {trip.start_date} – {trip.end_date} · {ROLE[trip.role!]}
+          </ThemedText>
+          <OfflineBadge tripId={trip.id!} />
+        </View>
+        <ThemedText themeColor="accent">{open === trip.id ? '▾' : '▸'}</ThemedText>
+      </Pressable>
+      {open === trip.id && (
+        <View style={styles.details}>
+          {details === null ? (
+            <>
+              {!offline && <ThemedText type="small">Wczytuję…</ThemedText>}
+              <View style={styles.actions}>
+                <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
+                <AppButton label="Mapa →" onPress={() => showMap(trip.id!)} />
+              </View>
+            </>
+          ) : (
+            <>
+              <ThemedText type="small">
+                Plan: {details.days} dni, {details.items} punktów
+              </ThemedText>
+              {details.days > 0 && (
+                <View style={styles.actions}>
+                  <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
+                  <AppButton label="Mapa →" onPress={() => showMap(trip.id!)} />
+                </View>
+              )}
+              <ThemedText type="small">
+                Uczestnicy:{' '}
+                {details.travelers.map((person) => (person.age === null ? person.name : `${person.name} (${person.age})`)).join(', ') || '—'}
+              </ThemedText>
+              <ThemedText type="small">
+                Dostęp: {details.members.map((member) => `${member.name} — ${ROLE[member.role]}`).join(', ')}
+              </ThemedText>
+            </>
+          )}
+          <OfflineButton tripId={trip.id!} online={signedIn && !offline} />
+          {signedIn && !offline && (
+            <Pressable onPress={() => remove(trip)} hitSlop={8}>
+              <ThemedText type="small" style={styles.danger}>
+                {trip.role === 'owner' ? 'Usuń wyjazd' : 'Opuść wyjazd'}
+              </ThemedText>
+            </Pressable>
+          )}
+        </View>
+      )}
+    </ThemedView>
+  );
+
   return (
     <View style={styles.card}>
       <ThemedText type="subtitle">Wyjazdy</ThemedText>
@@ -118,62 +182,21 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
           {signedIn ? 'Nie masz jeszcze wyjazdów — utwórz je na webie albo dołącz z linku.' : 'Na telefonie nie ma pobranych wyjazdów — zaloguj się na ekranie Start.'}
         </ThemedText>
       )}
-      {trips?.map((trip) => (
-        <ThemedView key={trip.id} type="backgroundElement" style={[styles.trip, { borderColor: open === trip.id ? theme.accent : theme.backgroundSelected }]}>
-          <Pressable onPress={() => void toggle(trip.id!)} style={styles.tripHead}>
-            <View style={styles.grow}>
-              <ThemedText type="smallBold" style={styles.tripTitle}>
-                {trip.title}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {trip.start_date} – {trip.end_date} · {ROLE[trip.role!]}
-              </ThemedText>
-              <OfflineBadge tripId={trip.id!} />
-            </View>
-            <ThemedText themeColor="accent">{open === trip.id ? '▾' : '▸'}</ThemedText>
-          </Pressable>
-          {open === trip.id && (
-            <View style={styles.details}>
-              {details === null ? (
-                <>
-                  {!offline && <ThemedText type="small">Wczytuję…</ThemedText>}
-                  <View style={styles.actions}>
-                    <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
-                    <AppButton label="Mapa →" onPress={() => showMap(trip.id!)} />
-                  </View>
-                </>
-              ) : (
-                <>
-                  <ThemedText type="small">
-                    Plan: {details.days} dni, {details.items} punktów
-                  </ThemedText>
-                  {details.days > 0 && (
-                    <View style={styles.actions}>
-                      <AppButton label="Plan dzień po dniu →" onPress={() => setPlan(trip.id)} variant="primary" />
-                      <AppButton label="Mapa →" onPress={() => showMap(trip.id!)} />
-                    </View>
-                  )}
-                  <ThemedText type="small">
-                    Uczestnicy:{' '}
-                    {details.travelers.map((person) => (person.age === null ? person.name : `${person.name} (${person.age})`)).join(', ') || '—'}
-                  </ThemedText>
-                  <ThemedText type="small">
-                    Dostęp: {details.members.map((member) => `${member.name} — ${ROLE[member.role]}`).join(', ')}
-                  </ThemedText>
-                </>
-              )}
-              <OfflineButton tripId={trip.id!} online={signedIn && !offline} />
-              {signedIn && !offline && (
-                <Pressable onPress={() => remove(trip)} hitSlop={8}>
-                  <ThemedText type="small" style={styles.danger}>
-                    {trip.role === 'owner' ? 'Usuń wyjazd' : 'Opuść wyjazd'}
-                  </ThemedText>
-                </Pressable>
-              )}
-            </View>
-          )}
-        </ThemedView>
-      ))}
+      {trips !== null && trips.length > 0 && ahead.length === 0 && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Żadnego wyjazdu przed Tobą — poprzednie są w archiwum.
+        </ThemedText>
+      )}
+      {ahead.map(tripCard)}
+      {archive.length > 0 && (
+        <Pressable onPress={() => setArchiveOpen(!archiveOpen)} hitSlop={8} style={styles.archiveHead}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            Archiwum ({archive.length})
+          </ThemedText>
+          <ThemedText themeColor="accent">{archiveOpen ? '▾' : '▸'}</ThemedText>
+        </Pressable>
+      )}
+      {archiveOpen && archive.map(tripCard)}
       <PlanScreen
         tripId={plan}
         signedIn={signedIn}
@@ -195,4 +218,5 @@ const styles = StyleSheet.create({
   details: { gap: Spacing.two },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   danger: { color: '#d32f2f', paddingTop: Spacing.one },
+  archiveHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Spacing.two },
 });
