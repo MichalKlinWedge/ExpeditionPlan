@@ -121,7 +121,25 @@ export type ComparisonRow = {
 export type ComparisonGroup = { ref: string; title: string; conditionText?: string; chosenRef?: string; columns: string[]; rows: ComparisonRow[] };
 
 /** Grupa porównania z planu: tabela, linki wyszukiwania, „Wybieram”. */
+/** Grupa z wybraną opcją jest zwinięta do jednej linii („✓ wybrane: …”) — rozwija się, gdy trzeba zmienić wybór. */
 export function ComparisonTable({ tripId, group, canEdit }: { tripId: string; group: ComparisonGroup; canEdit: boolean }) {
+  const chosen = group.rows.find((row) => row.variantRef === group.chosenRef);
+  if (chosen === undefined) return <ComparisonBody tripId={tripId} group={group} canEdit={canEdit} />;
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer">
+        <span className="font-medium">{group.title}</span>
+        <span className="text-green-700 dark:text-green-400"> — ✓ wybrane: {chosen.label}</span>
+        {chosen.price ? <span className="text-zinc-500"> · {chosen.price}</span> : null}
+      </summary>
+      <div className="mt-2">
+        <ComparisonBody tripId={tripId} group={group} canEdit={canEdit} />
+      </div>
+    </details>
+  );
+}
+
+function ComparisonBody({ tripId, group, canEdit }: { tripId: string; group: ComparisonGroup; canEdit: boolean }) {
   const [result, setResult] = useState<FormState>({});
   const [pending, start] = useTransition();
   return (

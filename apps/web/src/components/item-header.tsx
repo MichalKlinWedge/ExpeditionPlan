@@ -1,0 +1,57 @@
+"use client";
+
+import { documentProblem, type TripDocument, updateItem } from "@expeditionplan/core";
+import { savePlanEdit } from "@expeditionplan/sync";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+
+import { ItemEditor } from "@/components/item-editor";
+import { createClient } from "@/lib/supabase/client";
+
+/**
+ * Edycja nagłówka punktu na jego karcie (nazwa, rodzaj, godzina, czas trwania, bufor, priorytet) —
+ * ten sam formularz i ta sama droga zapisu co w planie (`updateItem` → `savePlanEdit`, `user_locked`).
+ * Widoczna w trybie edycji (`?edit=1`) dla organizatora i edytora.
+ */
+export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const item = doc.items.find((each) => each.ref === itemRef);
+  if (item === undefined) return null;
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="btn-secondary btn-sm self-start">
+        Edytuj nagłówek punktu
+      </button>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <ItemEditor
+        item={item}
+        onCancel={() => setOpen(false)}
+        onSave={(patch) => {
+          const edit = updateItem(doc, itemRef, patch);
+          if (edit === null) return setOpen(false);
+          const invalid = documentProblem(edit.doc);
+          if (invalid !== null) return setError(`Nie zapisano: ${invalid}`);
+          start(async () => {
+            try {
+              await savePlanEdit(createClient(), tripId, edit, ids);
+              setError(null);
+              setOpen(false);
+              router.refresh();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : String(e));
+            }
+          });
+        }}
+      />
+      {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}

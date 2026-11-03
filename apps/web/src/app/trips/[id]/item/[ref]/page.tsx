@@ -4,7 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { EditToggle, editMode } from "@/components/edit-toggle";
 import { GuideButtons } from "@/components/guide-button";
+import { ItemHeaderEditor } from "@/components/item-header";
 import { TrackUpload } from "@/components/track-upload";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -18,7 +20,7 @@ export default function ItemPage(props: PageProps<"/trips/[id]/item/[ref]">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <ItemCard params={props.params} />
+        <ItemCard params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </Shell>
   );
@@ -27,8 +29,9 @@ export default function ItemPage(props: PageProps<"/trips/[id]/item/[ref]">) {
 const weekday = (date: string) =>
   new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)).replace(/^./, (first) => first.toUpperCase());
 
-async function ItemCard({ params }: { params: Promise<{ id: string; ref: string }> }) {
+async function ItemCard({ params, searchParams }: { params: Promise<{ id: string; ref: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id, ref: rawRef } = await params;
+  const wantsEdit = await editMode(searchParams);
   const ref = decodeURIComponent(rawRef);
   const { supabase } = await requireUser(`/trips/${id}/item/${rawRef}`);
   const [{ data, error }, membership] = await Promise.all([
@@ -47,6 +50,8 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined) notFound();
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
+  // Domyślnie podgląd; edycja nagłówka po „Edytuj” (`?edit=1`) — ten sam tryb co w planie.
+  const editing = canEdit && wantsEdit;
   const ids = refIndex(payload.tables);
   const dayIndex = doc.days.findIndex((day) => day.ref === item.dayRef);
   const day = doc.days[dayIndex];
@@ -69,9 +74,13 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}`} className="text-sm text-zinc-500 underline">
-          ← Plan: {doc.trip.title}
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Powrót na ten sam dzień i w tym samym trybie (podgląd / edycja). */}
+          <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}${editing ? "&edit=1" : ""}`} className="text-sm text-zinc-500 underline">
+            ← Plan: {doc.trip.title}
+          </Link>
+          {canEdit && <EditToggle href={`/trips/${id}/item/${rawRef}`} editing={editing} />}
+        </div>
         <h1 className="flex items-center gap-2 text-2xl font-semibold">
           <span aria-hidden="true">{itemIcon(doc, item)}</span>
           {item.title}
@@ -82,6 +91,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
           {time ? ` · ${time}` : ""}
           {item.durationMin ? ` · ${item.durationMin} min` : ""}
         </p>
+        {editing && <ItemHeaderEditor tripId={id} doc={doc} ids={ids} itemRef={item.ref} />}
       </div>
 
       <section className="card flex flex-col gap-2 p-4 text-sm">

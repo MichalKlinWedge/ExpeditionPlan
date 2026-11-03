@@ -43,7 +43,7 @@ import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expedition
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { DayConstraints, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
+import { DayConstraints, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { type LatLng, PlanMap } from "@/components/plan-map";
 import { createClient } from "@/lib/supabase/client";
@@ -432,7 +432,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                         {dnd ? <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} /> : <span aria-hidden="true">•</span>}
                         <span>
                           {itemBase ? (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Szczegóły i przewodnik" className="hover:text-sea hover:underline">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" className="hover:text-sea hover:underline">
                               {item.title}
                             </Link>
                           ) : (
@@ -440,12 +440,12 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                           )}{" "}
                           <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
                           {itemBase && guided?.includes(item.ref) && (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                               📖 opis
                             </Link>
                           )}
                           {itemBase && canEdit && !guided?.includes(item.ref) && (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="ml-1.5 text-xs text-sea underline dark:text-teal-300">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="ml-1.5 text-xs text-sea underline dark:text-teal-300">
                               opis AI
                             </Link>
                           )}
@@ -773,7 +773,6 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
     failure = error instanceof Error ? error.message : String(error);
   }
   const cuts = schedule?.slack === "negative" || schedule?.warnings.some((each) => each.severity === "hard") ? proposeCuts(doc, dayRef, options) : [];
-  const notes = doc.notes.filter((note) => note.scope === "day" && note.targetRef === dayRef);
   const byRef = new Map(doc.items.map((item) => [item.ref, item]));
   const base = day.baseRef === undefined ? undefined : places.get(day.baseRef)?.name;
   const lodging = dayLodging(doc, dayRef);
@@ -882,7 +881,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       </span>
                     )}
                     {itemBase ? (
-                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Szczegóły i przewodnik" className="font-medium hover:text-sea hover:underline">
+                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" className="font-medium hover:text-sea hover:underline">
                         {item.title}
                       </Link>
                     ) : (
@@ -890,7 +889,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     )}
                     {guided?.includes(item.ref) &&
                       (itemBase ? (
-                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
+                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                           📖 opis
                         </Link>
                       ) : (
@@ -1017,19 +1016,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
         </div>
       )}
 
-      {notes.length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-zinc-500">Notatki dnia ({notes.length})</summary>
-          <ul className="mt-2 flex flex-col gap-2">
-            {notes.map((note, index) => (
-              <li key={index} className="whitespace-pre-line text-zinc-600 dark:text-zinc-400">
-                {note.title ? <span className="font-medium">{note.title}: </span> : null}
-                {note.body}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      <DayNotes doc={doc} dayRef={dayRef} onRules={onRules} />
     </section>
   );
 }

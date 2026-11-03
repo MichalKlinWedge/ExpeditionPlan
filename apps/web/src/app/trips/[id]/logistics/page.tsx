@@ -266,8 +266,12 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
         <Settlement doc={doc} tables={payload.tables as unknown as Parameters<typeof Settlement>[0]["tables"]} />
       </section>
 
-      <section className={card}>
-        <h2 className={heading}>Do porównania ({comparisons.length})</h2>
+      {/* Wszystko wybrane i nic nie czeka na przegląd — cała sekcja zwinięta do nagłówka. */}
+      <details className={card} open={!(comparisons.length > 0 && comparisons.every((group) => group.chosenRef !== undefined) && !(candidatesDraft.success && draftRow.data?.status === "ok")) || undefined}>
+        <summary className={`${heading} cursor-pointer`}>
+          Do porównania ({comparisons.length})
+          {comparisons.length > 0 && <span className="text-sm font-normal text-zinc-500"> — wybrane: {comparisons.filter((group) => group.chosenRef !== undefined).length}</span>}
+        </summary>
         <p className="text-xs text-zinc-500">Kandydaci na noclegi, auto, transfery — bez rezerwacji: linki prowadzą do wyszukiwarek, „Wybieram” oznacza opcję „do rezerwacji”.</p>
         {canEdit && (
           <PlanActionButton
@@ -284,7 +288,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
         {comparisons.map((group) => (
           <ComparisonTable key={group.ref} tripId={id} group={group} canEdit={canEdit} />
         ))}
-      </section>
+      </details>
 
       <section className={card}>
         <h2 className={heading}>Rezerwacje ({bookings.length})</h2>
