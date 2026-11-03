@@ -1,0 +1,145 @@
+"use client";
+
+import { addMeal, documentProblem, ItemInUseError, mealList, type PlanEdit, removeItemClosingGap, type TripDocument, updateItem } from "@expeditionplan/core";
+import { savePlanEdit, uuidv7 } from "@expeditionplan/sync";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+
+import { ItemEditor } from "@/components/item-editor";
+import { SelfCookedToggle } from "@/components/logistics-editors";
+import { createClient } from "@/lib/supabase/client";
+
+/**
+ * Posiłki w trybie edycji: nowy posiłek w wybranym dniu (śniadanie, obiad, kolacja…) z godziną
+ * „ok.” — wchodzi do planu dnia na swoje miejsce (\`addMeal\` w core), zmiana nazwy, godziny i czasu
+ * (formularz jak w planie) i usunięcie. Zapis tą samą drogą co edytor planu (\`savePlanEdit\`).
+ */
+
+const SUGGESTIONS = ["Śniadanie", "Drugie śniadanie", "Lunch", "Obiad", "Podwieczorek", "Kolacja", "Przekąska"];
+
+const shortDay = (date: string) => new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
+
+const input = "field min-w-0 px-2 py-1 text-sm";
+
+export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocument; ids: Record<string, string> }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const meals = mealList(doc);
+  const byRef = new Map(doc.items.map((item) => [item.ref, item]));
+
+  const save = (edit: PlanEdit | null, done?: () => void) => {
+    if (edit === null) return;
+    const invalid = documentProblem(edit.doc);
+    if (invalid !== null) return setError(`Nie zapisano: ${invalid}`);
+    start(async () => {
+      try {
+        await savePlanEdit(createClient(), tripId, edit, ids);
+        setError(null);
+        done?.();
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-3 text-sm">
+      {meals.length === 0 && <p className="text-zinc-500">W planie nie ma jeszcze posiłków — dodaj pierwszy niżej.</p>}
+      <ul className="flex flex-col gap-1">
+        {meals.map((meal) => {
+          const item = byRef.get(meal.itemRef);
+          const time = item?.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}` : null;
+          return (
+            <li key={meal.itemRef} className="flex flex-col">
+              <div>
+                <span className="text-zinc-500">
+                  Dzień {meal.dayNo} · {shortDay(meal.date)}
+                  {time ? ` · ${time}` : ""}:
+                </span>{" "}
+                {meal.selfCooked && <span aria-hidden="true">🍳 </span>}
+                {meal.title}
+                {meal.place && <span className="text-zinc-500"> · {meal.place}</span>} <SelfCookedToggle tripId={tripId} itemRef={meal.itemRef} value={meal.selfCooked === true} />
+                <span className="ml-1 text-xs text-zinc-500">
+                  <button disabled={pending} onClick={() => setEditing(editing === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
+                    {editing === meal.itemRef ? "zamknij" : "zmień"}
+                  </button>
+                  <button
+                    disabled={pending}
+                    onClick={() => {
+                      if (!window.confirm(`Usunąć posiłek „${meal.title}” z planu?`)) return;
+                      try {
+                        save(removeItemClosingGap(doc, meal.itemRef));
+                      } catch (e) {
+                        setError(e instanceof ItemInUseError ? e.message : String(e));
+                      }
+                    }}
+                    className="px-1 underline">
+                    usuń
+                  </button>
+                </span>
+              </div>
+              {editing === meal.itemRef && item && (
+                <ItemEditor item={item} onCancel={() => setEditing(null)} onSave={(patch) => save(updateItem(doc, meal.itemRef, patch), () => setEditing(null))} />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {doc.days.length > 0 && <AddMeal doc={doc} disabled={pending} onAdd={(dayRef, meal) => save(addMeal(doc, dayRef, uuidv7(), meal))} />}
+      {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+function AddMeal({ doc, disabled, onAdd }: { doc: TripDocument; disabled: boolean; onAdd: (dayRef: string, meal: { title: string; time?: string; selfCooked?: boolean }) => void }) {
+  const [dayRef, setDayRef] = useState(doc.days[0]!.ref);
+  const [title, setTitle] = useState("");
+  const [time, setTime] = useState("");
+  const [selfCooked, setSelfCooked] = useState(false);
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (title.trim() === "") return;
+        onAdd(dayRef, { title: title.trim(), ...(time ? { time } : {}), ...(selfCooked ? { selfCooked } : {}) });
+        setTitle("");
+        setTime("");
+      }}>
+      <label className="flex flex-col gap-1 text-xs text-zinc-500">
+        Dzień
+        <select value={dayRef} onChange={(event) => setDayRef(event.target.value)} className={input}>
+          {doc.days.map((day, index) => (
+            <option key={day.ref} value={day.ref}>
+              {index + 1}. {shortDay(day.date)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex min-w-40 flex-1 flex-col gap-1 text-xs text-zinc-500">
+        Posiłek
+        <input value={title} onChange={(event) => setTitle(event.target.value)} list="meal-suggestions" placeholder="np. Śniadanie" className={input} />
+        <datalist id="meal-suggestions">
+          {SUGGESTIONS.map((each) => (
+            <option key={each} value={each} />
+          ))}
+        </datalist>
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-zinc-500">
+        Godzina (ok.)
+        <input type="time" value={time} onChange={(event) => setTime(event.target.value)} className={input} />
+      </label>
+      <label className="flex items-center gap-1 pb-1 text-xs">
+        <input type="checkbox" checked={selfCooked} onChange={(event) => setSelfCooked(event.target.checked)} />
+        gotujemy sami
+      </label>
+      <button disabled={disabled} className="btn-secondary btn-sm">
+        Dodaj posiłek
+      </button>
+    </form>
+  );
+}

@@ -760,7 +760,7 @@ export function BookingItems({ tripId, bookingRef, items, chosen }: { tripId: st
 
 const ROLE: Record<string, string> = { host: "gospodarz", operator: "operator", rental: "wypożyczalnia", guide: "przewodnik", emergency: "alarmowy", venue: "miejsce", other: "inny" };
 
-function ContactForm({ tripId, contact, bookings, onDone }: { tripId: string; contact?: Contact; bookings: { ref: string; title: string }[]; onDone: () => void }) {
+function ContactForm({ tripId, contact, bookings, onDone, defaultRole = "host" }: { tripId: string; contact?: Contact; bookings: { ref: string; title: string }[]; onDone: () => void; defaultRole?: Contact["role"] }) {
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = await saveContact(tripId, contact?.ref ?? null, prev, form);
     if (result.ok) onDone();
@@ -770,7 +770,7 @@ function ContactForm({ tripId, contact, bookings, onDone }: { tripId: string; co
     <form action={action} className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
       <div className="flex flex-wrap gap-2">
         <input name="name" required defaultValue={contact?.name} placeholder="np. Youssef (riad)" className={`${input} min-w-40 flex-1`} aria-label="Nazwa" />
-        <select name="role" defaultValue={contact?.role ?? "host"} className={input} aria-label="Rola">
+        <select name="role" defaultValue={contact?.role ?? defaultRole} className={input} aria-label="Rola">
           {Object.entries(ROLE).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
@@ -804,7 +804,22 @@ function ContactForm({ tripId, contact, bookings, onDone }: { tripId: string; co
   );
 }
 
-export function Contacts({ tripId, contacts, bookings, canEdit }: { tripId: string; contacts: Contact[]; bookings: { ref: string; title: string }[]; canEdit: boolean }) {
+/** `defaultRole` i `addLabel` — np. lista numerów alarmowych z „+ Dodaj numer alarmowy”. */
+export function Contacts({
+  tripId,
+  contacts,
+  bookings,
+  canEdit,
+  defaultRole,
+  addLabel = "+ Dodaj kontakt",
+}: {
+  tripId: string;
+  contacts: Contact[];
+  bookings: { ref: string; title: string }[];
+  canEdit: boolean;
+  defaultRole?: Contact["role"];
+  addLabel?: string;
+}) {
   const [editing, setEditing] = useState<string | null>(null);
   const remove = useAction();
   const titles = new Map(bookings.map((booking) => [booking.ref, booking.title]));
@@ -850,10 +865,10 @@ export function Contacts({ tripId, contacts, bookings, canEdit }: { tripId: stri
       <Status state={remove.state} />
       {canEdit &&
         (editing === "new" ? (
-          <ContactForm tripId={tripId} bookings={bookings} onDone={() => setEditing(null)} />
+          <ContactForm tripId={tripId} bookings={bookings} onDone={() => setEditing(null)} defaultRole={defaultRole} />
         ) : (
           <button onClick={() => setEditing("new")} className="self-start underline">
-            + Dodaj kontakt
+            {addLabel}
           </button>
         ))}
     </div>

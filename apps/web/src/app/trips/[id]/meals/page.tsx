@@ -1,15 +1,16 @@
 import type { TripDocument } from "@expeditionplan/core";
-import { stateFromPayload } from "@expeditionplan/sync";
+import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EditToggle, editMode } from "@/components/edit-toggle";
+import { MealEditor } from "@/components/meal-editor";
 import { Meals } from "@/components/meals";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
-/** Posiłki z planu dzień po dniu: ile osób (dorośli i dzieci), które gotujecie sami i ile porcji. „Gotujemy sami” — po „Edytuj”. */
+/** Posiłki z planu dzień po dniu: ile osób (dorośli i dzieci), które gotujecie sami i ile porcji. Dodawanie, zmiana, usuwanie i „gotujemy sami” — po „Edytuj”. */
 
 export default function MealsPage(props: PageProps<"/trips/[id]/meals">) {
   return (
@@ -53,7 +54,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
         {mayEdit && <EditToggle href={`/trips/${id}/meals`} editing={canEdit} />}
       </div>
       <section className="flex flex-col gap-3 card p-4">
-        <Meals tripId={id} doc={doc} canEdit={canEdit} />
+        {canEdit ? <MealEditor tripId={id} doc={doc} ids={refIndex(payload.tables)} /> : <Meals tripId={id} doc={doc} canEdit={false} />}
       </section>
     </>
   );

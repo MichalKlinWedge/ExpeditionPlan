@@ -1,5 +1,6 @@
-import { dayItems } from './plan-edits.ts';
+import { addItem, dayItems, type PlanEdit } from './plan-edits.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
+import { keyBetween } from './sort-key.ts';
 
 /**
  * Jedzenie i zakupy: posiłki z planu (punkty `meal`) dzień po dniu i liczba osób — dorośli
@@ -53,4 +54,31 @@ export function mealList(doc: Doc): Meal[] {
 export function selfCookedTotals(meals: Meal[]): { meals: number } & People {
   const own = meals.filter((meal) => meal.selfCooked === true);
   return { meals: own.length, adults: own.reduce((sum, meal) => sum + meal.people.adults, 0), children: own.reduce((sum, meal) => sum + meal.people.children, 0) };
+}
+
+/** Godzina punktu z planu (dokładna albo „ok.”) — do ułożenia nowego posiłku w dniu. */
+const startOf = (item: Doc['items'][number]) => (item.time?.precision === 'exact' || item.time?.precision === 'approx' ? item.time.start : undefined);
+
+/**
+ * Nowy posiłek w dniu (strona „Posiłki”: śniadanie, obiad, kolacja…): punkt „jedzenie” z godziną
+ * „ok. HH:MM” wstawiony przed pierwszym punktem dnia, który ma późniejszą godzinę (bez godziny —
+ * na koniec dnia). Czas trwania domyślnie 60 min; „gotujemy sami” od razu, jeśli zaznaczone.
+ */
+export function addMeal(doc: Doc, dayRef: string, id: string, meal: { title: string; time?: string; durationMin?: number; selfCooked?: boolean }): PlanEdit {
+  const edit = addItem(doc, dayRef, id, {
+    title: meal.title,
+    kind: 'meal',
+    durationMin: meal.durationMin ?? 60,
+    ...(meal.time ? { time: { precision: 'approx' as const, start: meal.time } } : {}),
+    ...(meal.selfCooked ? { selfCooked: true } : {}),
+  });
+  if (!meal.time) return edit;
+  const items = dayItems(doc, dayRef);
+  const at = items.findIndex((item) => {
+    const start = startOf(item);
+    return start !== undefined && start > meal.time!;
+  });
+  if (at === -1) return edit;
+  const created = { ...edit.created!, sortKey: keyBetween(items[at - 1]?.sortKey, items[at]!.sortKey) };
+  return { ...edit, doc: { ...edit.doc, items: edit.doc.items.map((item) => (item.ref === created.ref ? created : item)) }, created };
 }

@@ -45,7 +45,9 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
   }
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const canEdit = mayEdit && wantsEdit;
-  const emergency = doc.contacts.filter((contact) => contact.role === "emergency" && contact.phone);
+  const emergency = doc.contacts.filter((contact) => contact.role === "emergency");
+  const others = doc.contacts.filter((contact) => contact.role !== "emergency");
+  const bookings = planChoices(doc).bookings;
 
   return (
     <>
@@ -59,25 +61,32 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
         {mayEdit && <EditToggle href={`/trips/${id}/contacts`} editing={canEdit} />}
       </div>
 
-      {emergency.length > 0 && (
+      {(emergency.length > 0 || canEdit) && (
         <section className="flex flex-col gap-2 card p-4">
           <h2 className="text-lg font-semibold">Numery alarmowe</h2>
-          <ul className="flex flex-wrap gap-3">
-            {emergency.map((contact) => (
-              <li key={contact.ref}>
-                <a href={`tel:${contact.phone!.replace(/[^\d+]/g, "")}`} className="flex flex-col rounded-xl border border-red-200 px-4 py-2 hover:border-red-400 dark:border-red-900">
-                  <span className="font-mono text-2xl font-semibold text-red-700 dark:text-red-400">{contact.phone}</span>
-                  <span className="text-xs text-zinc-500">{contact.name}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
+          {/* W edycji — lista z „edytuj / usuń” i dodawaniem; w podglądzie — duże numery do wybrania jednym dotknięciem. */}
+          {canEdit ? (
+            <Contacts tripId={id} contacts={emergency} bookings={bookings} canEdit defaultRole="emergency" addLabel="+ Dodaj numer alarmowy" />
+          ) : (
+            <ul className="flex flex-wrap gap-3">
+              {emergency
+                .filter((contact) => contact.phone)
+                .map((contact) => (
+                  <li key={contact.ref}>
+                    <a href={`tel:${contact.phone!.replace(/[^\d+]/g, "")}`} className="flex flex-col rounded-xl border border-red-200 px-4 py-2 hover:border-red-400 dark:border-red-900">
+                      <span className="font-mono text-2xl font-semibold text-red-700 dark:text-red-400">{contact.phone}</span>
+                      <span className="text-xs text-zinc-500">{contact.name}</span>
+                    </a>
+                  </li>
+                ))}
+            </ul>
+          )}
         </section>
       )}
 
       <section className="flex flex-col gap-3 card p-4">
-        <h2 className="text-lg font-semibold">Wszystkie kontakty ({doc.contacts.length})</h2>
-        <Contacts tripId={id} contacts={doc.contacts} bookings={planChoices(doc).bookings} canEdit={canEdit} />
+        <h2 className="text-lg font-semibold">Gospodarze, wypożyczalnie i inne ({others.length})</h2>
+        <Contacts tripId={id} contacts={others} bookings={bookings} canEdit={canEdit} />
       </section>
     </>
   );

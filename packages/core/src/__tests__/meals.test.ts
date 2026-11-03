@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { headcount, isShopping, mealList, selfCookedTotals } from '../meals.ts';
+import { addMeal, headcount, isShopping, mealList, selfCookedTotals } from '../meals.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const load = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
@@ -44,5 +44,20 @@ describe('posiłki „gotujemy sami”', () => {
     const meals = mealList(doc);
     expect(meals.find((meal) => meal.itemRef === kolacja.ref)).toMatchObject({ selfCooked: true, people: { adults: 5, children: 6 } });
     expect(selfCookedTotals(meals)).toEqual({ meals: 2, adults: 7, children: 6 });
+  });
+});
+
+describe('nowy posiłek ze strony „Posiłki”', () => {
+  it('śniadanie o 8:00 trafia przed punkty z późniejszą godziną, bez godziny — na koniec dnia', () => {
+    const maroko = load('maroko');
+    const day = maroko.days[1]!.ref;
+    const breakfast = addMeal(maroko, day, 'sniadanie', { title: 'Śniadanie', time: '08:00', selfCooked: true });
+    expect(TripDocument.safeParse(breakfast.doc).success).toBe(true);
+    const meals = mealList(breakfast.doc).filter((meal) => meal.dayRef === day);
+    expect(meals[0]).toMatchObject({ itemRef: 'id-sniadanie', title: 'Śniadanie', selfCooked: true });
+    expect(breakfast.created).toMatchObject({ kind: 'meal', durationMin: 60, time: { precision: 'approx', start: '08:00' } });
+
+    const snack = addMeal(maroko, day, 'przekaska', { title: 'Przekąska' });
+    expect(mealList(snack.doc).filter((meal) => meal.dayRef === day).at(-1)?.title).toBe('Przekąska');
   });
 });
