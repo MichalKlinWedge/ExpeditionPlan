@@ -46,7 +46,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DayConstraints, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { type LatLng, PlanMap } from "@/components/plan-map";
-import { POOL_FILTER, POOL_GROUP, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolQuery } from "@/lib/pool";
+import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useRefreshOnReturn } from "@/lib/use-refresh-on-return";
@@ -150,7 +150,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
     window.history.replaceState(null, "", url);
   }, [mapDayRef]);
   const showPool = mapDayRef === POOL;
-  const [poolQuery, setPoolQuery] = useState<PoolQuery>({ groupBy: "area", filters: [], text: "" });
+  const [poolQuery, setPoolQuery] = useState<PoolQuery>(EMPTY_POOL_QUERY);
   const guidedRefs = new Set(guided ?? []);
   const poolShown = poolGroups(doc, pool, guidedRefs, poolQuery);
   const mapDay = showPool ? undefined : (doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0]);
@@ -732,11 +732,11 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
   );
 }
 
-/** Grupowanie i filtry puli (z licznikami) oraz szukanie po tytule, opisie, miejscu i notatkach. */
+/** Grupowanie, opis (wszystkie / z opisem / bez), filtry z licznikami i szukanie; „wyczyść” wraca do całej puli. */
 function PoolToolbar({ doc, pool, guided, query, onChange }: { doc: TripDocument; pool: TripDocument["items"]; guided: ReadonlySet<string>; query: PoolQuery; onChange: (query: PoolQuery) => void }) {
-  const toggle = (filter: PoolFilter) =>
-    onChange({ ...query, filters: query.filters.includes(filter) ? query.filters.filter((each) => each !== filter) : [...query.filters.filter((each) => !(filter === "guided" && each === "unguided") && !(filter === "unguided" && each === "guided")), filter] });
+  const toggle = (filter: PoolFilter) => onChange({ ...query, filters: query.filters.includes(filter) ? query.filters.filter((each) => each !== filter) : [...query.filters, filter] });
   const chip = (active: boolean) => `rounded-full border px-2.5 py-0.5 text-xs ${active ? "border-sea bg-sea text-white" : "border-zinc-300 hover:border-sea dark:border-zinc-700"}`;
+  const narrowed = query.guide !== "all" || query.filters.length > 0 || query.text.trim() !== "";
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       <span className="flex items-center gap-1.5">
@@ -747,19 +747,34 @@ function PoolToolbar({ doc, pool, guided, query, onChange }: { doc: TripDocument
           </button>
         ))}
       </span>
-      <span className="flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-zinc-500">pokaż:</span>
-        {(Object.keys(POOL_FILTER) as PoolFilter[]).map((key) => {
-          const count = poolCount(doc, pool, guided, key);
-          if (count === 0 && !query.filters.includes(key)) return null;
-          return (
-            <button key={key} onClick={() => toggle(key)} aria-pressed={query.filters.includes(key)} className={chip(query.filters.includes(key))}>
-              {POOL_FILTER[key]} ({count})
-            </button>
-          );
-        })}
+      <span className="flex items-center gap-1.5">
+        <span className="text-xs text-zinc-500">opis:</span>
+        {(Object.keys(POOL_GUIDE) as PoolGuide[]).map((key) => (
+          <button key={key} onClick={() => onChange({ ...query, guide: key })} aria-pressed={query.guide === key} className={chip(query.guide === key)}>
+            {POOL_GUIDE[key]} ({guideCount(pool, guided, key)})
+          </button>
+        ))}
       </span>
+      {(Object.keys(POOL_FILTER) as PoolFilter[]).some((key) => poolCount(doc, pool, key) > 0 || query.filters.includes(key)) && (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-zinc-500">tylko:</span>
+          {(Object.keys(POOL_FILTER) as PoolFilter[]).map((key) => {
+            const count = poolCount(doc, pool, key);
+            if (count === 0 && !query.filters.includes(key)) return null;
+            return (
+              <button key={key} onClick={() => toggle(key)} aria-pressed={query.filters.includes(key)} className={chip(query.filters.includes(key))}>
+                {POOL_FILTER[key]} ({count})
+              </button>
+            );
+          })}
+        </span>
+      )}
       <input value={query.text} onChange={(event) => onChange({ ...query, text: event.target.value })} placeholder="Szukaj w puli…" className="w-48 field px-2 py-1 text-sm" aria-label="Szukaj w puli" />
+      {narrowed && (
+        <button onClick={() => onChange({ ...EMPTY_POOL_QUERY, groupBy: query.groupBy })} className="text-xs text-sea underline dark:text-teal-300">
+          wyczyść — pokaż całą pulę
+        </button>
+      )}
     </div>
   );
 }

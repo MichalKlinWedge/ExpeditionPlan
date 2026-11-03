@@ -11,6 +11,7 @@ import {
   removeShoppingItem,
   removeTask,
   saveBooking,
+  setBookingStatus,
   setSelfCooked,
   saveBudgetLine,
   saveContact,
@@ -423,6 +424,30 @@ const BASIS: Record<string, string> = { per_group: "za całość", per_person: "
 const label = "flex min-w-0 flex-col gap-1 text-xs text-zinc-500";
 
 /** Rezerwacja: nowa albo zmiana. Pola zależne od rodzaju (lot, auto, nocleg) pokazują się po wyborze rodzaju. */
+/** Status rezerwacji jako lista wyboru (organizator, edytor — także w podglądzie): zapis od razu po wyborze. */
+export function BookingStatusSelect({ tripId, bookingRef, status, statuses, tone }: { tripId: string; bookingRef: string; status: string; statuses: Record<string, string>; tone: string }) {
+  const action = useAction();
+  return (
+    <span className="inline-flex items-center gap-1">
+      <select
+        value={status}
+        disabled={action.pending}
+        onChange={(event) => action.run(() => setBookingStatus(tripId, bookingRef, event.target.value))}
+        aria-label="Status rezerwacji"
+        title="Zmień status (np. zapłacone)"
+        className={`cursor-pointer rounded border border-transparent bg-transparent text-xs hover:border-zinc-300 dark:hover:border-zinc-700 ${tone}`}>
+        {Object.entries(statuses).map(([key, name]) => (
+          <option key={key} value={key}>
+            {name}
+          </option>
+        ))}
+      </select>
+      {action.pending && <span className="text-xs text-zinc-500">zapisuję…</span>}
+      {action.state.error && <span className="text-xs text-red-600">{action.state.error}</span>}
+    </span>
+  );
+}
+
 function BookingForm({ tripId, booking, statuses, zones, onDone }: { tripId: string; booking?: Booking; statuses: Record<string, string>; zones: string[]; onDone: () => void }) {
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = await saveBooking(tripId, booking?.ref ?? null, prev, form);

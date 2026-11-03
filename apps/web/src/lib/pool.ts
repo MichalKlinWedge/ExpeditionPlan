@@ -10,23 +10,27 @@ import { ITEM_KIND } from "@/lib/labels";
 type Item = TripDocument["items"][number];
 
 export type PoolGroupBy = "area" | "kind" | "status";
-export type PoolFilter = "guided" | "unguided" | "offMap" | "must";
-export type PoolQuery = { groupBy: PoolGroupBy; filters: PoolFilter[]; text: string };
+/** Opis przewodnika: wszystkie, tylko z opisem albo tylko bez — jeden wybór, nie dwa filtry. */
+export type PoolGuide = "all" | "guided" | "unguided";
+export type PoolFilter = "offMap" | "must";
+export type PoolQuery = { groupBy: PoolGroupBy; guide: PoolGuide; filters: PoolFilter[]; text: string };
 
 export const POOL_GROUP: Record<PoolGroupBy, string> = { area: "obszar", kind: "rodzaj", status: "status" };
-export const POOL_FILTER: Record<PoolFilter, string> = { guided: "📖 z opisem", unguided: "bez opisu", offMap: "brak na mapie", must: "koniecznie" };
+export const POOL_GUIDE: Record<PoolGuide, string> = { all: "wszystkie", guided: "📖 z opisem", unguided: "bez opisu" };
+export const POOL_FILTER: Record<PoolFilter, string> = { offMap: "brak na mapie", must: "koniecznie" };
+export const EMPTY_POOL_QUERY: PoolQuery = { groupBy: "area", guide: "all", filters: [], text: "" };
 
 const STATUS: Record<string, string> = { candidate: "kandydaci", alternative: "alternatywy", does_not_fit: "nie mieszczą się", rejected: "odrzucone", scheduled: "w planie" };
 const PRIORITY: Record<string, number> = { must: 0, should: 1, optional: 2 };
 
-const normalize = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-export function poolMatches(doc: TripDocument, item: Item, guided: ReadonlySet<string>, filter: PoolFilter): boolean {
+export function guideMatches(item: Item, guided: ReadonlySet<string>, guide: PoolGuide): boolean {
+  return guide === "all" || (guide === "guided") === guided.has(item.ref);
+}
+
+export function poolMatches(doc: TripDocument, item: Item, filter: PoolFilter): boolean {
   switch (filter) {
-    case "guided":
-      return guided.has(item.ref);
-    case "unguided":
-      return !guided.has(item.ref);
     case "offMap":
       return missingOnMap(doc, item);
     case "must":
@@ -34,13 +38,14 @@ export function poolMatches(doc: TripDocument, item: Item, guided: ReadonlySet<s
   }
 }
 
-/** Grupy po filtrach (wszystkie naraz — „i”), w każdej najpierw „koniecznie”, potem kolejność puli. */
+/** Grupy po filtrach (opis + zaznaczone filtry naraz — „i”), w każdej najpierw „koniecznie”, potem kolejność puli. */
 export function poolGroups(doc: TripDocument, pool: readonly Item[], guided: ReadonlySet<string>, query: PoolQuery): { key: string; label: string; items: Item[] }[] {
   const text = normalize(query.text.trim());
   const places = new Map(doc.places.map((place) => [place.ref, place.name]));
   const shown = pool.filter(
     (item) =>
-      query.filters.every((filter) => poolMatches(doc, item, guided, filter)) &&
+      guideMatches(item, guided, query.guide) &&
+      query.filters.every((filter) => poolMatches(doc, item, filter)) &&
       (text === "" || normalize([item.title, item.description, item.area, places.get(item.placeRef ?? ""), ...item.notes].filter(Boolean).join(" ")).includes(text)),
   );
   const keyOf = (item: Item) => (query.groupBy === "area" ? (item.area ?? "") : query.groupBy === "kind" ? item.kind : item.planStatus);
@@ -54,5 +59,6 @@ export function poolGroups(doc: TripDocument, pool: readonly Item[], guided: Rea
   }));
 }
 
-/** Liczba punktów puli spełniających filtr (do etykiety przycisku). */
-export const poolCount = (doc: TripDocument, pool: readonly Item[], guided: ReadonlySet<string>, filter: PoolFilter) => pool.filter((item) => poolMatches(doc, item, guided, filter)).length;
+/** Liczby do etykiet przycisków: opis (wszystkie / z opisem / bez) i filtry. */
+export const guideCount = (pool: readonly Item[], guided: ReadonlySet<string>, guide: PoolGuide) => pool.filter((item) => guideMatches(item, guided, guide)).length;
+export const poolCount = (doc: TripDocument, pool: readonly Item[], filter: PoolFilter) => pool.filter((item) => poolMatches(doc, item, filter)).length;

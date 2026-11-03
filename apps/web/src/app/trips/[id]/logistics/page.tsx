@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
-import { BookingEditor, BookingItems, BudgetLines, BudgetSuggestions, type Choices, Contacts, FxEditor, NewBooking } from "@/components/logistics-editors";
+import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, Contacts, FxEditor, NewBooking } from "@/components/logistics-editors";
 import { Meals } from "@/components/meals";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
@@ -303,7 +303,11 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                 <div className="flex flex-wrap items-baseline gap-x-2">
                   <span className="font-medium">{booking.title}</span>
                   <span className="text-xs text-zinc-500">{BOOKING_KIND[booking.kind]}</span>
-                  <span className={`text-xs ${status.tone}`}>{status.label}</span>
+                  {mayEdit ? (
+                    <BookingStatusSelect tripId={id} bookingRef={booking.ref} status={booking.status} statuses={statuses} tone={status.tone} />
+                  ) : (
+                    <span className={`text-xs ${status.tone}`}>{status.label}</span>
+                  )}
                 </div>
                 <p className="text-zinc-600 dark:text-zinc-400">
                   {[when(booking), booking.kind === "flight" ? flightLine(booking) : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · "), cost]

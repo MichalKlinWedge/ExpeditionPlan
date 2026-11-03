@@ -1,6 +1,6 @@
 "use server";
 
-import { BookingKind, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
+import { BookingKind, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -302,6 +302,13 @@ export async function saveBooking(tripId: string, ref: string | null, _prev: For
  * Punkty planu „w pakiecie” rezerwacji (pakiet Agafay: quady, wielbłądy, kolacja): wskazują
  * rezerwację i mają płatność „w cenie”. Odznaczone przestają ją wskazywać.
  */
+/** Sam status rezerwacji („zapłacone”, „zarezerwowane”…) — z listy przy rezerwacji, bez otwierania formularza. */
+export async function setBookingStatus(tripId: string, ref: string, status: string): Promise<FormState> {
+  const parsed = BookingStatus.safeParse(status);
+  if (!parsed.success) return { error: "Nieznany status." };
+  return change(tripId, "bookings", ref, (_doc, current) => (current === undefined ? "Tej rezerwacji już nie ma — odśwież stronę." : { ...current, status: parsed.data }));
+}
+
 export async function setBookingItems(tripId: string, bookingRef: string, itemRefs: string[]): Promise<FormState> {
   const chosen = new Set(itemRefs);
   return commit(tripId, (doc) => {
