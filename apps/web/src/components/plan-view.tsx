@@ -113,7 +113,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
   const [scenario, setScenario] = useState<Scenario>("optimistic");
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const variants = useMemo(() => ({ ...inputs.activeVariants, ...overrides }), [inputs.activeVariants, overrides]);
-  const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done };
+  const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done, pulled: inputs.pulled };
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const pool = doc.items.filter((item) => item.dayRef === undefined);
   const hydrated = useHydrated();
@@ -904,6 +904,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       {place && place !== item.title ? ` · ${place}` : ""}
                       {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ""}
                     </span>
+                    {options?.pulled?.some((each) => each.itemRef === item.ref) && <span title="Wstawione z puli w terenie („Z puli w pobliżu” na telefonie)" className="ml-2 rounded bg-sky-100 px-1 text-xs text-sky-900 dark:bg-sky-950 dark:text-sky-200">z puli · w terenie</span>}
                     {item.done && <span title="Odhaczone w terenie na telefonie" className="ml-2 rounded bg-emerald-100 px-1 text-xs text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">✓ zrobione</span>}
                     {offMap && (
                       <span title="Miejsce bez współrzędnych — nie ma go na mapie i nie policzy się do niego trasy" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">

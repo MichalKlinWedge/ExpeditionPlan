@@ -31,6 +31,11 @@ export type ScheduleOptions = {
   skipRefs?: string[];
   /** „Zrobione” z terenu: punkt kończy się w tej chwili (UTC ms), reszta dnia liczy się od niej. */
   done?: { itemRef: string; at: number }[];
+  /**
+   * „Z puli w pobliżu”: punkt z puli wstawiony w terenie do dnia — po `afterRef`, bez niego na koniec;
+   * `at` (chwila wstawienia) = „nie wcześniej niż”, żeby punkt nie wypadł w przeszłości.
+   */
+  pulled?: { itemRef: string; dayRef: string; afterRef?: string; at?: number }[];
   /** Współrzędne dla słońca, gdy baza dnia ich nie ma. */
   coordinates?: { lat: number; lng: number };
   /** Czy dzień jest świętem w kraju celu (Nager.Date) — dla `PH` w godzinach otwarcia. Brak = nie wiadomo. */
@@ -136,7 +141,10 @@ export function activeVariants(doc: Doc, overrides: Record<string, string> = {})
   return active;
 }
 
-/** Punkty dnia, które wchodzą do wyliczeń, w kolejności `sortKey`. */
+/**
+ * Punkty dnia, które wchodzą do wyliczeń, w kolejności `sortKey`; punkty z puli wstawione w terenie
+ * (`pulled`) — za wskazanym punktem, jako zaplanowane (pula w planie zostaje bez zmian).
+ */
 export function itemsForDay(doc: Doc, dayRef: string, options: ScheduleOptions = {}): Item[] {
   const active = activeVariants(doc, options.activeVariants);
   const excluded = new Set(options.skipRefs ?? []);
@@ -144,7 +152,7 @@ export function itemsForDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     if (active.has(variant.ref)) variant.excludesRefs.forEach((ref) => excluded.add(ref));
   }
 
-  return doc.items
+  const items = doc.items
     .filter((item) => item.dayRef === dayRef && !excluded.has(item.ref))
     .filter((item) =>
       item.variantRefs.length > 0
@@ -152,6 +160,17 @@ export function itemsForDay(doc: Doc, dayRef: string, options: ScheduleOptions =
         : item.planStatus === 'scheduled',
     )
     .sort((a, b) => ((a.sortKey ?? '') < (b.sortKey ?? '') ? -1 : 1));
+  for (const pull of options.pulled ?? []) {
+    const source = doc.items.find((item) => item.ref === pull.itemRef && item.dayRef === undefined);
+    if (pull.dayRef !== dayRef || source === undefined || excluded.has(source.ref) || items.some((item) => item.ref === source.ref)) continue;
+    const at = pull.afterRef === undefined ? -1 : items.findIndex((item) => item.ref === pull.afterRef);
+    // Godzina: chwila wstawienia w strefie dnia (tego samego dnia), inaczej zaraz po poprzednim punkcie.
+    const day = doc.days.find((each) => each.ref === dayRef);
+    const local = pull.at === undefined || day === undefined ? undefined : instantToZoned(pull.at, day.tz);
+    const placed: Item = { ...source, dayRef, planStatus: 'scheduled', time: local !== undefined && local.date === day!.date ? { precision: 'approx', start: local.time } : undefined };
+    items.splice(at === -1 ? items.length : at + 1, 0, placed);
+  }
+  return items;
 }
 
 function dayCoordinates(doc: Doc, day: Day, items: Item[], options: ScheduleOptions) {

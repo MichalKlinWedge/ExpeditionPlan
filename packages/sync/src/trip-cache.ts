@@ -43,13 +43,18 @@ export function cachedTrip(db: LocalDb, tripId: string): CachedTrip | null {
   };
 }
 
-export type DayEvent = { kind: 'delay'; minutes: number } | { kind: 'skip' } | { kind: 'done'; undo?: boolean };
+export type DayEvent =
+  | { kind: 'delay'; minutes: number }
+  | { kind: 'skip' }
+  | { kind: 'done'; undo?: boolean }
+  /** „Z puli w pobliżu”: `itemRef` to punkt z puli, wstawiany po `afterRef` (bez — na koniec dnia). */
+  | { kind: 'pull_from_pool'; afterRef?: string; undo?: boolean };
 
 /**
  * „Zostajemy dłużej” (`minutes`), „Pomiń” albo „Zrobione” — zdarzenie dnia do outboxa (działa
  * offline), a plan od razu liczy się z nim, bo `stateFromLocal` czyta też wiersze czekające na
  * wysyłkę. Zdarzenia są tylko dopisywane: cofnięcie opóźnienia to kolejne z ujemnymi minutami,
- * cofnięcie „Zrobione” — kolejne `done` z `undo`.
+ * cofnięcie „Zrobione” albo wstawienia z puli — kolejne zdarzenie z `undo`.
  */
 export function recordDayEvent(db: LocalDb, tripId: string, cached: CachedTrip, dayRef: string, itemRef: string, event: DayEvent): void {
   const dayId = cached.ids[dayRef];
@@ -61,7 +66,14 @@ export function recordDayEvent(db: LocalDb, tripId: string, cached: CachedTrip, 
     itemId,
     kind: event.kind,
     minutes: event.kind === 'delay' ? event.minutes : null,
-    payload: event.kind === 'done' && event.undo === true ? { undo: true } : {},
+    payload:
+      event.kind === 'pull_from_pool'
+        ? event.undo === true
+          ? { undo: true }
+          : { dayRef, ...(event.afterRef ? { afterRef: event.afterRef } : {}) }
+        : event.kind === 'done' && event.undo === true
+          ? { undo: true }
+          : {},
   });
 }
 

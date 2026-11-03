@@ -58,7 +58,7 @@ export function OnTrip({ tripId }: { tripId: string }) {
   if (day === undefined) return null;
   let view: ReturnType<typeof nowAndNext> | null = null;
   try {
-    const schedule = scheduleDay(doc, day.ref, { scenario: 'optimistic', activeVariants: inputs.activeVariants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done });
+    const schedule = scheduleDay(doc, day.ref, { scenario: 'optimistic', activeVariants: inputs.activeVariants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done, pulled: inputs.pulled });
     view = nowAndNext(schedule, now);
   } catch {
     view = null;

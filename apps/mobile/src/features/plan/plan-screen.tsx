@@ -293,7 +293,9 @@ ${fresh.rejected[0]!.error}`);
           ? { itemRef, kind: 'delay', minutes: event.minutes }
           : event.kind === 'done' && event.undo !== true
             ? { itemRef, kind: 'done', title }
-            : null,
+            : event.kind === 'pull_from_pool' && event.undo !== true
+              ? { itemRef, kind: 'pull_from_pool', title }
+              : null,
       );
       setNow(Date.now());
       afterLocalWrite();
@@ -472,6 +474,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                             schedule={schedule}
                             now={now}
                             lastEvent={lastEvent}
+                        pool={{ doc: state.doc, pulled: state.inputs.pulled.filter((each) => each.dayRef === day.ref).map((each) => each.itemRef) }}
                             onEvent={signedIn && canAct ? (itemRef, event) => record(day.ref, itemRef, event) : null}
                           />
                         )
@@ -566,7 +569,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
   const [moving, setMoving] = useState<string | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const day = doc.days.find((each) => each.ref === dayRef)!;
-  const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done };
+  const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done, pulled: inputs.pulled };
   let schedule: DaySchedule | null = null;
   let failure: string | null = null;
   try {
@@ -667,6 +670,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
               {item.startLocal}–{item.endLocal}
               {item.endDate !== day.date ? ' +1' : ''}
               {item.done ? '  ✓ zrobione' : ''}
+              {inputs.pulled.some((each) => each.itemRef === item.ref) ? '  · z puli' : ''}
             </ThemedText>
             <Pressable disabled={source === undefined || onOpen === undefined} onPress={() => source && onOpen?.(source)} hitSlop={4}>
               <ThemedText type="smallBold" style={styles.itemTitle}>

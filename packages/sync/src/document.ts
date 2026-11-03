@@ -408,18 +408,29 @@ export function rowsFromDocument(input: TripDocumentInput | Doc, tripId: string,
  * Zdarzenia dnia → wejście silnika: opóźnienia, pominięcia, „Zrobione”, wybory wariantów.
  * Zdarzenia są tylko dopisywane, więc cofnięcie „Zrobione” to kolejne `done` z `payload.undo`.
  */
-export function scheduleInputs(events: ServerRow[], items: ServerRow[]): Required<Pick<ScheduleOptions, 'delays' | 'skipRefs' | 'activeVariants' | 'done'>> {
+export function scheduleInputs(events: ServerRow[], items: ServerRow[]): Required<Pick<ScheduleOptions, 'delays' | 'skipRefs' | 'activeVariants' | 'done' | 'pulled'>> {
   const refById = new Map(items.map((item) => [item.id, item.ref as string]));
   const ordered = events
     .filter(alive)
     .sort((a, b) => (a.occurred_at as string).localeCompare(b.occurred_at as string) || a.id.localeCompare(b.id));
-  const inputs = { delays: [] as { itemRef: string; minutes: number }[], skipRefs: [] as string[], activeVariants: {} as Record<string, string>, done: [] as { itemRef: string; at: number }[] };
+  const inputs = {
+    delays: [] as { itemRef: string; minutes: number }[],
+    skipRefs: [] as string[],
+    activeVariants: {} as Record<string, string>,
+    done: [] as { itemRef: string; at: number }[],
+    pulled: [] as { itemRef: string; dayRef: string; afterRef?: string; at: number }[],
+  };
   const done = new Map<string, number>();
+  const pulled = new Map<string, { itemRef: string; dayRef: string; afterRef?: string; at: number }>();
   for (const event of ordered) {
     const itemRef = refById.get(event.item_id as string);
-    const payload = (event.payload ?? {}) as { groupRef?: string; variantRef?: string; undo?: boolean };
+    const payload = (event.payload ?? {}) as { groupRef?: string; variantRef?: string; undo?: boolean; dayRef?: string; afterRef?: string };
     if (event.kind === 'delay' && itemRef !== undefined) inputs.delays.push({ itemRef, minutes: event.minutes as number });
     if (event.kind === 'skip' && itemRef !== undefined) inputs.skipRefs.push(itemRef);
+    if (event.kind === 'pull_from_pool' && itemRef !== undefined) {
+      if (payload.undo === true) pulled.delete(itemRef);
+      else if (payload.dayRef) pulled.set(itemRef, { itemRef, dayRef: payload.dayRef, ...(payload.afterRef ? { afterRef: payload.afterRef } : {}), at: Date.parse(event.occurred_at as string) });
+    }
     if (event.kind === 'done' && itemRef !== undefined) {
       if (payload.undo === true) done.delete(itemRef);
       else done.set(itemRef, Date.parse(event.occurred_at as string));
@@ -429,6 +440,7 @@ export function scheduleInputs(events: ServerRow[], items: ServerRow[]): Require
     }
   }
   inputs.done = [...done].map(([itemRef, at]) => ({ itemRef, at }));
+  inputs.pulled = [...pulled.values()];
   return inputs;
 }
 

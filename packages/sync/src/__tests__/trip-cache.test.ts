@@ -135,6 +135,22 @@ describe('plan offline na telefonie', () => {
     expect(cachedTrip(db, TRIP)!.state.inputs.done).toEqual([]);
   });
 
+  it('„Z puli w pobliżu” offline: punkt z puli w dniu od razu, cofnięcie go zdejmuje', async () => {
+    const db = nodeDb();
+    const server = planServer('maroko');
+    await refreshTrip(db, server.remote, TRIP);
+    server.setOffline(true);
+    const before = cachedTrip(db, TRIP)!;
+
+    recordDayEvent(db, TRIP, before, 'd1', 'pula-saadyci', { kind: 'pull_from_pool', afterRef: 'd1-kutubijja' });
+    const after = cachedTrip(db, TRIP)!;
+    expect(after.state.inputs.pulled).toEqual([{ itemRef: 'pula-saadyci', dayRef: 'd1', afterRef: 'd1-kutubijja', at: expect.any(Number) }]);
+    expect(after.pending).toBe(1);
+
+    recordDayEvent(db, TRIP, after, 'd1', 'pula-saadyci', { kind: 'pull_from_pool', undo: true });
+    expect(cachedTrip(db, TRIP)!.state.inputs.pulled).toEqual([]);
+  });
+
   it('odhaczenie zadania offline: status od razu w planie, reszta wiersza bez zmian, czeka w outboxie', async () => {
     const db = nodeDb();
     const server = planServer('maroko');

@@ -1,4 +1,4 @@
-import { type DaySchedule, nowAndNext } from '@expeditionplan/core';
+import { type DaySchedule, nowAndNext, type TripDocument } from '@expeditionplan/core';
 import type { DayEvent } from '@expeditionplan/sync';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
@@ -6,15 +6,20 @@ import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { PoolNearby } from '@/features/plan/pool-nearby';
 
 /**
  * „Teraz / następny” na górze dzisiejszego dnia. Przyciski zapisują zdarzenia dnia (outbox, działa
- * offline) — tylko organizator i edytor; widz widzi samą kartę. „Cofnij” odwraca ostatnie opóźnienie
- * albo „Zrobione”.
+ * offline) — tylko organizator i edytor; widz widzi samą kartę. „Cofnij” odwraca ostatnie opóźnienie,
+ * „Zrobione” albo wstawienie z puli. Przy wolnym czasie (przerwa przed następnym punktem albo punkt
+ * „wolne”) — „Z puli w pobliżu”.
  */
 
 /** Ostatnie zdarzenie z tego ekranu, które da się cofnąć. */
-export type LastEvent = { itemRef: string; kind: 'delay'; minutes: number } | { itemRef: string; kind: 'done'; title: string };
+export type LastEvent =
+  | { itemRef: string; kind: 'delay'; minutes: number }
+  | { itemRef: string; kind: 'done'; title: string }
+  | { itemRef: string; kind: 'pull_from_pool'; title: string };
 
 type Props = {
   schedule: DaySchedule;
@@ -22,12 +27,23 @@ type Props = {
   /** `null` = bez przycisków (widz, niezalogowany). */
   onEvent: ((itemRef: string, event: DayEvent) => void) | null;
   lastEvent: LastEvent | null;
+  /** Plan i wstawione dziś z puli — do „Z puli w pobliżu” (bez — bez tej części). */
+  pool?: { doc: TripDocument; pulled: readonly string[] };
 };
+
+/** Wolny czas co najmniej tyle minut — dopiero wtedy proponujemy coś z puli. */
+const MIN_GAP = 30;
 
 const duration = (value: number) => (value < 60 ? `${value} min` : `${Math.floor(value / 60)} h ${value % 60} min`);
 
-export function NowCard({ schedule, now, onEvent, lastEvent }: Props) {
+export function NowCard({ schedule, now, onEvent, lastEvent, pool }: Props) {
   const { current, next, leftMin, untilNextMin } = nowAndNext(schedule, now);
+  // Wolny czas: przerwa przed następnym punktem albo trwający punkt „wolne”. Wstawiamy za tym,
+  // co trwa, a w przerwie — za ostatnim zakończonym punktem.
+  const gapMin = current === null ? untilNextMin : current.kind === 'free' ? leftMin : null;
+  const lastEnded = schedule.items.filter((item) => item.end <= now).at(-1);
+  const afterRef = current?.ref ?? lastEnded?.ref;
+  const offerPool = onEvent !== null && pool !== undefined && next !== null && gapMin !== null && gapMin >= MIN_GAP;
   const skip = (itemRef: string, title: string) =>
     Alert.alert('Pominąć punkt?', `„${title}” wypadnie z dzisiejszego planu, a reszta dnia się przeliczy.`, [
       { text: 'Anuluj', style: 'cancel' },
@@ -75,11 +91,25 @@ export function NowCard({ schedule, now, onEvent, lastEvent }: Props) {
           )}
         </View>
       )}
+      {offerPool && (
+        <PoolNearby doc={pool!.doc} gapMin={gapMin} pulled={pool!.pulled} onPull={(itemRef) => onEvent!(itemRef, { kind: 'pull_from_pool', ...(afterRef ? { afterRef } : {}) })} />
+      )}
       {onEvent && lastEvent && (
         <Pressable
-          onPress={() => onEvent(lastEvent.itemRef, lastEvent.kind === 'delay' ? { kind: 'delay', minutes: -lastEvent.minutes } : { kind: 'done', undo: true })}
+          onPress={() =>
+            onEvent(
+              lastEvent.itemRef,
+              lastEvent.kind === 'delay' ? { kind: 'delay', minutes: -lastEvent.minutes } : lastEvent.kind === 'done' ? { kind: 'done', undo: true } : { kind: 'pull_from_pool', undo: true },
+            )
+          }
           hitSlop={8}>
-          <ThemedText type="linkPrimary">{lastEvent.kind === 'delay' ? `Cofnij +${lastEvent.minutes} min` : `Cofnij „Zrobione” (${lastEvent.title})`}</ThemedText>
+          <ThemedText type="linkPrimary">
+            {lastEvent.kind === 'delay'
+              ? `Cofnij +${lastEvent.minutes} min`
+              : lastEvent.kind === 'done'
+                ? `Cofnij „Zrobione” (${lastEvent.title})`
+                : `Cofnij wstawienie z puli (${lastEvent.title})`}
+          </ThemedText>
         </Pressable>
       )}
     </ThemedView>

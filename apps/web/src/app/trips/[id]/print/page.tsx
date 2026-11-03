@@ -58,7 +58,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
   const printed = new Set<string>();
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const items = new Map(doc.items.map((item) => [item.ref, item]));
-  const options = { scenario: "optimistic" as const, activeVariants: inputs.activeVariants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done };
+  const options = { scenario: "optimistic" as const, activeVariants: inputs.activeVariants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done, pulled: inputs.pulled };
   const contacts = doc.contacts.filter((contact) => contact.phone || contact.email);
   const bookings = doc.bookings.filter((booking) => !["idea", "candidate", "cancelled"].includes(booking.status));
 
