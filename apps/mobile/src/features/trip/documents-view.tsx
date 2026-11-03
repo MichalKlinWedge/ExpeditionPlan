@@ -65,9 +65,20 @@ async function syncFiles(tripId: string, documents: VaultDocument[]): Promise<{ 
   return { downloaded, failed };
 }
 
-export function DocumentsView({ trip, tripId, online }: { trip: CachedTrip; tripId: string; online: boolean }) {
+/**
+ * `only` — tylko dokumenty jednego punktu albo jego rezerwacji (karta punktu); wtedy bez pobierania
+ * plików w tle (robi to pełny sejf w Info — z wycinkiem listy skasowałby pliki innych dokumentów).
+ */
+export function DocumentsView({ trip, tripId, online, only }: { trip: CachedTrip; tripId: string; online: boolean; only?: { itemId?: string; bookingId?: string } }) {
   const theme = useTheme();
-  const documents = useMemo(() => trip.live.documents.map((row) => vaultDocument(row)).filter((each): each is VaultDocument => each !== null), [trip.live.documents]);
+  const all = useMemo(() => trip.live.documents.map((row) => vaultDocument(row)).filter((each): each is VaultDocument => each !== null), [trip.live.documents]);
+  const documents = useMemo(
+    () =>
+      only === undefined
+        ? all
+        : all.filter((each) => (only.itemId !== undefined && each.itemId === only.itemId) || (only.bookingId !== undefined && each.bookingId === only.bookingId)),
+    [all, only?.itemId, only?.bookingId], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const [shown, setShown] = useState<{ title: string; payload: string; format: string | null; plain?: boolean } | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [status, setStatus] = useState('');
@@ -76,7 +87,7 @@ export function DocumentsView({ trip, tripId, online }: { trip: CachedTrip; trip
 
   // Pliki „offline” dociągają się, gdy jest internet; stan zmienia się dopiero po pobraniu.
   useEffect(() => {
-    if (!online || supabase === null || documents.length === 0) return;
+    if (only !== undefined || !online || supabase === null || documents.length === 0) return;
     let cancelled = false;
     void syncFiles(tripId, documents).then((result) => {
       if (cancelled) return;
@@ -86,9 +97,16 @@ export function DocumentsView({ trip, tripId, online }: { trip: CachedTrip; trip
     return () => {
       cancelled = true;
     };
-  }, [online, tripId, documents]);
+  }, [online, tripId, documents]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const codes = trip.state.doc.bookings.filter((booking) => booking.confirmationCode && booking.status !== 'candidate' && booking.status !== 'idea' && booking.status !== 'cancelled');
+  const codes = trip.state.doc.bookings.filter(
+    (booking) =>
+      booking.confirmationCode &&
+      booking.status !== 'candidate' &&
+      booking.status !== 'idea' &&
+      booking.status !== 'cancelled' &&
+      (only === undefined || (only.bookingId !== undefined && trip.ids[booking.ref] === only.bookingId)),
+  );
   if (documents.length === 0 && codes.length === 0) return null;
 
   const open = async (document: VaultDocument) => {
@@ -123,7 +141,7 @@ export function DocumentsView({ trip, tripId, online }: { trip: CachedTrip; trip
 
   return (
     <View style={styles.section} key={version}>
-      <ThemedText type="subtitle">Dokumenty i kody</ThemedText>
+      <ThemedText type={only === undefined ? 'subtitle' : 'smallBold'}>Dokumenty i kody</ThemedText>
       {status !== '' && (
         <ThemedText type="small" themeColor="textSecondary">
           {status}

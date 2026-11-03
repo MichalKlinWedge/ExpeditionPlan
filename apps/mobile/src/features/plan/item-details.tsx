@@ -23,6 +23,7 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { ItemFactsCard } from '@/features/plan/item-facts';
 import { TrackCard } from '@/features/plan/track-card';
 
 /**
@@ -51,7 +52,16 @@ function speechParts(text: string): string[] {
   });
 }
 
-type Props = { trip: CachedTrip; item: Item | null; onClose: () => void; /** Od razu czytaj przewodnik (powiadomienie ze spaceru). */ autoPlay?: boolean };
+type Props = {
+  trip: CachedTrip;
+  item: Item | null;
+  onClose: () => void;
+  /** Od razu czytaj przewodnik (powiadomienie ze spaceru). */
+  autoPlay?: boolean;
+  /** Dokumenty punktu na karcie (bez — sama cena, płatność i kontakty). */
+  tripId?: string;
+  online?: boolean;
+};
 
 /** Przewodnik punktu z wierszy `audio_guides` telefonu. */
 export function itemGuide(trip: CachedTrip, item: Item) {
@@ -78,7 +88,7 @@ export function prefetchGuideImages(trip: CachedTrip) {
   if (urls.length > 0) void Image.prefetch(urls, 'disk').catch(() => undefined);
 }
 
-export function ItemDetails({ trip, item, onClose, autoPlay = false }: Props) {
+export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online }: Props) {
   // Przejścia po odnośnikach: stos punktów nad otwartym; nowy `item` z zewnątrz zaczyna od zera.
   const [path, setPath] = useState<{ root: string | null; stack: Item[] }>({ root: null, stack: [] });
   const stack = path.root === (item?.ref ?? null) ? path.stack : [];
@@ -94,7 +104,7 @@ export function ItemDetails({ trip, item, onClose, autoPlay = false }: Props) {
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
             {current !== null && (
-              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0} />
+              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0} tripId={tripId} online={online} />
             )}
           </SafeAreaView>
         </ThemedView>
@@ -103,9 +113,9 @@ export function ItemDetails({ trip, item, onClose, autoPlay = false }: Props) {
   );
 }
 
-type DetailsProps = { trip: CachedTrip; item: Item; onBack: () => void; backLabel: string; onOpen: (ref: string) => void; autoPlay: boolean };
+type DetailsProps = { trip: CachedTrip; item: Item; onBack: () => void; backLabel: string; onOpen: (ref: string) => void; autoPlay: boolean; tripId?: string; online?: boolean };
 
-function Details({ trip, item, onBack, backLabel, onOpen, autoPlay }: DetailsProps) {
+function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online }: DetailsProps) {
   const doc = trip.state.doc;
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
@@ -182,6 +192,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay }: DetailsPro
             <ThemedText type="linkPrimary">{link.label || link.url}</ThemedText>
           </Pressable>
         ))}
+        <ItemFactsCard trip={trip} item={item} tripId={tripId} online={online} />
         <TrackCard doc={doc} item={item} />
 
         {guide !== null && (

@@ -19,6 +19,7 @@ export * from './calendar.ts';
 export * from './budget-suggest.ts';
 export * from './plan-merge.ts';
 export * from './plan-info.ts';
+export * from './item-facts.ts';
 export * from './polyline.ts';
 export * from './coordinates.ts';
 export * from './documents.ts';

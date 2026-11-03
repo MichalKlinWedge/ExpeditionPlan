@@ -2,6 +2,7 @@ import {
   activeVariants as resolveVariants,
   addItem,
   dayLodging,
+  lodgingContacts,
   type DaySchedule,
   documentProblem,
   type DayWeather,
@@ -51,6 +52,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayMap } from '@/features/plan/day-map';
+import { ContactList } from '@/features/plan/item-facts';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
@@ -472,7 +474,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           </ScrollView>
         </>
       )}
-      {trip !== null && <ItemDetails trip={trip} item={detail} autoPlay={detailPlay} onClose={() => setDetail(null)} />}
+      {trip !== null && <ItemDetails trip={trip} item={detail} autoPlay={detailPlay} onClose={() => setDetail(null)} tripId={tripId} online={signedIn} />}
     </View>
   );
 }
@@ -711,6 +713,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
               brak na mapie (miejsce bez współrzędnych)
             </ThemedText>
           )}
+          {/* Gospodarz i inne kontakty rezerwacji tej nocy — jedno dotknięcie = połączenie. */}
+          <ContactList contacts={lodgingContacts(doc, lodging)} />
         </ThemedView>
       )}
 
