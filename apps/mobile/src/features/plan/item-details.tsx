@@ -80,11 +80,16 @@ export function guidedPlaces(trip: CachedTrip): Map<string, Item> {
 }
 
 /** Zdjęcia przewodników do pamięci podręcznej, póki jest sieć — na trasie będą offline. */
-export function prefetchGuideImages(trip: CachedTrip) {
-  const urls = (trip.live.guides as unknown as GuideRow[]).flatMap((row) => {
+/** Miniatury zdjęć wszystkich przewodników wyjazdu (do pamięci podręcznej — offline). */
+export function guideImageUrls(trip: CachedTrip): string[] {
+  return (trip.live.guides as unknown as GuideRow[]).flatMap((row) => {
     const images = (row.content as { images?: { thumbUrl?: string }[] } | null)?.images ?? [];
     return images.flatMap((image) => (typeof image.thumbUrl === 'string' ? [image.thumbUrl] : []));
   });
+}
+
+export function prefetchGuideImages(trip: CachedTrip) {
+  const urls = guideImageUrls(trip);
   if (urls.length > 0) void Image.prefetch(urls, 'disk').catch(() => undefined);
 }
 

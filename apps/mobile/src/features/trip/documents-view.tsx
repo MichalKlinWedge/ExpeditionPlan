@@ -43,7 +43,7 @@ function localFile(tripId: string, document: VaultDocument): File {
  * Pobiera brakujące pliki „offline” (krótki podpisany URL z bucketu) i kasuje te, których już
  * nie ma w planie albo zmieniły się (inny sha). Błąd jednego pliku nie zatrzymuje reszty.
  */
-async function syncFiles(tripId: string, documents: VaultDocument[]): Promise<{ downloaded: number; failed: number }> {
+export async function syncVaultFiles(tripId: string, documents: VaultDocument[]): Promise<{ downloaded: number; failed: number }> {
   const folder = new Directory(Paths.document, 'vault', tripId);
   if (!folder.exists) folder.create({ intermediates: true });
   const wanted = new Set(documents.filter((each) => each.offline).map((each) => localFile(tripId, each).name));
@@ -69,6 +69,11 @@ async function syncFiles(tripId: string, documents: VaultDocument[]): Promise<{ 
  * `only` — tylko dokumenty jednego punktu albo jego rezerwacji (karta punktu); wtedy bez pobierania
  * plików w tle (robi to pełny sejf w Info — z wycinkiem listy skasowałby pliki innych dokumentów).
  */
+/** Ile dokumentów „offline” ma już kopię na telefonie (aktualną — po sha256). */
+export function savedVaultFiles(tripId: string, documents: VaultDocument[]): number {
+  return documents.filter((each) => each.offline && localFile(tripId, each).exists).length;
+}
+
 export function DocumentsView({ trip, tripId, online, only }: { trip: CachedTrip; tripId: string; online: boolean; only?: { itemId?: string; bookingId?: string } }) {
   const theme = useTheme();
   const all = useMemo(() => trip.live.documents.map((row) => vaultDocument(row)).filter((each): each is VaultDocument => each !== null), [trip.live.documents]);
@@ -89,7 +94,7 @@ export function DocumentsView({ trip, tripId, online, only }: { trip: CachedTrip
   useEffect(() => {
     if (only !== undefined || !online || supabase === null || documents.length === 0) return;
     let cancelled = false;
-    void syncFiles(tripId, documents).then((result) => {
+    void syncVaultFiles(tripId, documents).then((result) => {
       if (cancelled) return;
       setStatus(result.failed > 0 ? `Nie pobrano ${result.failed} — spróbuję przy następnej synchronizacji.` : result.downloaded > 0 ? `Pobrano ${result.downloaded} na telefon.` : '');
       setVersion((current) => current + 1);
