@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
-import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, Contacts, FxEditor, NewBooking } from "@/components/logistics-editors";
+import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, FxEditor, NewBooking } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -16,7 +16,7 @@ import { BOOKING_KIND } from "@/lib/labels";
 import { planChoices } from "@/lib/tasks";
 
 /**
- * Rezerwacje, budżet „zapłacone / do wydania” i kontakty (MVP-3); zadania — osobna strona `/tasks`. Dane tą samą drogą co
+ * Rezerwacje i budżet „zapłacone / do wydania” (MVP-3); zadania i kontakty — osobne strony (`/tasks`, `/contacts`). Dane tą samą drogą co
  * plan: `pull_changes` → dokument; portfel z wydatków zapisanych na telefonie. Organizator
  * i edytor zmieniają wszystko (`logistics-actions.ts`), widz tylko czyta.
  */
@@ -197,7 +197,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
     <>
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="flex flex-col gap-1">
-          <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+          <Link href={`/trips/${id}`} className="back-link">
             ← {doc.trip.title}
           </Link>
           <h1 className="text-2xl font-semibold">Rezerwacje i budżet</h1>
@@ -328,11 +328,6 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           })}
         </ul>
         {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} />}
-      </section>
-
-      <section className={card}>
-        <h2 className={heading}>Kontakty ({doc.contacts.length})</h2>
-        <Contacts tripId={id} contacts={doc.contacts} bookings={choices.bookings} canEdit={canEdit} />
       </section>
 
       <Link href={`/trips/${id}/tasks`} className="self-start text-sm text-zinc-500 underline hover:text-sea">

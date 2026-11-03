@@ -30,15 +30,6 @@ export default function PracticalPage(props: PageProps<"/trips/[id]/practical">)
   );
 }
 
-const ROLE: Record<string, string> = {
-  emergency: "alarmowy",
-  host: "gospodarz",
-  operator: "organizator",
-  rental: "wypożyczalnia",
-  guide: "przewodnik",
-  venue: "obiekt",
-  other: "inny",
-};
 const card = "flex flex-col gap-3 card p-4";
 
 async function Practical({ params }: { params: Promise<{ id: string }> }) {
@@ -68,7 +59,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+        <Link href={`/trips/${id}`} className="back-link">
           ← {doc.trip.title}
         </Link>
         <h1 className="text-2xl font-semibold">Informacje praktyczne</h1>
@@ -101,21 +92,9 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
         )}
       </section>
 
-      <section className={card}>
-        <h2 className="text-lg font-semibold">Kontakty ({doc.contacts.length})</h2>
-        <ul className="flex flex-col gap-1 text-sm">
-          {doc.contacts.map((contact) => (
-            <li key={contact.ref}>
-              {contact.name} <span className="text-xs text-zinc-500">· {ROLE[contact.role]}</span>
-              {contact.phone ? (
-                <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="ml-2 font-mono underline">
-                  {contact.phone}
-                </a>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Link href={`/trips/${id}/contacts`} className="self-start text-sm text-zinc-500 underline hover:text-sea">
+        Kontakty i numery alarmowe ({doc.contacts.length}) →
+      </Link>
 
       {doc.sources.length > 0 && (
         <section className={card}>
