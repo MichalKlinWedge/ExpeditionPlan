@@ -1,4 +1,4 @@
-import { flightLine, flightOf, type GuideRow, guideFor, itemIcon, legLabel, type TripDocument } from "@expeditionplan/core";
+import { flightLine, flightOf, GUIDE_SITE, type GuideRow, guideFor, itemIcon, legLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -130,7 +130,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
         {guide === null ? (
           <p className="text-sm text-zinc-500">
             Brak opisu.
-            {canEdit ? " Opis powstaje z artykułu w Wikipedii o tym miejscu (ciekawostki, historia, zdjęcia)." : " Organizator może go przygotować na webie."}
+            {canEdit ? " Opis powstaje z artykułu w Wikipedii albo Wikivoyage o tym miejscu (ciekawostki, historia, zdjęcia)." : " Organizator może go przygotować na webie."}
           </p>
         ) : (
           <article className="card flex flex-col gap-3 p-4 text-sm">
@@ -190,7 +190,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
               <a href={guide.article.url} target="_blank" rel="noreferrer" className="underline">
                 „{guide.article.title}”
               </a>{" "}
-              z Wikipedii ({guide.article.lang}), licencja{" "}
+              z {GUIDE_SITE[guide.article.site]} ({guide.article.lang}), licencja{" "}
               <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" rel="noreferrer" className="underline">
                 CC BY-SA 4.0
               </a>

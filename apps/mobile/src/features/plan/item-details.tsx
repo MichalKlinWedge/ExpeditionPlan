@@ -1,4 +1,4 @@
-import { flightLine, flightOf, type GuideRow, guideFor, guideText, itemIcon, legLabel, type PlanItem as Item } from '@expeditionplan/core';
+import { flightLine, flightOf, GUIDE_SITE, type GuideRow, guideFor, guideText, itemIcon, legLabel, type PlanItem as Item } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Image } from 'expo-image';
 import * as Speech from 'expo-speech';
@@ -188,7 +188,7 @@ function Details({ trip, item, onClose, autoPlay }: { trip: CachedTrip; item: It
             )}
             <Pressable onPress={() => open(guide.article.url)} hitSlop={6}>
               <ThemedText type="small" themeColor="textSecondary">
-                Na podstawie artykułu „{guide.article.title}” z Wikipedii, licencja CC BY-SA 4.0; streszczenie: AI.
+                Na podstawie artykułu „{guide.article.title}” z {GUIDE_SITE[guide.article.site]}, licencja CC BY-SA 4.0; streszczenie: AI.
               </ThemedText>
             </Pressable>
           </View>

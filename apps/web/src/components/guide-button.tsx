@@ -13,7 +13,7 @@ export function GuideButtons({ tripId, itemRef, guideId }: { tripId: string; ite
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-3">
         <button disabled={pending} onClick={() => start(async () => setState(await describeItem(tripId, itemRef)))} className={guideId ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
-          {pending ? "Szukam w Wikipedii i piszę… (ok. 10–20 s)" : guideId ? "Odśwież opis" : "Przygotuj opis z Wikipedii (AI)"}
+          {pending ? "Szukam artykułu i piszę… (ok. 10–30 s)" : guideId ? "Odśwież opis" : "Przygotuj opis z Wikipedii (AI)"}
         </button>
         {guideId && (
           <button

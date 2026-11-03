@@ -36,7 +36,7 @@ const content: GuideContent = {
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:A.jpg',
     },
   ],
-  article: { title: 'Twierdza', url: 'https://pl.wikipedia.org/wiki/Twierdza', lang: 'pl' },
+  article: { title: 'Twierdza', url: 'https://pl.wikipedia.org/wiki/Twierdza', lang: 'pl', site: 'wikipedia' },
 };
 
 describe('przewodnik po punkcie', () => {

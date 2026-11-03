@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Przewodnik po punkcie planu (SPECYFIKACJA M8, tabela `audio_guides`): krótki opis, ciekawostki,
  * historia i zdjęcia — z artykułu Wikipedii (ugruntowanie), streszczone przez AI. Tekst pochodny
- * artykułu = CC BY-SA 4.0 z linkiem do źródła; każde zdjęcie z Commons ma własną licencję i autora.
+ * artykułu (Wikipedia albo Wikivoyage) = CC BY-SA 4.0 z linkiem do źródła; każde zdjęcie z Commons ma własną licencję i autora.
  * Jeden przewodnik na miejsce (`place_id`), a gdy punkt nie ma miejsca — na punkt (`item_id`).
  */
 
@@ -29,7 +29,7 @@ export const GuideDraft = z.object({
 export const GuideContent = GuideDraft.extend({
   images: z.array(GuideImage).default([]),
   /** Artykuł, z którego powstał opis. */
-  article: z.object({ title: z.string(), url: z.url(), lang: z.string() }),
+  article: z.object({ title: z.string(), url: z.url(), lang: z.string(), site: z.enum(['wikipedia', 'wikivoyage']).default('wikipedia') }),
 });
 
 export type GuideImage = z.infer<typeof GuideImage>;
@@ -37,6 +37,9 @@ export type GuideDraft = z.infer<typeof GuideDraft>;
 export type GuideContent = z.infer<typeof GuideContent>;
 
 export const GUIDE_LICENSE = 'CC BY-SA 4.0';
+
+/** „z Wikipedii” / „z Wikivoyage” — podpis źródła przewodnika. */
+export const GUIDE_SITE: Record<'wikipedia' | 'wikivoyage', string> = { wikipedia: 'Wikipedii', wikivoyage: 'Wikivoyage' };
 
 /** Wiersz `audio_guides` tak, jak przychodzi z `pull_changes`. */
 export type GuideRow = { id: string; item_id: string | null; place_id: string | null; audience: string; lang: string; title: string; content: unknown; deleted_at?: string | null };

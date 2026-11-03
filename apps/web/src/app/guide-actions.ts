@@ -50,13 +50,27 @@ const placeOf = (doc: Doc, item: Item) => {
 async function describeOne(supabase: Supabase, client: Parameters<typeof describePlace>[1]["client"], tripId: string, doc: Doc, ids: Record<string, string>, item: Item): Promise<{ ok: string } | { error: string }> {
   const { ref: placeRef, place } = placeOf(doc, item);
   const name = place?.name ?? item.title;
+  // Okolica dla miejsc bez współrzędnych: baza dnia (nocleg), a gdy jej brak — miasto obszaru puli.
+  const day = doc.days.find((each) => each.ref === item.dayRef);
+  const base = day?.baseRef === undefined ? undefined : doc.places.find((each) => each.ref === day.baseRef);
+  const near = base?.lat !== undefined && base.lng !== undefined ? { lat: base.lat, lng: base.lng } : undefined;
   let content;
   try {
-    content = await describePlace({ name, kind: item.kind, lat: place?.lat, lng: place?.lng }, { client, timeoutMs: 60_000 });
+    content = await describePlace(
+      {
+        name,
+        kind: item.kind,
+        lat: place?.lat,
+        lng: place?.lng,
+        near,
+        context: { itemTitle: item.title, description: item.description, area: base?.name ?? item.area, trip: doc.trip.title },
+      },
+      { client, timeoutMs: 60_000 },
+    );
   } catch (e) {
     return { error: `Nie udało się przygotować opisu „${name}”: ${e instanceof Error ? e.message : String(e)}` };
   }
-  if (content === null) return { error: `Nie znalazłem w Wikipedii artykułu, który na pewno dotyczy „${name}”. Opis bez źródła byłby zgadywaniem — pomijam.` };
+  if (content === null) return { error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${name}”. Opis bez źródła byłby zgadywaniem — pomijam.` };
   const itemId = ids[item.ref];
   const placeId = placeRef === undefined ? undefined : ids[placeRef];
   const { error } = await supabase.from("audio_guides").upsert({
@@ -69,13 +83,13 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
     title: name,
     text: guideText(content),
     content: content as unknown as NonNullable<Json>,
-    sources: [{ title: `Wikipedia: ${content.article.title}`, url: content.article.url }] as unknown as NonNullable<Json>,
+    sources: [{ title: `${content.article.site === "wikivoyage" ? "Wikivoyage" : "Wikipedia"}: ${content.article.title}`, url: content.article.url }] as unknown as NonNullable<Json>,
     license: GUIDE_LICENSE,
     status: "ready",
     deleted_at: null,
   });
   if (error) return { error: message(error) };
-  return { ok: `Opis gotowy (z artykułu „${content.article.title}”, ${content.images.length} zdj.).` };
+  return { ok: `Opis gotowy (z artykułu „${content.article.title}” — ${content.article.site === "wikivoyage" ? "Wikivoyage" : "Wikipedia"}, ${content.images.length} zdj.).` };
 }
 
 export async function describeItem(tripId: string, itemRef: string): Promise<FormState> {
@@ -115,7 +129,7 @@ export async function describeTrip(tripId: string): Promise<FormState> {
   }
   refresh();
   const more = todo.length > BATCH ? ` Zostało jeszcze ${todo.length - BATCH} — kliknij ponownie.` : "";
-  return { ok: `Opisy: ${done} gotowe${missing.length > 0 ? `, bez artykułu w Wikipedii: ${missing.join(", ")}` : ""}.${more}` };
+  return { ok: `Opisy: ${done} gotowe${missing.length > 0 ? `, bez pewnego artykułu: ${missing.join(", ")}` : ""}.${more}` };
 }
 
 /** Usunięcie opisu (miękkie) — np. gdy artykuł okazał się o czymś innym. */
