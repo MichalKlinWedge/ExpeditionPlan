@@ -141,6 +141,13 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
     })),
     tripToday,
   );
+  // Zdjęcia paragonów (bucket `journal`) — krótkie podpisane adresy.
+  const receiptPaths = expenses.flatMap((row) => (row.receipt_path ? [row.receipt_path as string] : []));
+  const receipts = new Map<string, string>();
+  if (receiptPaths.length > 0) {
+    const { data: signed } = await supabase.storage.from("journal").createSignedUrls(receiptPaths, 3600);
+    for (const each of signed ?? []) if (each.path && each.signedUrl && !each.error) receipts.set(each.path, each.signedUrl);
+  }
   const bookings = doc.bookings.filter((booking) => booking.status !== "candidate" && booking.status !== "idea");
   const candidates = doc.bookings.length - bookings.length;
   const packaged = new Map<string, Doc["items"]>();
@@ -255,6 +262,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           <span className="text-zinc-500"> ({wallet.count} wydatków z telefonu)</span>
         </p>
         {pace.plannedHighMinor > 0 && <PaceTable pace={pace} today={tripToday} money={money} range={range} />}
+        {expenses.length > 0 && <ExpenseList expenses={expenses} receipts={receipts} names={new Map(doc.travelers.map((each) => [each.ref, each.name]))} refOf={refOf} />}
         <Settlement doc={doc} tables={payload.tables as unknown as Parameters<typeof Settlement>[0]["tables"]} />
       </section>
 
@@ -403,6 +411,45 @@ function PaceTable({ pace, today, money, range }: { pace: ReturnType<typeof budg
         </table>
         <p className="text-xs text-zinc-500">Plan dnia = pozycje przypięte do punktów tego dnia + równa część pozycji bez dnia. Pozycje zapłacone przed wyjazdem nie wchodzą.</p>
       </div>
+    </details>
+  );
+}
+
+type ExpenseRow = { id: string } & Record<string, unknown>;
+
+/** Wydatki z telefonu: kwota, kategoria, kto płacił, notatka i miniatura paragonu (pełne zdjęcie w nowej karcie). */
+function ExpenseList({ expenses, receipts, names, refOf }: { expenses: ExpenseRow[]; receipts: Map<string, string>; names: Map<string, string>; refOf: Map<string, string> }) {
+  const sorted = [...expenses].sort((a, b) => String(b.paid_at).localeCompare(String(a.paid_at)));
+  const withReceipt = sorted.filter((row) => row.receipt_path).length;
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer font-medium">
+        Wydatki z telefonu ({expenses.length}){withReceipt > 0 ? ` · 🧾 ${withReceipt} z paragonem` : ""}
+      </summary>
+      <ul className="mt-2 flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
+        {sorted.map((row) => {
+          const url = row.receipt_path ? receipts.get(String(row.receipt_path)) : undefined;
+          const payer = row.payer_traveler_id ? names.get(refOf.get(String(row.payer_traveler_id)) ?? "") : undefined;
+          return (
+            <li key={row.id} className="flex items-center gap-3 py-1.5">
+              {url ? (
+                <a href={url} target="_blank" rel="noreferrer" title="Zdjęcie paragonu">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- podpisany adres z Supabase Storage, ważny godzinę */}
+                  <img src={url} alt="Paragon" className="size-12 rounded object-cover" />
+                </a>
+              ) : (
+                <span className="size-12 shrink-0" />
+              )}
+              <span className="flex-1">
+                <strong>{formatMoney(Number(row.amount_minor), String(row.currency))}</strong> · {BUDGET_CATEGORY[String(row.category)] ?? String(row.category)}
+                {payer ? ` · płacił(a): ${payer}` : ""}
+                {row.note ? <span className="text-zinc-500"> · {String(row.note)}</span> : null}
+              </span>
+              <span className="text-xs text-zinc-500">{new Date(String(row.paid_at)).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</span>
+            </li>
+          );
+        })}
+      </ul>
     </details>
   );
 }

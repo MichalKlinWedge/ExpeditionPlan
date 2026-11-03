@@ -32,6 +32,8 @@ export type NewExpense = {
   itemId?: string | null;
   note?: string | null;
   paidAt?: string;
+  /** Zdjęcie paragonu w buckecie `journal` (`<trip>/receipt-<id>/paragon.<ext>`). */
+  receiptPath?: string | null;
 };
 
 function enqueue(db: LocalDb, table: OutboxTable, row: Record<string, unknown> & { id: string; trip_id: string }) {
@@ -82,6 +84,8 @@ const expenseRow = (id: string, expense: NewExpense) => ({
   item_id: expense.itemId ?? null,
   note: expense.note ?? null,
   paid_at: expense.paidAt ?? new Date().toISOString(),
+  // Tylko z paragonem — wydatek bez zdjęcia nie zależy od kolumny (telefon przed migracją w chmurze).
+  ...(expense.receiptPath ? { receipt_path: expense.receiptPath } : {}),
 });
 
 /** Nowy wydatek albo poprawka istniejącego (ten sam `id`). */

@@ -12,6 +12,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayLines, hasTransit, PinCard, PinMarkers, TransitToggle, withoutTransit } from '@/features/map/map-parts';
 import { guidedPlaces, ItemDetails } from '@/features/plan/item-details';
+import { PoolDrop } from '@/features/map/pool-drop';
+import { cachedTrips } from '@/features/trips/my-trips';
 import { useMapStyle } from '@/features/map/map-style';
 import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
 import { useTheme } from '@/hooks/use-theme';
@@ -20,7 +22,8 @@ import { localDb, remote } from '@/lib/local-db';
 /**
  * Mapa wyjazdu: pinezki dnia z numerami kolejności (ta sama `dayMap` co na webie), cała trasa,
  * nawigacja do miejsca i mapa offline — obszary liczone z miejsc planu (`tripMapAreas`),
- * pobierane jednym przyciskiem. Plan z pamięci telefonu, więc działa bez sieci.
+ * pobierane jednym przyciskiem. Plan z pamięci telefonu, więc działa bez sieci. Organizator i edytor
+ * długim przytrzymaniem dodają w tym miejscu punkt do puli (online).
  */
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -60,6 +63,10 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   const [reading, setReading] = useState<{ item: PlanItem; play: boolean } | null>(null);
   const [statuses, setStatuses] = useState<AreaStatus[] | null>(null);
   const [progress, setProgress] = useState('');
+  /** Długie przytrzymanie: miejsce nowego punktu w puli. */
+  const [dropAt, setDropAt] = useState<{ lat: number; lng: number } | null>(null);
+  const role = cachedTrips()?.find((each) => each.id === tripId)?.role;
+  const canDrop = signedIn && (role === 'owner' || role === 'editor');
 
   useEffect(() => {
     if (signedIn) void refreshTrip(localDb, remote, tripId).then(setTrip, () => undefined);
@@ -149,7 +156,19 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
       </View>
 
       <View style={styles.fill}>
-        <MapView mapStyle={mapStyle} androidView="surface" onPress={() => setSelected(null)}>
+        <MapView
+          mapStyle={mapStyle}
+          androidView="surface"
+          onPress={() => setSelected(null)}
+          onLongPress={
+            canDrop
+              ? (event) => {
+                  const [lng, lat] = event.nativeEvent.lngLat;
+                  setSelected(null);
+                  setDropAt({ lat, lng });
+                }
+              : undefined
+          }>
           <Camera ref={camera} initialViewState={areas[0] ? { bounds: areas[0].bounds } : undefined} />
           <UserLocation accuracy />
           <DayLines lines={view.lines} id="day-lines" />
@@ -162,7 +181,17 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
       </View>
 
       <ThemedView style={[styles.panel, { borderTopColor: theme.backgroundSelected }]}>
-        {pin ? (
+        {dropAt && trip !== null ? (
+          <PoolDrop
+            trip={trip}
+            tripId={tripId}
+            at={dropAt}
+            onDone={(updated) => {
+              if (updated !== null) setTrip(updated);
+              setDropAt(null);
+            }}
+          />
+        ) : pin ? (
           <PinCard
             pin={pin}
             times={times}

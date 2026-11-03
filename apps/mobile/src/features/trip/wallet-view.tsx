@@ -1,7 +1,7 @@
 import { BUDGET_CATEGORY, budgetSummary, formatMoney, parseMoney, walletSummary } from '@expeditionplan/core';
-import { type CachedTrip, type NewExpense, removeExpense, saveExpense, saveExpenseSplits } from '@expeditionplan/sync';
+import { type CachedTrip, type NewExpense, removeExpense, saveExpense, saveExpenseSplits, uuidv7 } from '@expeditionplan/sync';
 import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
@@ -11,6 +11,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { BudgetPaceCard } from '@/features/trip/budget-pace-card';
+import { keepPhoto, uploadPhotos } from '@/features/trip/journal-photos';
+import { ReceiptThumb } from '@/features/trip/receipt-thumb';
 import { useLiveRates } from '@/features/trip/live-rates';
 import { SettleView } from '@/features/trip/settle-view';
 import { localDb } from '@/lib/local-db';
@@ -42,6 +44,7 @@ type ExpenseRow = {
   paid_at: string;
   payer_traveler_id: string | null;
   item_id?: string | null;
+  receipt_path?: string | null;
   created_by?: string | null;
 };
 
@@ -55,6 +58,7 @@ const asExpense = (tripId: string, row: ExpenseRow): NewExpense & { id: string }
   itemId: row.item_id ?? null,
   note: row.note,
   paidAt: row.paid_at,
+  receiptPath: row.receipt_path ?? null,
 });
 
 const when = (iso: string) => new Date(iso).toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -83,6 +87,10 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
     ...(each.item_id && refOf.has(each.item_id) ? { itemRef: refOf.get(each.item_id)! } : {}),
   }));
   const [adding, setAdding] = useState(false);
+  // Zdjęcia paragonów czekające na sieć (wspólna kolejka z dziennikiem).
+  useEffect(() => {
+    void uploadPhotos().catch(() => undefined);
+  }, []);
   const [editing, setEditing] = useState<string | null>(null);
   // Wydatek bez `created_by` dodano na tym telefonie i jeszcze nie wrócił z serwera — jest „mój”.
   const mine = (row: ExpenseRow) => row.created_by === undefined || row.created_by === null || row.created_by === userId;
@@ -147,8 +155,9 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
           trip={trip}
           tripId={tripId}
           onCancel={() => setAdding(false)}
-          onSave={({ splitIds, ...expense }) => {
-            const id = saveExpense(localDb, { tripId, ...expense });
+          onSave={({ splitIds, receipt, ...expense }) => {
+            const id = uuidv7();
+            saveExpense(localDb, { tripId, id, ...expense, receiptPath: keepReceipt(tripId, id, receipt) });
             saveExpenseSplits(localDb, tripId, id, splitIds, trip.live.travelers.map((row) => row.id));
             setAdding(false);
             onChanged();
@@ -163,8 +172,9 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
             trip={trip}
             initial={expense}
             onCancel={() => setEditing(null)}
-            onSave={({ splitIds, ...changed }) => {
-              saveExpense(localDb, { ...asExpense(tripId, expense), ...changed, id: expense.id });
+            onSave={({ splitIds, receipt, ...changed }) => {
+              const receiptPath = receipt ? keepReceipt(tripId, expense.id, receipt) : (expense.receipt_path ?? null);
+              saveExpense(localDb, { ...asExpense(tripId, expense), ...changed, id: expense.id, receiptPath });
               saveExpenseSplits(localDb, tripId, expense.id, splitIds, trip.live.travelers.map((row) => row.id));
               setEditing(null);
               onChanged();
@@ -193,6 +203,7 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
                   {when(expense.paid_at)}
                 </ThemedText>
               </View>
+              {expense.receipt_path && <ReceiptThumb path={expense.receipt_path} />}
               <ThemedText type="small" themeColor="textSecondary">
                 {BUDGET_CATEGORY[expense.category] ?? expense.category}
                 {expense.payer_traveler_id ? ` · płacił(a): ${names.get(expense.payer_traveler_id) ?? '?'}` : ''}
@@ -288,8 +299,25 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 
-/** `splitIds` — na kogo dzieli się wydatek; pusto = na wszystkich. `paidAt` — data z paragonu. */
-type ExpenseFields = { amountMinor: number; currency: string; category: string; payerTravelerId: string | null; note: string | null; splitIds: string[]; paidAt?: string };
+/** Zdjęcie paragonu wybrane w formularzu (przed skopiowaniem do katalogu aplikacji). */
+type Receipt = { uri: string; mimeType: string; extension: string };
+
+/** `splitIds` — na kogo dzieli się wydatek; pusto = na wszystkich. `paidAt` — data z paragonu, `receipt` — jego zdjęcie. */
+type ExpenseFields = { amountMinor: number; currency: string; category: string; payerTravelerId: string | null; note: string | null; splitIds: string[]; paidAt?: string; receipt?: Receipt };
+
+/** Kopia zdjęcia paragonu w telefonie + kolejka wysyłki; ścieżka w buckecie albo `null`, gdy się nie udało. */
+function keepReceipt(tripId: string, expenseId: string, receipt: Receipt | undefined): string | null {
+  if (receipt === undefined) return null;
+  const path = `${tripId}/receipt-${expenseId}/paragon.${receipt.extension}`;
+  try {
+    keepPhoto(receipt.uri, path, receipt.mimeType);
+    void uploadPhotos().catch(() => undefined);
+    return path;
+  } catch (e) {
+    Alert.alert('Nie zapisano zdjęcia paragonu', e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
 
 /**
  * Nowy wydatek albo poprawka (`initial`) — wtedy także „Usuń”. Przy nowym „📷 Paragon”: zdjęcie
@@ -332,12 +360,13 @@ function ExpenseForm({
   const [note, setNote] = useState(initial?.note ?? '');
   const [paidAt, setPaidAt] = useState<string | undefined>(undefined);
   const [reading, setReading] = useState(false);
+  const [receipt, setReceipt] = useState<Receipt | undefined>(undefined);
   const input = [styles.input, { color: theme.text, borderColor: theme.backgroundSelected }];
 
   const save = () => {
     const minor = parseMoney(amount);
     if (minor === null || minor === 0) return Alert.alert('Kwota', 'Podaj kwotę, np. 45 albo 12,50.');
-    onSave({ amountMinor: minor, currency, category, payerTravelerId: payer, note: note.trim() || null, splitIds: forWhom, ...(paidAt ? { paidAt } : {}) });
+    onSave({ amountMinor: minor, currency, category, payerTravelerId: payer, note: note.trim() || null, splitIds: forWhom, ...(paidAt ? { paidAt } : {}), ...(receipt ? { receipt } : {}) });
   };
 
   // Zdjęcie przycięte do paragonu, mocno skompresowane — base64 musi się zmieścić w limicie żądania.
@@ -348,10 +377,13 @@ function ExpenseForm({
     const result = source === 'camera' ? await launchCameraAsync(options) : await launchImageLibraryAsync(options);
     const asset = result.canceled ? undefined : result.assets[0];
     if (asset?.base64 == null) return;
-    if (asset.base64.length > 4_000_000) return Alert.alert('Za duże zdjęcie', 'Przytnij zdjęcie do samego paragonu albo zrób je z mniejszej odległości.');
+    // Zdjęcie zostaje przy wydatku także wtedy, gdy odczyt się nie uda (np. bez sieci).
+    const mimeType = asset.mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
+    setReceipt({ uri: asset.uri, mimeType, extension: mimeType === 'image/png' ? 'png' : 'jpg' });
+    if (asset.base64.length > 4_000_000) return Alert.alert('Za duże zdjęcie', 'Zdjęcie zostanie przy wydatku, ale jest za duże do odczytu — wpisz kwotę ręcznie.');
     setReading(true);
     try {
-      const draft = await readReceiptPhoto(tripId, currencies, { mimeType: asset.mimeType === 'image/png' ? 'image/png' : 'image/jpeg', data: asset.base64 });
+      const draft = await readReceiptPhoto(tripId, currencies, { mimeType, data: asset.base64 });
       if (draft === null) return Alert.alert('Paragon', 'Na zdjęciu nie widzę paragonu.');
       if (draft.amountMinor !== null) setAmount((draft.amountMinor / 100).toFixed(2).replace('.', ','));
       if (draft.currency !== null) {
@@ -383,6 +415,13 @@ function ExpenseForm({
             <ThemedText type="small" themeColor="textSecondary">
               Czytam paragon…
             </ThemedText>
+          )}
+          {receipt !== undefined && !reading && (
+            <Pressable onPress={() => setReceipt(undefined)} hitSlop={6}>
+              <ThemedText type="small" themeColor="accent">
+                🧾 zdjęcie dołączone · usuń
+              </ThemedText>
+            </Pressable>
           )}
           {paidAt !== undefined && !reading && (
             <ThemedText type="small" themeColor="textSecondary">
