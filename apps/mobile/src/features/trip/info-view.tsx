@@ -9,7 +9,7 @@ import { DocumentsView } from '@/features/trip/documents-view';
 /**
  * Informacje praktyczne na telefonie — offline, z planu zapisanego w SQLite: numery alarmowe
  * (jedno dotknięcie = połączenie), kontakty (gospodarz, wypożyczalnia), ważne ostrzeżenia, notatki
- * według tematów, otwarte zadania i źródła. Na webie: „Informacje praktyczne” (etap 5 AI).
+ * według tematów i źródła. Na webie: „Informacje praktyczne” (etap 5 AI). Zadania — osobna zakładka.
  */
 
 const TOPIC: Record<string, string> = {
@@ -41,14 +41,13 @@ export function InfoView({ trip, tripId, signedIn = false }: { trip: CachedTrip;
   const important = notes.filter((note) => note.kind === 'warning' || note.kind === 'safety');
   const rest = notes.filter((note) => !important.includes(note));
   const topics = [...new Set(rest.map((note) => note.topic ?? 'other'))].sort((a, b) => Object.keys(TOPIC).indexOf(a) - Object.keys(TOPIC).indexOf(b));
-  const tasks = doc.tasks.filter((task) => task.status === 'open');
   const bookingTitle = (ref: string | undefined) => (ref === undefined ? undefined : doc.bookings.find((booking) => booking.ref === ref)?.title);
 
   // Dokumenty i kody na górze — po nie sięga się przy bramce, w pośpiechu.
   const vault = tripId ? <DocumentsView trip={trip} tripId={tripId} online={signedIn} /> : null;
   const hasVault = trip.live.documents.length > 0 || doc.bookings.some((booking) => booking.confirmationCode);
 
-  if (doc.contacts.length === 0 && notes.length === 0 && tasks.length === 0 && !hasVault) {
+  if (doc.contacts.length === 0 && notes.length === 0 && !hasVault) {
     return (
       <ThemedText themeColor="textSecondary" style={styles.pad}>
         Plan nie ma jeszcze informacji praktycznych. Na webie: „Informacje praktyczne” → „Przygotuj z AI”.
@@ -128,20 +127,6 @@ export function InfoView({ trip, tripId, signedIn = false }: { trip: CachedTrip;
             ))}
         </ThemedView>
       ))}
-
-      {tasks.length > 0 && (
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">Do zrobienia ({tasks.length})</ThemedText>
-          {tasks.map((task) => (
-            <ThemedText key={task.ref} type="small">
-              {task.priority === 'high' ? '! ' : '· '}
-              {task.title}
-              {task.due?.kind === 'before_trip' ? (task.due.days === 0 ? ' — w dniu wyjazdu' : ` — ${task.due.days} dni przed wyjazdem`) : ''}
-              {task.due?.kind === 'absolute' ? ` — do ${task.due.date}` : ''}
-            </ThemedText>
-          ))}
-        </ThemedView>
-      )}
 
       {doc.sources.some((source) => source.url) && (
         <ThemedView type="backgroundElement" style={styles.card}>

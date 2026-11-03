@@ -20,7 +20,7 @@ export function Tabs<T extends string>({ options, value, onChange }: { options: 
         const active = option.value === value;
         return (
           <Pressable key={option.value} onPress={() => onChange(option.value)} style={[styles.tab, { borderBottomColor: active ? theme.accent : 'transparent' }]}>
-            <ThemedText type={active ? 'smallBold' : 'small'} style={{ color: active ? theme.accent : theme.textSecondary }}>
+            <ThemedText type={active ? 'smallBold' : 'small'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={{ color: active ? theme.accent : theme.textSecondary }}>
               {option.label}
             </ThemedText>
           </Pressable>
@@ -58,7 +58,7 @@ export function Segmented<T extends string>({ label, options, value, onChange }:
 
 const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', borderBottomWidth: 1, paddingHorizontal: Spacing.two },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: Spacing.two, borderBottomWidth: 3, marginBottom: -1 },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: Spacing.two, paddingHorizontal: 2, borderBottomWidth: 3, marginBottom: -1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   segments: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, overflow: 'hidden' },
   segment: { paddingHorizontal: Spacing.two + 2, paddingVertical: 3 },

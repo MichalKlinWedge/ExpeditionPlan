@@ -1,13 +1,13 @@
 import { afterAll, describe, expect, inject, it } from 'vitest';
 
 import { saveExpense, setPacked } from '../outbox.ts';
-import { cachedTrip, refreshTrip } from '../trip-cache.ts';
+import { cachedTrip, refreshTrip, setTaskDone } from '../trip-cache.ts';
 import { uuidv7 } from '../uuid.ts';
 import { createDevice, createTestUser, loadFixture, seedTrip } from './helpers/harness.ts';
 
 /**
- * Portfel i pakowanie z telefonu na prawdziwej bazie: zapisy z outboxa przechodzą przez RLS,
- * a widz odhacza tylko rzeczy przypisanego do siebie uczestnika.
+ * Portfel, pakowanie i zadania z telefonu na prawdziwej bazie: zapisy z outboxa przechodzą przez RLS,
+ * a widz odhacza tylko rzeczy i zadania przypisanego do siebie uczestnika.
  */
 
 const env = inject('supabase');
@@ -67,5 +67,39 @@ describe('portfel i pakowanie z telefonu', () => {
     expect(after.rejected.map((each) => each.id)).toEqual([otherCheck]);
     expect(after.pending).toBe(0);
     expect(after.live.packingChecks.map((row) => row.traveler_id)).toEqual([mine!.id]);
+  });
+
+  it('zadania: widz odhacza przypisane do siebie offline, cudzego nie (RLS), organizator widzi status', async () => {
+    const owner = await device('tasks-owner');
+    const viewer = await device('tasks-viewer');
+    const { tripId, rows } = await seedTrip(owner.client, loadFixture('dinara'));
+    const [mine] = rows.travelers!;
+    await owner.client.from('travelers').update({ user_id: viewer.user.id }).eq('id', mine!.id);
+    const own = uuidv7();
+    const foreign = uuidv7();
+    const inserted = await owner.client.from('tasks').insert([
+      { id: own, trip_id: tripId, ref: 't-moje', kind: 'todo', title: 'Kup mapę', status: 'open', assignee_ids: [mine!.id] },
+      { id: foreign, trip_id: tripId, ref: 't-cudze', kind: 'todo', title: 'Zarezerwuj schronisko', status: 'open', assignee_ids: [] },
+    ]);
+    expect(inserted.error).toBeNull();
+    const invite = await owner.client.rpc('create_invite', { p_trip: tripId, p_role: 'viewer' });
+    await viewer.client.rpc('accept_invite', { p_token: invite.data });
+
+    const first = await refreshTrip(viewer.db, viewer.remote, tripId);
+    viewer.setOffline(true);
+    setTaskDone(viewer.db, tripId, first, 't-moje', true);
+    expect(cachedTrip(viewer.db, tripId)!.state.doc.tasks.find((task) => task.ref === 't-moje')?.status).toBe('done');
+    viewer.setOffline(false);
+    expect((await refreshTrip(viewer.db, viewer.remote, tripId)).pending).toBe(0);
+    const ownerView = await refreshTrip(owner.db, owner.remote, tripId);
+    expect(ownerView.state.doc.tasks.find((task) => task.ref === 't-moje')?.status).toBe('done');
+
+    // Zadanie bez przypisania: RLS odrzuca, status wraca do „open”, kolejka się nie blokuje.
+    setTaskDone(viewer.db, tripId, cachedTrip(viewer.db, tripId)!, 't-cudze', true);
+    const after = await refreshTrip(viewer.db, viewer.remote, tripId);
+    expect(after.rejected.map((each) => each.id)).toEqual([foreign]);
+    expect(after.pending).toBe(0);
+    expect(after.state.doc.tasks.find((task) => task.ref === 't-cudze')?.status).toBe('open');
+    expect((await owner.client.from('tasks').select('status').eq('id', foreign).single()).data?.status).toBe('open');
   });
 });

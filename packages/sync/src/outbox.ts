@@ -181,6 +181,27 @@ export function setPacked(db: LocalDb, tripId: string, packingItemId: string, tr
   return id;
 }
 
+/**
+ * Odhaczenie zadania z planu (albo cofnięcie) — offline. Zadanie jest wierszem planu, więc na serwer
+ * idzie sama zmiana statusu (`supabaseRemote`: update, nie upsert całego wiersza) — nie nadpisze
+ * zmian z webu, a widz i tak może zmienić tylko status (trigger `guard_viewer_task`). Wiersz
+ * w SQLite dostaje nowy status od razu i czeka (`pending`) na potwierdzenie z serwera.
+ */
+export function setTaskStatus(db: LocalDb, tripId: string, taskId: string, status: 'open' | 'done'): void {
+  const local = db.all<{ data: string }>('select data from rows where tbl = ? and id = ?', ['tasks', taskId])[0];
+  if (local === undefined) throw new Error('Tego zadania nie ma w bazie telefonu — odśwież plan');
+  const row = { ...(JSON.parse(local.data) as Record<string, unknown>), status };
+  db.transaction(() => {
+    db.run('update rows set data = ?, pending = 1 where tbl = ? and id = ?', [JSON.stringify(row), 'tasks', taskId]);
+    db.run('insert into outbox (tbl, row_id, payload, created_at) values (?, ?, ?, ?)', [
+      'tasks',
+      taskId,
+      JSON.stringify({ id: taskId, trip_id: tripId, status }),
+      new Date().toISOString(),
+    ]);
+  });
+}
+
 export function pendingCount(db: LocalDb): number {
   return db.all<{ n: number }>('select count(*) as n from outbox')[0]?.n ?? 0;
 }

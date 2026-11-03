@@ -1,6 +1,6 @@
 import { refIndex, type TripState, stateFromLocal } from './document.ts';
 import type { LocalDb } from './local-db.ts';
-import { pendingCount, recordEvent, type RejectedWrite } from './outbox.ts';
+import { pendingCount, recordEvent, type RejectedWrite, setTaskStatus } from './outbox.ts';
 import { syncTrip } from './pull.ts';
 import type { Remote, ServerRow } from './remote.ts';
 
@@ -71,6 +71,13 @@ export function recordVariantChoice(db: LocalDb, tripId: string, cached: CachedT
   if (group === undefined) throw new Error(`Brak grupy wariantów „${groupRef}”`);
   const dayId = group.dayRef === undefined ? null : (cached.ids[group.dayRef] ?? null);
   recordEvent(db, { tripId, dayId, kind: 'choose_variant', payload: { groupRef, variantRef } });
+}
+
+/** Odhaczenie zadania z planu (albo cofnięcie) — outbox, działa offline; plan od razu ma nowy status. */
+export function setTaskDone(db: LocalDb, tripId: string, cached: CachedTrip, taskRef: string, done: boolean): void {
+  const taskId = cached.ids[taskRef];
+  if (taskId === undefined) throw new Error(`Brak id dla zadania „${taskRef}” w bazie telefonu`);
+  setTaskStatus(db, tripId, taskId, done ? 'done' : 'open');
 }
 
 /** `rejected` — zapisy z telefonu, których serwer nie przyjął (już wycofane z bazy telefonu). */

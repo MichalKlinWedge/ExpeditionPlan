@@ -21,7 +21,7 @@ export interface LocalDb {
  */
 
 /** Tabele, do których telefon dopisuje przez outbox. */
-export type OutboxTable = 'schedule_events' | 'expenses' | 'packing_checks' | 'expense_splits' | 'settlements' | 'journal_entries';
+export type OutboxTable = 'schedule_events' | 'expenses' | 'packing_checks' | 'expense_splits' | 'settlements' | 'journal_entries' | 'tasks';
 
 const SCHEMA = `
 create table if not exists trips (

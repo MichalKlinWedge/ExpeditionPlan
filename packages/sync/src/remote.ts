@@ -32,7 +32,7 @@ export interface Remote {
   pull(tripId: string, since: number): Promise<PullPayload | null>;
   /**
    * Idempotentny zapis wierszy z outboxa. Zdarzenia dnia: wstaw, duplikat pomiń. Wydatki: wstaw
-   * albo nadpisz (last-write-wins po stronie serwera).
+   * albo nadpisz (last-write-wins po stronie serwera). Zadania: tylko zmiana statusu istniejącego wiersza.
    */
   push(table: OutboxTable, rows: Record<string, unknown>[]): Promise<void>;
 }
@@ -55,6 +55,15 @@ export function supabaseRemote(client: SupabaseClient): Remote {
       return (data as PullPayload | null) ?? null;
     },
     async push(table, rows) {
+      if (table === 'tasks') {
+        for (const row of rows) {
+          const { data, error } = await client.from('tasks').update({ status: row.status }).eq('id', row.id).eq('trip_id', row.trip_id).select('id');
+          if (error) throw new RemoteError(error.message, error.code);
+          // RLS po cichu pomija wiersz, którego nie wolno zmienić — dla outboxa to odmowa, nie sukces.
+          if ((data ?? []).length === 0) throw new RemoteError('Brak uprawnień do odhaczenia tego zadania', '42501');
+        }
+        return;
+      }
       const { error } = await client
         .from(table)
         .upsert(rows, { onConflict: 'id', ignoreDuplicates: table === 'schedule_events' });

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { rowsFromDocument } from '../document.ts';
 import type { Remote, ServerRow, TripRow } from '../remote.ts';
 import { saveExpense, setPacked } from '../outbox.ts';
-import { cachedTrip, forgetLocal, forgetTrip, pruneLocal, recordDayEvent, recordVariantChoice, refreshTrip } from '../trip-cache.ts';
+import { cachedTrip, forgetLocal, forgetTrip, pruneLocal, recordDayEvent, recordVariantChoice, refreshTrip, setTaskDone } from '../trip-cache.ts';
 import { stableUuid, uuidv7 } from '../uuid.ts';
 import { nodeDb } from './helpers/node-db.ts';
 
@@ -133,6 +133,25 @@ describe('plan offline na telefonie', () => {
 
     recordDayEvent(db, TRIP, after, 'd2', 'd2-bahia', { kind: 'done', undo: true });
     expect(cachedTrip(db, TRIP)!.state.inputs.done).toEqual([]);
+  });
+
+  it('odhaczenie zadania offline: status od razu w planie, reszta wiersza bez zmian, czeka w outboxie', async () => {
+    const db = nodeDb();
+    const server = planServer('maroko');
+    await refreshTrip(db, server.remote, TRIP);
+    server.setOffline(true);
+    const before = cachedTrip(db, TRIP)!;
+    const task = before.state.doc.tasks.find((each) => each.status === 'open')!;
+
+    setTaskDone(db, TRIP, before, task.ref, true);
+    const after = cachedTrip(db, TRIP)!;
+    expect(after.state.doc.tasks.find((each) => each.ref === task.ref)).toEqual({ ...task, status: 'done' });
+    expect(after.pending).toBe(1);
+    const outbox = db.all<{ payload: string }>('select payload from outbox');
+    expect(JSON.parse(outbox[0]!.payload)).toEqual({ id: before.ids[task.ref], trip_id: TRIP, status: 'done' });
+
+    setTaskDone(db, TRIP, after, task.ref, false);
+    expect(cachedTrip(db, TRIP)!.state.doc.tasks.find((each) => each.ref === task.ref)?.status).toBe('open');
   });
 
   it('portfel i pakowanie offline: wydatek i odhaczenie od razu w stanie, ta sama para = ten sam wiersz', async () => {
