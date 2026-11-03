@@ -50,6 +50,8 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
   const markers = useRef<{ pin: MapPin; marker: Marker }[]>([]);
   const draft = useRef<Marker | null>(null);
   const fitted = useRef<string | null>(null);
+  /** Licznik pokazań kontenera (rozmiar z 0 na >0) — wtedy dopasowanie widoku od nowa. */
+  const [shown, setShown] = useState(0);
   const select = useRef(onSelect);
   const edit = useRef(editing);
   const chosen = useRef(selected);
@@ -136,6 +138,9 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       // Pinezki powstają po `import()` — wyróżnienie musi dostać też nowa pinezka wybranego punktu.
       highlight(markers.current, chosen.current);
       if (fitted.current === fitKey) return;
+      // Ukryty kontener (powrót na stronę zachowaną przez Next, zwinięty układ) ma rozmiar 0 —
+      // dopasowanie dałoby widok całego świata; czekamy, aż kontener się pokaże.
+      if (container.current === null || container.current.clientWidth === 0 || container.current.clientHeight === 0) return;
       const main = data.pins.filter((pin) => pin.stops.length > 0 || pin.base);
       const focus = main.length > 0 ? main : data.pins;
       if (focus.length === 0) return;
@@ -144,7 +149,25 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       for (const pin of focus) bounds.extend([pin.lng, pin.lat]);
       map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 600 });
     });
-  }, [map, data, fitKey, movable]);
+  }, [map, data, fitKey, movable, shown]);
+
+  // Kontener zmienia rozmiar: mapa się przelicza, a po pokazaniu z ukrycia — dopasowuje od nowa.
+  useEffect(() => {
+    const element = container.current;
+    if (map === null || element === null) return;
+    let hidden = element.clientWidth === 0 || element.clientHeight === 0;
+    const observer = new ResizeObserver(() => {
+      const now = element.clientWidth === 0 || element.clientHeight === 0;
+      if (!now) map.resize();
+      if (hidden && !now) {
+        fitted.current = null;
+        setShown((count) => count + 1);
+      }
+      hidden = now;
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [map]);
 
   // Wybrany punkt: wyróżniona pinezka, a gdy jest poza widokiem — przesunięcie mapy.
   useEffect(() => {
