@@ -146,12 +146,24 @@ export function addItem(doc: Doc, dayRef: string, id: string, fields: Pick<Item,
 
 /**
  * Nowy punkt w puli (atrakcja, miejsce, pomysł na później): bez dnia, status „kandydat”, na końcu
- * puli. Z nazwą miejsca — nowe miejsce bez współrzędnych (potem „Uzupełnij współrzędne” albo pinezka).
+ * puli. Z nazwą miejsca — nowe miejsce bez współrzędnych (potem „Uzupełnij współrzędne” albo pinezka);
+ * z pozycją `at` (telefon: „tu, gdzie jestem”) — własna pinezka w tym miejscu.
  */
-export function addPoolItem(doc: Doc, ids: { itemId: string; placeId?: string }, fields: Pick<Item, 'title' | 'kind'> & Partial<Item>, placeName?: string): PlanEdit {
+export function addPoolItem(
+  doc: Doc,
+  ids: { itemId: string; placeId?: string },
+  fields: Pick<Item, 'title' | 'kind'> & Partial<Item>,
+  placeName?: string,
+  at?: { lat: number; lng: number },
+): PlanEdit {
   const last = doc.items.filter((item) => item.dayRef === undefined && item.sortKey !== undefined).sort((a, b) => a.sortKey!.localeCompare(b.sortKey!)).at(-1);
-  const name = placeName?.trim();
-  const place: PlanPlace | undefined = name && ids.placeId ? { ref: `id-${ids.placeId}`, name, provider: 'unknown', links: [] } : undefined;
+  const name = placeName?.trim() || (at ? fields.title : undefined);
+  const place: PlanPlace | undefined =
+    name && ids.placeId
+      ? at
+        ? { ref: `id-${ids.placeId}`, name, lat: round(at.lat), lng: round(at.lng), provider: 'user', links: [] }
+        : { ref: `id-${ids.placeId}`, name, provider: 'unknown', links: [] }
+      : undefined;
   const item: Item = {
     replacesRefs: [],
     variantRefs: [],

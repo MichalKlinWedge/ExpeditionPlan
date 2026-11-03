@@ -1,6 +1,7 @@
 import {
   activeVariants as resolveVariants,
   addItem,
+  addPoolItem,
   dayLodging,
   lodgingContacts,
   type DaySchedule,
@@ -259,6 +260,7 @@ ${fresh.rejected[0]!.error}`);
           moveTo: (ref, dayRef) => apply(moveToDay(trip.state.doc, ref, dayRef)),
           update: (ref, fields) => apply(updateItem(trip.state.doc, ref, fields)),
           add: (dayRef, fields) => apply(addItem(trip.state.doc, dayRef, uuidv7(), fields)),
+          addToPool: (fields, placeName, at) => apply(addPoolItem(trip.state.doc, { itemId: uuidv7(), placeId: uuidv7() }, fields, placeName, at)),
           remove: (ref) => {
             try {
               apply(removeItemClosingGap(trip.state.doc, ref));
@@ -435,6 +437,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               <PoolView
                 trip={trip}
                 onMove={actions === null ? null : (ref, dayRef) => actions.moveTo(ref, dayRef)}
+                onAdd={actions === null ? null : actions.addToPool}
                 onOpen={(item) => {
                   setDetailPlay(false);
                   setDetail(item);
@@ -536,6 +539,8 @@ type Actions = {
   moveTo: (ref: string, dayRef: string | null) => void;
   update: (ref: string, fields: ItemFields) => void;
   add: (dayRef: string, fields: ItemFields) => void;
+  /** Nowy punkt w puli; `at` — pozycja telefonu („tu, gdzie jestem”). */
+  addToPool: (fields: ItemFields, placeName?: string, at?: { lat: number; lng: number }) => void;
   remove: (ref: string) => void;
 };
 

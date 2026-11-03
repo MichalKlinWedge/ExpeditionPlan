@@ -98,6 +98,10 @@ describe('edycja planu (MVP-3)', () => {
     const bare = addPoolItem(maroko, { itemId: '01a19366-0000-7000-8000-000000000006' }, { title: 'Hammam', kind: 'activity' });
     expect(bare.places).toBeUndefined();
     expect(bare.created!.placeRef).toBeUndefined();
+    // Telefon: „tu, gdzie jestem” — własna pinezka z nazwą punktu.
+    const here = addPoolItem(maroko, ids, { title: 'Kawiarnia z widokiem', kind: 'meal' }, '', { lat: 31.6258123456, lng: -7.9891987654 });
+    expect(here.places).toEqual([{ created: true, place: { ref: `id-${ids.placeId}`, name: 'Kawiarnia z widokiem', lat: 31.625812, lng: -7.989199, provider: 'user', links: [] } }]);
+    expect(documentProblem(here.doc)).toBeNull();
   });
 
   it('własna pinezka: nowe miejsce provider: user i punkt w nim; przesunięcie tylko własnych pinezek', () => {
