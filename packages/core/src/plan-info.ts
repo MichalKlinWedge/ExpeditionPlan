@@ -135,7 +135,8 @@ export type MapPin = {
 };
 
 /** Kawałek linii dnia [lng, lat]: trasa po drogach z ORS (`routed`) albo prosta między miejscami. */
-export type MapLine = { coordinates: LngLat[]; routed: boolean; transit?: boolean };
+/** `track` — ślad GPX aktywności (rysowany jak trasa po drogach). */
+export type MapLine = { coordinates: LngLat[]; routed: boolean; transit?: boolean; track?: true };
 
 /** Przejazd dłuższy niż tyle km to dojazd albo powrót, nie trasa dnia. */
 const TRANSIT_KM = 250;
@@ -211,9 +212,17 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     return undefined;
   };
   const numbers: Record<string, number> = {};
+  const tracks = new Map(doc.tracks.map((track) => [track.ref, track]));
+  const drawn = new Set<string>();
   refs.forEach((ref, index) => {
     const item = items.get(ref);
     if (item === undefined) return;
+    // Ślad GPX aktywności — raz na dzień, choćby kilka punktów szło tą samą trasą.
+    const track = item.activity?.trackRef === undefined ? undefined : tracks.get(item.activity.trackRef);
+    if (track?.geojson !== undefined && !drawn.has(track.ref)) {
+      drawn.add(track.ref);
+      lines.push({ coordinates: track.geojson.coordinates.map((point) => [point[0]!, point[1]!] as LngLat), routed: true, track: true });
+    }
     const leg = item.kind === 'transport' ? item.leg : undefined;
     const transit = isTransit(doc, item);
     const from = pin(leg?.fromPlaceRef);

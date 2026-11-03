@@ -23,6 +23,7 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { TrackCard } from '@/features/plan/track-card';
 
 /**
  * Szczegóły punktu na telefonie: miejsce z „Nawiguj”, opis, notatki, linki i przewodnik
@@ -181,6 +182,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay }: DetailsPro
             <ThemedText type="linkPrimary">{link.label || link.url}</ThemedText>
           </Pressable>
         ))}
+        <TrackCard doc={doc} item={item} />
 
         {guide !== null && (
           <View style={styles.guide}>

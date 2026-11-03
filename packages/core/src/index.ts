@@ -32,5 +32,6 @@ export * from './reminders.ts';
 export * from './item-icon.ts';
 export * from './meals.ts';
 export * from './guide.ts';
+export * from './gpx.ts';
 export * from './guide-links.ts';
 export * from './settle.ts';

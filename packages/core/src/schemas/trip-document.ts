@@ -616,6 +616,10 @@ export const DocTrack = z.object({
   waymarking: z.string().optional(),
   routeNotes: z.string().optional(),
   url: z.url().optional(),
+  /** Geometria z pliku GPX (uproszczona, `core/gpx.ts`): GeoJSON LineString, [lng, lat, wysokość?]. */
+  geojson: z
+    .object({ type: z.literal('LineString'), coordinates: z.array(z.array(z.number()).min(2).max(3)).min(2) })
+    .optional(),
 });
 
 // ---------------------------------------------------------------------------------------------

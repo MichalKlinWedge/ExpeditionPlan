@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { GuideButtons } from "@/components/guide-button";
+import { TrackUpload } from "@/components/track-upload";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ITEM_KIND } from "@/lib/labels";
@@ -63,6 +64,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   const guideRow = guide === null ? undefined : guideRowFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
   const time = item.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}` : null;
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
+  const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
 
   return (
     <>
@@ -128,6 +130,33 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
           </p>
         )}
       </section>
+
+      {(track !== undefined || item.kind === "activity" || item.leg?.mode === "walk" || item.leg?.mode === "hike") && (track?.geojson !== undefined || canEdit) && (
+        <section className="card flex flex-col gap-2 p-4 text-sm">
+          <h2 className="text-lg font-semibold">Ślad</h2>
+          {track?.geojson !== undefined ? (
+            <>
+              <p>
+                <strong>{track.name}</strong>
+                {track.distanceKm !== undefined ? ` · ${track.distanceKm.toLocaleString("pl-PL")} km` : ""}
+                {track.ascentM !== undefined ? ` · ↑ ${track.ascentM} m` : ""}
+                {track.descentM !== undefined ? ` ↓ ${track.descentM} m` : ""}
+                {track.durationMin !== undefined ? ` · ok. ${Math.floor(track.durationMin / 60)} h ${track.durationMin % 60} min (DIN 33466)` : ""}
+              </p>
+              {(track.difficulty || track.waymarking) && <p className="text-zinc-600 dark:text-zinc-400">{[track.difficulty, track.waymarking].filter(Boolean).join(" · ")}</p>}
+              {item.dayRef && (
+                <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef)}`} className="self-start text-sea underline">
+                  Pokaż na mapie dnia
+                </Link>
+              )}
+              <p className="text-xs text-zinc-500">Na telefonie ślad jest offline — „Gdzie jestem na śladzie” w szczegółach punktu.</p>
+            </>
+          ) : (
+            <p className="text-zinc-500">{track ? `Trasa „${track.name}” nie ma jeszcze linii z pliku GPX.` : "Brak śladu GPX."}</p>
+          )}
+          {canEdit && <TrackUpload tripId={id} itemRef={item.ref} hasLine={track?.geojson !== undefined} />}
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Przewodnik</h2>
