@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 
-import { BookIcon, CompareIcon, CompassIcon, InfoIcon, ListIcon, NoteIcon, PeopleIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { BookIcon, CartIcon, CompareIcon, CompassIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeopleIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 
 /**
  * Szybkie przejście między sekcjami wyjazdu: rząd ikon pod górną belką, na każdej podstronie
@@ -17,6 +17,8 @@ const SECTIONS = [
   { path: "plan", title: "Plan dzień po dniu", Icon: RouteIcon },
   { path: "logistics", title: "Rezerwacje i budżet", Icon: TicketIcon },
   { path: "tasks", title: "Zadania", Icon: ListIcon },
+  { path: "meals", title: "Posiłki", Icon: MealIcon },
+  { path: "shopping", title: "Lista zakupów", Icon: CartIcon },
   { path: "documents", title: "Sejf dokumentów", Icon: VaultIcon },
   { path: "practical", title: "Informacje praktyczne", Icon: InfoIcon },
   { path: "journal", title: "Dziennik", Icon: BookIcon },

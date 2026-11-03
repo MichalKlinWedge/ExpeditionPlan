@@ -145,3 +145,17 @@ export const BookIcon = (props: Props) => (
     <path d="M7 8h2M15 8h2M15 11h2" />
   </Svg>
 );
+
+export const MealIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10" />
+    <path d="M17 21V3c-2 1.5-3 4-3 7v3h3" />
+  </Svg>
+);
+
+export const CartIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M3 4h2l2.4 11h10.2L20 8H6.2" />
+    <path d="M9.5 20h.01M17 20h.01" />
+  </Svg>
+);

@@ -7,7 +7,6 @@ import { Suspense } from "react";
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, Contacts, FxEditor, NewBooking } from "@/components/logistics-editors";
-import { Meals } from "@/components/meals";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -329,11 +328,6 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           })}
         </ul>
         {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} />}
-      </section>
-
-      <section className={card}>
-        <h2 className={heading}>Jedzenie i zakupy</h2>
-        <Meals tripId={id} doc={doc} tables={payload.tables as unknown as Parameters<typeof Meals>[0]["tables"]} ids={refIndex(payload.tables)} canEdit={canEdit} />
       </section>
 
       <section className={card}>
