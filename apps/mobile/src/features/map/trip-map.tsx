@@ -1,5 +1,6 @@
-import { dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, type PlanItem, scheduleDay, tripMapAreas, type TripDocument } from '@expeditionplan/core';
-import { type CachedTrip, cachedTrip, refreshTrip } from '@expeditionplan/sync';
+import { dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, moveToDay, type PlanItem, scheduleDay, tripMapAreas, type TripDocument } from '@expeditionplan/core';
+import { type CachedTrip, cachedTrip, refreshTrip, savePlanEdit } from '@expeditionplan/sync';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -12,22 +13,39 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayLines, hasTransit, PinCard, PinMarkers, TransitToggle, withoutTransit } from '@/features/map/map-parts';
 import { guidedPlaces, ItemDetails } from '@/features/plan/item-details';
+import { DayPicker } from '@/features/plan/item-editor';
 import { PoolDrop } from '@/features/map/pool-drop';
 import { cachedTrips } from '@/features/trips/my-trips';
 import { useMapStyle } from '@/features/map/map-style';
 import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
 import { useTheme } from '@/hooks/use-theme';
 import { localDb, remote } from '@/lib/local-db';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Mapa wyjazdu: pinezki dnia z numerami kolejności (ta sama `dayMap` co na webie), cała trasa,
  * nawigacja do miejsca i mapa offline — obszary liczone z miejsc planu (`tripMapAreas`),
  * pobierane jednym przyciskiem. Plan z pamięci telefonu, więc działa bez sieci. Organizator i edytor
- * długim przytrzymaniem dodają w tym miejscu punkt do puli (online).
+ * długim przytrzymaniem dodają w tym miejscu punkt do puli (online). „Pula” pokazuje szare pinezki
+ * punktów spoza dni — opis z przewodnikiem i „Wstaw do dnia…”.
  */
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 const shortDay = (date: string) => new Intl.DateTimeFormat('pl-PL', { weekday: 'short', day: 'numeric', month: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
+
+/** Punkty puli (bez dnia) dopisane do pinezek widoku: w istniejącej pinezce albo nowa szara. */
+function withPool(doc: TripDocument, pins: MapPin[]): MapPin[] {
+  const out = new Map(pins.map((pin) => [pin.placeRef, { ...pin }]));
+  for (const item of doc.items) {
+    if (item.dayRef !== undefined || item.parentRef !== undefined) continue;
+    const place = doc.places.find((each) => each.ref === (item.leg?.toPlaceRef ?? item.placeRef));
+    if (place?.lat === undefined || place.lng === undefined) continue;
+    const pin = out.get(place.ref) ?? { placeRef: place.ref, name: place.name, lat: place.lat, lng: place.lng, stops: [] };
+    pin.pool = [...(pin.pool ?? []), { ref: item.ref, title: item.title }];
+    out.set(place.ref, pin);
+  }
+  return [...out.values()];
+}
 
 /** Wszystkie miejsca planu ze współrzędnymi (widok „Cała trasa”), bazy noclegowe wyróżnione. */
 function tripPins(doc: TripDocument): MapPin[] {
@@ -81,6 +99,9 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
 
   const dayRef = doc && day >= 0 ? doc.days[day]?.ref : undefined;
   const [showTransit, setShowTransit] = useState(false);
+  const [showPool, setShowPool] = useState(false);
+  /** „Wstaw do dnia…” z karty pinezki puli — wybór dnia. */
+  const [inserting, setInserting] = useState<string | null>(null);
   const full = useMemo(() => {
     if (doc === null) return null;
     if (dayRef === undefined) return { pins: tripPins(doc), lines: [] as MapLine[] };
@@ -92,7 +113,12 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
     }
   }, [doc, dayRef]);
   const transit = full !== null && hasTransit(full);
-  const view = useMemo(() => (full === null ? null : withoutTransit(full, showTransit)), [full, showTransit]);
+  const view = useMemo(() => {
+    if (full === null || doc === null) return null;
+    const shown = withoutTransit(full, showTransit);
+    return showPool ? { ...shown, pins: withPool(doc, shown.pins) } : shown;
+  }, [full, showTransit, showPool, doc]);
+  const poolCount = doc === null ? 0 : doc.items.filter((item) => item.dayRef === undefined && item.parentRef === undefined).length;
 
   // Kamera obejmuje pinezki dnia (albo całą trasę) przy każdej zmianie widoku.
   useEffect(() => {
@@ -153,6 +179,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
         {doc.days.map((each, index) => (
           <Chip key={each.ref} compact active={index === day} label={shortDay(each.date)} onPress={() => setDay(index)} />
         ))}
+        {poolCount > 0 && <Chip compact active={showPool} label={`Pula (${poolCount})`} onPress={() => setShowPool(!showPool)} />}
       </View>
 
       <View style={styles.fill}>
@@ -197,6 +224,13 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
             times={times}
             onClose={() => setSelected(null)}
             guide={pinGuide === undefined ? undefined : { onRead: () => setReading({ item: pinGuide, play: false }), onListen: () => setReading({ item: pinGuide, play: true }) }}
+            pool={{
+              onOpen: (ref) => {
+                const item = doc.items.find((each) => each.ref === ref);
+                if (item) setReading({ item, play: false });
+              },
+              ...(canDrop ? { onInsert: (ref: string) => setInserting(ref) } : {}),
+            }}
           />
         ) : (
           <View style={styles.block}>
@@ -219,6 +253,25 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
         )}
       </ThemedView>
       {trip !== null && <ItemDetails trip={trip} item={reading?.item ?? null} autoPlay={reading?.play ?? false} onClose={() => setReading(null)} />}
+      {trip !== null && (
+        <DayPicker
+          doc={doc}
+          current=""
+          visible={inserting !== null}
+          onCancel={() => setInserting(null)}
+          onPick={(target) => {
+            const ref = inserting;
+            setInserting(null);
+            if (ref === null || target === null) return;
+            const edit = moveToDay(doc, ref, target);
+            if (edit === null) return;
+            setSelected(null);
+            void savePlanEdit(supabase as unknown as SupabaseClient, tripId, edit, trip.ids)
+              .then(() => refreshTrip(localDb, remote, tripId))
+              .then(setTrip, (e: unknown) => Alert.alert('Nie zapisano', `${e instanceof Error ? e.message : String(e)}\n\nZmiana planu wymaga połączenia z internetem.`));
+          }}
+        />
+      )}
     </View>
   );
 }

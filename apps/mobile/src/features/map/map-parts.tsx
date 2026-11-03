@@ -56,7 +56,10 @@ export function DayLines({ lines, id }: { lines: MapLine[]; id: string }) {
   });
 }
 
-/** Pinezki: numery kolejności dnia, baza noclegowa ⌂, wybrana — pomarańczowa. Dzieci `<Map>`. */
+/** Szara pinezka miejsca tylko z puli (poza dniami). */
+const POOL_PIN = '#8A94A3';
+
+/** Pinezki: numery kolejności dnia, baza noclegowa ⌂, pula — szara, wybrana — pomarańczowa. Dzieci `<Map>`. */
 export function PinMarkers({ pins, selected, onSelect, guided }: { pins: MapPin[]; selected: string | null; onSelect: (placeRef: string) => void; guided?: ReadonlySet<string> }) {
   const theme = useTheme();
   return pins.map((pin) => {
@@ -65,7 +68,13 @@ export function PinMarkers({ pins, selected, onSelect, guided }: { pins: MapPin[
       <Marker key={pin.placeRef} lngLat={[pin.lng, pin.lat]} anchor="center" onPress={() => onSelect(pin.placeRef)}>
         {/* Znaczek przewodnika w zapasie kontenera — Android przycina widoki wystające poza rodzica. */}
         <View style={guided?.has(pin.placeRef) ? styles.pinBox : undefined}>
-          <View style={[styles.pin, { backgroundColor: pin.placeRef === selected ? theme.primary : pin.base ? BASE : theme.accent }, label.length > 2 && styles.pinWide]}>
+          <View
+            style={[
+              styles.pin,
+              { backgroundColor: pin.placeRef === selected ? theme.primary : pin.base ? BASE : pin.stops.length === 0 && pin.pool ? POOL_PIN : theme.accent },
+              pin.stops.length === 0 && pin.pool && pin.placeRef !== selected && styles.poolPin,
+              label.length > 2 && styles.pinWide,
+            ]}>
             <ThemedText style={styles.pinText}>{label || (pin.base ? '⌂' : '•')}</ThemedText>
           </View>
           {guided?.has(pin.placeRef) && (
@@ -84,8 +93,11 @@ export const navigateTo = (pin: MapPin) => void Linking.openURL(`https://www.goo
 /** Przewodnik miejsca z karty pinezki: szczegóły albo od razu czytanie na głos. */
 export type PinGuide = { onRead: () => void; onListen: () => void };
 
-/** Karta wybranego miejsca: nazwa, punkty z godzinami, „Nawiguj” (Google Maps), przewodnik i „Zamknij”. */
-export function PinCard({ pin, times, onClose, small = false, guide }: { pin: MapPin; times: Map<string, string>; onClose: () => void; small?: boolean; guide?: PinGuide }) {
+/** Punkty puli w miejscu: szczegóły (opis, przewodnik) i — dla organizatora/edytora — „Wstaw do dnia…”. */
+export type PinPool = { onOpen: (ref: string) => void; onInsert?: (ref: string) => void };
+
+/** Karta wybranego miejsca: nazwa, punkty z godzinami, punkty z puli, „Nawiguj” (Google Maps), przewodnik i „Zamknij”. */
+export function PinCard({ pin, times, onClose, small = false, guide, pool }: { pin: MapPin; times: Map<string, string>; onClose: () => void; small?: boolean; guide?: PinGuide; pool?: PinPool }) {
   return (
     <View style={styles.block}>
       <ThemedText type="smallBold" style={small ? undefined : styles.title}>
@@ -97,6 +109,16 @@ export function PinCard({ pin, times, onClose, small = false, guide }: { pin: Ma
           {stop.n}. {times.get(stop.ref) ?? ''} {stop.title}
         </ThemedText>
       ))}
+      {pool &&
+        pin.pool?.map((each) => (
+          <View key={each.ref} style={styles.poolRow}>
+            <ThemedText type="small" style={styles.poolTitle}>
+              z puli: {each.title}
+            </ThemedText>
+            <Button label="Szczegóły" small onPress={() => pool.onOpen(each.ref)} />
+            {pool.onInsert && <Button label="Wstaw do dnia…" small variant="primary" onPress={() => pool.onInsert!(each.ref)} />}
+          </View>
+        ))}
       <View style={styles.row}>
         <Button label="Nawiguj" variant="primary" small={small} onPress={() => navigateTo(pin)} />
         {guide && <Button label="📖 Poczytaj" small={small} onPress={guide.onRead} />}
@@ -111,6 +133,9 @@ const styles = StyleSheet.create({
   transit: { position: 'absolute', left: Spacing.two, top: Spacing.two, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: 6, elevation: 3 },
   pin: { minWidth: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, elevation: 3 },
   pinWide: { paddingHorizontal: 7 },
+  poolPin: { minWidth: 20, height: 20, borderRadius: 10, opacity: 0.9 },
+  poolRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
+  poolTitle: { flexShrink: 1 },
   pinText: { color: '#FFFFFF', fontSize: 12, lineHeight: 16, fontWeight: 800 },
   pinBox: { paddingTop: 9, paddingRight: 11 },
   badge: { position: 'absolute', top: 0, right: 0, borderRadius: 9, paddingHorizontal: 1, elevation: 4 },
