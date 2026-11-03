@@ -404,22 +404,31 @@ export function rowsFromDocument(input: TripDocumentInput | Doc, tripId: string,
   return { trip: { id: tripId, ...toRow(doc.trip as Row, TRIP_FIELDS, ctx) }, tables };
 }
 
-/** Zdarzenia dnia → wejście silnika: opóźnienia, pominięcia, wybory wariantów. */
-export function scheduleInputs(events: ServerRow[], items: ServerRow[]): Required<Pick<ScheduleOptions, 'delays' | 'skipRefs' | 'activeVariants'>> {
+/**
+ * Zdarzenia dnia → wejście silnika: opóźnienia, pominięcia, „Zrobione”, wybory wariantów.
+ * Zdarzenia są tylko dopisywane, więc cofnięcie „Zrobione” to kolejne `done` z `payload.undo`.
+ */
+export function scheduleInputs(events: ServerRow[], items: ServerRow[]): Required<Pick<ScheduleOptions, 'delays' | 'skipRefs' | 'activeVariants' | 'done'>> {
   const refById = new Map(items.map((item) => [item.id, item.ref as string]));
   const ordered = events
     .filter(alive)
     .sort((a, b) => (a.occurred_at as string).localeCompare(b.occurred_at as string) || a.id.localeCompare(b.id));
-  const inputs = { delays: [] as { itemRef: string; minutes: number }[], skipRefs: [] as string[], activeVariants: {} as Record<string, string> };
+  const inputs = { delays: [] as { itemRef: string; minutes: number }[], skipRefs: [] as string[], activeVariants: {} as Record<string, string>, done: [] as { itemRef: string; at: number }[] };
+  const done = new Map<string, number>();
   for (const event of ordered) {
     const itemRef = refById.get(event.item_id as string);
-    const payload = (event.payload ?? {}) as { groupRef?: string; variantRef?: string };
+    const payload = (event.payload ?? {}) as { groupRef?: string; variantRef?: string; undo?: boolean };
     if (event.kind === 'delay' && itemRef !== undefined) inputs.delays.push({ itemRef, minutes: event.minutes as number });
     if (event.kind === 'skip' && itemRef !== undefined) inputs.skipRefs.push(itemRef);
+    if (event.kind === 'done' && itemRef !== undefined) {
+      if (payload.undo === true) done.delete(itemRef);
+      else done.set(itemRef, Date.parse(event.occurred_at as string));
+    }
     if (event.kind === 'choose_variant' && payload.groupRef && payload.variantRef) {
       inputs.activeVariants[payload.groupRef] = payload.variantRef;
     }
   }
+  inputs.done = [...done].map(([itemRef, at]) => ({ itemRef, at }));
   return inputs;
 }
 

@@ -1,4 +1,5 @@
 import { type DaySchedule, nowAndNext } from '@expeditionplan/core';
+import type { DayEvent } from '@expeditionplan/sync';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button as AppButton } from '@/components/button';
@@ -8,23 +9,24 @@ import { Spacing } from '@/constants/theme';
 
 /**
  * „Teraz / następny” na górze dzisiejszego dnia. Przyciski zapisują zdarzenia dnia (outbox, działa
- * offline) — tylko organizator i edytor; widz widzi samą kartę. „Cofnij” odwraca ostatnie opóźnienie.
+ * offline) — tylko organizator i edytor; widz widzi samą kartę. „Cofnij” odwraca ostatnie opóźnienie
+ * albo „Zrobione”.
  */
 
-export type DayEvent = { kind: 'delay'; minutes: number } | { kind: 'skip' };
+/** Ostatnie zdarzenie z tego ekranu, które da się cofnąć. */
+export type LastEvent = { itemRef: string; kind: 'delay'; minutes: number } | { itemRef: string; kind: 'done'; title: string };
 
 type Props = {
   schedule: DaySchedule;
   now: number;
   /** `null` = bez przycisków (widz, niezalogowany). */
   onEvent: ((itemRef: string, event: DayEvent) => void) | null;
-  /** Ostatnie opóźnienie z tego ekranu — do cofnięcia. */
-  lastDelay: { itemRef: string; minutes: number } | null;
+  lastEvent: LastEvent | null;
 };
 
 const duration = (value: number) => (value < 60 ? `${value} min` : `${Math.floor(value / 60)} h ${value % 60} min`);
 
-export function NowCard({ schedule, now, onEvent, lastDelay }: Props) {
+export function NowCard({ schedule, now, onEvent, lastEvent }: Props) {
   const { current, next, leftMin, untilNextMin } = nowAndNext(schedule, now);
   const skip = (itemRef: string, title: string) =>
     Alert.alert('Pominąć punkt?', `„${title}” wypadnie z dzisiejszego planu, a reszta dnia się przeliczy.`, [
@@ -54,6 +56,7 @@ export function NowCard({ schedule, now, onEvent, lastDelay }: Props) {
             <View style={styles.buttons}>
               <Action label="+15 min" onPress={() => onEvent(current.ref, { kind: 'delay', minutes: 15 })} />
               <Action label="+30 min" onPress={() => onEvent(current.ref, { kind: 'delay', minutes: 30 })} />
+              <Action label="✓ Zrobione" onPress={() => onEvent(current.ref, { kind: 'done' })} />
               <Action label="Pomiń" onPress={() => skip(current.ref, current.title)} />
             </View>
           )}
@@ -72,9 +75,11 @@ export function NowCard({ schedule, now, onEvent, lastDelay }: Props) {
           )}
         </View>
       )}
-      {onEvent && lastDelay && (
-        <Pressable onPress={() => onEvent(lastDelay.itemRef, { kind: 'delay', minutes: -lastDelay.minutes })} hitSlop={8}>
-          <ThemedText type="linkPrimary">Cofnij +{lastDelay.minutes} min</ThemedText>
+      {onEvent && lastEvent && (
+        <Pressable
+          onPress={() => onEvent(lastEvent.itemRef, lastEvent.kind === 'delay' ? { kind: 'delay', minutes: -lastEvent.minutes } : { kind: 'done', undo: true })}
+          hitSlop={8}>
+          <ThemedText type="linkPrimary">{lastEvent.kind === 'delay' ? `Cofnij +${lastEvent.minutes} min` : `Cofnij „Zrobione” (${lastEvent.title})`}</ThemedText>
         </Pressable>
       )}
     </ThemedView>

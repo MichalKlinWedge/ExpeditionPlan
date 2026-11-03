@@ -41,4 +41,20 @@ describe('teraz / następny', () => {
     expect(after.leftMin).toBe(before.leftMin! + 30);
     expect(after.next!.start).toBeGreaterThanOrEqual(before.next!.start);
   });
+
+  it('„Zrobione” kończy punkt w chwili odhaczenia — przed czasem i po czasie', () => {
+    const at = lasting.start + 5 * 60_000;
+    const early = scheduleDay(doc, day.ref, { done: [{ itemRef: lasting.ref, at }] });
+    const item = early.items.find((each) => each.ref === lasting.ref)!;
+    expect(item).toMatchObject({ end: at, durationMin: 5, done: true });
+    expect(nowAndNext(early, at).current?.ref).not.toBe(lasting.ref);
+
+    const late = scheduleDay(doc, day.ref, { done: [{ itemRef: lasting.ref, at: lasting.end + 20 * 60_000 }] });
+    const index = schedule.items.findIndex((each) => each.ref === lasting.ref);
+    expect(late.items[index]!.end).toBe(lasting.end + 20 * 60_000);
+    expect(late.items[index + 1]!.start).toBeGreaterThanOrEqual(schedule.items[index + 1]!.start);
+
+    const ahead = scheduleDay(doc, day.ref, { done: [{ itemRef: lasting.ref, at: lasting.start - 60 * 60_000 }] });
+    expect(ahead.items[index]).toMatchObject({ durationMin: 0, done: true });
+  });
 });

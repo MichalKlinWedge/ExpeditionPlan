@@ -43,16 +43,34 @@ export function cachedTrip(db: LocalDb, tripId: string): CachedTrip | null {
   };
 }
 
+export type DayEvent = { kind: 'delay'; minutes: number } | { kind: 'skip' } | { kind: 'done'; undo?: boolean };
+
 /**
- * „Zostajemy dłużej” (`minutes`) albo „Pomiń” — zdarzenie dnia do outboxa (działa offline),
- * a plan od razu liczy się z nim, bo `stateFromLocal` czyta też wiersze czekające na wysyłkę.
- * Cofnięcie opóźnienia to kolejne zdarzenie z ujemnymi minutami (zdarzenia są tylko dopisywane).
+ * „Zostajemy dłużej” (`minutes`), „Pomiń” albo „Zrobione” — zdarzenie dnia do outboxa (działa
+ * offline), a plan od razu liczy się z nim, bo `stateFromLocal` czyta też wiersze czekające na
+ * wysyłkę. Zdarzenia są tylko dopisywane: cofnięcie opóźnienia to kolejne z ujemnymi minutami,
+ * cofnięcie „Zrobione” — kolejne `done` z `undo`.
  */
-export function recordDayEvent(db: LocalDb, tripId: string, cached: CachedTrip, dayRef: string, itemRef: string, event: { kind: 'delay'; minutes: number } | { kind: 'skip' }): void {
+export function recordDayEvent(db: LocalDb, tripId: string, cached: CachedTrip, dayRef: string, itemRef: string, event: DayEvent): void {
   const dayId = cached.ids[dayRef];
   const itemId = cached.ids[itemRef];
   if (dayId === undefined || itemId === undefined) throw new Error(`Brak id dla „${itemRef}” w bazie telefonu`);
-  recordEvent(db, { tripId, dayId, itemId, kind: event.kind, minutes: event.kind === 'delay' ? event.minutes : null });
+  recordEvent(db, {
+    tripId,
+    dayId,
+    itemId,
+    kind: event.kind,
+    minutes: event.kind === 'delay' ? event.minutes : null,
+    payload: event.kind === 'done' && event.undo === true ? { undo: true } : {},
+  });
+}
+
+/** „Wybierz wariant” w terenie — zdarzenie dnia (outbox), widoczne potem na webie i u innych. */
+export function recordVariantChoice(db: LocalDb, tripId: string, cached: CachedTrip, groupRef: string, variantRef: string): void {
+  const group = cached.state.doc.variantGroups.find((each) => each.ref === groupRef);
+  if (group === undefined) throw new Error(`Brak grupy wariantów „${groupRef}”`);
+  const dayId = group.dayRef === undefined ? null : (cached.ids[group.dayRef] ?? null);
+  recordEvent(db, { tripId, dayId, kind: 'choose_variant', payload: { groupRef, variantRef } });
 }
 
 /** `rejected` — zapisy z telefonu, których serwer nie przyjął (już wycofane z bazy telefonu). */

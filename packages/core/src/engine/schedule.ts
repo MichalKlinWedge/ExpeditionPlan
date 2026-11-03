@@ -29,6 +29,8 @@ export type ScheduleOptions = {
   delays?: { itemRef: string; minutes: number }[];
   /** Punkty wyłączone z wyliczeń (cięcia, „Pomiń”). */
   skipRefs?: string[];
+  /** „Zrobione” z terenu: punkt kończy się w tej chwili (UTC ms), reszta dnia liczy się od niej. */
+  done?: { itemRef: string; at: number }[];
   /** Współrzędne dla słońca, gdy baza dnia ich nie ma. */
   coordinates?: { lat: number; lng: number };
   /** Czy dzień jest świętem w kraju celu (Nager.Date) — dla `PH` w godzinach otwarcia. Brak = nie wiadomo. */
@@ -50,6 +52,8 @@ export type ScheduledItem = {
   /** O ile minut punkt startuje później, niż mówi plan. */
   driftMin: number;
   durationMin: number;
+  /** Odhaczony w terenie („Zrobione”) — koniec to chwila odhaczenia. */
+  done?: true;
 };
 
 export type WarningKind =
@@ -216,6 +220,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
 
   const delays = new Map<string, number>();
   for (const delay of options.delays ?? []) delays.set(delay.itemRef, (delays.get(delay.itemRef) ?? 0) + delay.minutes);
+  const doneAt = new Map((options.done ?? []).map((each) => [each.itemRef, each.at]));
 
   const legsFrom = new Map(doc.legs.map((leg) => [`${leg.fromRef}>${leg.toRef}`, leg]));
   const places = new Map(doc.places.map((place) => [place.ref, place]));
@@ -299,8 +304,10 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
       if (stated !== undefined) start = Math.max(laneCursor, stated);
     }
 
-    const durationMin = durationOf(item, scenario) + (delays.get(item.ref) ?? 0);
-    const end = start + durationMin * MINUTE;
+    const finished = doneAt.get(item.ref);
+    // „Zrobione” przed planowanym startem (odhaczone z wyprzedzeniem) = punkt bez czasu trwania.
+    const end = finished === undefined ? start + (durationOf(item, scenario) + (delays.get(item.ref) ?? 0)) * MINUTE : Math.max(start, finished);
+    const durationMin = Math.round((end - start) / MINUTE);
     const scheduled: ScheduledItem = {
       ref: item.ref,
       title: item.title,
@@ -314,6 +321,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
       durationMin,
     };
     if (stated !== undefined) scheduled.statedLocal = local(stated).time;
+    if (finished !== undefined) scheduled.done = true;
     result.push(scheduled);
 
     // Spóźnienie względem planu: przy stałej godzinie zawsze twarde, przy przybliżonej — ponad tolerancję.

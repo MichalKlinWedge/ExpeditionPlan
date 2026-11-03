@@ -29,7 +29,9 @@ import {
 import {
   type CachedTrip,
   cachedTrip,
+  type DayEvent,
   recordDayEvent,
+  recordVariantChoice,
   refreshTrip,
   savePlanEdit,
   serialPuller,
@@ -51,7 +53,7 @@ import { Spacing } from '@/constants/theme';
 import { DayMap } from '@/features/plan/day-map';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
-import { type DayEvent, NowCard } from '@/features/plan/now-card';
+import { type LastEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
 import { JournalView } from '@/features/trip/journal-view';
 import { scheduleTripReminders } from '@/features/trip/reminders';
@@ -138,7 +140,7 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'journal' | 'info'>('plan');
   const [trip, setTrip] = useState<CachedTrip | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const [lastDelay, setLastDelay] = useState<{ itemRef: string; minutes: number } | null>(null);
+  const [lastEvent, setLastEvent] = useState<LastEvent | null>(null);
   const [editMode, setEditMode] = useState(false);
   /** Punkt otwarty w szczegółach (opis, przewodnik). */
   const [detail, setDetail] = useState<PlanItem | null>(null);
@@ -279,8 +281,34 @@ ${fresh.rejected[0]!.error}`);
     if (trip === null) return;
     try {
       recordDayEvent(localDb, tripId, trip, dayRef, itemRef, event);
-      setLastDelay(event.kind === 'delay' && event.minutes > 0 ? { itemRef, minutes: event.minutes } : null);
+      const title = trip.state.doc.items.find((each) => each.ref === itemRef)?.title ?? '';
+      setLastEvent(
+        event.kind === 'delay' && event.minutes > 0
+          ? { itemRef, kind: 'delay', minutes: event.minutes }
+          : event.kind === 'done' && event.undo !== true
+            ? { itemRef, kind: 'done', title }
+            : null,
+      );
       setNow(Date.now());
+      afterLocalWrite();
+    } catch (e) {
+      Alert.alert('Nie zapisano', message(e));
+    }
+  };
+
+  /**
+   * „Wybierz wariant”: organizator i edytor zapisują wybór jako zdarzenie dnia (outbox — widać go
+   * na webie i u innych, a przypomnienie o decyzji znika); widz i niezalogowany tylko podglądają.
+   */
+  const choose = (groupRef: string, variantRef: string) => {
+    if (trip === null) return;
+    if (!signedIn || !canAct) {
+      setOverrides((current) => ({ ...current, [groupRef]: variantRef }));
+      return;
+    }
+    try {
+      recordVariantChoice(localDb, tripId, trip, groupRef, variantRef);
+      setOverrides(({ [groupRef]: _, ...rest }) => rest);
       afterLocalWrite();
     } catch (e) {
       Alert.alert('Nie zapisano', message(e));
@@ -393,7 +421,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               dayRef={day.ref}
               scenario={scenario}
               variants={variants}
-              onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
+              onChoose={choose}
               actions={actions}
               weather={weather?.days[day.ref]}
               weatherAt={weather?.fetchedAt}
@@ -413,7 +441,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                       <NowCard
                         schedule={schedule}
                         now={now}
-                        lastDelay={lastDelay}
+                        lastEvent={lastEvent}
                         onEvent={signedIn && canAct ? (itemRef, event) => record(day.ref, itemRef, event) : null}
                       />
                     )
@@ -492,7 +520,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
   const [moving, setMoving] = useState<string | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const day = doc.days.find((each) => each.ref === dayRef)!;
-  const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs };
+  const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done };
   let schedule: DaySchedule | null = null;
   let failure: string | null = null;
   try {
@@ -592,6 +620,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
             <ThemedText style={[styles.time, { color: theme.text }]}>
               {item.startLocal}–{item.endLocal}
               {item.endDate !== day.date ? ' +1' : ''}
+              {item.done ? '  ✓ zrobione' : ''}
             </ThemedText>
             <Pressable disabled={source === undefined || onOpen === undefined} onPress={() => source && onOpen?.(source)} hitSlop={4}>
               <ThemedText type="smallBold" style={styles.itemTitle}>

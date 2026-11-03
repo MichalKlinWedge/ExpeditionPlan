@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { rowsFromDocument } from '../document.ts';
 import type { Remote, ServerRow, TripRow } from '../remote.ts';
 import { saveExpense, setPacked } from '../outbox.ts';
-import { cachedTrip, forgetLocal, forgetTrip, pruneLocal, recordDayEvent, refreshTrip } from '../trip-cache.ts';
+import { cachedTrip, forgetLocal, forgetTrip, pruneLocal, recordDayEvent, recordVariantChoice, refreshTrip } from '../trip-cache.ts';
 import { stableUuid, uuidv7 } from '../uuid.ts';
 import { nodeDb } from './helpers/node-db.ts';
 
@@ -113,6 +113,26 @@ describe('plan offline na telefonie', () => {
 
     recordDayEvent(db, TRIP, after, 'd2', item.ref, { kind: 'delay', minutes: -30 });
     expect(cachedTrip(db, TRIP)!.state.inputs.delays.reduce((sum, each) => sum + each.minutes, 0)).toBe(0);
+  });
+
+  it('„Zrobione” (z cofnięciem) i wybór wariantu offline: od razu w stanie, czekają w outboxie', async () => {
+    const db = nodeDb();
+    const server = planServer('maroko');
+    await refreshTrip(db, server.remote, TRIP);
+    server.setOffline(true);
+    const before = cachedTrip(db, TRIP)!;
+    const group = before.state.doc.variantGroups.find((each) => each.dayRef !== undefined)!;
+    const variant = before.state.doc.variants.filter((each) => each.groupRef === group.ref).at(-1)!;
+
+    recordDayEvent(db, TRIP, before, 'd2', 'd2-bahia', { kind: 'done' });
+    recordVariantChoice(db, TRIP, before, group.ref, variant.ref);
+    const after = cachedTrip(db, TRIP)!;
+    expect(after.state.inputs.done.map((each) => each.itemRef)).toEqual(['d2-bahia']);
+    expect(after.state.inputs.activeVariants).toEqual({ [group.ref]: variant.ref });
+    expect(after.pending).toBe(2);
+
+    recordDayEvent(db, TRIP, after, 'd2', 'd2-bahia', { kind: 'done', undo: true });
+    expect(cachedTrip(db, TRIP)!.state.inputs.done).toEqual([]);
   });
 
   it('portfel i pakowanie offline: wydatek i odhaczenie od razu w stanie, ta sama para = ten sam wiersz', async () => {
