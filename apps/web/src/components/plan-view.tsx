@@ -11,6 +11,9 @@ import {
   documentProblem as problem,
   dropItem,
   type DaySchedule,
+  fieldLog,
+  type FieldLog,
+  hasFieldLog,
   instantToZoned,
   flightLine,
   flightOf,
@@ -414,6 +417,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
               weather={weather[mapDay.ref]}
               itemBase={itemBase}
               guided={guided}
+              field={fieldLog(doc, mapDay.ref, inputs)}
+              fieldVariants={inputs.activeVariants}
             />
           )}
           {Object.keys(weather).length > 0 && <p className="text-xs text-zinc-500">{WEATHER_ATTRIBUTION}</p>}
@@ -800,6 +805,10 @@ type DayProps = {
   onSelect: (ref: string) => void;
   itemBase?: string;
   guided?: string[];
+  /** Przebieg dnia z telefonu (`schedule_events`): opóźnienia, pominięcia, „zrobione”, pula, warianty. */
+  field: FieldLog;
+  /** Warianty wybrane na telefonie (groupRef → variantRef). */
+  fieldVariants: Record<string, string>;
 };
 
 /** Kolor kropki na osi dnia według rodzaju punktu. */
@@ -815,7 +824,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided, field, fieldVariants }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -880,7 +889,9 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
 
       {day.summary && <p className="text-sm text-zinc-600 dark:text-zinc-400">{day.summary}</p>}
 
-      <DayVariants doc={doc} dayRef={dayRef} active={active} onChoose={onChoose} onRules={onRules} />
+      {hasFieldLog(field) && <FieldSummary field={field} tz={day.tz} />}
+
+      <DayVariants doc={doc} dayRef={dayRef} active={active} onChoose={onChoose} onRules={onRules} field={fieldVariants} />
 
       {failure && <p className="text-sm text-red-600">Nie udało się policzyć dnia: {failure}</p>}
 
@@ -959,7 +970,23 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ""}
                     </span>
                     {options?.pulled?.some((each) => each.itemRef === item.ref) && <span title="Wstawione z puli w terenie („Z puli w pobliżu” na telefonie)" className="ml-2 rounded bg-sky-100 px-1 text-xs text-sky-900 dark:bg-sky-950 dark:text-sky-200">z puli · w terenie</span>}
-                    {item.done && <span title="Odhaczone w terenie na telefonie" className="ml-2 rounded bg-emerald-100 px-1 text-xs text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">✓ zrobione</span>}
+                    {(() => {
+                      const delay = field.delays.find((each) => each.itemRef === item.ref);
+                      return delay ? (
+                        <span title="„Zostajemy dłużej” w terenie na telefonie" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                          {delay.minutes > 0 ? "+" : ""}
+                          {delay.minutes} min · w terenie
+                        </span>
+                      ) : null;
+                    })()}
+                    {item.done && (
+                      <span title="Odhaczone w terenie na telefonie" className="ml-2 rounded bg-emerald-100 px-1 text-xs text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+                        ✓ zrobione{(() => {
+                          const at = field.done.find((each) => each.itemRef === item.ref)?.at;
+                          return at === undefined ? "" : ` ${hm(at, day.tz)}`;
+                        })()}
+                      </span>
+                    )}
                     {offMap && (
                       <span title="Miejsce bez współrzędnych — nie ma go na mapie i nie policzy się do niego trasy" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
                         brak na mapie
@@ -1073,5 +1100,31 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
 
       <DayNotes doc={doc} dayRef={dayRef} onRules={onRules} />
     </section>
+  );
+}
+
+/**
+ * „W terenie” — co grupa zgłosiła z telefonu w tym dniu (po synchronizacji): wybrane warianty,
+ * pominięte punkty (silnik ich już nie liczy, więc nie ma ich na osi), opóźnienia, „zrobione”
+ * i punkty z puli. Godziny na osi są już przeliczone z tymi zdarzeniami, jak na telefonie.
+ */
+function FieldSummary({ field, tz }: { field: FieldLog; tz: string }) {
+  const lines = [
+    ...field.variants.map((each) => `${each.group}: wybrano „${each.variant}”`),
+    field.skipped.length > 0 ? `pominięte: ${field.skipped.map((each) => each.title).join(", ")}` : null,
+    field.delays.length > 0 ? `zostali dłużej: ${field.delays.map((each) => `${each.title} (${each.minutes > 0 ? "+" : ""}${each.minutes} min)`).join(", ")}` : null,
+    field.done.length > 0 ? `zrobione: ${[...field.done].sort((a, b) => a.at - b.at).map((each) => `${each.title} (${hm(each.at, tz)})`).join(", ")}` : null,
+    field.pulled.length > 0 ? `z puli: ${field.pulled.map((each) => each.title).join(", ")}` : null,
+  ].filter((line) => line !== null);
+  return (
+    <div className="rounded-xl border border-sea/40 bg-sea/5 px-3 py-2 text-sm">
+      <p className="font-semibold text-sea dark:text-teal-300">📱 W terenie (z telefonu)</p>
+      <ul className="ml-4 list-disc text-zinc-700 dark:text-zinc-300">
+        {lines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      <p className="mt-1 text-xs text-zinc-500">Godziny w planie dnia są już przeliczone z tymi zmianami.</p>
+    </div>
   );
 }

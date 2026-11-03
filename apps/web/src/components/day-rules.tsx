@@ -67,9 +67,11 @@ type VariantsProps = {
   active: Set<string>;
   onChoose: (groupRef: string, variantRef: string) => void;
   onRules: OnRules | null;
+  /** Warianty wybrane w terenie na telefonie (groupRef → variantRef). */
+  field?: Record<string, string>;
 };
 
-export function DayVariants({ doc, dayRef, active, onChoose, onRules }: VariantsProps) {
+export function DayVariants({ doc, dayRef, active, onChoose, onRules, field }: VariantsProps) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const groups = dayVariantGroups(doc, dayRef);
@@ -82,6 +84,7 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules }: Variants
           CONDITION[group.conditionKind] + (group.conditionText ? `: ${group.conditionText}` : ""),
           group.decideBy ? `decyzja do ${deadline(group.decideBy)}` : null,
           chosen ? `wybrano: ${chosen.label}` : "bez decyzji",
+          field?.[group.ref] ? `w terenie: ${variants.find((variant) => variant.ref === field[group.ref])?.label ?? "?"}` : null,
         ].filter((each) => each !== null);
         return (
           <div key={group.ref} className="flex flex-col gap-1">
