@@ -426,7 +426,24 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                       <li key={item.ref} id={`item-${item.ref}`} className={`flex items-center gap-1 rounded ${selected === item.ref ? "bg-signal/10" : ""}`}>
                         {dnd ? <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} /> : <span aria-hidden="true">•</span>}
                         <span>
-                          {item.title} <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
+                          {itemBase ? (
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Szczegóły i przewodnik" className="hover:text-sea hover:underline">
+                              {item.title}
+                            </Link>
+                          ) : (
+                            item.title
+                          )}{" "}
+                          <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
+                          {itemBase && guided?.includes(item.ref) && (
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
+                              📖 opis
+                            </Link>
+                          )}
+                          {itemBase && canEdit && !guided?.includes(item.ref) && (
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="ml-1.5 text-xs text-sea underline dark:text-teal-300">
+                              opis AI
+                            </Link>
+                          )}
                           {item.priority === "must" && <span className="text-zinc-500"> · koniecznie</span>}
                           {missingOnMap(doc, item) && <span className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">brak na mapie</span>}
                           {canEdit && missingOnMap(doc, item) && item.placeRef && (

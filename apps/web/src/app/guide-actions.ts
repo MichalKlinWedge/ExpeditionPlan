@@ -46,6 +46,17 @@ const placeOf = (doc: Doc, item: Item) => {
   return { ref, place: ref === undefined ? undefined : doc.places.find((each) => each.ref === ref) };
 };
 
+/** Środek miejsc ze współrzędnymi wśród punktów z danego obszaru puli (`area`); brak — `undefined`. */
+function areaCenter(doc: Doc, area: string | undefined): { lat: number; lng: number } | undefined {
+  if (area === undefined) return undefined;
+  const points = doc.items
+    .filter((each) => each.area === area)
+    .map((each) => doc.places.find((place) => place.ref === (each.leg?.toPlaceRef ?? each.placeRef)))
+    .filter((place) => place?.lat !== undefined && place.lng !== undefined) as { lat: number; lng: number }[];
+  if (points.length === 0) return undefined;
+  return { lat: points.reduce((sum, each) => sum + each.lat, 0) / points.length, lng: points.reduce((sum, each) => sum + each.lng, 0) / points.length };
+}
+
 /**
  * Jeden opis: `null` = gotowy, inaczej powód (brak artykułu, błąd). Ze wskazówką (`hint`) opis
  * dotyczy punktu, nie miejsca („Autostradą A7” — opłaty na A7, nie parking na końcu): tytuł z punktu,
@@ -55,10 +66,11 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
   const { ref: found, place } = placeOf(doc, item);
   const placeRef = hint ? undefined : found;
   const name = hint ? item.title : (place?.name ?? item.title);
-  // Okolica dla miejsc bez współrzędnych: baza dnia (nocleg), a gdy jej brak — miasto obszaru puli.
+  // Okolica dla miejsc bez współrzędnych: baza dnia (nocleg), a gdy jej brak (punkt z puli) — środek
+  // miejsc innych punktów z tego samego obszaru puli („Essaouira”).
   const day = doc.days.find((each) => each.ref === item.dayRef);
   const base = day?.baseRef === undefined ? undefined : doc.places.find((each) => each.ref === day.baseRef);
-  const near = base?.lat !== undefined && base.lng !== undefined ? { lat: base.lat, lng: base.lng } : undefined;
+  const near = base?.lat !== undefined && base.lng !== undefined ? { lat: base.lat, lng: base.lng } : areaCenter(doc, item.area);
   let content;
   try {
     content = await describePlace(
