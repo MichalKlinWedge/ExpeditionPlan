@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { SamplesButton } from "@/components/forms";
 import { PeakIcon, PlusIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -40,7 +39,7 @@ async function TripList() {
         <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center">
           <PeakIcon className="size-10 text-sea" />
           <p className="max-w-md text-zinc-600 dark:text-zinc-400">
-            {canCreateTrips ? "Nie masz jeszcze wyjazdów — zacznij od nowego albo dodaj przykładowe." : "Nie masz jeszcze dostępu do żadnego wyjazdu. Poproś organizatora o link zaproszenia i otwórz go, będąc zalogowanym."}
+            {canCreateTrips ? "Nie masz jeszcze wyjazdów — zacznij od nowego." : "Nie masz jeszcze dostępu do żadnego wyjazdu. Poproś organizatora o link zaproszenia i otwórz go, będąc zalogowanym."}
           </p>
         </div>
       ) : (
@@ -65,7 +64,6 @@ async function TripList() {
           })}
         </ul>
       )}
-      {canCreateTrips && <SamplesButton />}
     </>
   );
 }
