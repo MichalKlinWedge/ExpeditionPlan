@@ -49,7 +49,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayMap } from '@/features/plan/day-map';
-import { ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
+import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { type DayEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
@@ -142,6 +142,8 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const [editMode, setEditMode] = useState(false);
   /** Punkt otwarty w szczegółach (opis, przewodnik). */
   const [detail, setDetail] = useState<PlanItem | null>(null);
+  /** Szczegóły otwarte „Posłuchaj” z mapy dnia — od razu czytanie na głos. */
+  const [detailPlay, setDetailPlay] = useState(false);
   const [saving, setSaving] = useState(0);
   /** Id nowych punktów, zanim synchronizacja wpisze je do bazy telefonu. */
   const extraIds = useRef<Record<string, string>>({});
@@ -395,7 +397,15 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               actions={actions}
               weather={weather?.days[day.ref]}
               weatherAt={weather?.fetchedAt}
-              onOpen={setDetail}
+              onOpen={(item) => {
+                setDetailPlay(false);
+                setDetail(item);
+              }}
+              guides={trip === null ? undefined : guidedPlaces(trip)}
+              onGuide={(item, play) => {
+                setDetailPlay(play);
+                setDetail(item);
+              }}
               guided={trip === null ? undefined : new Set(trip.state.doc.items.filter((each) => itemGuide(trip, each) !== null).map((each) => each.ref))}
               top={
                 instantToZoned(now, day.tz).date === day.date
@@ -425,7 +435,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           </ScrollView>
         </>
       )}
-      {trip !== null && <ItemDetails trip={trip} item={detail} onClose={() => setDetail(null)} />}
+      {trip !== null && <ItemDetails trip={trip} item={detail} autoPlay={detailPlay} onClose={() => setDetail(null)} />}
     </View>
   );
 }
@@ -447,6 +457,9 @@ type DayProps = {
   onOpen?: (item: PlanItem) => void;
   /** Punkty z przewodnikiem — znaczek 📖. */
   guided?: Set<string>;
+  /** Miejsca z przewodnikiem do mapy dnia i „Poczytaj / Posłuchaj” z karty pinezki. */
+  guides?: Map<string, PlanItem>;
+  onGuide?: (item: PlanItem, play: boolean) => void;
 };
 
 type Actions = {
@@ -472,7 +485,7 @@ const KIND_COLOR: Record<string, string> = {
   decision: '#F59E0B',
 };
 
-function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt, onOpen, guided }: DayProps) {
+function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt, onOpen, guided, guides, onGuide }: DayProps) {
   const theme = useTheme();
   const { doc, inputs } = state;
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
@@ -684,7 +697,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
 
       {schedule && <Warnings list={schedule.warnings.filter((warning) => warning.itemRef === undefined)} />}
 
-      {schedule && <DayMap doc={doc} dayRef={dayRef} schedule={schedule} />}
+      {schedule && <DayMap doc={doc} dayRef={dayRef} schedule={schedule} guides={guides} onGuide={onGuide} />}
 
       {cuts.length > 0 && (
         <View style={styles.group}>
