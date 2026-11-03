@@ -1,5 +1,5 @@
-import { dayItems, flightLine, flightOf, instantToZoned, itemIcon, legLabel, scheduleDay, type TripDocument } from "@expeditionplan/core";
-import { stateFromPayload } from "@expeditionplan/sync";
+import { dayItems, flightLine, flightOf, type GuideRow, guideFor, instantToZoned, itemIcon, legLabel, scheduleDay, type TripDocument } from "@expeditionplan/core";
+import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -11,7 +11,8 @@ import { BOOKING_KIND, tripDates } from "@/lib/labels";
 
 /**
  * Plan do druku / PDF (zapas na papierze): kontakty, rezerwacje i dni z godzinami z silnika
- * (scenariusz optymistyczny, warianty i zdarzenia jak w planie). Jasna kartka niezależnie od motywu;
+ * (scenariusz optymistyczny, warianty i zdarzenia jak w planie), pod opisanymi punktami skrót
+ * przewodnika (opis i trzy ciekawostki, raz na miejsce). Jasna kartka niezależnie od motywu;
  * przy druku znikają przyciski.
  */
 
@@ -49,7 +50,12 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
   const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
   if (error) return <p className="p-6 text-sm text-red-600">{error.message}</p>;
   if (data === null) notFound();
-  const { doc, inputs } = stateFromPayload(data as Parameters<typeof stateFromPayload>[0]);
+  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const { doc, inputs } = stateFromPayload(payload);
+  const ids = refIndex(payload.tables);
+  const guides = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
+  /** Miejsca, których przewodnik już jest na kartce — drugi punkt w tym samym miejscu go nie powtarza. */
+  const printed = new Set<string>();
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const items = new Map(doc.items.map((item) => [item.ref, item]));
   const options = { scenario: "optimistic" as const, activeVariants: inputs.activeVariants, delays: inputs.delays, skipRefs: inputs.skipRefs };
@@ -142,6 +148,9 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
                   const leg = item === undefined ? null : legLabel(item);
                   const flight = item === undefined ? undefined : flightOf(doc, item);
                   const extra = [place, leg, flight ? flightLine(flight) : undefined].filter(Boolean).join(" · ");
+                  const guideKey = item?.leg?.toPlaceRef ?? item?.placeRef ?? item?.ref;
+                  const guide = item === undefined || guideKey === undefined || printed.has(guideKey) ? null : guideFor(guides, ids[item.ref], ids[guideKey]);
+                  if (guide !== null && guideKey !== undefined) printed.add(guideKey);
                   return (
                     <tr key={row.ref} className="break-inside-avoid border-b border-zinc-100 align-top">
                       <td className="w-24 py-0.5 pr-2 font-mono whitespace-nowrap">{row.startLocal ? `${row.startLocal}–${row.endLocal}` : ""}</td>
@@ -149,6 +158,18 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
                       <td className="py-0.5">
                         <strong className="font-semibold">{row.title}</strong>
                         {extra && <span className="text-zinc-600"> · {extra}</span>}
+                        {guide && (
+                          <div className="mt-0.5 mb-1 border-l-2 border-zinc-300 pl-2 text-xs text-zinc-700">
+                            <p>{guide.summary}</p>
+                            {guide.facts.length > 0 && (
+                              <ul className="ml-4 list-disc">
+                                {guide.facts.slice(0, 3).map((fact) => (
+                                  <li key={fact}>{fact}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -159,7 +180,10 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
         );
       })}
 
-      <footer className="border-t border-zinc-300 pt-2 text-xs text-zinc-500">Godziny orientacyjne (scenariusz optymistyczny) · Expedition Planner</footer>
+      <footer className="border-t border-zinc-300 pt-2 text-xs text-zinc-500">
+        Godziny orientacyjne (scenariusz optymistyczny)
+        {printed.size > 0 ? " · Opisy miejsc: streszczenia AI artykułów z Wikipedii (CC BY-SA 4.0)" : ""} · Expedition Planner
+      </footer>
     </article>
   );
 }

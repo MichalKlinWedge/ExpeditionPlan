@@ -430,6 +430,12 @@ Schemat w migracjach `supabase/migrations/*_mvp1_*.sql` realizuje tabele powyże
 - **Zaproszenia:** `create_invite` (tylko właściciel, token zwracany raz) i `accept_invite` (członek zostaje ze swoją rolą). Typy bazy: `packages/db` (`npm run gen --workspace packages/db`).
 - Klucz obcy nie sprawdza, że wskazany wiersz należy do tego samego wyjazdu — edytor nie odczyta cudzego wiersza (RLS), a dokument z takim odwołaniem nie przejdzie walidacji `checkReferences`. Do rozważenia przy edytorze (MVP-3): klucze złożone `(trip_id, id)`.
 
+### Dodane po MVP-1 (listopad 2026)
+
+- **`journal_entries`** — dziennik z trasy (wpis i zdjęcie przy dniu albo punkcie), tabela „trasy” jak `expenses`: zapis z telefonu przez outbox, dodaje każdy uczestnik (także widz), poprawia autor albo organizator i edytor. Zdjęcia w prywatnym buckecie `journal` (`<trip_id>/<entry_id>/<plik>`, do 15 MB), odczyt dla uczestników wyjazdu.
+- **`audio_guides.content jsonb`** — treść przewodnika jako dane (`GuideContent`: opis, ciekawostki, historia, wskazówki, zdjęcia z Commons z licencją, artykuł źródłowy); `text` zostaje do czytania na głos. Jeden przewodnik na miejsce. Źródło wyłącznie Wikipedia (bez pewnego dopasowania artykułu nie ma opisu); licencja CC BY-SA 4.0 (`docs/USLUGI.md` §12).
+- **`items.self_cooked`** — posiłek przygotowywany przez grupę (porcje i zakupy). Lista zakupów to pozycje `packing_items` w kategorii `zakupy`, bez osobnej tabeli.
+
 ### Uprawnienia (RLS)
 
 | Zasób | owner | editor | viewer | link publiczny |
