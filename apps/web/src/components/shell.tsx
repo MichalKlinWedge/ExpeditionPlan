@@ -6,7 +6,7 @@ import { RememberDetails } from "./remember-details";
 import { TripNav } from "./trip-nav";
 import { UserMenu } from "./user-menu";
 
-/** Wspólna rama stron: granatowy pasek z poziomicami (nazwa aplikacji, użytkownik) i treść. `wide` — plan z mapą obok. */
+/** Wspólna rama stron: granatowy pasek z poziomicami (nazwa aplikacji, „Pomoc”, użytkownik) i treść. `wide` — plan z mapą obok. */
 export function Shell({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   const width = wide ? "max-w-6xl" : "max-w-3xl";
   return (
@@ -22,9 +22,14 @@ export function Shell({ children, wide = false }: { children: React.ReactNode; w
               <span className="text-xs text-zinc-300">Planner Hub</span>
             </span>
           </Link>
-          <Suspense fallback={null}>
-            <UserMenu />
-          </Suspense>
+          <span className="flex items-center gap-3">
+            <Link href="/help" className="text-sm text-zinc-300 underline-offset-2 hover:text-white hover:underline">
+              Pomoc
+            </Link>
+            <Suspense fallback={null}>
+              <UserMenu />
+            </Suspense>
+          </span>
         </div>
       </header>
       {/* Adres (`useParams`) jest znany dopiero w czasie żądania — pasek dochodzi strumieniem. */}

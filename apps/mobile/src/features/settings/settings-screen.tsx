@@ -8,12 +8,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/session';
+import { openHelp } from '@/features/home/intro';
 import { disableReminders, enableReminders, remindersEnabled } from '@/features/trip/reminders';
 import { UpdateCard } from '@/features/updates/update-notice';
 import { supabase } from '@/lib/supabase';
 
-/** Ustawienia (zębatka na Start): konto, przypomnienia z planu i wersja aplikacji z ręcznym sprawdzeniem aktualizacji. */
-export function SettingsScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+/** Ustawienia (zębatka na Start): konto, przypomnienia z planu, „Jak korzystać” i wersja aplikacji z ręcznym sprawdzeniem aktualizacji. */
+export function SettingsScreen({ visible, onClose, onIntro }: { visible: boolean; onClose: () => void; onIntro: () => void }) {
   const session = useSession();
   const [name, setName] = useState<string | null>(null);
   const [reminders, setReminders] = useState(remindersEnabled);
@@ -93,6 +94,13 @@ export function SettingsScreen({ visible, onClose }: { visible: boolean; onClose
                     {reminderInfo}
                   </ThemedText>
                 )}
+              </ThemedView>
+
+              <ThemedText type="smallBold">Jak korzystać</ThemedText>
+              <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedText type="small">Krótkie wprowadzenie do zakładek albo pełna instrukcja (planowanie na webie, telefon w trasie, role).</ThemedText>
+                <Button label="Pokaż wprowadzenie" onPress={onIntro} />
+                <Button label="Pełna instrukcja (web)" onPress={openHelp} />
               </ThemedView>
 
               <ThemedText type="smallBold">Wersja aplikacji</ThemedText>

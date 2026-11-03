@@ -41,6 +41,9 @@ async function TripList() {
           <p className="max-w-md text-zinc-600 dark:text-zinc-400">
             {canCreateTrips ? "Nie masz jeszcze wyjazdów — zacznij od nowego." : "Nie masz jeszcze dostępu do żadnego wyjazdu. Poproś organizatora o link zaproszenia i otwórz go, będąc zalogowanym."}
           </p>
+          <Link href="/help" className="text-sm text-sea underline">
+            Jak korzystać z aplikacji
+          </Link>
         </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">

@@ -9,6 +9,7 @@ import { TopoHeader } from '@/components/topo-header';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { LoginCard } from '@/features/auth/login-card';
 import { useSession } from '@/features/auth/session';
+import { Intro, introSeen } from '@/features/home/intro';
 import { StatsCard } from '@/features/home/stats-card';
 import { SettingsScreen } from '@/features/settings/settings-screen';
 import { UpdateBadge } from '@/features/updates/update-notice';
@@ -16,7 +17,7 @@ import { isConfigured, supabase } from '@/lib/supabase';
 
 /**
  * Start: statystyki wyjazdów (także offline i bez logowania), logowanie, dołączenie z linku,
- * ikona nowej wersji i wejście w Ustawienia (konto, wersja). Wyjazdy i plan mają własne zakładki. Linki z zewnątrz przychodzą tu jako
+ * ikona nowej wersji i wejście w Ustawienia (konto, wersja). Przy pierwszym uruchomieniu — wprowadzenie (`Intro`). Wyjazdy i plan mają własne zakładki. Linki z zewnątrz przychodzą tu jako
  * parametry (`+native-intent`): `code` — powrót z linku logowania, `join` — zaproszenie.
  * Zaproszenie otwarte przed zalogowaniem czeka, aż logowanie się skończy.
  */
@@ -25,6 +26,7 @@ export default function HomeScreen() {
   const params = useLocalSearchParams<{ code?: string; join?: string }>();
   const [message, setMessage] = useState('');
   const [settings, setSettings] = useState(false);
+  const [intro, setIntro] = useState(() => !introSeen());
   const pendingJoin = useRef<string | null>(null);
 
   useEffect(() => {
@@ -72,7 +74,15 @@ export default function HomeScreen() {
           {isConfigured && session !== undefined && <StatsCard signedIn={session !== null} />}
         </ScrollView>
       </SafeAreaView>
-      <SettingsScreen visible={settings} onClose={() => setSettings(false)} />
+      <SettingsScreen
+        visible={settings}
+        onClose={() => setSettings(false)}
+        onIntro={() => {
+          setSettings(false);
+          setIntro(true);
+        }}
+      />
+      <Intro visible={intro && !settings} onClose={() => setIntro(false)} />
     </ThemedView>
   );
 }
