@@ -124,6 +124,42 @@ h2 {
     outline-offset: 2px;
   }
 
+  /* Powrót do strony nadrzędnej („← Maroko w cztery noce”): mała pigułka zamiast podkreślonego linku. */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    align-self: flex-start;
+    max-width: 100%;
+    border-radius: 999px;
+    padding: 0.25rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    background: var(--surface);
+    color: var(--color-sea);
+    border: 1.5px solid color-mix(in srgb, var(--color-sea) 35%, transparent);
+    transition:
+      background-color 120ms,
+      border-color 120ms,
+      color 120ms;
+  }
+  .back-link:hover {
+    background: var(--color-sea);
+    border-color: var(--color-sea);
+    color: #fff;
+  }
+  .back-link:focus-visible {
+    outline: 2px solid var(--color-sea);
+    outline-offset: 2px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .back-link {
+      color: #9fd8cf;
+      border-color: rgb(159 216 207 / 0.35);
+    }
+  }
+
   .card {
     background: var(--surface);
     border: 1px solid var(--line);

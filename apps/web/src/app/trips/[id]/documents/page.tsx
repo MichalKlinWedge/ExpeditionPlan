@@ -72,7 +72,7 @@ async function Documents({ params, searchParams }: { params: Promise<{ id: strin
     <>
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="flex flex-col gap-1">
-          <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+          <Link href={`/trips/${id}`} className="back-link">
             ← {doc.trip.title}
           </Link>
           <h1 className="text-2xl font-semibold">Sejf dokumentów</h1>

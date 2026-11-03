@@ -76,7 +76,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Powrót na ten sam dzień i w tym samym trybie (podgląd / edycja). */}
-          <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}${editing ? "&edit=1" : ""}`} className="text-sm text-zinc-500 underline">
+          <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}${editing ? "&edit=1" : ""}`} className="back-link">
             ← Plan: {doc.trip.title}
           </Link>
           {canEdit && <EditToggle href={`/trips/${id}/item/${rawRef}`} editing={editing} />}

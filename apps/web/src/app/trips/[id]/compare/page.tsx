@@ -54,7 +54,7 @@ async function Compare({ params, searchParams }: { params: Promise<{ id: string 
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+        <Link href={`/trips/${id}`} className="back-link">
           ← {plan.doc.trip.title}
         </Link>
         <h1 className="text-2xl font-semibold">Szkic obok planu</h1>
@@ -82,7 +82,7 @@ async function ChooseDraft({ id, supabase }: { id: string; supabase: Awaited<Ret
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+        <Link href={`/trips/${id}`} className="back-link">
           ← {title}
         </Link>
         <h1 className="text-3xl font-bold">Porównanie ze szkicem</h1>

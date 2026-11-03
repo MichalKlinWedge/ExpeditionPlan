@@ -65,7 +65,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
   return (
     <article className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8 text-sm print:max-w-none print:px-0 print:py-0">
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+        <Link href={`/trips/${id}`} className="back-link">
           ← {doc.trip.title}
         </Link>
         <PrintButton />

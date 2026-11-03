@@ -46,7 +46,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+        <Link href={`/trips/${id}`} className="back-link">
           ← {title}
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-2">

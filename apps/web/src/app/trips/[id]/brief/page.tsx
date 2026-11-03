@@ -57,7 +57,7 @@ async function Brief({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+        <Link href={`/trips/${id}`} className="back-link">
           ← {trip.data.title}
         </Link>
         <h1 className="text-2xl font-semibold">Brief wyjazdu</h1>

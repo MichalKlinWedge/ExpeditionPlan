@@ -84,7 +84,7 @@ async function Tune({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
+        <Link href={`/trips/${id}`} className="back-link">
           ← {doc.trip.title}
         </Link>
         <h1 className="text-2xl font-semibold">Dostrajanie z AI</h1>
