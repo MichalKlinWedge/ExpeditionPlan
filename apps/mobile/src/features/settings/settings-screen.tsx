@@ -71,7 +71,7 @@ export function SettingsScreen({ visible, onClose }: { visible: boolean; onClose
               <ThemedText type="smallBold">Przypomnienia</ThemedText>
               <ThemedView type="backgroundElement" style={styles.card}>
                 <ThemedText type="small">
-                  Powiadomienia o zadaniach z planu („Sprawdź paszporty — 14 dni przed wyjazdem”) i dzień przed wyjazdem. Działają bez internetu.
+                  Powiadomienia o zadaniach z planu („Sprawdź paszporty — 14 dni przed wyjazdem”), dzień przed wyjazdem, a w trakcie — „Za 15 min” przed każdym punktem i termin decyzji wariantu (przeliczane po każdym „+15 min” i „Pomiń”). Działają bez internetu.
                 </ThemedText>
                 <Button
                   label={reminders ? 'Wyłącz przypomnienia' : 'Włącz przypomnienia'}

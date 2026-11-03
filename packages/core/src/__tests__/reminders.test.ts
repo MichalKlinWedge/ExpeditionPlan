@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { zonedToInstant } from '../engine/time.ts';
-import { tripReminders } from '../reminders.ts';
+import { dayAlerts, tripReminders } from '../reminders.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
@@ -35,5 +35,33 @@ describe('przypomnienia z planu', () => {
 
   it('po wyjeździe nic nie zostaje', () => {
     expect(tripReminders(maroko, zonedToInstant('2027-02-01', '12:00', 'Europe/Warsaw'))).toEqual([]);
+  });
+});
+
+describe('powiadomienia z osi dnia', () => {
+  const before = zonedToInstant('2026-12-26', '00:00', 'Africa/Casablanca');
+
+  it('„Za 15 min” przed punktami i decyzja 30 min przed terminem, po kolei', () => {
+    const list = dayAlerts(maroko, {}, before, { limit: 200 });
+    const first = list.find((each) => each.key.startsWith('item:d1:'))!;
+    expect(first.title.startsWith('Za 15 min: ')).toBe(true);
+    const decision = list.find((each) => each.key === 'decide:d1-start')!;
+    expect(decision.title).toBe('Decyzja do 12:30: Poślizg na lotnisku w Agadirze');
+    expect(decision.at).toBe(zonedToInstant('2026-12-26', '12:00', 'Africa/Casablanca'));
+    expect(list.map((each) => each.at)).toEqual([...list.map((each) => each.at)].sort((a, b) => a - b));
+    expect(dayAlerts(maroko, {}, before)).toHaveLength(25);
+  });
+
+  it('opóźnienie z terenu przesuwa powiadomienia, wybór wariantu gasi decyzję', () => {
+    const plain = dayAlerts(maroko, {}, before, { limit: 200 });
+    const late = dayAlerts(maroko, { delays: [{ itemRef: 'd1-bankomat', minutes: 180 }], activeVariants: { 'd1-start': 'd1-v-plan' } }, before, { limit: 200 });
+    const at = (list: typeof plain, key: string) => list.find((each) => each.key === key)?.at;
+    // Suki są „nie wcześniej niż 16:00” — 3 h poślizgu przy bankomacie i tak je przesuwają.
+    expect(at(late, 'item:d1:d1-suki')!).toBeGreaterThan(at(plain, 'item:d1:d1-suki')!);
+    expect(at(late, 'decide:d1-start')).toBeUndefined();
+  });
+
+  it('nic z przeszłości', () => {
+    expect(dayAlerts(maroko, {}, zonedToInstant('2027-01-01', '00:00', 'Africa/Casablanca'))).toEqual([]);
   });
 });

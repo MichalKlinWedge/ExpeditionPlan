@@ -9,7 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 /**
  * Wspólne części map telefonu (zakładka Mapa i mapa dnia w Planie): linie dnia, pinezki z numerami
- * kolejności, karta miejsca z „Nawiguj”. Dane z `dayMap` (packages/core) — tej samej co na webie.
+ * kolejności (📖 = miejsce z przewodnikiem), karta miejsca z „Nawiguj” i „Poczytaj / Posłuchaj”. Dane z `dayMap` (packages/core) — tej samej co na webie.
  */
 
 const BASE = '#1B2A41';
@@ -57,14 +57,22 @@ export function DayLines({ lines, id }: { lines: MapLine[]; id: string }) {
 }
 
 /** Pinezki: numery kolejności dnia, baza noclegowa ⌂, wybrana — pomarańczowa. Dzieci `<Map>`. */
-export function PinMarkers({ pins, selected, onSelect }: { pins: MapPin[]; selected: string | null; onSelect: (placeRef: string) => void }) {
+export function PinMarkers({ pins, selected, onSelect, guided }: { pins: MapPin[]; selected: string | null; onSelect: (placeRef: string) => void; guided?: ReadonlySet<string> }) {
   const theme = useTheme();
   return pins.map((pin) => {
     const label = pin.stops.map((stop) => stop.n).join('·');
     return (
       <Marker key={pin.placeRef} lngLat={[pin.lng, pin.lat]} anchor="center" onPress={() => onSelect(pin.placeRef)}>
-        <View style={[styles.pin, { backgroundColor: pin.placeRef === selected ? theme.primary : pin.base ? BASE : theme.accent }, label.length > 2 && styles.pinWide]}>
-          <ThemedText style={styles.pinText}>{label || (pin.base ? '⌂' : '•')}</ThemedText>
+        {/* Znaczek przewodnika w zapasie kontenera — Android przycina widoki wystające poza rodzica. */}
+        <View style={guided?.has(pin.placeRef) ? styles.pinBox : undefined}>
+          <View style={[styles.pin, { backgroundColor: pin.placeRef === selected ? theme.primary : pin.base ? BASE : theme.accent }, label.length > 2 && styles.pinWide]}>
+            <ThemedText style={styles.pinText}>{label || (pin.base ? '⌂' : '•')}</ThemedText>
+          </View>
+          {guided?.has(pin.placeRef) && (
+            <View style={[styles.badge, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText style={styles.badgeText}>📖</ThemedText>
+            </View>
+          )}
         </View>
       </Marker>
     );
@@ -73,8 +81,11 @@ export function PinMarkers({ pins, selected, onSelect }: { pins: MapPin[]; selec
 
 export const navigateTo = (pin: MapPin) => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}`);
 
-/** Karta wybranego miejsca: nazwa, punkty z godzinami, „Nawiguj” (Google Maps) i „Zamknij”. */
-export function PinCard({ pin, times, onClose, small = false }: { pin: MapPin; times: Map<string, string>; onClose: () => void; small?: boolean }) {
+/** Przewodnik miejsca z karty pinezki: szczegóły albo od razu czytanie na głos. */
+export type PinGuide = { onRead: () => void; onListen: () => void };
+
+/** Karta wybranego miejsca: nazwa, punkty z godzinami, „Nawiguj” (Google Maps), przewodnik i „Zamknij”. */
+export function PinCard({ pin, times, onClose, small = false, guide }: { pin: MapPin; times: Map<string, string>; onClose: () => void; small?: boolean; guide?: PinGuide }) {
   return (
     <View style={styles.block}>
       <ThemedText type="smallBold" style={small ? undefined : styles.title}>
@@ -88,6 +99,8 @@ export function PinCard({ pin, times, onClose, small = false }: { pin: MapPin; t
       ))}
       <View style={styles.row}>
         <Button label="Nawiguj" variant="primary" small={small} onPress={() => navigateTo(pin)} />
+        {guide && <Button label="📖 Poczytaj" small={small} onPress={guide.onRead} />}
+        {guide && <Button label="▶ Posłuchaj" small={small} onPress={guide.onListen} />}
         <Button label="Zamknij" small={small} onPress={onClose} />
       </View>
     </View>
@@ -99,6 +112,9 @@ const styles = StyleSheet.create({
   pin: { minWidth: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, elevation: 3 },
   pinWide: { paddingHorizontal: 7 },
   pinText: { color: '#FFFFFF', fontSize: 12, lineHeight: 16, fontWeight: 800 },
+  pinBox: { paddingTop: 9, paddingRight: 11 },
+  badge: { position: 'absolute', top: 0, right: 0, borderRadius: 9, paddingHorizontal: 1, elevation: 4 },
+  badgeText: { fontSize: 11, lineHeight: 15 },
   block: { gap: Spacing.one },
   title: { fontSize: 17, lineHeight: 22 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingTop: Spacing.one },

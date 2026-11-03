@@ -58,6 +58,16 @@ export function itemGuide(trip: CachedTrip, item: Item) {
   return guideFor(trip.live.guides as unknown as GuideRow[], trip.ids[item.ref], placeRef === undefined ? undefined : trip.ids[placeRef]);
 }
 
+/** Miejsca z przewodnikiem: `placeRef` → pierwszy punkt w tym miejscu (do kart pinezek na mapach). */
+export function guidedPlaces(trip: CachedTrip): Map<string, Item> {
+  const places = new Map<string, Item>();
+  for (const item of trip.state.doc.items) {
+    const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
+    if (placeRef !== undefined && !places.has(placeRef) && itemGuide(trip, item) !== null) places.set(placeRef, item);
+  }
+  return places;
+}
+
 /** Zdjęcia przewodników do pamięci podręcznej, póki jest sieć — na trasie będą offline. */
 export function prefetchGuideImages(trip: CachedTrip) {
   const urls = (trip.live.guides as unknown as GuideRow[]).flatMap((row) => {

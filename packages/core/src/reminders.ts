@@ -1,3 +1,4 @@
+import { scheduleDay, type ScheduleOptions } from './engine/schedule.ts';
 import { addDays, zonedToInstant } from './engine/time.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
@@ -55,4 +56,47 @@ export function tripReminders(doc: Doc, now: number): Reminder[] {
   }
   add('trip:eve', `Jutro wyjazd: ${doc.trip.title}`, 'Otwórz plan raz z internetem — zapisze się na telefonie do użytku offline.', addDays(doc.trip.startDate, -1), '19:00', home);
   return out.sort((a, b) => a.at - b.at);
+}
+
+/**
+ * Powiadomienia z osi dnia: „Za 15 min: …” przed każdym punktem (godziny z silnika, z opóźnieniami
+ * i pominięciami z terenu, scenariusz optymistyczny — plan mówi „nie wcześniej niż”) i przypomnienie
+ * 30 min przed terminem decyzji wariantu, póki wariant nie jest wybrany w terenie. Najbliższe `limit`
+ * od teraz — telefon przelicza je po każdym wczytaniu planu i po każdym zdarzeniu dnia.
+ */
+export function dayAlerts(doc: Doc, options: Omit<ScheduleOptions, 'scenario'>, now: number, { leadMin = 15, decisionLeadMin = 30, limit = 25 } = {}): Reminder[] {
+  const out: Reminder[] = [];
+  const chosen = options.activeVariants ?? {};
+  for (const day of doc.days) {
+    // Dzień, który na pewno minął (z zapasem na punkty po północy), pomijamy bez liczenia.
+    if (zonedToInstant(addDays(day.date, 2), '00:00', day.tz) < now) continue;
+    let items: ReturnType<typeof scheduleDay>['items'] = [];
+    try {
+      items = scheduleDay(doc, day.ref, { ...options, scenario: 'optimistic' }).items;
+    } catch {
+      continue;
+    }
+    for (const item of items) {
+      const at = item.start - leadMin * 60_000;
+      if (at > now) out.push({ key: `item:${day.ref}:${item.ref}`, title: `Za ${leadMin} min: ${item.title}`, body: `${item.startLocal} · ${doc.trip.title}`, at });
+    }
+  }
+  const days = new Map(doc.days.map((day) => [day.ref, day]));
+  for (const group of doc.variantGroups) {
+    // Wariant z planu (`chosenRef`) to domyślny wybór — decyzję i tak podejmuje się w terenie.
+    if (group.decideBy === undefined || chosen[group.ref] !== undefined) continue;
+    const day = group.dayRef === undefined ? undefined : days.get(group.dayRef);
+    const deadline =
+      'local' in group.decideBy
+        ? zonedToInstant(group.decideBy.local.slice(0, 10), group.decideBy.local.slice(11, 16), group.decideBy.tz)
+        : day === undefined
+          ? undefined
+          : zonedToInstant(day.date, group.decideBy.time, day.tz);
+    if (deadline === undefined) continue;
+    const at = deadline - decisionLeadMin * 60_000;
+    const labels = doc.variants.filter((variant) => variant.groupRef === group.ref).map((variant) => variant.label);
+    const time = 'local' in group.decideBy ? group.decideBy.local.slice(11, 16) : group.decideBy.time;
+    if (at > now) out.push({ key: `decide:${group.ref}`, title: `Decyzja do ${time}: ${group.title}`, body: labels.length > 0 ? labels.join(' albo ') : doc.trip.title, at });
+  }
+  return out.sort((a, b) => a.at - b.at).slice(0, limit);
 }

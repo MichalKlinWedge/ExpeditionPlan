@@ -264,7 +264,11 @@ ${fresh.rejected[0]!.error}`);
   /** Po zapisie z telefonu: stan z SQLite od razu na ekranie, potem wysyłka i pobranie w tle. */
   const afterLocalWrite = () => {
     const updated = cachedTrip(localDb, tripId);
-    if (updated !== null) setTrip(updated);
+    if (updated !== null) {
+      setTrip(updated);
+      // Oś dnia po „+15 min” / „Pomiń” od razu, także bez sieci (load niżej przelicza tylko z siecią).
+      void scheduleTripReminders(tripId, updated.state.doc).catch(() => undefined);
+    }
     void load(true);
   };
 

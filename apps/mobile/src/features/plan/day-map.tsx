@@ -1,4 +1,4 @@
-import { dayLodging, dayMap, type DaySchedule, type TripDocument } from '@expeditionplan/core';
+import { dayLodging, dayMap, type DaySchedule, type PlanItem, type TripDocument } from '@expeditionplan/core';
 import { Camera, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -12,10 +12,19 @@ import { useTheme } from '@/hooks/use-theme';
 /**
  * Kwadratowa mapa pod planem dnia: pinezki z numerami kolejności z silnika (ta sama `dayMap` co
  * na webie i w zakładce Mapa), trasy przejazdów i własna pozycja. Dotknięcie pinezki pokazuje
- * punkty w tym miejscu i „Nawiguj”. Kafle z pobranej mapy offline działają bez sieci.
+ * punkty w tym miejscu, „Nawiguj” i — gdy miejsce ma przewodnik — „Poczytaj / Posłuchaj”. Kafle z pobranej mapy offline działają bez sieci.
  */
 
-export function DayMap({ doc, dayRef, schedule }: { doc: TripDocument; dayRef: string; schedule: DaySchedule }) {
+type Props = {
+  doc: TripDocument;
+  dayRef: string;
+  schedule: DaySchedule;
+  /** Miejsca z przewodnikiem: `placeRef` → punkt (`guidedPlaces`). */
+  guides?: Map<string, PlanItem>;
+  onGuide?: (item: PlanItem, play: boolean) => void;
+};
+
+export function DayMap({ doc, dayRef, schedule, guides, onGuide }: Props) {
   const theme = useTheme();
   const mapStyle = useMapStyle();
   const [selected, setSelected] = useState<string | null>(null);
@@ -53,12 +62,21 @@ export function DayMap({ doc, dayRef, schedule }: { doc: TripDocument; dayRef: s
           <Camera initialViewState={start} />
           <UserLocation accuracy />
           <DayLines lines={view.lines} id="plan-day" />
-          <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} />
+          <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} guided={guides === undefined ? undefined : new Set(guides.keys())} />
         </MapView>
         {transit && <TransitToggle value={showTransit} onChange={setShowTransit} />}
       </View>
       {pin ? (
-        <PinCard pin={pin} times={times} onClose={() => setSelected(null)} small />
+        <PinCard
+          pin={pin}
+          times={times}
+          onClose={() => setSelected(null)}
+          small
+          guide={(() => {
+            const item = guides?.get(pin.placeRef);
+            return item === undefined || onGuide === undefined ? undefined : { onRead: () => onGuide(item, false), onListen: () => onGuide(item, true) };
+          })()}
+        />
       ) : (
         <ThemedText type="small" themeColor="textSecondary">
           Numery = kolejność dnia. Dotknij pinezki, żeby nawigować.

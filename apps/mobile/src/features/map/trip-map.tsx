@@ -1,4 +1,4 @@
-import { dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, scheduleDay, tripMapAreas, type TripDocument } from '@expeditionplan/core';
+import { dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, type PlanItem, scheduleDay, tripMapAreas, type TripDocument } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip } from '@expeditionplan/sync';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayLines, hasTransit, PinCard, PinMarkers, TransitToggle, withoutTransit } from '@/features/map/map-parts';
+import { guidedPlaces, ItemDetails } from '@/features/plan/item-details';
 import { useMapStyle } from '@/features/map/map-style';
 import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
 import { useTheme } from '@/hooks/use-theme';
@@ -55,6 +56,8 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   const failure = initial.failure;
   const [day, setDay] = useState(initial.today);
   const [selected, setSelected] = useState<string | null>(null);
+  /** Przewodnik otwarty z karty pinezki; `play` — od razu czytaj na głos. */
+  const [reading, setReading] = useState<{ item: PlanItem; play: boolean } | null>(null);
   const [statuses, setStatuses] = useState<AreaStatus[] | null>(null);
   const [progress, setProgress] = useState('');
 
@@ -99,6 +102,8 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   }
 
   const pin = view.pins.find((each) => each.placeRef === selected) ?? null;
+  const guides = trip === null ? new Map<string, PlanItem>() : guidedPlaces(trip);
+  const pinGuide = pin === null ? undefined : guides.get(pin.placeRef);
   const times = new Map<string, string>();
   if (dayRef !== undefined) {
     try {
@@ -148,7 +153,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
           <Camera ref={camera} initialViewState={areas[0] ? { bounds: areas[0].bounds } : undefined} />
           <UserLocation accuracy />
           <DayLines lines={view.lines} id="day-lines" />
-          <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} />
+          <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} guided={new Set(guides.keys())} />
         </MapView>
         {transit && <TransitToggle value={showTransit} onChange={setShowTransit} />}
         <Pressable onPress={() => void centerOnMe()} style={[styles.me, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]} hitSlop={6}>
@@ -158,7 +163,12 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
 
       <ThemedView style={[styles.panel, { borderTopColor: theme.backgroundSelected }]}>
         {pin ? (
-          <PinCard pin={pin} times={times} onClose={() => setSelected(null)} />
+          <PinCard
+            pin={pin}
+            times={times}
+            onClose={() => setSelected(null)}
+            guide={pinGuide === undefined ? undefined : { onRead: () => setReading({ item: pinGuide, play: false }), onListen: () => setReading({ item: pinGuide, play: true }) }}
+          />
         ) : (
           <View style={styles.block}>
             <ThemedText type="smallBold">Mapa offline</ThemedText>
@@ -179,6 +189,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
           </View>
         )}
       </ThemedView>
+      {trip !== null && <ItemDetails trip={trip} item={reading?.item ?? null} autoPlay={reading?.play ?? false} onClose={() => setReading(null)} />}
     </View>
   );
 }
