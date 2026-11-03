@@ -180,8 +180,18 @@ export async function saveTask(tripId: string, ref: string | null, _prev: FormSt
     variantGroupRef: optional(text(form, "variantGroupRef")),
   }));
 }
+/**
+ * Odhaczenie zadania: sama zmiana statusu wiersza (nie cały element), więc może to zrobić także widz
+ * przy zadaniu przypisanym do siebie (RLS `tasks_update`, trigger `guard_viewer_task`).
+ */
 export async function setTaskStatus(tripId: string, ref: string, status: "open" | "done" | "dropped"): Promise<FormState> {
-  return change(tripId, "tasks", ref, (_doc, current) => ({ ...current!, status }));
+  const { supabase } = await requireUser(`/trips/${tripId}/tasks`);
+  const { data, error } = await supabase.from("tasks").update({ status }).eq("trip_id", tripId).eq("ref", ref).is("deleted_at", null).select("id");
+  if (error) return { error: message(error) };
+  // RLS po cichu pomija wiersz, którego nie wolno zmienić.
+  if ((data ?? []).length === 0) return { error: "Tego zadania nie możesz odhaczyć (albo już go nie ma — odśwież stronę)." };
+  refresh();
+  return { ok: status === "done" ? "Zrobione." : "Zapisano." };
 }
 
 export async function removeTask(tripId: string, ref: string): Promise<FormState> {

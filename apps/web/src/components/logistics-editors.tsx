@@ -331,7 +331,8 @@ function TaskForm({ tripId, task, choices, onDone }: { tripId: string; task?: Ta
     </form>
   );
 }
-export function TaskList({ tripId, tasks, describe, choices, canEdit }: { tripId: string; tasks: Task[]; describe: Record<string, string>; choices: Choices; canEdit: boolean }) {
+/** `checkable` — zadania do odhaczenia także w podglądzie (organizator, edytor, widz przy swoich). */
+export function TaskList({ tripId, tasks, describe, choices, canEdit, checkable = [] }: { tripId: string; tasks: Task[]; describe: Record<string, string>; choices: Choices; canEdit: boolean; checkable?: string[] }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
@@ -345,7 +346,7 @@ export function TaskList({ tripId, tasks, describe, choices, canEdit }: { tripId
       </li>
     ) : (
       <li key={task.ref} className="flex items-start gap-2">
-        {canEdit && (
+        {(canEdit || checkable.includes(task.ref)) && (
           <input
             type="checkbox"
             checked={task.status === "done"}

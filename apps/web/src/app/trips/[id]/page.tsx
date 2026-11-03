@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { BookIcon, CompareIcon, DownloadIcon, InfoIcon, NoteIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { BookIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, NoteIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -48,7 +48,7 @@ function Tile({ href, icon, title, hint }: { href: string; icon: React.ReactNode
 async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}`);
-  const [trip, members, travelers, days, items, brief, mine] = await Promise.all([
+  const [trip, members, travelers, days, items, brief, mine, tasks] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id", { count: "exact", head: true }).eq("trip_id", id),
     supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
@@ -56,6 +56,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("items").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
     supabase.from("trip_brief").select("id").eq("trip_id", id).maybeSingle(),
     supabase.from("my_trips").select("id, title, role").neq("id", id).order("start_date"),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("trip_id", id).eq("status", "open").is("deleted_at", null),
   ]);
   if (trip.data === null) notFound();
   const role = trip.data.role!;
@@ -90,7 +91,8 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       {/* Przy dwóch kolumnach ostatni kafelek bez pary zajmuje cały wiersz. */}
       <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>:last-child:nth-child(odd)]:col-span-2">
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/plan`} icon={<RouteIcon />} title="Plan dzień po dniu" hint="godziny, trasy, słońce" />}
-        <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, zadania" />
+        <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, kontakty" />
+        <Tile href={`/trips/${id}/tasks`} icon={<ListIcon />} title="Zadania" hint={(tasks.count ?? 0) > 0 ? `do zrobienia: ${tasks.count}` : "przed wyjazdem i w trakcie"} />
         <Tile href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
         <Tile href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />}

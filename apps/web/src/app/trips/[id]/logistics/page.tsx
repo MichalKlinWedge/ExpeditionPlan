@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
-import { BookingEditor, BookingItems, BudgetLines, BudgetSuggestions, type Choices, Contacts, FxEditor, NewBooking, TaskList } from "@/components/logistics-editors";
+import { BookingEditor, BookingItems, BudgetLines, BudgetSuggestions, type Choices, Contacts, FxEditor, NewBooking } from "@/components/logistics-editors";
 import { Meals } from "@/components/meals";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
@@ -14,9 +14,10 @@ import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { BOOKING_KIND } from "@/lib/labels";
+import { planChoices } from "@/lib/tasks";
 
 /**
- * Rezerwacje, budżet „zapłacone / do wydania”, kontakty i zadania (MVP-3). Dane tą samą drogą co
+ * Rezerwacje, budżet „zapłacone / do wydania” i kontakty (MVP-3); zadania — osobna strona `/tasks`. Dane tą samą drogą co
  * plan: `pull_changes` → dokument; portfel z wydatków zapisanych na telefonie. Organizator
  * i edytor zmieniają wszystko (`logistics-actions.ts`), widz tylko czyta.
  */
@@ -35,7 +36,6 @@ export default function LogisticsPage(props: PageProps<"/trips/[id]/logistics">)
 
 type Doc = TripDocument;
 type Booking = Doc["bookings"][number];
-type Task = Doc["tasks"][number];
 
 const BOOKING_STATUS: Record<string, { label: string; tone: string }> = {
   idea: { label: "pomysł", tone: "text-zinc-500" },
@@ -66,27 +66,6 @@ function price(booking: Booking): string | null {
   const low = formatMoney(p.minMinor, p.currency);
   if (p.from) return `od ${low}`;
   return `${p.approx ? "ok. " : ""}${p.minMinor === p.maxMinor ? low : `${low} – ${formatMoney(p.maxMinor, p.currency)}`}`;
-}
-
-function due(task: Task, doc: Doc): string | null {
-  const d = task.due;
-  if (!d) return null;
-  switch (d.kind) {
-    case "absolute":
-      return `do ${shortDate(d.date)}${d.time ? ` ${d.time}` : ""}`;
-    case "before_trip":
-      return d.days === 0 ? "przed wyjazdem" : `${d.days} dni przed wyjazdem`;
-    case "before_item": {
-      const item = doc.items.find((each) => each.ref === d.itemRef)?.title ?? "punktem";
-      return d.days === 0 ? `przed: ${item}` : `${d.days} dni przed: ${item}`;
-    }
-    case "before_booking":
-      return `przed: ${doc.bookings.find((each) => each.ref === d.bookingRef)?.title ?? "rezerwacją"}`;
-    case "on_trip": {
-      const day = d.dayRef ? doc.days.find((each) => each.ref === d.dayRef) : undefined;
-      return `w trakcie wyjazdu${day ? `, ${shortDate(day.date)}` : ""}${d.time ? ` ${d.time}` : ""}`;
-    }
-  }
 }
 
 const PAY_WHEN: Record<string, string> = { prepaid: "płatne z góry", before_arrival: "płatne przed przyjazdem", on_site: "płatność na miejscu" };
@@ -167,16 +146,6 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
   const packaged = new Map<string, Doc["items"]>();
   for (const item of doc.items) if (item.bookingRef) packaged.set(item.bookingRef, [...(packaged.get(item.bookingRef) ?? []), item]);
   const open = doc.tasks.filter((task) => task.status === "open");
-  const closed = doc.tasks.length - open.length;
-  // Termin i osoby zadania po ludzku — liczone tu, bo potrzebują całego dokumentu.
-  const describe = Object.fromEntries(
-    doc.tasks.map((task) => [
-      task.ref,
-      [due(task, doc), task.assigneeRefs.length > 0 ? task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", ") : null]
-        .filter(Boolean)
-        .join(" · "),
-    ]),
-  );
   // Etap 4: szkic kandydatów z AI i grupy porównania z planu (kandydaci rezerwacji).
   const draftOutput = draftRow.data?.output as { info?: unknown; checks?: string[] } | null | undefined;
   const candidatesDraft = LogisticsCandidates.safeParse(draftOutput?.info);
@@ -209,14 +178,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
     }));
   const statuses = Object.fromEntries(Object.entries(BOOKING_STATUS).map(([key, value]) => [key, value.label]));
   const today = new Date().toISOString().slice(0, 10);
-  const dayLabel = new Map(doc.days.map((day, index) => [day.ref, `dz. ${index + 1}`]));
-  const choices: Choices = {
-    travelers: doc.travelers.map((traveler) => ({ ref: traveler.ref, name: traveler.name })),
-    items: doc.items.filter((item) => item.dayRef !== undefined).map((item) => ({ ref: item.ref, label: `${dayLabel.get(item.dayRef!) ?? ""} · ${item.title}` })),
-    bookings: doc.bookings.filter((booking) => booking.status !== "candidate" && booking.status !== "idea").map((booking) => ({ ref: booking.ref, title: booking.title })),
-    days: doc.days.map((day, index) => ({ ref: day.ref, label: `${index + 1}. ${shortDate(day.date)}` })),
-    groups: doc.variantGroups.filter((group) => group.scope !== "booking").map((group) => ({ ref: group.ref, title: group.title })),
-  };
+  const choices: Choices = planChoices(doc);
   // Strefy do podpowiedzi przy rezerwacji: wyjazdu, domu, dni i te, które rezerwacje już mają.
   const zones = [...new Set([doc.trip.primaryTz, doc.trip.homeTz, ...doc.days.map((day) => day.tz), ...doc.bookings.flatMap((booking) => [booking.start?.tz, booking.end?.tz])].filter((zone): zone is string => zone !== undefined))];
   const suggestions = budgetSuggestions(doc);
@@ -232,7 +194,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           <Link href={`/trips/${id}`} className="text-sm text-zinc-500 underline">
             ← {doc.trip.title}
           </Link>
-          <h1 className="text-2xl font-semibold">Rezerwacje, budżet i zadania</h1>
+          <h1 className="text-2xl font-semibold">Rezerwacje i budżet</h1>
         </div>
         {mayEdit && <EditToggle href={`/trips/${id}/logistics`} editing={canEdit} />}
       </div>
@@ -363,13 +325,9 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
         <Contacts tripId={id} contacts={doc.contacts} bookings={choices.bookings} canEdit={canEdit} />
       </section>
 
-      <section className={card}>
-        <h2 className={heading}>
-          Zadania — otwarte {open.length}
-          {closed > 0 ? <span className="text-sm font-normal text-zinc-500"> (zamknięte: {closed})</span> : null}
-        </h2>
-        <TaskList tripId={id} tasks={doc.tasks} describe={describe} choices={choices} canEdit={canEdit} />
-      </section>
+      <Link href={`/trips/${id}/tasks`} className="self-start text-sm text-zinc-500 underline hover:text-sea">
+        Zadania — otwarte {open.length} →
+      </Link>
     </>
   );
 }
