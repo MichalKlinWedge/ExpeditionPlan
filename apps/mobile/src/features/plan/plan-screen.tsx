@@ -358,9 +358,12 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
         )}
       </View>
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.status}>
-        {status}
-      </ThemedText>
+      {/* Plan jeszcze niewczytany — status na górze (to jedyna treść); potem na końcu strony. */}
+      {trip === null && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.status}>
+          {status}
+        </ThemedText>
+      )}
       {error !== '' && <ThemedText style={[styles.pad, { color: HARD }]}>{error}</ThemedText>}
       {trip !== null && (
         <Tabs
@@ -389,6 +392,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           ) : (
             <PackingView trip={trip} tripId={tripId} canEdit={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           )}
+          <SyncStatus text={status} />
         </ScrollView>
       )}
       {mode === 'plan' && state !== null && days.length === 0 && <ThemedText style={styles.pad}>Plan nie ma jeszcze dni.</ThemedText>}
@@ -464,11 +468,23 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                 </ThemedText>
               </Pressable>
             </View>
+            <SyncStatus text={status} />
           </ScrollView>
         </>
       )}
       {trip !== null && <ItemDetails trip={trip} item={detail} autoPlay={detailPlay} onClose={() => setDetail(null)} />}
     </View>
+  );
+}
+
+/** Synchronizacja i pokrycie mapy — na końcu strony, pod mapą dnia (nie zabiera miejsca na górze). */
+function SyncStatus({ text }: { text: string }) {
+  const theme = useTheme();
+  if (text === '') return null;
+  return (
+    <ThemedText type="small" themeColor="textSecondary" style={[styles.syncStatus, { borderTopColor: theme.backgroundSelected }]}>
+      {text}
+    </ThemedText>
   );
 }
 
@@ -782,6 +798,7 @@ const styles = StyleSheet.create({
   title: { flex: 1, textAlign: 'center' },
   pad: { padding: Spacing.three },
   status: { paddingHorizontal: Spacing.three },
+  syncStatus: { borderTopWidth: 1, paddingTop: Spacing.two },
   // ScrollView domyślnie ma flexShrink: 1 — pasek dni ściskał się w pionie i ucinał tekst.
   chipsBar: { flexGrow: 0, flexShrink: 0 },
   chips: { flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
