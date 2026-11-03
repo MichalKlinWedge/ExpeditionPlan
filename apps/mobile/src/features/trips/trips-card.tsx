@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
-import { OfflineButton } from '@/features/trips/offline-button';
+import { OfflineBadge, OfflineButton } from '@/features/trips/offline-button';
 import { useTheme } from '@/hooks/use-theme';
 import { loadMyTrips, removeTrip, setCurrentTrip, type Trip } from '@/features/trips/my-trips';
 import { supabase } from '@/lib/supabase';
@@ -128,6 +128,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
               <ThemedText type="small" themeColor="textSecondary">
                 {trip.start_date} – {trip.end_date} · {ROLE[trip.role!]}
               </ThemedText>
+              <OfflineBadge tripId={trip.id!} />
             </View>
             <ThemedText themeColor="accent">{open === trip.id ? '▾' : '▸'}</ThemedText>
           </Pressable>

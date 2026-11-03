@@ -4,7 +4,8 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { downloadTripOffline, type OfflineState, offlineState } from '@/features/trip/offline-download';
+import { useTheme } from '@/hooks/use-theme';
+import { downloadTripOffline, onOfflineChange, type OfflineState, offlineState } from '@/features/trip/offline-download';
 
 /**
  * „Pobierz wyjazd offline” na karcie wyjazdu: stan (plan z dnia…, mapa, dokumenty) i jeden przycisk,
@@ -26,18 +27,43 @@ function summary(state: OfflineState): string {
     .join(' · ');
 }
 
-export function OfflineButton({ tripId, online }: { tripId: string; online: boolean }) {
+/** Stan offline wyjazdu, odświeżany po pobraniu (z karty albo z innego miejsca). */
+function useOfflineState(tripId: string): [OfflineState | null, () => void, (state: OfflineState) => void] {
   const [state, setState] = useState<OfflineState | null>(null);
-  const [progress, setProgress] = useState('');
-
   const refresh = useCallback(() => {
     void offlineState(tripId).then(setState, () => setState(null));
   }, [tripId]);
   // Pierwszy odczyt z timera, nie wprost w efekcie (reguła react-hooks/set-state-in-effect).
   useEffect(() => {
     const first = setTimeout(refresh, 0);
-    return () => clearTimeout(first);
-  }, [refresh]);
+    const off = onOfflineChange((changed) => changed === tripId && refresh());
+    return () => {
+      clearTimeout(first);
+      off();
+    };
+  }, [refresh, tripId]);
+  return [state, refresh, setState];
+}
+
+/**
+ * Plakietka na zwiniętej karcie wyjazdu: „✓ offline”, „⬇ offline” (pakiet niepełny) albo
+ * „⬇ nowsza wersja planu” (był kompletny, plan się zmienił i czegoś brakuje).
+ */
+export function OfflineBadge({ tripId }: { tripId: string }) {
+  const theme = useTheme();
+  const [state] = useOfflineState(tripId);
+  if (state === null) return null;
+  const label = state.complete ? '✓ offline' : state.stale ? '⬇ nowsza wersja planu' : '⬇ offline';
+  return (
+    <ThemedText type="small" style={{ color: state.complete ? theme.textSecondary : theme.accent }}>
+      {label}
+    </ThemedText>
+  );
+}
+
+export function OfflineButton({ tripId, online }: { tripId: string; online: boolean }) {
+  const [state, refresh, setState] = useOfflineState(tripId);
+  const [progress, setProgress] = useState('');
 
   const download = async () => {
     setProgress('Przygotowuję…');
@@ -57,7 +83,9 @@ export function OfflineButton({ tripId, online }: { tripId: string; online: bool
   return (
     <View style={styles.box}>
       <ThemedText type="small" themeColor="textSecondary">
-        {state === null ? 'Sprawdzam, co jest na telefonie…' : `${state.complete ? '✓ Offline: ' : 'Offline: '}${summary(state)}`}
+        {state === null
+          ? 'Sprawdzam, co jest na telefonie…'
+          : `${state.complete ? '✓ Offline: ' : state.stale ? 'Plan zmienił się od pobrania — dociągnij brakujące. Offline: ' : 'Offline: '}${summary(state)}`}
       </ThemedText>
       {online && (
         <Button
