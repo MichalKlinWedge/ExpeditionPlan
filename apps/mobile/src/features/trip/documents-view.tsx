@@ -1,6 +1,7 @@
 import { codeCanvas, codeLabel, type CodeRaster, codeSymbol, formatBytes, isLinearCode, vaultDocument, type VaultDocument } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import * as bwip from 'bwip-js/generic';
+import * as Brightness from 'expo-brightness';
 import { Directory, File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import { requireOptionalNativeModule } from 'expo';
@@ -187,13 +188,18 @@ export function DocumentsView({ trip, tripId, online, only }: { trip: CachedTrip
 }
 
 /**
- * Kod na całym ekranie: czarne moduły na białym, ekran nie gaśnie. Rysowany z treści kodu
- * (bwip-js, czysty JS) jako paski widoków — bez sieci, bez pliku i bez modułów natywnych.
+ * Kod na całym ekranie: czarne moduły na białym, ekran nie gaśnie i świeci na pełnej jasności
+ * (`expo-brightness`, tylko to okno aplikacji — bez zgody na zmianę ustawień systemu; po zamknięciu
+ * wraca jasność systemowa). Rysowany z treści kodu (bwip-js, czysty JS) jako paski widoków — bez sieci i bez pliku.
  */
 function CodeScreen({ title, payload, format, plain, onClose }: { title: string; payload: string; format: string | null; plain?: boolean; onClose: () => void }) {
   useEffect(() => {
     void KeepAwake?.activate?.(AWAKE_TAG).catch(() => undefined);
-    return () => void KeepAwake?.deactivate?.(AWAKE_TAG).catch(() => undefined);
+    void Brightness.setBrightnessAsync(1).catch(() => undefined);
+    return () => {
+      void KeepAwake?.deactivate?.(AWAKE_TAG).catch(() => undefined);
+      void Brightness.restoreSystemBrightnessAsync().catch(() => undefined);
+    };
   }, []);
   return (
     <Modal visible onRequestClose={onClose} animationType="fade">
