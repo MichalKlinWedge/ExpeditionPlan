@@ -67,7 +67,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}/plan`} className="text-sm text-zinc-500 underline">
+        <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}`} className="text-sm text-zinc-500 underline">
           ← Plan: {doc.trip.title}
         </Link>
         <h1 className="flex items-center gap-2 text-2xl font-semibold">

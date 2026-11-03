@@ -33,6 +33,7 @@ export default function PlanPage(props: PageProps<"/trips/[id]/plan">) {
 async function Plan({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
   const wantsEdit = await editMode(searchParams);
+  const { day } = await searchParams;
   const { supabase } = await requireUser(`/trips/${id}/plan`);
   const [{ data, error }, membership] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
@@ -89,6 +90,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         canEdit={editing}
         itemBase={`/trips/${id}/item/`}
         guided={guided}
+        initialDay={typeof day === "string" ? day : undefined}
       />
     </>
   );

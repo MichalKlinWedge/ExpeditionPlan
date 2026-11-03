@@ -98,9 +98,11 @@ type Props = {
   itemBase?: string;
   /** Punkty (`ref`) z gotowym opisem przewodnika. */
   guided?: string[];
+  /** Dzień (`ref`) albo `"pool"` z adresu (`?day=`) — powrót z karty punktu na ten sam dzień. */
+  initialDay?: string;
 };
 
-export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided }: Props) {
+export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, initialDay }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
@@ -133,7 +135,17 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherKey]);
   // Widok: jeden dzień albo pula (`POOL`); mapa pokazuje to samo.
-  const [mapDayRef, setMapDay] = useState<string | undefined>(doc.days[0]?.ref ?? (pool.length > 0 ? POOL : undefined));
+  const [mapDayRef, setMapDay] = useState<string | undefined>(() =>
+    initialDay !== undefined && (initialDay === POOL || doc.days.some((day) => day.ref === initialDay)) ? initialDay : (doc.days[0]?.ref ?? (pool.length > 0 ? POOL : undefined)),
+  );
+  // Oglądany dzień w adresie (bez nowego wpisu w historii) — „Wstecz” w przeglądarce wraca na niego.
+  useEffect(() => {
+    if (mapDayRef === undefined) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("day") === mapDayRef) return;
+    url.searchParams.set("day", mapDayRef);
+    window.history.replaceState(null, "", url);
+  }, [mapDayRef]);
   const showPool = mapDayRef === POOL;
   const mapDay = showPool ? undefined : (doc.days.find((day) => day.ref === mapDayRef) ?? doc.days[0]);
   const [selected, setSelected] = useState<string | null>(null);
