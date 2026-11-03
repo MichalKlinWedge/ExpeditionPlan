@@ -40,8 +40,15 @@ poprawiają zaproszone plany.
    powstaje konto (z samego Google nowe konto się nie założy). Po zalogowaniu kliknij „Dołącz do
    wyjazdu”. Wyjazd jest teraz na Twoim koncie; później możesz logować się też przez Google, jeśli
    to ten sam adres.
-2. **Zainstaluj aplikację** z linku do APK. Android zapyta o zgodę na instalację z tego źródła
-   (przeglądarka → „Zezwalaj z tego źródła”) — to normalne dla aplikacji spoza Sklepu Play.
+2. **Zainstaluj aplikację** z linku do APK:
+   - otwórz link **bezpośrednio w Chrome na telefonie** i instaluj z „Pobranych” — plik
+     skopiowany przez Dysk Google czy menedżer plików bywa niepełny i kończy się komunikatem
+     „Aplikacja nie została zainstalowana”;
+   - Android zapyta o zgodę na instalację z tego źródła (Chrome → „Zezwalaj z tego źródła”) —
+     to normalne dla aplikacji spoza Sklepu Play;
+   - **Google Play Protect** może pokazać „Aplikacja została zablokowana, aby chronić urządzenie”
+     (nie zna dewelopera) — wybierz **„Zainstaluj mimo to”** nad przyciskiem OK, nie samo OK;
+   - nowa wersja instaluje się na starą — plany, wydatki i dziennik zostają.
 3. **Zaloguj się w aplikacji „Expedition Planner”** tym samym kontem (Google albo ten sam e-mail).
    Wyjazd pojawi się w zakładce „Wyjazdy”.
 4. **Przed wyjazdem otwórz plan raz z internetem** — od tej chwili działa offline: plan dnia,
