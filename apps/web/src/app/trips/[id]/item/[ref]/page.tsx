@@ -1,4 +1,4 @@
-import { flightLine, flightOf, GUIDE_SITE, type GuideRow, guideFor, itemIcon, legLabel, type TripDocument } from "@expeditionplan/core";
+import { flightLine, flightOf, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, type GuideSegment, itemIcon, linkGuideText, legLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -56,6 +56,10 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   const leg = legLabel(item);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const guide = guideFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
+  // Nazwy innych opisanych miejsc w treści — odnośniki do ich kart (raz na miejsce w całym opisie).
+  const targets = guide === null ? [] : guideLinkTargets(doc, rows, ids, item.ref);
+  const used = new Set<string>();
+  const linked = (text: string) => <Linked tripId={id} segments={linkGuideText(text, targets, used)} />;
   const guideRow = guide === null ? undefined : rows.find((row) => !row.deleted_at && row.audience === "adult" && (row.place_id === (placeRef ? ids[placeRef] : undefined) || row.item_id === ids[item.ref]));
   const time = item.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}` : null;
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
@@ -134,7 +138,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
           </p>
         ) : (
           <article className="card flex flex-col gap-3 p-4 text-sm">
-            <p className="text-base">{guide.summary}</p>
+            <p className="text-base">{linked(guide.summary)}</p>
             {guide.images.length > 0 && (
               <div className="grid grid-cols-2 gap-2">
                 {guide.images.map((image) => (
@@ -164,7 +168,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
                 <h3 className="font-semibold">Ciekawostki</h3>
                 <ul className="ml-5 list-disc">
                   {guide.facts.map((fact) => (
-                    <li key={fact}>{fact}</li>
+                    <li key={fact}>{linked(fact)}</li>
                   ))}
                 </ul>
               </div>
@@ -172,7 +176,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             {guide.history && (
               <div>
                 <h3 className="font-semibold">Historia</h3>
-                <p>{guide.history}</p>
+                <p>{linked(guide.history)}</p>
               </div>
             )}
             {guide.tips.length > 0 && (
@@ -180,7 +184,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
                 <h3 className="font-semibold">Na miejscu</h3>
                 <ul className="ml-5 list-disc">
                   {guide.tips.map((tip) => (
-                    <li key={tip}>{tip}</li>
+                    <li key={tip}>{linked(tip)}</li>
                   ))}
                 </ul>
               </div>
@@ -201,5 +205,18 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
         {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} />}
       </section>
     </>
+  );
+}
+
+/** Tekst przewodnika z odnośnikami do kart innych opisanych miejsc. */
+function Linked({ tripId, segments }: { tripId: string; segments: GuideSegment[] }) {
+  return segments.map((segment, i) =>
+    segment.ref ? (
+      <Link key={i} href={`/trips/${tripId}/item/${encodeURIComponent(segment.ref)}`} className="font-medium text-sea underline decoration-sea/40 underline-offset-2 hover:decoration-sea">
+        {segment.text}
+      </Link>
+    ) : (
+      <span key={i}>{segment.text}</span>
+    ),
   );
 }

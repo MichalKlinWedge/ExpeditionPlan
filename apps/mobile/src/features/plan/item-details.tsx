@@ -1,4 +1,17 @@
-import { flightLine, flightOf, GUIDE_SITE, type GuideRow, guideFor, guideText, itemIcon, legLabel, type PlanItem as Item } from '@expeditionplan/core';
+import {
+  flightLine,
+  flightOf,
+  GUIDE_SITE,
+  guideLinkTargets,
+  type GuideRow,
+  guideFor,
+  type GuideSegment,
+  guideText,
+  itemIcon,
+  legLabel,
+  linkGuideText,
+  type PlanItem as Item,
+} from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Image } from 'expo-image';
 import * as Speech from 'expo-speech';
@@ -15,6 +28,7 @@ import { Spacing } from '@/constants/theme';
  * Szczegóły punktu na telefonie: miejsce z „Nawiguj”, opis, notatki, linki i przewodnik
  * (opis, ciekawostki, historia, zdjęcia z Commons). Tekst przewodnika jest w bazie telefonu —
  * offline zawsze; zdjęcia z pamięci podręcznej (pobierane po synchronizacji, `prefetchGuideImages`).
+ * Nazwy innych opisanych miejsc w treści są odnośnikami — przejście do ich szczegółów, „← Wstecz” wraca.
  * „Posłuchaj” czyta przewodnik syntezatorem mowy telefonu (`expo-speech`, offline, jeśli telefon
  * ma polski głos); zamknięcie szczegółów przerywa czytanie.
  */
@@ -54,12 +68,23 @@ export function prefetchGuideImages(trip: CachedTrip) {
 }
 
 export function ItemDetails({ trip, item, onClose, autoPlay = false }: Props) {
+  // Przejścia po odnośnikach: stos punktów nad otwartym; nowy `item` z zewnątrz zaczyna od zera.
+  const [path, setPath] = useState<{ root: string | null; stack: Item[] }>({ root: null, stack: [] });
+  const stack = path.root === (item?.ref ?? null) ? path.stack : [];
+  const current = stack.at(-1) ?? item;
+  const back = () => (stack.length > 0 ? setPath({ root: item?.ref ?? null, stack: stack.slice(0, -1) }) : onClose());
+  const go = (ref: string) => {
+    const next = trip.state.doc.items.find((each) => each.ref === ref);
+    if (next) setPath({ root: item?.ref ?? null, stack: [...stack, next] });
+  };
   return (
-    <Modal visible={item !== null} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={item !== null} animationType="slide" onRequestClose={back}>
       <SafeAreaProvider>
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
-            {item !== null && <Details trip={trip} item={item} onClose={onClose} autoPlay={autoPlay} />}
+            {current !== null && (
+              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0} />
+            )}
           </SafeAreaView>
         </ThemedView>
       </SafeAreaProvider>
@@ -67,7 +92,9 @@ export function ItemDetails({ trip, item, onClose, autoPlay = false }: Props) {
   );
 }
 
-function Details({ trip, item, onClose, autoPlay }: { trip: CachedTrip; item: Item; onClose: () => void; autoPlay: boolean }) {
+type DetailsProps = { trip: CachedTrip; item: Item; onBack: () => void; backLabel: string; onOpen: (ref: string) => void; autoPlay: boolean };
+
+function Details({ trip, item, onBack, backLabel, onOpen, autoPlay }: DetailsProps) {
   const doc = trip.state.doc;
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
@@ -76,6 +103,9 @@ function Details({ trip, item, onClose, autoPlay }: { trip: CachedTrip; item: It
   const guide = itemGuide(trip, item);
   const notes = doc.notes.filter((note) => note.scope === 'item' && note.targetRef === item.ref).map((note) => (note.title ? `${note.title}: ${note.body}` : note.body));
   const open = (url: string) => void Linking.openURL(url);
+  const targets = guide === null ? [] : guideLinkTargets(doc, trip.live.guides as unknown as GuideRow[], trip.ids, item.ref);
+  const used = new Set<string>();
+  const linked = (text: string) => <Linked segments={linkGuideText(text, targets, used)} onOpen={onOpen} />;
   const [speaking, setSpeaking] = useState(false);
   useEffect(
     () => () => {
@@ -105,8 +135,8 @@ function Details({ trip, item, onClose, autoPlay }: { trip: CachedTrip; item: It
   return (
     <View style={styles.fill}>
       <View style={styles.top}>
-        <Pressable onPress={onClose} hitSlop={12}>
-          <ThemedText type="linkPrimary">← Wróć</ThemedText>
+        <Pressable onPress={onBack} hitSlop={12}>
+          <ThemedText type="linkPrimary">{backLabel}</ThemedText>
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
@@ -150,7 +180,7 @@ function Details({ trip, item, onClose, autoPlay }: { trip: CachedTrip; item: It
               </ThemedText>
               <Button small variant={speaking ? 'accent' : 'secondary'} label={speaking ? '■ Zatrzymaj' : '▶ Posłuchaj'} onPress={listen} />
             </View>
-            <ThemedText>{guide.summary}</ThemedText>
+            <ThemedText>{linked(guide.summary)}</ThemedText>
             {guide.images.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.images}>
                 {guide.images.map((image) => (
@@ -168,21 +198,21 @@ function Details({ trip, item, onClose, autoPlay }: { trip: CachedTrip; item: It
               <View style={styles.block}>
                 <ThemedText type="smallBold">Ciekawostki</ThemedText>
                 {guide.facts.map((fact) => (
-                  <ThemedText key={fact}>• {fact}</ThemedText>
+                  <ThemedText key={fact}>• {linked(fact)}</ThemedText>
                 ))}
               </View>
             )}
             {guide.history && (
               <View style={styles.block}>
                 <ThemedText type="smallBold">Historia</ThemedText>
-                <ThemedText>{guide.history}</ThemedText>
+                <ThemedText>{linked(guide.history)}</ThemedText>
               </View>
             )}
             {guide.tips.length > 0 && (
               <View style={styles.block}>
                 <ThemedText type="smallBold">Na miejscu</ThemedText>
                 {guide.tips.map((tip) => (
-                  <ThemedText key={tip}>• {tip}</ThemedText>
+                  <ThemedText key={tip}>• {linked(tip)}</ThemedText>
                 ))}
               </View>
             )}
@@ -203,6 +233,19 @@ function Details({ trip, item, onClose, autoPlay }: { trip: CachedTrip; item: It
   );
 }
 
+/** Kawałki tekstu przewodnika; odnośnik = zagnieżdżony tekst z dotknięciem (zawija się z resztą akapitu). */
+function Linked({ segments, onOpen }: { segments: GuideSegment[]; onOpen: (ref: string) => void }) {
+  return segments.map((segment, i) =>
+    segment.ref ? (
+      <ThemedText key={i} themeColor="accent" style={styles.link} onPress={() => onOpen(segment.ref!)}>
+        {segment.text}
+      </ThemedText>
+    ) : (
+      segment.text
+    ),
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   top: { flexDirection: 'row', paddingHorizontal: Spacing.four, paddingVertical: Spacing.three },
@@ -215,4 +258,5 @@ const styles = StyleSheet.create({
   figure: { width: 260, gap: Spacing.one },
   photo: { width: 260, height: 195, borderRadius: Spacing.two },
   caption: { fontSize: 11, lineHeight: 14 },
+  link: { textDecorationLine: 'underline', fontWeight: 600 },
 });
