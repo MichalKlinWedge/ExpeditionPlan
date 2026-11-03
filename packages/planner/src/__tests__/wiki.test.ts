@@ -87,6 +87,37 @@ describe('przewodnik z Wikipedii', () => {
     });
   });
 
+  it('wskazówka organizatora: od razu podpowiedzi AI, artykuł bez współrzędnych albo w regionie, wskazówka w promptach i w opisie', async () => {
+    const parking = { lat: 31.63, lng: -7.99 };
+    const { fetchImpl, calls } = fakeWiki({
+      extract: 'Autostrada A7 — płatna autostrada w Maroku z Casablanki do Agadiru, bramki, opłaty gotówką i kartą. '.repeat(5),
+      pages: {
+        'en.wikipedia.org:A7 motorway (Morocco)': { title: 'A7 motorway (Morocco)', fullurl: 'https://en.wikipedia.org/wiki/A7_motorway_(Morocco)' },
+        'pl.wikipedia.org:Tanger': { title: 'Tanger', fullurl: 'https://pl.wikipedia.org/wiki/Tanger', coordinates: [{ lat: 35.77, lon: -5.8 }] },
+      },
+    });
+    const hint = 'opłaty na A7: bramki, czym płacić';
+    const place = { name: 'Autostradą A7 na północ', kind: 'transport', ...parking, hint };
+    // Ponad 300 km od miejsca — nawet ze wskazówką to już nie ten region.
+    expect(await checkSuggestion({ site: 'wikipedia', lang: 'pl', title: 'Tanger' }, place, fetchImpl)).toBeNull();
+
+    const prompts: string[] = [];
+    const client: AiClient = {
+      defaultProvider: 'GEMINI',
+      ask: async (request) => {
+        prompts.push(JSON.stringify(request));
+        const text = prompts.length === 1 ? { candidates: [{ site: 'wikipedia', lang: 'en', title: 'A7 motorway (Morocco)' }] } : { summary: 'Płatna autostrada.', facts: [], tips: ['Bramki przyjmują gotówkę.'] };
+        return { text: JSON.stringify(text), provider: 'GEMINI', model: 'test' };
+      },
+      listModels: async () => [],
+    };
+    const guide = await describePlace(place, { client, fetchImpl });
+    expect(calls.filter((call) => call.endsWith('search'))).toEqual([]);
+    expect(prompts[0]).toContain(hint);
+    expect(prompts[1]).toContain('przede wszystkim');
+    expect(guide).toMatchObject({ hint, article: { title: 'A7 motorway (Morocco)', site: 'wikipedia', lang: 'en' } });
+  });
+
   it('opis AI + zdjęcia z licencją; pliki bez licencji, mapy i ikony odpadają', async () => {
     const { fetchImpl } = fakeWiki({
       search: [{ index: 1, title: 'Sagrada Família', fullurl: 'https://pl.wikipedia.org/wiki/Sagrada_Fam%C3%ADlia', coordinates: [{ lat: 41.4036, lon: 2.1744 }] }],

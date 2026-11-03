@@ -135,9 +135,16 @@ export async function articleImages(title: string, lang: string, limit = 4, fetc
   return images;
 }
 
-export function guidePrompt(place: { name: string; kind: string }, article: WikiArticle): string {
+export function guidePrompt(place: { name: string; kind: string; hint?: string }, article: WikiArticle): string {
   return [
     `Przygotuj krótki przewodnik po miejscu „${place.name}” (${place.kind}) dla rodziny zwiedzającej je podczas wyjazdu.`,
+    ...(place.hint
+      ? [
+          '',
+          `Organizator chce się z opisu dowiedzieć przede wszystkim: „${place.hint}”. Skup się na tym w summary, facts i tips; resztę skróć.`,
+          'Ceny, opłaty i sposób płatności podawaj tylko wtedy, gdy są w artykule (z jego zastrzeżeniami, np. „w 2020 r.”) — wbrew zasadzie 5. Czego artykuł nie mówi — pomiń, nie zgaduj.',
+        ]
+      : []),
     '',
     'Zasady:',
     '1. Korzystaj WYŁĄCZNIE z tekstu artykułu poniżej. Nie dodawaj faktów, dat ani liczb spoza niego. Gdy artykuł czegoś nie mówi — pomiń to.',
@@ -164,6 +171,8 @@ export type PlaceQuery = {
   /** Baza dnia — okolica dla miejsc bez współrzędnych. */
   near?: { lat: number; lng: number };
   context?: { itemTitle?: string; description?: string; area?: string; trip?: string };
+  /** Wskazówka organizatora: o czym ma być opis („opłaty i bramki na A7”) — ma pierwszeństwo przed nazwą miejsca. */
+  hint?: string;
 };
 
 const Suggestions = z.object({
@@ -175,21 +184,30 @@ const Suggestions = z.object({
 
 export function suggestPrompt(place: PlaceQuery): string {
   return [
-    'Podaj tytuły ISTNIEJĄCYCH artykułów w Wikipedii albo Wikivoyage (polskich lub angielskich), które opisują to miejsce.',
-    'Gdy samo miejsce nie ma artykułu, podaj artykuł o obiekcie, którego jest częścią (np. medyna dla suków, park narodowy dla szlaku w nim) — ale nie o całym mieście ani kraju.',
+    ...(place.hint
+      ? [
+          `Podaj tytuły ISTNIEJĄCYCH artykułów w Wikipedii albo Wikivoyage (polskich lub angielskich), które najlepiej odpowiadają na to, czego chce organizator: „${place.hint}” — w kontekście punktu planu poniżej.`,
+          'Wskazówka ma pierwszeństwo przed nazwą miejsca (np. dla przejazdu autostradą — artykuł o tej autostradzie albo o jeździe autem w tym kraju, nie o parkingu na końcu). Może to być artykuł o drodze, regionie czy kraju, jeśli to on odpowiada na wskazówkę.',
+        ]
+      : [
+          'Podaj tytuły ISTNIEJĄCYCH artykułów w Wikipedii albo Wikivoyage (polskich lub angielskich), które opisują to miejsce.',
+          'Gdy samo miejsce nie ma artykułu, podaj artykuł o obiekcie, którego jest częścią (np. medyna dla suków, park narodowy dla szlaku w nim) — ale nie o całym mieście ani kraju.',
+        ]),
     'Tytuł dokładnie tak, jak w Wikipedii/Wikivoyage. Nie zgaduj: kod sprawdzi, czy artykuł istnieje i leży przy miejscu, a zły tytuł tylko kosztuje. Gdy nie znasz żadnego — pusta lista.',
     '',
     'JSON Schema odpowiedzi (każdy kandydat to obiekt z `site`, `lang`, `title`):',
     schemaOf(Suggestions),
     '',
     'Miejsce:',
-    JSON.stringify({ miejsce: place.name, rodzaj: place.kind, punkt: place.context?.itemTitle, opis: place.context?.description?.slice(0, 400), okolica: place.context?.area, wyjazd: place.context?.trip }),
+    JSON.stringify({ ...(place.hint ? { wskazowka: place.hint } : {}), miejsce: place.name, rodzaj: place.kind, punkt: place.context?.itemTitle, opis: place.context?.description?.slice(0, 400), okolica: place.context?.area, wyjazd: place.context?.trip }),
   ].join('\n');
 }
 
 /**
  * Sprawdzenie podpowiedzi: artykuł istnieje, nie jest ujednoznacznieniem i ma współrzędne w promieniu
  * od miejsca (3 km) albo od bazy dnia (25 km). Bez punktu odniesienia — tylko przy pasującym tytule.
+ * Ze wskazówką organizatora temat wskazał człowiek, a źródło widać przy opisie: wystarczy artykuł bez
+ * współrzędnych (droga, „jazda autem w Maroku”) albo w promieniu 300 km (ten sam region).
  */
 export async function checkSuggestion(
   candidate: { site: WikiSite; lang: string; title: string },
@@ -202,6 +220,7 @@ export async function checkSuggestion(
   const where = page.coordinates?.[0];
   const exact = place.lat !== undefined && place.lng !== undefined ? { lat: place.lat, lng: place.lng } : null;
   const origin = exact ?? place.near ?? null;
+  if (place.hint) return where === undefined || origin === null || km(origin, where) <= 300 ? { title: page.title, url: page.fullurl } : null;
   if (origin === null) return titleMatch(place.name, page.title) >= 0.75 ? { title: page.title, url: page.fullurl } : null;
   if (where === undefined || km(origin, where) > (exact ? 3 : 25)) return null;
   return { title: page.title, url: page.fullurl };
@@ -212,6 +231,7 @@ export type GuideDeps = { client: AiClient; timeoutMs?: number; onUsage?: (usage
 /**
  * Przewodnik po miejscu: artykuł w polskiej Wikipedii, potem w angielskiej; gdy żaden nie pasuje —
  * tytuły podpowiedziane przez AI (Wikipedia i Wikivoyage), każdy sprawdzony przez `checkSuggestion`.
+ * Ze wskazówką organizatora (`hint`) od razu podpowiedzi AI — nazwa miejsca może prowadzić gdzie indziej.
  * Opis zawsze po polsku. `null` = brak artykułu, którego dopasowanie jest pewne.
  */
 export async function describePlace(place: PlaceQuery, deps: GuideDeps): Promise<GuideContent | null> {
@@ -219,7 +239,7 @@ export async function describePlace(place: PlaceQuery, deps: GuideDeps): Promise
   const ai = { system: SYSTEM, timeoutMs: deps.timeoutMs ?? 60_000, ...(deps.onUsage ? { onUsage: deps.onUsage } : {}) };
   const at = place.lat !== undefined && place.lng !== undefined ? { lat: place.lat, lng: place.lng } : (place.near ?? null);
   let article: WikiArticle | null = null;
-  for (const lang of ['pl', 'en']) {
+  for (const lang of place.hint ? [] : ['pl', 'en']) {
     const found = await findArticle(place.name, at, lang, fetchImpl);
     if (found === null) continue;
     const text = await articleText(found.title, lang, fetchImpl);
@@ -242,5 +262,5 @@ export async function describePlace(place: PlaceQuery, deps: GuideDeps): Promise
   if (article === null) return null;
   const answer = await askStructured(deps.client, GuideDraft, guidePrompt(place, article), { ...ai, maxTokens: 3000, label: `przewodnik ${place.name}` });
   const images = await articleImages(article.title, article.lang, 4, fetchImpl, article.site).catch(() => []);
-  return { ...answer.data, images, article: { title: article.title, url: article.url, lang: article.lang, site: article.site } };
+  return { ...answer.data, images, article: { title: article.title, url: article.url, lang: article.lang, site: article.site }, ...(place.hint ? { hint: place.hint } : {}) };
 }

@@ -46,10 +46,15 @@ const placeOf = (doc: Doc, item: Item) => {
   return { ref, place: ref === undefined ? undefined : doc.places.find((each) => each.ref === ref) };
 };
 
-/** Jeden opis: `null` = gotowy, inaczej powód (brak artykułu, błąd). */
-async function describeOne(supabase: Supabase, client: Parameters<typeof describePlace>[1]["client"], tripId: string, doc: Doc, ids: Record<string, string>, item: Item): Promise<{ ok: string } | { error: string }> {
-  const { ref: placeRef, place } = placeOf(doc, item);
-  const name = place?.name ?? item.title;
+/**
+ * Jeden opis: `null` = gotowy, inaczej powód (brak artykułu, błąd). Ze wskazówką (`hint`) opis
+ * dotyczy punktu, nie miejsca („Autostradą A7” — opłaty na A7, nie parking na końcu): tytuł z punktu,
+ * zapis tylko z `item_id`, więc nie zasłania opisu miejsca w innych punktach.
+ */
+async function describeOne(supabase: Supabase, client: Parameters<typeof describePlace>[1]["client"], tripId: string, doc: Doc, ids: Record<string, string>, item: Item, hint?: string): Promise<{ ok: string } | { error: string }> {
+  const { ref: found, place } = placeOf(doc, item);
+  const placeRef = hint ? undefined : found;
+  const name = hint ? item.title : (place?.name ?? item.title);
   // Okolica dla miejsc bez współrzędnych: baza dnia (nocleg), a gdy jej brak — miasto obszaru puli.
   const day = doc.days.find((each) => each.ref === item.dayRef);
   const base = day?.baseRef === undefined ? undefined : doc.places.find((each) => each.ref === day.baseRef);
@@ -64,13 +69,20 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
         lng: place?.lng,
         near,
         context: { itemTitle: item.title, description: item.description, area: base?.name ?? item.area, trip: doc.trip.title },
+        ...(hint ? { hint } : {}),
       },
       { client, timeoutMs: 60_000 },
     );
   } catch (e) {
     return { error: `Nie udało się przygotować opisu „${name}”: ${e instanceof Error ? e.message : String(e)}` };
   }
-  if (content === null) return { error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${name}”. Opis bez źródła byłby zgadywaniem — pomijam.` };
+  if (content === null) {
+    return {
+      error: hint
+        ? `Nie znalazłem w Wikipedii ani Wikivoyage artykułu o „${hint}”. Spróbuj nazwać temat inaczej (np. nazwa drogi albo obiektu, „jazda autem w Maroku”).`
+        : `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${name}”. Opis bez źródła byłby zgadywaniem — pomijam. Możesz podpowiedzieć AI, o czym ma być opis.`,
+    };
+  }
   const itemId = ids[item.ref];
   const placeId = placeRef === undefined ? undefined : ids[placeRef];
   const { error } = await supabase.from("audio_guides").upsert({
@@ -92,12 +104,20 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
   return { ok: `Opis gotowy (z artykułu „${content.article.title}” — ${content.article.site === "wikivoyage" ? "Wikivoyage" : "Wikipedia"}, ${content.images.length} zdj.).` };
 }
 
-export async function describeItem(tripId: string, itemRef: string): Promise<FormState> {
+/** `hint` — wskazówka organizatora dla AI („opłaty i bramki na A7, czym płacić”); pusta = opis miejsca. */
+export async function describeItem(tripId: string, itemRef: string, hint = ""): Promise<FormState> {
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
   const item = loaded.doc.items.find((each) => each.ref === itemRef);
   if (item === undefined) return { error: "Tego punktu już nie ma — odśwież stronę." };
-  const result = await describeOne(loaded.supabase, loaded.client, tripId, loaded.doc, loaded.ids, item);
+  const clean = hint.trim().slice(0, 300);
+  const result = await describeOne(loaded.supabase, loaded.client, tripId, loaded.doc, loaded.ids, item, clean || undefined);
+  // Opis miejsca bez wskazówki: własny opis punktu (dawniej ze wskazówką) by go zasłaniał — znika (miękko).
+  const itemId = loaded.ids[item.ref];
+  const own = loaded.guides.find((row) => !row.deleted_at && row.item_id === itemId && row.place_id === null);
+  if ("ok" in result && clean === "" && own !== undefined && placeOf(loaded.doc, item).ref !== undefined) {
+    await loaded.supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", own.id).eq("trip_id", tripId);
+  }
   if ("ok" in result) refresh();
   return result;
 }

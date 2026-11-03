@@ -5,6 +5,7 @@ import { z } from 'zod';
  * historia i zdjęcia — z artykułu Wikipedii (ugruntowanie), streszczone przez AI. Tekst pochodny
  * artykułu (Wikipedia albo Wikivoyage) = CC BY-SA 4.0 z linkiem do źródła; każde zdjęcie z Commons ma własną licencję i autora.
  * Jeden przewodnik na miejsce (`place_id`), a gdy punkt nie ma miejsca — na punkt (`item_id`).
+ * Opis ze wskazówką („opłaty i bramki na A7”) jest zawsze na punkt — dotyczy tego punktu, nie miejsca.
  */
 
 export const GuideImage = z.object({
@@ -30,6 +31,8 @@ export const GuideContent = GuideDraft.extend({
   images: z.array(GuideImage).default([]),
   /** Artykuł, z którego powstał opis. */
   article: z.object({ title: z.string(), url: z.url(), lang: z.string(), site: z.enum(['wikipedia', 'wikivoyage']).default('wikipedia') }),
+  /** Wskazówka organizatora dla AI, z którą powstał opis (do ponownego użycia przy odświeżeniu). */
+  hint: z.string().optional(),
 });
 
 export type GuideImage = z.infer<typeof GuideImage>;
@@ -44,10 +47,19 @@ export const GUIDE_SITE: Record<'wikipedia' | 'wikivoyage', string> = { wikipedi
 /** Wiersz `audio_guides` tak, jak przychodzi z `pull_changes`. */
 export type GuideRow = { id: string; item_id: string | null; place_id: string | null; audience: string; lang: string; title: string; content: unknown; deleted_at?: string | null };
 
-/** Przewodnik punktu: po miejscu, potem po samym punkcie; treść, która nie przechodzi walidacji, jest pomijana. */
-export function guideFor(rows: readonly GuideRow[], itemId: string | undefined, placeId: string | undefined, audience = 'adult'): (GuideContent & { title: string }) | null {
+/** Wiersz przewodnika punktu: własny opis punktu (bez miejsca, np. ze wskazówką), potem opis miejsca, potem dowolny opis z punktu. */
+export function guideRowFor(rows: readonly GuideRow[], itemId: string | undefined, placeId: string | undefined, audience = 'adult'): GuideRow | undefined {
   const alive = rows.filter((row) => !row.deleted_at && row.audience === audience);
-  const row = (placeId !== undefined ? alive.find((each) => each.place_id === placeId) : undefined) ?? (itemId !== undefined ? alive.find((each) => each.item_id === itemId) : undefined);
+  return (
+    (itemId !== undefined ? alive.find((each) => each.item_id === itemId && each.place_id === null) : undefined) ??
+    (placeId !== undefined ? alive.find((each) => each.place_id === placeId) : undefined) ??
+    (itemId !== undefined ? alive.find((each) => each.item_id === itemId) : undefined)
+  );
+}
+
+/** Przewodnik punktu (kolejność jak `guideRowFor`); treść, która nie przechodzi walidacji, jest pomijana. */
+export function guideFor(rows: readonly GuideRow[], itemId: string | undefined, placeId: string | undefined, audience = 'adult'): (GuideContent & { title: string }) | null {
+  const row = guideRowFor(rows, itemId, placeId, audience);
   if (row === undefined) return null;
   const parsed = GuideContent.safeParse(row.content);
   return parsed.success ? { ...parsed.data, title: row.title } : null;

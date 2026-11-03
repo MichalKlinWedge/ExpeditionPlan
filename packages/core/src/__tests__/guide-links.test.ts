@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { guideRowFor } from '../guide.ts';
 import { linkGuideText } from '../guide-links.ts';
 
 const targets = [
@@ -27,5 +28,15 @@ describe('odnośniki w przewodniku', () => {
     const used = new Set<string>();
     expect(linked(linkGuideText('Kutubijja góruje nad miastem.', targets, used))).toEqual(['kutubia:Kutubijja']);
     expect(linked(linkGuideText('Kutubijja ma 77 m.', targets, used))).toEqual([]);
+  });
+});
+
+describe('który opis ma punkt', () => {
+  const row = (id: string, item_id: string | null, place_id: string | null) => ({ id, item_id, place_id, audience: 'adult', lang: 'pl', title: id, content: {} });
+  it('własny opis punktu (ze wskazówką) przed opisem miejsca, opis miejsca przed opisem z innego punktu', () => {
+    const rows = [row('miejsce', 'i-1', 'p-1'), row('punkt', 'i-2', null)];
+    expect(guideRowFor(rows, 'i-2', 'p-1')?.id).toBe('punkt');
+    expect(guideRowFor(rows, 'i-3', 'p-1')?.id).toBe('miejsce');
+    expect(guideRowFor([row('miejsce', 'i-1', 'p-1'), row('inny', 'i-1', 'p-2')], 'i-1', undefined)?.id).toBe('miejsce');
   });
 });

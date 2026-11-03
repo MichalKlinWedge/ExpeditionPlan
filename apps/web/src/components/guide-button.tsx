@@ -5,14 +5,30 @@ import { useState, useTransition } from "react";
 import type { FormState } from "@/app/actions";
 import { describeItem, removeGuide } from "@/app/guide-actions";
 
-/** „Przygotuj opis z Wikipedii” / „Odśwież” i „Usuń opis” — akcje serwera z wynikiem pod spodem. */
-export function GuideButtons({ tripId, itemRef, guideId }: { tripId: string; itemRef: string; guideId: string | null }) {
+/**
+ * „Przygotuj opis z Wikipedii” / „Odśwież” i „Usuń opis” — akcje serwera z wynikiem pod spodem.
+ * Pole „O czym ma być opis” naprowadza AI (wybór artykułu i treść), np. przejazd A7 → opłaty i bramki.
+ */
+export function GuideButtons({ tripId, itemRef, guideId, hint: saved = "" }: { tripId: string; itemRef: string; guideId: string | null; hint?: string }) {
   const [state, setState] = useState<FormState>({});
   const [pending, start] = useTransition();
+  const [hint, setHint] = useState(saved);
   return (
     <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1 text-xs text-zinc-500">
+        O czym ma być opis (opcjonalnie — podpowiedź dla AI)
+        <textarea
+          value={hint}
+          onChange={(event) => setHint(event.target.value)}
+          maxLength={300}
+          rows={2}
+          disabled={pending}
+          placeholder="np. opłaty na autostradzie A7: bramki, ile kosztuje, czym płacić"
+          className="w-full field max-w-xl px-2 py-1 text-sm"
+        />
+      </label>
       <div className="flex flex-wrap items-center gap-3">
-        <button disabled={pending} onClick={() => start(async () => setState(await describeItem(tripId, itemRef)))} className={guideId ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
+        <button disabled={pending} onClick={() => start(async () => setState(await describeItem(tripId, itemRef, hint)))} className={guideId ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
           {pending ? "Szukam artykułu i piszę… (ok. 10–30 s)" : guideId ? "Odśwież opis" : "Przygotuj opis z Wikipedii (AI)"}
         </button>
         {guideId && (

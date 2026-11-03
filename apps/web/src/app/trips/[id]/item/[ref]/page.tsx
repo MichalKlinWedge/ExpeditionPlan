@@ -1,4 +1,4 @@
-import { flightLine, flightOf, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, type GuideSegment, itemIcon, linkGuideText, legLabel, type TripDocument } from "@expeditionplan/core";
+import { flightLine, flightOf, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, guideRowFor, type GuideSegment, itemIcon, linkGuideText, legLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -60,7 +60,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   const targets = guide === null ? [] : guideLinkTargets(doc, rows, ids, item.ref);
   const used = new Set<string>();
   const linked = (text: string) => <Linked tripId={id} segments={linkGuideText(text, targets, used)} />;
-  const guideRow = guide === null ? undefined : rows.find((row) => !row.deleted_at && row.audience === "adult" && (row.place_id === (placeRef ? ids[placeRef] : undefined) || row.item_id === ids[item.ref]));
+  const guideRow = guide === null ? undefined : guideRowFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
   const time = item.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}` : null;
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
 
@@ -202,7 +202,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             </p>
           </article>
         )}
-        {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} />}
+        {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guide?.hint} />}
       </section>
     </>
   );
