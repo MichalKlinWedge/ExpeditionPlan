@@ -1,17 +1,20 @@
+import { fetchTripNews, newsRows, type NewsSummary, summarizeNews } from "@expeditionplan/sync";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { after } from "next/server";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
 import { BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PhoneIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
+import { TripNews } from "@/components/trip-news";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
 
 /**
  * Wyjazd: podsumowanie i kafelki wejść (plan, rezerwacje, informacje, uczestnicy i dostęp,
- * porównanie ze szkicem, AI, brief, eksport) oraz „Zaplanuj z AI”, gdy jest brief.
+ * porównanie ze szkicem, AI, brief, eksport) oraz „Zaplanuj z AI”, gdy jest brief. Na górze
+ * „Co nowego od ostatniej wizyty” (zmiany innych osób).
  */
 
 // Planowanie z AI (akcja serwera na tej stronie) trwa do kilku minut.
@@ -46,14 +49,25 @@ function Tile({ href, icon, title, hint }: { href: string; icon: React.ReactNode
   );
 }
 
+/**
+ * „Ostatnio na webie” i początek nowej wizyty (`touch_trip`), potem zmiany innych od poprzedniej.
+ * Kolejność ważna: nowa wizyta przesuwa granicę „nowego”. Błąd (np. serwer przed migracją) — bez karty.
+ */
+async function loadNews(client: SupabaseClient, tripId: string): Promise<NewsSummary | null> {
+  try {
+    await client.rpc("touch_trip", { p_trip: tripId, p_client: "web" });
+    const news = await fetchTripNews(client, tripId);
+    if (news === null) return null;
+    return summarizeNews(news, await newsRows(client, news));
+  } catch {
+    return null;
+  }
+}
+
 async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}`);
-  // „Ostatnio na webie” (statystyki organizatora) — po wysłaniu strony; błąd (np. przed migracją) bez znaczenia.
-  after(async () => {
-    await supabase.rpc("touch_trip", { p_trip: id, p_client: "web" });
-  });
-  const [trip, members, travelers, days, items, brief, mine, tasks] = await Promise.all([
+  const [trip, members, travelers, days, items, brief, mine, tasks, news] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id", { count: "exact", head: true }).eq("trip_id", id),
     supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
@@ -62,6 +76,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("trip_brief").select("id").eq("trip_id", id).maybeSingle(),
     supabase.from("my_trips").select("id, title, role").neq("id", id).order("start_date"),
     supabase.from("tasks").select("id", { count: "exact", head: true }).eq("trip_id", id).eq("status", "open").is("deleted_at", null),
+    loadNews(supabase as unknown as SupabaseClient, id),
   ]);
   if (trip.data === null) notFound();
   const role = trip.data.role!;
@@ -92,6 +107,8 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           </span>
         </p>
       </div>
+
+      {news !== null && <TripNews tripId={id} news={news} now={new Date().getTime()} />}
 
       {/* Przy dwóch kolumnach ostatni kafelek bez pary zajmuje cały wiersz. */}
       <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>:last-child:nth-child(odd)]:col-span-2">

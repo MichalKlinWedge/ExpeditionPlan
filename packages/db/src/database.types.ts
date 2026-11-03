@@ -1081,14 +1081,14 @@ isOneToOne: false
                   ]
                 },"trip_members": {
                   Row: {
-                    "can_add_expenses": boolean,"created_at": string,"invite_id": string | null,"last_seen_phone_at": string | null,"last_seen_web_at": string | null,"role": string,"trip_id": string,"user_id": string
+                    "can_add_expenses": boolean,"created_at": string,"invite_id": string | null,"last_seen_phone_at": string | null,"last_seen_web_at": string | null,"role": string,"seen_changes_at": string | null,"trip_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "can_add_expenses"?: boolean,"created_at"?: string,"invite_id"?: string | null,"last_seen_phone_at"?: string | null,"last_seen_web_at"?: string | null,"role": string,"trip_id": string,"user_id": string
+                    "can_add_expenses"?: boolean,"created_at"?: string,"invite_id"?: string | null,"last_seen_phone_at"?: string | null,"last_seen_web_at"?: string | null,"role": string,"seen_changes_at"?: string | null,"trip_id": string,"user_id": string
                   }
                   Update: {
-                    "can_add_expenses"?: boolean,"created_at"?: string,"invite_id"?: string | null,"last_seen_phone_at"?: string | null,"last_seen_web_at"?: string | null,"role"?: string,"trip_id"?: string,"user_id"?: string
+                    "can_add_expenses"?: boolean,"created_at"?: string,"invite_id"?: string | null,"last_seen_phone_at"?: string | null,"last_seen_web_at"?: string | null,"role"?: string,"seen_changes_at"?: string | null,"trip_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1341,6 +1341,9 @@ isOneToOne: false
 "link_traveler_account":
 { Args: { "p_traveler": string,"p_trip": string,"p_user": string }; Returns: undefined
                            },
+"mark_changes_seen":
+{ Args: { "p_trip": string }; Returns: undefined
+                           },
 "owns_expense":
 { Args: { "p_expense": string }; Returns: boolean
                            },
@@ -1364,6 +1367,9 @@ isOneToOne: false
                            },
 "trip_member_stats":
 { Args: { "p_trip": string }; Returns: Json
+                           },
+"trip_news":
+{ Args: { "p_limit"?: number,"p_trip": string }; Returns: Json
                            },
 "trip_role":
 { Args: { "p_trip": string }; Returns: string

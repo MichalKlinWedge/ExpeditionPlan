@@ -31,7 +31,7 @@ type Traveler = { id: string; name: string };
 const date = (iso: string) => new Date(iso).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" });
 
 /** „dziś 14:05”, „wczoraj”, „3 dni temu”, „12 lis 2026”. */
-function ago(iso: string | null, now: number): string {
+export function ago(iso: string | null, now: number): string {
   if (iso === null) return "nigdy";
   const at = new Date(iso);
   const days = Math.floor((now - at.getTime()) / 86_400_000);

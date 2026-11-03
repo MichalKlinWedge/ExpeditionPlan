@@ -32,11 +32,16 @@ import {
   type CachedTrip,
   cachedTrip,
   type DayEvent,
+  fetchTripNews,
+  markNewsSeen,
+  newsRows,
+  type NewsSummary,
   recordDayEvent,
   recordVariantChoice,
   refreshTrip,
   savePlanEdit,
   serialPuller,
+  summarizeNews,
   type TripState,
   uuidv7,
   watchTrip,
@@ -57,6 +62,7 @@ import { ContactList } from '@/features/plan/item-facts';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
 import { PoolView } from '@/features/plan/pool-view';
+import { TripNewsBanner } from '@/features/plan/trip-news';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
 import { TasksView } from '@/features/trip/tasks-view';
@@ -144,6 +150,8 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const theme = useTheme();
   const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'tasks' | 'journal' | 'info'>('plan');
   const [trip, setTrip] = useState<CachedTrip | null>(null);
+  /** „Co nowego” — zmiany innych od ostatniej wizyty (online). */
+  const [news, setNews] = useState<NewsSummary | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [lastEvent, setLastEvent] = useState<LastEvent | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -185,11 +193,13 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
     try {
       const fresh = await refreshTrip(localDb, remote, tripId);
       show(fresh);
-      // „Ostatnio w telefonie” dla organizatora — bez czekania; błąd (np. przed migracją) bez znaczenia.
-      void supabase.rpc('touch_trip', { p_trip: tripId, p_client: 'phone' }).then(
-        () => undefined,
-        () => undefined,
-      );
+      // „Ostatnio w telefonie” (statystyki organizatora) i nowa wizyta, potem „Co nowego” — bez czekania;
+      // błąd (np. serwer przed migracją) bez znaczenia.
+      const client = supabase as unknown as SupabaseClient;
+      void Promise.resolve(client.rpc('touch_trip', { p_trip: tripId, p_client: 'phone' }))
+        .then(() => fetchTripNews(client, tripId))
+        .then(async (found) => setNews(found === null ? null : summarizeNews(found, await newsRows(client, found))))
+        .catch(() => undefined);
       if (fresh.rejected.length > 0) {
         Alert.alert('Serwer nie przyjął zmiany', `${fresh.rejected.length === 1 ? 'Jeden zapis' : `${fresh.rejected.length} zapisy`} z telefonu wycofano — brak uprawnień albo dane już się zmieniły.
 
@@ -380,6 +390,22 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
         </ThemedText>
       )}
       {error !== '' && <ThemedText style={[styles.pad, { color: HARD }]}>{error}</ThemedText>}
+      {trip !== null && news !== null && (
+        <TripNewsBanner
+          news={news}
+          now={now}
+          onSeen={() => {
+            setNews(null);
+            void markNewsSeen(supabase as unknown as SupabaseClient, tripId).catch(() => undefined);
+          }}
+          onOpenItem={(ref) => {
+            const item = trip.state.doc.items.find((each) => each.ref === ref);
+            if (item === undefined) return;
+            setDetailPlay(false);
+            setDetail(item);
+          }}
+        />
+      )}
       {trip !== null && (
         <Tabs
           options={[
