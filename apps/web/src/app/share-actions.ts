@@ -41,3 +41,33 @@ export async function linkTravelerAccount(tripId: string, travelerId: string, us
   refresh();
   return { ok: "Zapisano." };
 }
+
+/**
+ * Uprawnienia członka wyjazdu (organizator): widz ↔ edytor i „dodaje wydatki” dla widza. Organizatora
+ * nie da się tu zmienić ani nikogo nim zrobić; o prawie decyduje RLS `members_update`.
+ */
+export async function setMemberAccess(tripId: string, userId: string, role: "editor" | "viewer", canAddExpenses: boolean): Promise<FormState> {
+  if (role !== "editor" && role !== "viewer") return { error: "Nieznana rola." };
+  const { supabase } = await requireUser(`/trips/${tripId}/people`);
+  const { data, error } = await supabase
+    .from("trip_members")
+    .update({ role, can_add_expenses: role === "editor" || canAddExpenses })
+    .eq("trip_id", tripId)
+    .eq("user_id", userId)
+    .neq("role", "owner")
+    .select("user_id");
+  if (error) return { error: error.message };
+  if ((data ?? []).length === 0) return { error: "Tego dostępu nie możesz zmienić (zmienia organizator; jego roli się nie zmienia)." };
+  refresh();
+  return { ok: "Zapisano." };
+}
+
+/** Odebranie dostępu do wyjazdu (organizator; organizatora nie da się usunąć — RLS `members_delete`). */
+export async function removeMember(tripId: string, userId: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/people`);
+  const { data, error } = await supabase.from("trip_members").delete().eq("trip_id", tripId).eq("user_id", userId).neq("role", "owner").select("user_id");
+  if (error) return { error: error.message };
+  if ((data ?? []).length === 0) return { error: "Tego dostępu nie możesz odebrać." };
+  refresh();
+  return { ok: "Dostęp odebrany." };
+}

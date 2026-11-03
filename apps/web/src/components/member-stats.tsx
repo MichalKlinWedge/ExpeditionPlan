@@ -1,3 +1,4 @@
+import { MemberAccess } from "@/components/member-access";
 import { TravelerAccount } from "@/components/traveler-account";
 import { ROLE } from "@/lib/labels";
 
@@ -77,8 +78,14 @@ export function MemberStats({ tripId, members, invites, travelers, editing, now 
                     {member.email && <span className="block text-xs text-zinc-500">{member.email}</span>}
                   </td>
                   <td className="py-1.5 pr-3">
-                    {ROLE[member.role] ?? member.role}
-                    {member.can_add_expenses && member.role === "viewer" && <span className="block text-xs text-zinc-500">+ dodaje wydatki</span>}
+                    {editing && (member.role === "editor" || member.role === "viewer") ? (
+                      <MemberAccess tripId={tripId} userId={member.user_id} name={member.display_name ?? member.email ?? "?"} role={member.role} canAddExpenses={member.can_add_expenses} />
+                    ) : (
+                      <>
+                        {ROLE[member.role] ?? member.role}
+                        {member.can_add_expenses && member.role === "viewer" && <span className="block text-xs text-zinc-500">+ dodaje wydatki</span>}
+                      </>
+                    )}
                   </td>
                   <td className="py-1.5 pr-3">
                     {date(member.joined_at)}
@@ -108,7 +115,7 @@ export function MemberStats({ tripId, members, invites, travelers, editing, now 
           </tbody>
         </table>
       </div>
-      {!editing && members.some((member) => member.travelers.length === 0) && <p className="text-xs text-zinc-500">Przypisanie konta do uczestnika planu — po „Edytuj”.</p>}
+      {!editing && members.length > 1 && <p className="text-xs text-zinc-500">Zmiana dostępu (widz ↔ edytor, wydatki, odebranie) i przypisanie konta do uczestnika — po „Edytuj”.</p>}
 
       {without.length > 0 && (
         <p className="text-zinc-600 dark:text-zinc-400">
