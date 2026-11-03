@@ -110,39 +110,41 @@ function project(point: LngLat, a: LngLat, b: LngLat): { offM: number; t: number
   return { offM: Math.hypot(ax + t * dx, ay + t * dy), t };
 }
 
-/** Douglas–Peucker (metry); tolerancja rośnie, aż zostanie najwyżej `maxPoints` punktów. */
+/**
+ * Douglas–Peucker (metry) w jednym przejściu: każdy punkt dostaje „ważność” — odchylenie, przy którym
+ * algorytm by go wybrał (nie większe niż ważność odcinka nadrzędnego). Zostają punkty ważniejsze niż
+ * `toleranceM`, a gdy jest ich za dużo — `maxPoints` najważniejszych (zawsze z końcami).
+ */
 export function simplifyTrack(points: readonly TrackPoint[], maxPoints = 1500, toleranceM = 3): TrackPoint[] {
-  const run = (tolerance: number) => {
-    const keep = new Uint8Array(points.length);
-    keep[0] = 1;
-    keep[points.length - 1] = 1;
-    const stack: [number, number][] = [[0, points.length - 1]];
-    while (stack.length > 0) {
-      const [from, to] = stack.pop()!;
-      let worst = -1;
-      let index = -1;
-      for (let i = from + 1; i < to; i++) {
-        const { offM } = project(flat(points[i]!), flat(points[from]!), flat(points[to]!));
-        if (offM > worst) {
-          worst = offM;
-          index = i;
-        }
-      }
-      if (index !== -1 && worst > tolerance) {
-        keep[index] = 1;
-        stack.push([from, index], [index, to]);
+  const importance = new Float64Array(points.length);
+  importance[0] = Infinity;
+  importance[points.length - 1] = Infinity;
+  const stack: [number, number, number][] = [[0, points.length - 1, Infinity]];
+  while (stack.length > 0) {
+    const [from, to, limit] = stack.pop()!;
+    if (to - from < 2) continue;
+    let worst = -1;
+    let index = -1;
+    for (let i = from + 1; i < to; i++) {
+      const { offM } = project(flat(points[i]!), flat(points[from]!), flat(points[to]!));
+      if (offM > worst) {
+        worst = offM;
+        index = i;
       }
     }
-    return points.filter((_, i) => keep[i] === 1);
-  };
-  let tolerance = toleranceM;
-  let result = run(tolerance);
-  while (result.length > maxPoints) {
-    tolerance *= 2;
-    result = run(tolerance);
+    const value = Math.min(worst, limit);
+    importance[index] = value;
+    stack.push([from, index, value], [index, to, value]);
+  }
+  let kept = points.map((_, i) => i).filter((i) => importance[i]! > toleranceM);
+  if (kept.length > maxPoints) {
+    // Końce mają ważność nieskończoną — zawsze są wśród najważniejszych.
+    const top = new Set([...kept].sort((a, b) => importance[b]! - importance[a]!).slice(0, maxPoints));
+    kept = kept.filter((i) => top.has(i));
   }
   // Zapis: ~1 m dokładności i pełne metry wysokości — mniej danych w planie i na telefonie.
-  return result.map((point) => {
+  return kept.map((i) => {
+    const point = points[i]!;
     const lng = Math.round(point[0] * 1e5) / 1e5;
     const lat = Math.round(point[1] * 1e5) / 1e5;
     return point[2] === undefined ? [lng, lat] : [lng, lat, Math.round(point[2])];

@@ -40,9 +40,19 @@ describe('GPX', () => {
     expect(hikingMinutes(4, 600, 0)).toBe(150);
   });
 
-  it('uproszczenie trzyma limit punktów', () => {
-    const zigzag: TrackPoint[] = Array.from({ length: 5000 }, (_, i) => [15.7 + (i % 2) * 0.0005, 50.7 + i * 0.0001]);
-    expect(simplifyTrack(zigzag, 500).length).toBeLessThanOrEqual(500);
+  it('uproszczenie trzyma limit punktów, z końcami śladu', () => {
+    const zigzag: TrackPoint[] = Array.from({ length: 3000 }, (_, i) => [15.7 + (i % 2) * 0.0005, 50.7 + i * 0.0001]);
+    const kept = simplifyTrack(zigzag, 500);
+    expect(kept).toHaveLength(500);
+    expect(kept[0]).toEqual([15.7, 50.7]);
+    expect(kept.at(-1)).toEqual([15.7005, 50.9999]);
+    // Długi ślad z szumem GPS (jak z zegarka): szybko i w limicie.
+    let seed = 1;
+    const noise = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5) * 0.00004;
+    const walk: TrackPoint[] = Array.from({ length: 40000 }, (_, i) => [15.7 + Math.sin(i / 800) * 0.02 + noise(), 50.7 + i * 0.00002 + noise(), 1000 + Math.sin(i / 300) * 50]);
+    const started = Date.now();
+    expect(simplifyTrack(walk).length).toBeLessThanOrEqual(1500);
+    expect(Date.now() - started).toBeLessThan(2000);
   });
 
   it('położenie na śladzie: odległość od linii, przebyte i pozostałe km, podejścia przed nami', () => {
