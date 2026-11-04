@@ -145,7 +145,7 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       // Ukryty kontener (powrót na stronę zachowaną przez Next, zwinięty układ) ma rozmiar 0 —
       // dopasowanie dałoby widok całego świata; czekamy, aż kontener się pokaże.
       if (container.current === null || container.current.clientWidth === 0 || container.current.clientHeight === 0) return;
-      const main = data.pins.filter((pin) => pin.stops.length > 0 || pin.base);
+      const main = data.pins.filter((pin) => pin.stops.length > 0 || pin.base || pin.arrival);
       const focus = main.length > 0 ? main : data.pins;
       if (focus.length === 0) return;
       fitted.current = fitKey;
@@ -261,7 +261,8 @@ function pinElement(pin: MapPin): HTMLElement {
     face.textContent = "⌂";
     face.className = `flex size-6 items-center justify-center rounded-full bg-indigo-500 text-sm text-white ${ring}`;
   } else {
-    face.className = `block size-3 rounded-full bg-zinc-400 ${ring}`;
+    // Sam cel przejazdu (numer stoi przy starcie) jest w kolorze planu, szare są tylko punkty z puli.
+    face.className = `block size-3 rounded-full ${pin.arrival ? "bg-sea" : "bg-zinc-400"} ${ring}`;
   }
   element.append(face);
   return element;

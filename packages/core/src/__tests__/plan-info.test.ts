@@ -62,11 +62,13 @@ describe('nocleg dnia', () => {
 describe('mapa dnia', () => {
   const d2 = ['d2-wyjscie', 'd2-medersa', 'd2-do-bahii', 'd2-bahia', 'd2-suki-dzien', 'd2-lunch'];
 
-  it('numery w kolejności dnia, przejazd numerowany w celu, to samo miejsce = jedna pinezka', () => {
+  it('numery w kolejności dnia, przejazd numerowany przy starcie, to samo miejsce = jedna pinezka', () => {
     const map = dayMap(maroko, d2, { baseRef: 'p-agafay' });
     expect(map.numbers).toEqual({ 'd2-wyjscie': 1, 'd2-medersa': 2, 'd2-do-bahii': 3, 'd2-bahia': 4, 'd2-suki-dzien': 5 });
     expect(map.pins.map((pin) => pin.placeRef)).toEqual(['p-riad', 'p-medersa', 'p-bahia', 'p-jemaa']);
-    expect(map.pins.find((pin) => pin.placeRef === 'p-bahia')!.stops.map((stop) => stop.n)).toEqual([3, 4]);
+    expect(map.pins.find((pin) => pin.placeRef === 'p-medersa')!.stops.map((stop) => stop.n)).toEqual([2, 3]);
+    expect(map.pins.find((pin) => pin.placeRef === 'p-bahia')!.stops.map((stop) => stop.n)).toEqual([4]);
+    expect(map.pins.find((pin) => pin.placeRef === 'p-bahia')!.arrival).toBe(true);
     // Medersa → (przejazd z Medersy) → Bahia: bez powtórzonego punktu na linii.
     expect(map.lines).toEqual([{ routed: false, coordinates: expect.any(Array) }]);
     expect(map.lines[0]!.coordinates).toHaveLength(4);
@@ -118,6 +120,15 @@ describe('mapa dnia', () => {
     expect(map.lines[2]!.coordinates).toEqual([bahia, at('p-jemaa')]);
     // Numery i pinezki bez zmian.
     expect(map.numbers['d2-do-bahii']).toBe(3);
+  });
+
+  it('przejazd bez „skąd” ma numer przy poprzednim miejscu dnia, a pierwszy w dniu przy celu', () => {
+    const noFrom = (ref: string) => ({ ...maroko, items: maroko.items.map((item) => (item.ref === ref ? { ...item, leg: (({ fromPlaceRef: _from, ...leg }) => leg)(item.leg!) } : item)) });
+    const after = dayMap(noFrom('d2-do-bahii'), d2);
+    expect(after.pins.find((pin) => pin.placeRef === 'p-medersa')!.stops.map((stop) => stop.ref)).toContain('d2-do-bahii');
+    const first = dayMap(noFrom('d2-do-bahii'), ['d2-do-bahii', 'd2-bahia']);
+    expect(first.pins.find((pin) => pin.placeRef === 'p-bahia')!.stops.map((stop) => stop.ref)).toEqual(['d2-do-bahii', 'd2-bahia']);
+    expect(first.numbers['d2-do-bahii']).toBe(1);
   });
 
   it('linia trasy z innej kolejności (końce daleko od miejsc) ustępuje prostej', () => {

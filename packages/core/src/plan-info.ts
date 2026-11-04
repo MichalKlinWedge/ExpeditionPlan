@@ -145,6 +145,8 @@ export type MapPin = {
   base?: boolean;
   /** Punkty z puli w tym miejscu (bez numeru — poza dniem). */
   pool?: { ref: string; title: string }[];
+  /** Cel przejazdu: numer przejazdu stoi przy jego starcie, więc cel może nie mieć własnego numeru. */
+  arrival?: boolean;
   /** Własna pinezka użytkownika (`provider: 'user'`) — można ją przesunąć na mapie. */
   movable?: boolean;
   /** Miejsce tylko dojazdu albo powrotu (lotnisko w domu, start długiej drogi) — mapa może je ukryć. */
@@ -232,6 +234,7 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
   const numbers: Record<string, number> = {};
   const tracks = new Map(doc.tracks.map((track) => [track.ref, track]));
   const drawn = new Set<string>();
+  let previousPin: MapPin | undefined;
   refs.forEach((ref, index) => {
     const item = items.get(ref);
     if (item === undefined) return;
@@ -266,10 +269,14 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     } else if (target !== undefined) {
       straightTo(at(target), transit);
     }
-    if (target === undefined) return;
+    // Numer przejazdu stoi tam, skąd się rusza: przy „skąd”, a bez niego przy poprzednim miejscu dnia.
+    const numbered = leg === undefined ? target : (from ?? previousPin ?? target);
+    if (leg !== undefined && target !== undefined) target.arrival = true;
+    previousPin = target ?? from ?? previousPin;
+    if (numbered === undefined) return;
     const n = Object.keys(numbers).length + 1;
     numbers[ref] = n;
-    target.stops.push({ ref, n, title: item.title });
+    numbered.stops.push({ ref, n, title: item.title });
   });
   const base = pin(options.baseRef);
   if (base !== undefined) {
