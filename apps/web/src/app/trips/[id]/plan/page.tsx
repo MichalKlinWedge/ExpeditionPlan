@@ -79,6 +79,9 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
           <PlanActionButton run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
           <PlanActionButton run={describeTrip.bind(null, id)} label="Przygotuj opisy atrakcji (przewodnik)" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
           <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />
+          <Link href={`/trips/${id}/places`} className="self-start text-xs text-zinc-500 underline hover:text-sea">
+            Wszystkie miejsca: nazwy i współrzędne →
+          </Link>
         </div>
       )}
       <PlanView

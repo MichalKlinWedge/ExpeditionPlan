@@ -24,6 +24,8 @@ export type MapEditing = {
   picked: LatLng | null;
   onPick: (at: LatLng) => void;
   onMovePlace: (placeRef: string, at: LatLng) => void;
+  /** Podpowiedź przy wskazywaniu: przed kliknięciem i po nim (domyślnie: nowy punkt planu). */
+  hints?: [string, string];
 };
 
 type Props = {
@@ -33,9 +35,11 @@ type Props = {
   selected: string | null;
   onSelect: (ref: string) => void;
   editing?: MapEditing | null;
+  /** Napis, gdy nie ma pinezek (domyślnie: o punktach dnia). */
+  emptyText?: string;
 };
 
-export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null }: Props) {
+export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null, emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi." }: Props) {
   const container = useRef<HTMLDivElement>(null);
   // Dojazd i powrót (lot, długa droga) domyślnie ukryte — skala kraju gubi szczegóły na miejscu.
   const [showTransit, setShowTransit] = useState(false);
@@ -204,12 +208,12 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       )}
       {picking && (
         <p className="absolute inset-x-4 top-4 rounded bg-white/90 p-2 text-center text-xs text-zinc-700 shadow dark:bg-zinc-900/90 dark:text-zinc-200">
-          {picked === null ? "Kliknij mapę w miejscu nowego punktu." : "Wpisz nazwę pod mapą albo kliknij inne miejsce."}
+          {(editing?.hints ?? ["Kliknij mapę w miejscu nowego punktu.", "Wpisz nazwę pod mapą albo kliknij inne miejsce."])[picked === null ? 0 : 1]}
         </p>
       )}
       {map !== null && data.pins.length === 0 && !picking && (
         <p className="absolute inset-x-4 top-4 rounded bg-white/90 p-2 text-center text-xs text-zinc-600 shadow dark:bg-zinc-900/90 dark:text-zinc-300">
-          Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.
+          {emptyText}
         </p>
       )}
     </div>

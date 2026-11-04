@@ -94,6 +94,9 @@ export default function HelpPage() {
             <Step name="Karta punktu">
               opis, ceny, linki, opis przewodnika z Wikipedii (📖 przy punkcie znaczy, że opis już jest) i trasa pieszo: link z mapy.com (🗺 w planie dnia) z długością i czasem przepisanymi z mapy, od których liczą się godziny dnia. Plik GPX sam wypełnia długość, czas i podejście oraz rysuje dokładny przebieg na mapie planu.
             </Step>
+            <Step name="Miejsca">
+              wszystkie miejsca planu z listą tego, co z nich korzysta. Organizator i edytor poprawią tu nazwę, adres i współrzędne (wklejone, wskazane na mapie albo znalezione po nazwie), także gdy automat postawił pinezkę w złym miejscu. Zmiana obowiązuje wszędzie, gdzie miejsce jest użyte, a czasy przejazdów trzeba potem przeliczyć w planie.
+            </Step>
             <Step name="Rezerwacje i budżet">
               noclegi, auta, bilety ze statusem (do zarezerwowania → zarezerwowane → opłacone; anulowane można usunąć z listy), plan budżetu i wydatki z trasy, także plan a wydatki dzień po dniu.
             </Step>
