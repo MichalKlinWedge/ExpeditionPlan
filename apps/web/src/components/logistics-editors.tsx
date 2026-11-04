@@ -1,7 +1,7 @@
 "use client";
 
 import { BUDGET_CATEGORY, type BudgetSuggestion, formatMoney, type TripDocument } from "@expeditionplan/core";
-import { useActionState, useState, useTransition } from "react";
+import { startTransition, useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import {
@@ -463,7 +463,9 @@ export function RemoveCancelledBooking({ tripId, bookingRef, title, note }: { tr
   );
 }
 
-function BookingForm({ tripId, booking, statuses, zones, onDone }: { tripId: string; booking?: Booking; statuses: Record<string, string>; zones: string[]; onDone: () => void }) {
+type PlaceOption = Doc["places"][number];
+
+function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tripId: string; booking?: Booking; statuses: Record<string, string>; zones: string[]; places: PlaceOption[]; onDone: () => void }) {
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = await saveBooking(tripId, booking?.ref ?? null, prev, form);
     if (result.ok) onDone();
@@ -473,8 +475,16 @@ function BookingForm({ tripId, booking, statuses, zones, onDone }: { tripId: str
   const refundable = booking?.refundable === true ? "yes" : booking?.refundable === false ? "no" : "";
   const price = booking?.price;
   const listId = `zones-${booking?.ref ?? "new"}`;
+  const placeListId = `places-${booking?.ref ?? "new"}`;
+  const place = places.find((each) => each.ref === booking?.startPlaceRef);
+  // Sam `action` czyści formularz po każdej odpowiedzi serwera, także po błędzie: wpisane dane by przepadły.
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    startTransition(() => action(data));
+  };
   return (
-    <form action={action} className="mt-1 flex flex-col gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+    <form action={action} onSubmit={submit} className="mt-1 flex flex-col gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
       <datalist id={listId}>
         {zones.map((zone) => (
           <option key={zone} value={zone} />
@@ -663,6 +673,26 @@ function BookingForm({ tripId, booking, statuses, zones, onDone }: { tripId: str
         </div>
       )}
       {kind === "lodging" && (
+        <div className="flex flex-col gap-1">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className={label}>
+              Miejsce noclegu
+              <input name="placeName" defaultValue={place?.name} list={placeListId} placeholder="np. Riad Lakhdar" className={input} />
+              <datalist id={placeListId}>
+                {places.map((each) => (
+                  <option key={each.ref} value={each.name} />
+                ))}
+              </datalist>
+            </label>
+            <label className={label}>
+              Współrzędne albo link z mapy
+              <input name="placeCoordinates" defaultValue={place?.lat !== undefined && place.lng !== undefined ? `${place.lat}, ${place.lng}` : ""} placeholder="31.6295, -7.9811" className={input} />
+            </label>
+          </div>
+          <p className="text-xs text-zinc-500">Dzięki temu nocleg jest na mapie dnia. Nowe współrzędne przenoszą to miejsce wszędzie, gdzie występuje w planie. Krótkiego linku maps.app.goo.gl nie odczytamy: otwórz go i skopiuj pełny adres.</p>
+        </div>
+      )}
+      {kind === "lodging" && (
         <div className="flex flex-wrap items-end gap-2">
           <label className={label}>
             Zameldowanie od
@@ -696,7 +726,7 @@ function BookingForm({ tripId, booking, statuses, zones, onDone }: { tripId: str
   );
 }
 
-export function BookingEditor({ tripId, booking, statuses, zones }: { tripId: string; booking: Booking; statuses: Record<string, string>; zones: string[] }) {
+export function BookingEditor({ tripId, booking, statuses, zones, places }: { tripId: string; booking: Booking; statuses: Record<string, string>; zones: string[]; places: PlaceOption[] }) {
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
@@ -705,10 +735,10 @@ export function BookingEditor({ tripId, booking, statuses, zones }: { tripId: st
       </button>
     );
   }
-  return <BookingForm tripId={tripId} booking={booking} statuses={statuses} zones={zones} onDone={() => setOpen(false)} />;
+  return <BookingForm tripId={tripId} booking={booking} statuses={statuses} zones={zones} places={places} onDone={() => setOpen(false)} />;
 }
 
-export function NewBooking({ tripId, statuses, zones }: { tripId: string; statuses: Record<string, string>; zones: string[] }) {
+export function NewBooking({ tripId, statuses, zones, places }: { tripId: string; statuses: Record<string, string>; zones: string[]; places: PlaceOption[] }) {
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
@@ -717,7 +747,7 @@ export function NewBooking({ tripId, statuses, zones }: { tripId: string; status
       </button>
     );
   }
-  return <BookingForm tripId={tripId} statuses={statuses} zones={zones} onDone={() => setOpen(false)} />;
+  return <BookingForm tripId={tripId} statuses={statuses} zones={zones} places={places} onDone={() => setOpen(false)} />;
 }
 
 /** Punkty planu „w pakiecie” rezerwacji — zaznaczone wskazują rezerwację i mają płatność „w cenie”. */

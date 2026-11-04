@@ -315,11 +315,15 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                     .join(" · ")}
                 </p>
                 {facts(booking, cancelSoon).length > 0 && <p className="text-xs text-zinc-500">{facts(booking, cancelSoon).join(" · ")}</p>}
+                {booking.kind === "lodging" && booking.startPlaceRef !== undefined && (() => {
+                  const place = doc.places.find((each) => each.ref === booking.startPlaceRef);
+                  return place && <p className="text-xs text-zinc-500">miejsce: {place.name}{place.lat === undefined || place.lng === undefined ? " · bez współrzędnych, nie ma go na mapie" : ""}</p>;
+                })()}
                 {packaged.get(booking.ref) && <p className="text-xs text-zinc-500">w pakiecie: {packaged.get(booking.ref)!.map((item) => item.title).join(", ")}</p>}
                 {canEdit && (
                   <div className="flex flex-col items-start gap-1">
                     <span className="flex gap-3">
-                      <BookingEditor tripId={id} booking={booking} statuses={statuses} zones={zones} />
+                      <BookingEditor tripId={id} booking={booking} statuses={statuses} zones={zones} places={doc.places} />
                       <BookingItems tripId={id} bookingRef={booking.ref} items={choices.items} chosen={(packaged.get(booking.ref) ?? []).map((item) => item.ref)} />
                     </span>
                   </div>
@@ -328,7 +332,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
             );
           })}
         </ul>
-        {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} />}
+        {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />}
       </section>
 
       <Link href={`/trips/${id}/tasks`} className="self-start text-sm text-zinc-500 underline hover:text-sea">

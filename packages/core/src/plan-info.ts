@@ -65,7 +65,7 @@ export type DayLodging = {
   onMap: boolean;
 };
 
-const LIVE_BOOKING = new Set(['to_book', 'booked', 'paid', 'unknown', 'not_required']);
+export const LIVE_BOOKING = new Set(['to_book', 'booked', 'paid', 'unknown', 'not_required']);
 
 /**
  * Nocleg dnia: baza dnia (`day.baseRef`) i rezerwacja noclegu na tę noc (start ≤ data < koniec).
@@ -83,7 +83,8 @@ export function dayLodging(doc: Doc, dayRef: string): DayLodging | null {
       day.date < (booking.end?.date ?? booking.start.date),
   );
   const booking = nights.find((each) => day.baseRef !== undefined && (each.startPlaceRef === day.baseRef || each.endPlaceRef === day.baseRef)) ?? nights[0];
-  const placeRef = day.baseRef ?? booking?.startPlaceRef;
+  // Rezerwacja mówi dokładniej niż baza dnia, gdzie śpimy.
+  const placeRef = booking?.startPlaceRef ?? day.baseRef;
   if (placeRef === undefined && booking === undefined) return null;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
   return {

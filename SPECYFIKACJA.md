@@ -432,6 +432,7 @@ Schemat w migracjach `supabase/migrations/*_mvp1_*.sql` realizuje tabele powyże
 
 ### Dodane po MVP-1 (listopad 2026)
 
+- **Miejsce w formularzu rezerwacji noclegu** (`core/booking-place.ts`) — nazwa i współrzędne albo link z mapy ustawiają `bookings.start_place_id`. Na mapie dnia to miejsce ma pierwszeństwo przed `days.base_id`.
 - **„Trekking” i „pieszo” na liście rodzajów** (`core/item-kind.ts`) — w danych to `kind: transport` z `leg.mode` `hike` albo `walk`, nie osobne rodzaje: zostają czas drogi, punkty „skąd/dokąd” i przeliczanie trasy.
 - **`items.stops_min`** — postoje i przerwy w trakcie punktu (przejazdu, trasy, każdego innego). Silnik dolicza je do czasu punktu w obu scenariuszach, raz także przy `roundTrip`; to nie to samo co `buffer_after_min`, który leży po punkcie. Liczba przeżywa przeliczenie trasy, bo nie należy do `leg`.
 - **`trips.status = 'postponed'`** — wyjazd odłożony: termin niepewny albo nie wypalił. Daty zostają orientacyjne (dni planu są z nimi związane); osobna sekcja „Odłożone” na listach web i telefon, bez odliczania, gotowości i przypomnień.

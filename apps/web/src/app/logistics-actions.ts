@@ -1,6 +1,6 @@
 "use server";
 
-import { BookingKind, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
+import { BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -257,7 +257,9 @@ export async function saveBooking(tripId: string, ref: string | null, _prev: For
   if (kmLimit === 0 || rooms === 0) return { error: "Limit km i liczba pokoi — większe od zera." };
   const refundable = text(form, "refundable");
 
-  return change(tripId, "bookings", ref, (doc, current) => {
+  return commit(tripId, (doc) => {
+    const current = (ref === null ? undefined : doc.bookings.find((each) => each.ref === ref)) as Element | undefined;
+    if (ref !== null && current === undefined) return "Tego elementu już nie ma — odśwież stronę.";
     const kind = BookingKind.safeParse(text(form, "kind") || current?.kind);
     if (!kind.success) return "Wybierz rodzaj rezerwacji.";
     const keep = (current ?? {}) as Record<string, unknown>;
@@ -265,8 +267,15 @@ export async function saveBooking(tripId: string, ref: string | null, _prev: For
     const start = bookingTime(form, "start", oldTz(keep.start) ?? doc.trip.primaryTz);
     const end = bookingTime(form, "end", oldTz(keep.end) ?? (text(form, "startTz") || doc.trip.primaryTz));
     if (start.error || end.error) return (start.error ?? end.error)!;
-    return {
+    // Formularz ze starej wersji strony nie ma tych pól: wtedy miejsce zostaje bez zmian.
+    const place =
+      kind.data === "lodging" && form.has("placeName")
+        ? bookingPlace(doc, keep.startPlaceRef as string | undefined, { name: text(form, "placeName"), coordinates: text(form, "placeCoordinates"), title }, uuidv7())
+        : null;
+    if (typeof place === "string") return place;
+    const element: Element = {
       ...(current ?? { ref: `id-${uuidv7()}`, addons: [], pros: [], cons: [], links: [], notes: [] }),
+      ...(place === null ? {} : { startPlaceRef: place.placeRef }),
       kind: kind.data,
       title,
       status,
@@ -294,6 +303,19 @@ export async function saveBooking(tripId: string, ref: string | null, _prev: For
           : undefined,
       car: kind.data === "car_rental" ? compact({ ...((keep.car as object) ?? {}), carClass: optional(text(form, "carClass")), kmLimit, officeHours: optional(text(form, "officeHours")) }) : undefined,
       lodging: kind.data === "lodging" ? compact({ amenities: [], ...((keep.lodging as object) ?? {}), rooms, breakfast: optional(text(form, "breakfast")) }) : undefined,
+    };
+    const list = doc.bookings as unknown as Element[];
+    return {
+      doc: {
+        ...doc,
+        places: place?.places ?? doc.places,
+        bookings: (current === undefined ? [...list, element] : list.map((each) => (each.ref === ref ? element : each))) as unknown as Doc["bookings"],
+      },
+      writes: [
+        ...(place?.write === undefined ? [] : [{ collection: "places" as const, element: place.write.place as unknown as Element, op: place.write.op }]),
+        { collection: "bookings" as const, element, op: current === undefined ? ("insert" as const) : ("update" as const) },
+      ],
+      ok: "Zapisano.",
     };
   });
 }

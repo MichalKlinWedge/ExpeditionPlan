@@ -1,3 +1,4 @@
+import { LIVE_BOOKING } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
@@ -37,7 +38,7 @@ export function parseCoordinates(text: string): LatLng | null {
   return null;
 }
 
-/** Miejsca użyte w planie (punkty, bazy dni, końce przejazdów) bez współrzędnych — z tytułami punktów, które ich używają. */
+/** Miejsca użyte w planie (punkty, bazy dni, końce przejazdów, noclegi z rezerwacji) bez współrzędnych — z tytułami punktów, które ich używają. */
 export function placesOffMap(doc: TripDocument): { ref: string; name: string; searchName?: string; usedBy: string[] }[] {
   const usedBy = new Map<string, string[]>();
   const use = (ref: string | undefined, what: string) => {
@@ -50,6 +51,7 @@ export function placesOffMap(doc: TripDocument): { ref: string; name: string; se
     use(item.leg?.toPlaceRef, item.title);
   }
   for (const day of doc.days) use(day.baseRef, `baza dnia ${day.date}`);
+  for (const booking of doc.bookings) if (booking.kind === 'lodging' && LIVE_BOOKING.has(booking.status)) use(booking.startPlaceRef, `nocleg: ${booking.title}`);
   return doc.places
     .filter((place) => usedBy.has(place.ref) && (place.lat === undefined || place.lng === undefined))
     .map((place) => ({ ref: place.ref, name: place.name, ...(place.searchName ? { searchName: place.searchName } : {}), usedBy: [...new Set(usedBy.get(place.ref))] }));
