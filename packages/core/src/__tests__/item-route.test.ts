@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { isFootRouteItem, routeLinkLabel, setItemRoute } from '../item-route.ts';
+import { drivingRouteUrl, isFootRouteItem, routeLinkLabel, setItemRoute } from '../item-route.ts';
 import { legLabel } from '../plan-info.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
@@ -20,6 +20,30 @@ function withWalk() {
   const item = { ...rest, leg };
   return { doc: TripDocument.parse({ ...doc, items: doc.items.map((each) => (each.ref === walk.ref ? item : each)) }), ref: walk.ref, dayRef: walk.dayRef! };
 }
+
+describe('link do trasy autem', () => {
+  const places = [
+    { ref: 'a', name: 'Start', lat: 42.5, lng: 41.87, provider: 'user' as const, links: [] },
+    { ref: 'b', name: 'Mestia, plac', provider: 'unknown' as const, links: [] },
+  ];
+  const doc = { places } as unknown as TripDocument;
+  const item = (mode: string, extra: object = {}) => ({ kind: 'transport', leg: { mode, fromPlaceRef: 'a', toPlaceRef: 'b', links: [] }, ...extra }) as unknown as TripDocument['items'][number];
+
+  it('współrzędne startu, cel bez nich po nazwie, tryb jazdy autem', () => {
+    expect(drivingRouteUrl(doc, item('rental_car'))).toBe('https://www.google.com/maps/dir/?api=1&origin=42.5%2C41.87&destination=Mestia%2C%20plac&travelmode=driving');
+  });
+
+  it('bez miejsca startu sam cel, a cel może być miejscem punktu', () => {
+    const noOrigin = { kind: 'transport', placeRef: 'a', leg: { mode: 'car', links: [] } } as unknown as TripDocument['items'][number];
+    expect(drivingRouteUrl(doc, noOrigin)).toBe('https://www.google.com/maps/dir/?api=1&destination=42.5%2C41.87&travelmode=driving');
+  });
+
+  it('nie dla innych środków transportu ani bez celu', () => {
+    expect(drivingRouteUrl(doc, item('train'))).toBeNull();
+    expect(drivingRouteUrl(doc, item('hike'))).toBeNull();
+    expect(drivingRouteUrl(doc, { kind: 'transport', leg: { mode: 'car', links: [] } } as unknown as TripDocument['items'][number])).toBeNull();
+  });
+});
 
 describe('trasa piesza punktu', () => {
   it('przejście pieszo: czas i dystans z mapy w przejściu, linia ORS znika, silnik liczy nowy czas', () => {

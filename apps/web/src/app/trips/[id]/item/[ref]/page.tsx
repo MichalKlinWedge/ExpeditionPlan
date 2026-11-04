@@ -1,4 +1,4 @@
-import { bookingContacts, lodgingBooking, lodgingDetails, lodgingLink, flightLine, flightOf, isFootRouteItem, routeLinkLabel, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, guideRowFor, type GuideSegment, itemIcon, linkGuideText, itemKindLabel, legLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, drivingRouteUrl, lodgingBooking, lodgingDetails, lodgingLink, flightLine, flightOf, isFootRouteItem, routeLinkLabel, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, guideRowFor, type GuideSegment, itemIcon, linkGuideText, itemKindLabel, legLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -62,6 +62,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const booking = item.bookingRef === undefined ? undefined : doc.bookings.find((each) => each.ref === item.bookingRef);
   const flight = flightOf(doc, item);
   const leg = legLabel(item) ?? stopsLabel(item);
+  const route = drivingRouteUrl(doc, item);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const guide = guideFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
   // Nazwy innych opisanych miejsc w treści — odnośniki do ich kart (raz na miejsce w całym opisie).
@@ -113,6 +114,13 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
           </p>
         )}
         {leg && <p>{leg}</p>}
+        {route && (
+          <p>
+            <a href={route} target="_blank" rel="noreferrer" className="underline">
+              Trasa w Mapach Google
+            </a>
+          </p>
+        )}
         {flight && <p>✈ {flightLine(flight)}</p>}
         {booking && (
           <p>

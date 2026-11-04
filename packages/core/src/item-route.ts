@@ -21,6 +21,27 @@ export function routeLinkLabel(url: string): string {
   return /(^|\/\/|\.)mapy\.(com|cz)(\/|$)/i.test(url) ? 'Trasa na mapy.com' : 'Trasa na mapie';
 }
 
+const CAR = new Set(['car', 'rental_car', 'taxi', 'hired_driver']);
+
+/**
+ * Link do trasy w Mapach Google dla przejazdu autem. Sam link, bez API: trasa liczy się dopiero po
+ * otwarciu i nic z niej nie zapisujemy. Miejsce bez współrzędnych idzie adresem albo nazwą, a bez
+ * miejsca startu Mapy Google liczą trasę od bieżącej pozycji. `null` = nie auto albo brak celu.
+ */
+export function drivingRouteUrl(doc: Doc, item: Item): string | null {
+  const leg = item.leg;
+  if (item.kind !== 'transport' || leg === undefined || !CAR.has(leg.mode)) return null;
+  const point = (ref: string | undefined) => {
+    const place = ref === undefined ? undefined : doc.places.find((each) => each.ref === ref);
+    if (place === undefined) return undefined;
+    return place.lat !== undefined && place.lng !== undefined ? `${place.lat},${place.lng}` : (place.address ?? place.searchName ?? place.name);
+  };
+  const destination = point(leg.toPlaceRef ?? item.placeRef);
+  if (destination === undefined) return null;
+  const origin = point(leg.fromPlaceRef);
+  return `https://www.google.com/maps/dir/?api=1${origin === undefined ? '' : `&origin=${encodeURIComponent(origin)}`}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+}
+
 export type ItemRouteFields = {
   /** `null` — usuwa link; brak pola — zostawia. */
   url?: string | null;
