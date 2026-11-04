@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { addItem, addItemAtPin, addPoolItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, removeItem, removeItemClosingGap, updateItem } from '../plan-edits.ts';
+import { addItem, addItemAtPin, addPoolItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, placeUses, removeItem, removeItemClosingGap, renamePlace, replacePlace, setItemPlace, updateItem } from '../plan-edits.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -190,5 +190,45 @@ describe('usunięcie z zamknięciem luki', () => {
     const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['approx', '09:00', 60], c: ['exact', '10:00', 30] }), 'b')!;
     expect(edit.shiftedMin).toBeUndefined();
     expect(edit.changed).toEqual([]);
+  });
+});
+
+describe('miejsce punktu', () => {
+  const load = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
+  const located = (doc: TripDocument) => doc.places.find((place) => place.lat !== undefined && placeUses(doc, place.ref) > 0)!;
+
+  it('poprawa nazwy zostawia lokalizację i działa wszędzie, gdzie miejsce występuje', () => {
+    const doc = load('maroko');
+    const place = located(doc);
+    const edit = renamePlace(doc, place.ref, '  Nowa nazwa ')!;
+    expect(edit.doc.places.find((each) => each.ref === place.ref)).toEqual({ ...place, name: 'Nowa nazwa' });
+    expect(edit.places).toEqual([{ place: { ...place, name: 'Nowa nazwa' } }]);
+    expect(documentProblem(edit.doc)).toBeNull();
+    expect(renamePlace(doc, place.ref, place.name)).toBeNull();
+    expect(renamePlace(doc, place.ref, '   ')).toBeNull();
+  });
+
+  it('„inny lokal” czyści współrzędne i adres, a odwołania zostają', () => {
+    const doc = load('maroko');
+    const place = located(doc);
+    const edit = replacePlace(doc, place.ref, 'Inny lokal')!;
+    expect(edit.places![0]!.place).toEqual({ ref: place.ref, name: 'Inny lokal', provider: 'unknown', links: [] });
+    expect(placeUses(edit.doc, place.ref)).toBe(placeUses(doc, place.ref));
+    expect(documentProblem(edit.doc)).toBeNull();
+  });
+
+  it('tylko ten punkt: miejsce z listy po nazwie albo nowe', () => {
+    const doc = load('maroko');
+    const item = doc.items.find((each) => each.placeRef !== undefined)!;
+    const other = doc.places.find((place) => place.ref !== item.placeRef)!;
+
+    const existing = setItemPlace(doc, item.ref, 'x', other.name.toUpperCase())!;
+    expect(existing.places).toBeUndefined();
+    expect(existing.changed.find((each) => each.ref === item.ref)?.placeRef).toBe(other.ref);
+
+    const created = setItemPlace(doc, item.ref, 'nowe', 'Całkiem nowe miejsce')!;
+    expect(created.places).toEqual([{ place: { ref: 'id-nowe', name: 'Całkiem nowe miejsce', provider: 'unknown', links: [] }, created: true }]);
+    expect(created.changed.find((each) => each.ref === item.ref)?.placeRef).toBe('id-nowe');
+    expect(documentProblem(created.doc)).toBeNull();
   });
 });

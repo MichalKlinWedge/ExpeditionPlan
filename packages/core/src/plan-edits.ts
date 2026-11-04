@@ -212,6 +212,51 @@ export function movePlace(doc: Doc, ref: string, at: { lat: number; lng: number 
   return { doc: { ...doc, places: doc.places.map((each) => (each.ref === ref ? place : each)) }, changed: [], places: [{ place }] };
 }
 
+/** Ile elementów planu wskazuje miejsce: punkty (też ich przejazdy), dni (baza) i rezerwacje. */
+export function placeUses(doc: Doc, ref: string): number {
+  return (
+    doc.items.filter((item) => item.placeRef === ref || item.leg?.fromPlaceRef === ref || item.leg?.toPlaceRef === ref).length +
+    doc.days.filter((day) => day.baseRef === ref).length +
+    doc.bookings.filter((booking) => booking.startPlaceRef === ref || booking.endPlaceRef === ref).length
+  );
+}
+
+/** Poprawa nazwy miejsca: ta sama lokalizacja, nowa nazwa wszędzie, gdzie miejsce występuje. */
+export function renamePlace(doc: Doc, ref: string, name: string): PlanEdit | null {
+  const found = doc.places.find((each) => each.ref === ref);
+  const trimmed = name.trim();
+  if (found === undefined || trimmed === '' || trimmed === found.name) return null;
+  const place = { ...found, name: trimmed };
+  return { doc: { ...doc, places: doc.places.map((each) => (each.ref === ref ? place : each)) }, changed: [], places: [{ place }] };
+}
+
+/**
+ * „To inny lokal”: pod tym samym miejscem jest teraz coś innego (np. nowy nocleg), więc punkty, baza
+ * dnia i rezerwacje dalej je wskazują, ale współrzędne, adres, godziny i linki starego miejsca znikają.
+ * Miejsce trafia na „brak na mapie” — pinezka albo „Uzupełnij współrzędne” ustawiają je od nowa.
+ */
+export function replacePlace(doc: Doc, ref: string, name: string): PlanEdit | null {
+  const found = doc.places.find((each) => each.ref === ref);
+  const trimmed = name.trim();
+  if (found === undefined || trimmed === '') return null;
+  const place: PlanPlace = { ref, name: trimmed, provider: 'unknown', links: [] };
+  return { doc: { ...doc, places: doc.places.map((each) => (each.ref === ref ? place : each)) }, changed: [], places: [{ place }] };
+}
+
+/**
+ * Inne miejsce tylko dla tego punktu: miejsce z tą nazwą, jeśli już jest na liście (bez względu na
+ * wielkość liter), inaczej nowe, bez współrzędnych. `placeId` to uuid nowego wiersza.
+ */
+export function setItemPlace(doc: Doc, itemRef: string, placeId: string, name: string): PlanEdit | null {
+  const trimmed = name.trim();
+  if (trimmed === '') return null;
+  const existing = doc.places.find((each) => each.name.trim().toLowerCase() === trimmed.toLowerCase());
+  if (existing !== undefined) return updateItem(doc, itemRef, { placeRef: existing.ref });
+  const place: PlanPlace = { ref: `id-${placeId}`, name: trimmed, provider: 'unknown', links: [] };
+  const edit = updateItem({ ...doc, places: [...doc.places, place] }, itemRef, { placeRef: place.ref });
+  return edit === null ? null : { ...edit, places: [{ place, created: true }] };
+}
+
 /** 6 miejsc po przecinku ≈ 10 cm — więcej z kliknięcia na mapie i tak nie wynika. */
 const round = (value: number) => Math.round(value * 1e6) / 1e6;
 

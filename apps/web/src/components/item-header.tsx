@@ -1,11 +1,12 @@
 "use client";
 
-import { documentProblem, type TripDocument, updateItem } from "@expeditionplan/core";
+import { documentProblem, type PlanEdit, type TripDocument, updateItem } from "@expeditionplan/core";
 import { savePlanEdit } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { ItemEditor } from "@/components/item-editor";
+import { ItemPlaceEditor } from "@/components/item-place";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -21,6 +22,22 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
   const item = doc.items.find((each) => each.ref === itemRef);
   if (item === undefined) return null;
 
+  const save = (edit: PlanEdit | null, done?: () => void) => {
+    if (edit === null) return done?.();
+    const invalid = documentProblem(edit.doc);
+    if (invalid !== null) return setError(`Nie zapisano: ${invalid}`);
+    start(async () => {
+      try {
+        await savePlanEdit(createClient(), tripId, edit, ids);
+        setError(null);
+        done?.();
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+  };
+
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} className="btn-secondary btn-sm self-start">
@@ -33,23 +50,9 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
       <ItemEditor
         item={item}
         onCancel={() => setOpen(false)}
-        onSave={(patch) => {
-          const edit = updateItem(doc, itemRef, patch);
-          if (edit === null) return setOpen(false);
-          const invalid = documentProblem(edit.doc);
-          if (invalid !== null) return setError(`Nie zapisano: ${invalid}`);
-          start(async () => {
-            try {
-              await savePlanEdit(createClient(), tripId, edit, ids);
-              setError(null);
-              setOpen(false);
-              router.refresh();
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e));
-            }
-          });
-        }}
+        onSave={(patch) => save(updateItem(doc, itemRef, patch), () => setOpen(false))}
       />
+      <ItemPlaceEditor key={item.placeRef ?? "brak"} doc={doc} item={item} onEdit={(edit) => save(edit)} disabled={pending} />
       {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

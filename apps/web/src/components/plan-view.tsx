@@ -48,6 +48,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DayConstraints, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
+import { ItemPlaceEditor } from "@/components/item-place";
 import { type LatLng, PlanMap } from "@/components/plan-map";
 import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
 import { createClient } from "@/lib/supabase/client";
@@ -244,6 +245,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
         move: (ref, direction) => apply(moveWithinDay(doc, ref, direction)),
         moveTo: (ref, dayRef) => apply(moveToDay(doc, ref, dayRef)),
         update: (ref, patch) => apply(updateItem(doc, ref, patch)),
+        edit: apply,
         add: (dayRef, fields) => apply(addItem(doc, dayRef, uuidv7(), fields)),
         addToPool: (fields, placeName) => apply(addPoolItem(doc, { itemId: uuidv7(), placeId: uuidv7() }, fields, placeName)),
         remove: (ref) => {
@@ -609,6 +611,8 @@ type Actions = {
   move: (ref: string, direction: -1 | 1) => void;
   moveTo: (ref: string, dayRef: string | null) => void;
   update: (ref: string, patch: Partial<Item>) => void;
+  /** Gotowa zmiana planu (miejsce punktu). */
+  edit: (edit: Edit | null) => void;
   add: (dayRef: string, fields: Pick<Item, "title" | "kind"> & Partial<Item>) => void;
   /** Nowy punkt w puli; `placeName` — nowe miejsce (bez współrzędnych). */
   addToPool: (fields: Pick<Item, "title" | "kind"> & Partial<Item>, placeName?: string) => void;
@@ -1024,14 +1028,17 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                   </div>
                 )}
                 {actions && source && editing === item.ref && (
-                  <ItemEditor
-                    item={source}
-                    onCancel={() => setEditing(null)}
-                    onSave={(patch) => {
-                      actions.update(item.ref, patch);
-                      setEditing(null);
-                    }}
-                  />
+                  <>
+                    <ItemEditor
+                      item={source}
+                      onCancel={() => setEditing(null)}
+                      onSave={(patch) => {
+                        actions.update(item.ref, patch);
+                        setEditing(null);
+                      }}
+                    />
+                    <ItemPlaceEditor key={source.placeRef ?? "brak"} doc={doc} item={source} onEdit={actions.edit} />
+                  </>
                 )}
               </li>
             );
