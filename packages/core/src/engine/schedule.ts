@@ -57,6 +57,10 @@ export type ScheduledItem = {
   /** O ile minut punkt startuje później, niż mówi plan. */
   driftMin: number;
   durationMin: number;
+  /** Postój w trasie przejazdu: godziny to tylko przybliżone położenie w ramach przejazdu, plan pokazuje czas trwania. */
+  routeStop?: true;
+  /** Przy przejeździe: ile z jego czasu to postoje w trasie. */
+  routeStopsMin?: number;
   /** Odhaczony w terenie („Zrobione”) — koniec to chwila odhaczenia. */
   done?: true;
 };
@@ -219,12 +223,17 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
 
   const scenario = options.scenario ?? 'optimistic';
   const tz = day.tz;
-  const items = itemsForDay(doc, dayRef, options);
+  const dayList = itemsForDay(doc, dayRef, options);
+  // Postoje w trasie nie są osobnym krokiem dnia: wydłużają przejazd i trafiają do wyniku zaraz po nim.
+  const transports = new Set(dayList.filter((item) => item.kind === 'transport').map((item) => item.ref));
+  const isStop = (item: Item) => item.parentRef !== undefined && transports.has(item.parentRef);
+  const items = dayList.filter((item) => !isStop(item));
+  const stopsOf = (item: Item) => dayList.filter((each) => isStop(each) && each.parentRef === item.ref);
   const warnings: ScheduleWarning[] = [];
   const at = (time: string, zone = tz) => zonedToInstant(day.date, time, zone);
   const local = (instant: number) => instantToZoned(instant, tz);
 
-  const coords = dayCoordinates(doc, day, items, options);
+  const coords = dayCoordinates(doc, day, dayList, options);
   const sun = coords === undefined ? null : sunTimes(day.date, coords.lat, coords.lng);
   const midnight = at('00:00');
   const sunMinutes = (instant: number | null | undefined) => (instant == null ? undefined : (instant - midnight) / MINUTE);
@@ -261,7 +270,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   const leadMin = items
     .slice(0, Math.max(firstIndex, 0))
     .filter((item) => item.parentRef === undefined && (item.participantRefs ?? []).length === 0)
-    .reduce((sum, item) => sum + durationOf(item, scenario0) + (item.bufferAfterMin ?? 0), 0);
+    .reduce((sum, item) => sum + durationOf(item, scenario0) + stopsOf(item).reduce((all, stop) => all + durationOf(stop, scenario0), 0) + (item.bufferAfterMin ?? 0), 0);
   const startOfDay =
     day.dayStart !== undefined
       ? at(day.dayStart)
@@ -324,9 +333,11 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
       if (stated !== undefined) start = Math.max(laneCursor, stated);
     }
 
+    const stops = stopsOf(item).map((stop) => ({ stop, minutes: durationOf(stop, scenario) + (delays.get(stop.ref) ?? 0) }));
+    const stopsMin = stops.reduce((sum, each) => sum + each.minutes, 0);
     const finished = doneAt.get(item.ref);
     // „Zrobione” przed planowanym startem (odhaczone z wyprzedzeniem) = punkt bez czasu trwania.
-    const end = finished === undefined ? start + (durationOf(item, scenario) + (delays.get(item.ref) ?? 0)) * MINUTE : Math.max(start, finished);
+    const end = finished === undefined ? start + (durationOf(item, scenario) + (delays.get(item.ref) ?? 0) + stopsMin) * MINUTE : Math.max(start, finished);
     const durationMin = Math.round((end - start) / MINUTE);
     const scheduled: ScheduledItem = {
       ref: item.ref,
@@ -342,7 +353,32 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     };
     if (stated !== undefined) scheduled.statedLocal = local(stated).time;
     if (finished !== undefined) scheduled.done = true;
+    if (stops.length > 0) scheduled.routeStopsMin = stopsMin;
     result.push(scheduled);
+
+    // Miejsca postoju na trasie nie znamy: rozkładamy je równo w czasie jazdy, tylko po to, żeby punkt miał chwilę w ramach przejazdu.
+    const driveMin = Math.max(0, durationMin - stopsMin);
+    let usedMin = 0;
+    stops.forEach(({ stop, minutes }, order) => {
+      const stopStart = Math.min(end, start + Math.round((driveMin * (order + 1)) / (stops.length + 1) + usedMin) * MINUTE);
+      const stopEnd = Math.min(end, stopStart + minutes * MINUTE);
+      usedMin += minutes;
+      const entry: ScheduledItem = {
+        ref: stop.ref,
+        title: stop.title,
+        kind: stop.kind,
+        start: stopStart,
+        end: stopEnd,
+        startLocal: local(stopStart).time,
+        endLocal: local(stopEnd).time,
+        endDate: local(stopEnd).date,
+        driftMin: 0,
+        durationMin: minutes,
+        routeStop: true,
+      };
+      if (doneAt.has(stop.ref)) entry.done = true;
+      result.push(entry);
+    });
 
     // Spóźnienie względem planu: przy stałej godzinie zawsze twarde, przy przybliżonej — ponad tolerancję.
     if (scheduled.driftMin > 0 && time !== undefined) {
@@ -419,7 +455,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   const limits = checkConstraints(doc, day, result, sun, warnings, local, at);
   if (day.dayEnd !== undefined && result.length > 0) {
     const dayEnd = at(day.dayEnd);
-    const last = result[result.length - 1]!;
+    const last = result.filter((each) => !each.routeStop).at(-1)!;
     limits.push(Math.round((dayEnd - last.end) / MINUTE));
     if (last.end > dayEnd) {
       warnings.push({
@@ -431,9 +467,10 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     }
   }
   // Zapas przed każdym punktem ze stałą godziną (lot, mecz, start pakietu).
-  items.forEach((item, index) => {
-    if (item.isFixed && result[index] !== undefined) limits.push(-result[index]!.driftMin);
-  });
+  for (const item of items) {
+    const entry = item.isFixed ? result.find((each) => each.ref === item.ref) : undefined;
+    if (entry !== undefined) limits.push(-entry.driftMin);
+  }
 
   const slackMin = limits.length === 0 ? null : Math.min(...limits);
   return {

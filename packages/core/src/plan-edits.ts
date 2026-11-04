@@ -1,3 +1,4 @@
+import { detachRouteStops } from './route-stops.ts';
 import { scheduleDay } from './engine/schedule.ts';
 import { MINUTE, minutesOfDay, zonedToInstant } from './engine/time.ts';
 import { TripDocument } from './schemas/trip-document.ts';
@@ -124,7 +125,7 @@ export function moveToDay(doc: Doc, ref: string, dayRef: string | null): PlanEdi
   }
   const last = dayItems(doc, dayRef).at(-1);
   const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined }, last?.ref, undefined);
-  return settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef);
+  return detachRouteStops(settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef), ref);
 }
 
 /** Do dnia `dayRef`, zaraz po `afterRef` (`null` = na początek dnia) — dla łatek AI („przenieś za X”). */
@@ -135,7 +136,7 @@ export function moveAfter(doc: Doc, ref: string, dayRef: string, afterRef: strin
   const index = afterRef === null ? -1 : others.findIndex((each) => each.ref === afterRef);
   if (afterRef !== null && index === -1) return null;
   const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined }, others[index]?.ref, others[index + 1]?.ref);
-  return { doc: replace(doc, changed), changed };
+  return detachRouteStops({ doc: replace(doc, changed), changed }, ref);
 }
 
 /**
@@ -157,7 +158,7 @@ export function dropItem(doc: Doc, ref: string, dayRef: string | null, nextRef?:
   }
   const moved: Item = { ...item, planStatus: 'scheduled', parentRef: sameDay ? item.parentRef : undefined };
   const changed = place(doc, dayRef, moved, others[index - 1]?.ref, others[index]?.ref);
-  return settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef);
+  return detachRouteStops(settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef), ref);
 }
 
 export function updateItem(doc: Doc, ref: string, patch: Partial<Item>): PlanEdit | null {

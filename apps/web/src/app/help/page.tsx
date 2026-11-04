@@ -86,7 +86,7 @@ export default function HelpPage() {
             </Step>
             <Step name="Plan dzień po dniu">
               punkty z godzinami, przejazdami, wschodem i zachodem słońca oraz mapą. Godziny liczą się same z czasów trwania i przejazdów; „Edytuj” pozwala dodawać, przesuwać i usuwać
-              punkty. ⚠ przy dniu oznacza złą prognozę dla punktów na zewnątrz.
+              punkty. ⚠ przy dniu oznacza złą prognozę dla punktów na zewnątrz. Atrakcję tuż po przejeździe „↳ postój w trasie” wcina pod przejazd: jej czas dolicza się do trasy.
             </Step>
             <Step name="Pula">
               pomysły, których nie ma w żadnym dniu („+ Dodaj do puli”). Można je grupować, filtrować (z opisem, koniecznie, bez miejsca na mapie) i w każdej chwili wstawić do dnia.

@@ -1,4 +1,4 @@
-import { dayItems, flightLine, flightOf, type GuideRow, guideFor, instantToZoned, itemIcon, legLabel, scheduleDay, stopsLabel, type TripDocument } from "@expeditionplan/core";
+import { routeStopsLabel, routeStopTime, dayItems, flightLine, flightOf, type GuideRow, guideFor, instantToZoned, itemIcon, legLabel, scheduleDay, stopsLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -126,7 +126,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
         }
         const base = day.baseRef === undefined ? undefined : places.get(day.baseRef)?.name;
         const sun = schedule?.facts.sun;
-        const rows = schedule?.items ?? dayItems(doc, day.ref).map((item) => ({ ref: item.ref, title: item.title, startLocal: "", endLocal: "" }));
+        const rows = schedule?.items ?? dayItems(doc, day.ref).map((item) => ({ ref: item.ref, title: item.title, startLocal: "", endLocal: "", routeStop: undefined as true | undefined, durationMin: 0, routeStopsMin: undefined as number | undefined }));
         return (
           <section key={day.ref} className="break-inside-avoid-page flex flex-col gap-1">
             <h2 className="border-b border-zinc-400 pb-0.5 text-lg font-bold">
@@ -147,15 +147,15 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
                   const place = item?.placeRef === undefined ? undefined : places.get(item.placeRef)?.name;
                   const leg = item === undefined ? null : (legLabel(item) ?? stopsLabel(item));
                   const flight = item === undefined ? undefined : flightOf(doc, item);
-                  const extra = [place, leg, flight ? flightLine(flight) : undefined].filter(Boolean).join(" · ");
+                  const extra = [place, leg, routeStopsLabel(row), flight ? flightLine(flight) : undefined].filter(Boolean).join(" · ");
                   const guideKey = item?.leg?.toPlaceRef ?? item?.placeRef ?? item?.ref;
                   const guide = item === undefined || guideKey === undefined || printed.has(guideKey) ? null : guideFor(guides, ids[item.ref], ids[guideKey]);
                   if (guide !== null && guideKey !== undefined) printed.add(guideKey);
                   return (
                     <tr key={row.ref} className="break-inside-avoid border-b border-zinc-100 align-top">
-                      <td className="w-24 py-0.5 pr-2 font-mono whitespace-nowrap">{row.startLocal ? `${row.startLocal}–${row.endLocal}` : ""}</td>
+                      <td className="w-24 py-0.5 pr-2 font-mono whitespace-nowrap">{row.routeStop ? routeStopTime(row.durationMin) : row.startLocal ? `${row.startLocal}–${row.endLocal}` : ""}</td>
                       <td className="w-6 py-0.5">{item ? itemIcon(doc, item) : ""}</td>
-                      <td className="py-0.5">
+                      <td className={`py-0.5 ${row.routeStop ? "pl-4" : ""}`}>
                         <strong className="font-semibold">{row.title}</strong>
                         {extra && <span className="text-zinc-600"> · {extra}</span>}
                         {guide && (

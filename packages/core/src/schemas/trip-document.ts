@@ -263,6 +263,7 @@ export const DocItem = z.object({
   /**
    * Blok, do którego punkt należy: „PRACA 14:15–16:00” → ekipy Drewno, Ogień, Kuchnia, Latryna.
    * Podpunkty dzieją się w czasie bloku, równolegle, i nie przesuwają reszty dnia (PoC-5).
+   * Rodzic `transport` to co innego: podpunkt jest postojem w trasie i wydłuża przejazd (`route-stops.ts`).
    */
   parentRef: Ref.optional(),
   description: z.string().optional(),

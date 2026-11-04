@@ -20,10 +20,12 @@ const MINUTE = 60_000;
 
 export function nowAndNext(schedule: DaySchedule, now: number): NowAndNext {
   let current: ScheduledItem | null = null;
-  for (const item of schedule.items) {
+  // Postój w trasie ma tylko przybliżoną chwilę: w tym czasie trwa przejazd.
+  const steps = schedule.items.filter((item) => !item.routeStop);
+  for (const item of steps) {
     if (item.start <= now && now < item.end && (current === null || item.start >= current.start)) current = item;
   }
-  const next = schedule.items.filter((item) => item.start > now).sort((a, b) => a.start - b.start)[0] ?? null;
+  const next = steps.filter((item) => item.start > now).sort((a, b) => a.start - b.start)[0] ?? null;
   return {
     current,
     next,

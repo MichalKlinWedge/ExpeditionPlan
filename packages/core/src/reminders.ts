@@ -77,6 +77,7 @@ export function dayAlerts(doc: Doc, options: Omit<ScheduleOptions, 'scenario'>, 
       continue;
     }
     for (const item of items) {
+      if (item.routeStop) continue;
       const at = item.start - leadMin * 60_000;
       if (at > now) out.push({ key: `item:${day.ref}:${item.ref}`, title: `Za ${leadMin} min: ${item.title}`, body: `${item.startLocal} · ${doc.trip.title}`, at });
     }

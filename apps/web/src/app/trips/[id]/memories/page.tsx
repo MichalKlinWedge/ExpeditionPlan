@@ -1,4 +1,4 @@
-import { type DayMap, dayMap, formatMoney, instantToZoned, itemIcon, itemsForDay, tripMemories, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { isRouteStop, type DayMap, dayMap, formatMoney, instantToZoned, itemIcon, itemsForDay, tripMemories, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -150,7 +150,7 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
       )}
 
       {days.map((day, index) => {
-        const items = itemsForDay(doc, day.ref, options).filter((item) => item.parentRef === undefined);
+        const items = itemsForDay(doc, day.ref, options).filter((item) => item.parentRef === undefined || isRouteStop(doc, item));
         const rows = entries.filter((row) => row.day_id === ids[day.ref]);
         if (items.length === 0 && rows.length === 0) return null;
         return (

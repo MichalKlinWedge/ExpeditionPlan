@@ -1,3 +1,4 @@
+import { isRouteStop } from './route-stops.ts';
 import { itemsForDay, type ScheduleOptions } from './engine/schedule.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
@@ -31,7 +32,7 @@ const DRIVE = new Set(['car', 'rental_car', 'taxi', 'hired_driver']);
 export function tripMemories(doc: Doc, field: Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & { done: readonly { itemRef: string }[]; skipRefs: readonly string[] }): TripMemories {
   const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
   const options = { ...(field.activeVariants ? { activeVariants: field.activeVariants } : {}), ...(field.pulled ? { pulled: field.pulled } : {}) };
-  const items = days.flatMap((day) => itemsForDay(doc, day.ref, options)).filter((item) => item.parentRef === undefined);
+  const items = days.flatMap((day) => itemsForDay(doc, day.ref, options)).filter((item) => item.parentRef === undefined || isRouteStop(doc, item));
   const done = new Set(field.done.map((each) => each.itemRef));
   const skipped = new Set(field.skipRefs);
   const tracks = new Map(doc.tracks.map((track) => [track.ref, track]));

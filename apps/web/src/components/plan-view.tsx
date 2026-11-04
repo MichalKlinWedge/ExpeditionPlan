@@ -48,6 +48,10 @@ import {
   weatherPoints,
   weatherAlerts,
   weatherVariantHint,
+  routeStopsLabel,
+  routeStopTarget,
+  routeStopTime,
+  setRouteStop,
 } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
@@ -951,10 +955,16 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} />
                     </span>
                   )}
-                  <span className="w-28 shrink-0 font-semibold text-ink tabular-nums dark:text-zinc-100">
-                    {item.startLocal}–{item.endLocal}
-                    {item.endDate !== day.date ? "+1" : ""}
-                  </span>
+                  {item.routeStop ? (
+                    <span className={`w-28 shrink-0 text-xs font-medium ${item.durationMin > 0 ? "text-zinc-600 dark:text-zinc-400" : "text-amber-700 dark:text-amber-400"}`} title={item.durationMin > 0 ? "Czas postoju doliczony do przejazdu" : "Wpisz czas trwania, żeby doliczył się do przejazdu"}>
+                      {routeStopTime(item.durationMin)}
+                    </span>
+                  ) : (
+                    <span className="w-28 shrink-0 font-semibold text-ink tabular-nums dark:text-zinc-100">
+                      {item.startLocal}–{item.endLocal}
+                      {item.endDate !== day.date ? "+1" : ""}
+                    </span>
+                  )}
                   <span>
                     {n !== undefined && (
                       <button
@@ -1022,6 +1032,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                 </div>
                 {flightText && <p className="ml-31 text-xs font-semibold text-sea dark:text-teal-300">✈ {flightText}</p>}
                 {leg && <p className="ml-31 text-xs text-zinc-500">{leg}</p>}
+                {routeStopsLabel(item) && <p className="ml-31 text-xs font-medium text-zinc-600 dark:text-zinc-400">{routeStopsLabel(item)}</p>}
                 {route && (
                   <a href={route.url} target="_blank" rel="noreferrer" className="ml-31 self-start text-xs text-sea underline">
                     {route.label}
@@ -1050,6 +1061,17 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       usuń
                     </button>
                     <MoveSelect doc={doc} current={dayRef} onMove={(target) => actions.moveTo(item.ref, target)} />
+                    {item.routeStop ? (
+                      <button onClick={() => actions.edit(setRouteStop(doc, item.ref, false))} title="Punkt wraca do zwykłej kolejności dnia" className="px-1 underline">
+                        wyjmij z trasy
+                      </button>
+                    ) : (
+                      routeStopTarget(doc, item.ref) && (
+                        <button onClick={() => actions.edit(setRouteStop(doc, item.ref, true))} title={`Atrakcja po drodze: jej czas doliczy się do przejazdu „${routeStopTarget(doc, item.ref)!.title}”`} className="px-1 underline">
+                          ↳ postój w trasie
+                        </button>
+                      )
+                    )}
                     {onRules && <ItemVariants doc={doc} dayRef={dayRef} itemRef={item.ref} onRules={onRules} />}
                   </div>
                 )}

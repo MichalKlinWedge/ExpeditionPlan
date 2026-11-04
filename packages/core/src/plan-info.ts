@@ -1,4 +1,5 @@
 import { decodePolyline, distanceM, type LngLat } from './polyline.ts';
+import { isRouteStop } from './route-stops.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
@@ -32,6 +33,13 @@ export function legLabel(item: Item): string | null {
   const label = legTimeLabel(item);
   return label === null || !item.stopsMin ? label : `${label} + postoje ${formatMinutes(item.stopsMin)}`;
 }
+
+/** Przejazd z postojami w trasie: „razem z postojami po drodze (1 h 40 min): 5 h”. */
+export const routeStopsLabel = (item: { routeStopsMin?: number; durationMin: number }): string | null =>
+  !item.routeStopsMin ? null : `razem z postojami po drodze (${formatMinutes(item.routeStopsMin)}): ${formatMinutes(item.durationMin)}`;
+
+/** Czas postoju w trasie zamiast godzin w planie dnia. */
+export const routeStopTime = (minutes: number): string => (minutes > 0 ? `postój ${formatMinutes(minutes)}` : 'bez czasu');
 
 /** Postoje punktu, który nie ma opisu przejazdu (`legLabel` daje `null`). */
 export const stopsLabel = (item: Item): string | null => (item.stopsMin ? `w tym postoje i przerwy: ${formatMinutes(item.stopsMin)}` : null);
@@ -215,6 +223,7 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
   const nextStart = (index: number): LngLat | undefined => {
     for (const ref of refs.slice(index + 1)) {
       const item = items.get(ref);
+      if (item !== undefined && isRouteStop(doc, item)) continue;
       const place = item === undefined ? undefined : places.get(item.leg?.fromPlaceRef ?? item.placeRef ?? '');
       if (place?.lat !== undefined && place.lng !== undefined) return [place.lng, place.lat];
     }
@@ -226,6 +235,16 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
   refs.forEach((ref, index) => {
     const item = items.get(ref);
     if (item === undefined) return;
+    // Postój w trasie: pinezka i numer, ale linia dnia biegnie przejazdem, bez powrotu do niego.
+    if (isRouteStop(doc, item)) {
+      const stop = pin(item.placeRef);
+      if (stop === undefined) return;
+      local.add(stop.placeRef);
+      const stopNumber = Object.keys(numbers).length + 1;
+      numbers[ref] = stopNumber;
+      stop.stops.push({ ref, n: stopNumber, title: item.title });
+      return;
+    }
     // Ślad GPX aktywności — raz na dzień, choćby kilka punktów szło tą samą trasą.
     const track = item.activity?.trackRef === undefined ? undefined : tracks.get(item.activity.trackRef);
     if (track?.geojson !== undefined && !drawn.has(track.ref)) {
