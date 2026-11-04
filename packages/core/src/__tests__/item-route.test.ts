@@ -83,6 +83,51 @@ describe('trasa piesza punktu', () => {
     expect(setItemRoute(doc, ref, 'id-nowy', { geojson, name: null })!.track.name).toBe(doc.items.find((item) => item.ref === ref)!.title);
   });
 
+  describe('ślad wspólny dla kilku punktów (Jagodna: wyjście, zejście, wariant skrócony)', () => {
+    const doc = fixture('chatka');
+    const shared = doc.tracks.find((track) => track.ref === 'trasa-jagodna')!;
+    const unchanged = (edit: { doc: TripDocument }) => {
+      expect(edit.doc.tracks.find((track) => track.ref === shared.ref)).toEqual(shared);
+      expect(edit.doc.items.find((item) => item.ref === 'jagodna-wejscie')).toEqual(doc.items.find((item) => item.ref === 'jagodna-wejscie'));
+    };
+
+    it('nowy link: własny ślad z liczbami punktu, bez linii i liczb całego starego śladu', () => {
+      const edit = setItemRoute(doc, 'jagodna-zejscie', 'id-zejscie', { url: URL_A, ascentM: 40 })!;
+      expect(edit.trackCreated).toBe(true);
+      expect(edit.doc.tracks).toHaveLength(doc.tracks.length + 1);
+      expect(edit.track).toEqual({ ref: 'id-zejscie', name: 'Zejście tą samą drogą', url: URL_A, distanceKm: 4.2, durationMin: 75, ascentM: 40 });
+      expect(edit.item.activity).toEqual({ trackRef: 'id-zejscie', distanceKm: 4.2, ascentM: 40 });
+      unchanged(edit);
+      expect(TripDocument.safeParse(edit.doc).success).toBe(true);
+    });
+
+    it('plik GPX: własny ślad z linią i nazwą z pliku', () => {
+      const geojson = { type: 'LineString' as const, coordinates: [[16.5, 50.2, 700], [16.6, 50.3, 820]] as [number, number, number][] };
+      const edit = setItemRoute(doc, 'jagodna-zejscie', 'id-zejscie', { geojson, name: 'Zejście przez Wójtowice', distanceKm: 5.1, durationMin: 95 })!;
+      expect(edit.trackCreated).toBe(true);
+      expect(edit.track).toMatchObject({ ref: 'id-zejscie', name: 'Zejście przez Wójtowice', geojson, distanceKm: 5.1, durationMin: 95 });
+      expect(edit.track.url).toBeUndefined();
+      unchanged(edit);
+    });
+
+    it('usunięcie linku odpina tylko ten punkt', () => {
+      const linked = TripDocument.parse({ ...doc, tracks: doc.tracks.map((track) => (track.ref === shared.ref ? { ...track, url: URL_A } : track)) });
+      const edit = setItemRoute(linked, 'jagodna-zejscie', 'id-zejscie', { url: null })!;
+      expect(edit.track.url).toBeUndefined();
+      expect(edit.doc.tracks.find((track) => track.ref === shared.ref)?.url).toBe(URL_A);
+    });
+
+    it('same liczby albo ten sam link: tylko punkt, bez nowego śladu', () => {
+      const edit = setItemRoute(doc, 'jagodna-zejscie', 'id-zejscie', { durationMin: 60, distanceKm: 4 })!;
+      expect(edit.trackCreated).toBe(false);
+      expect(edit.track).toEqual(shared);
+      expect(edit.item).toMatchObject({ durationMin: 60, activity: { trackRef: shared.ref, distanceKm: 4 } });
+      unchanged(edit);
+      const linked = TripDocument.parse({ ...doc, tracks: doc.tracks.map((track) => (track.ref === shared.ref ? { ...track, url: URL_A } : track)) });
+      expect(setItemRoute(linked, 'jagodna-zejscie', 'id-zejscie', { url: URL_A })!.trackCreated).toBe(false);
+    });
+  });
+
   it('rozpoznaje punkty piesze i linki', () => {
     const { doc, ref } = withWalk();
     expect(isFootRouteItem(doc.items.find((item) => item.ref === ref)!)).toBe(true);

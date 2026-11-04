@@ -39,27 +39,53 @@ export type ItemRouteEdit = { doc: Doc; item: Item; track: Track; trackCreated: 
 /** Górna granica czasu zostaje tylko, gdy nadal jest powyżej nowego czasu. */
 const keepMax = (max: number | undefined, min: number) => (max !== undefined && max >= min ? { durationMaxMin: max } : {});
 
+/** Liczby, które punkt ma sam (formularz pokazuje je jako aktualne) — nie liczby całego wspólnego śladu. */
+function itemNumbers(item: Item) {
+  const distanceKm = item.leg?.distanceKm ?? item.activity?.distanceKm;
+  const durationMin = item.durationMin ?? item.leg?.durationMin;
+  const ascentM = item.activity?.ascentM;
+  return {
+    ...(distanceKm !== undefined ? { distanceKm } : {}),
+    ...(durationMin !== undefined ? { durationMin } : {}),
+    ...(ascentM !== undefined ? { ascentM } : {}),
+  };
+}
+
+/**
+ * Ślad bywa wspólny dla kilku punktów (wyjście i zejście tą samą drogą). Nowy link albo nowa linia to
+ * wtedy inna trasa tego punktu: dostaje własny ślad, bez linii i liczb starego, a pozostałe punkty
+ * zostają przy starym. Same liczby (np. inny czas zejścia) zapisują się tylko w punkcie.
+ */
 export function setItemRoute(doc: Doc, itemRef: string, newTrackRef: string, fields: ItemRouteFields): ItemRouteEdit | null {
   const item = doc.items.find((each) => each.ref === itemRef);
   if (item === undefined) return null;
   const current = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
+  const shared = current !== undefined && doc.items.some((each) => each.ref !== itemRef && each.activity?.trackRef === current.ref);
+  const otherRoute = fields.geojson !== undefined || (fields.url !== undefined && (fields.url ?? undefined) !== current?.url);
+  const forked = shared && otherRoute;
 
-  const { url: _url, ...rest } = current ?? { ref: newTrackRef, name: fields.name || item.title, url: undefined };
-  const url = fields.url === undefined ? _url : (fields.url ?? undefined);
-  const track = {
-    ...rest,
-    ...(url !== undefined ? { url } : {}),
-    ...(fields.distanceKm !== undefined ? { distanceKm: fields.distanceKm } : {}),
-    ...(fields.ascentM !== undefined ? { ascentM: fields.ascentM } : {}),
-    ...(fields.descentM !== undefined ? { descentM: fields.descentM } : {}),
-    ...(fields.durationMin !== undefined ? { durationMin: fields.durationMin } : {}),
-    ...(fields.geojson !== undefined ? { geojson: fields.geojson } : {}),
-  } as Track;
+  const { url: _url, ...rest } = forked || current === undefined ? { ref: newTrackRef, name: fields.name || item.title, url: undefined, ...(forked ? itemNumbers(item) : {}) } : current;
+  const url = fields.url === undefined ? (forked ? undefined : _url) : (fields.url ?? undefined);
+  const track = (
+    shared && !otherRoute
+      ? current
+      : {
+          ...rest,
+          ...(url !== undefined ? { url } : {}),
+          ...(fields.distanceKm !== undefined ? { distanceKm: fields.distanceKm } : {}),
+          ...(fields.ascentM !== undefined ? { ascentM: fields.ascentM } : {}),
+          ...(fields.descentM !== undefined ? { descentM: fields.descentM } : {}),
+          ...(fields.durationMin !== undefined ? { durationMin: fields.durationMin } : {}),
+          ...(fields.geojson !== undefined ? { geojson: fields.geojson } : {}),
+        }
+  ) as Track;
 
+  // Zejścia, trudności i oznakowania starej trasy formularz nie pokazuje, więc przy innej trasie nie mogą zostać po cichu.
+  const { descentM: _descent, difficulty: _difficulty, waymarking: _waymarking, ...activity } = item.activity ?? {};
   let next: Item = {
     ...item,
     activity: {
-      ...item.activity,
+      ...(forked ? activity : item.activity),
       trackRef: track.ref,
       ...(fields.distanceKm !== undefined && item.leg === undefined ? { distanceKm: fields.distanceKm } : {}),
       ...(fields.ascentM !== undefined ? { ascentM: fields.ascentM } : {}),
@@ -92,11 +118,11 @@ export function setItemRoute(doc: Doc, itemRef: string, newTrackRef: string, fie
   return {
     doc: {
       ...doc,
-      tracks: current === undefined ? [...doc.tracks, track] : doc.tracks.map((each) => (each.ref === track.ref ? track : each)),
+      tracks: forked || current === undefined ? [...doc.tracks, track] : doc.tracks.map((each) => (each.ref === track.ref ? track : each)),
       items: doc.items.map((each) => (each.ref === item.ref ? next : each)),
     },
     item: next,
     track,
-    trackCreated: current === undefined,
+    trackCreated: forked || current === undefined,
   };
 }
