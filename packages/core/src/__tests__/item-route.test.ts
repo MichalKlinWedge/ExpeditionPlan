@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { drivingRouteUrl, isFootRouteItem, routeLinkLabel, setItemRoute } from '../item-route.ts';
+import { drivingRouteUrl, isFootRouteItem, legRouteLink, routeLinkLabel, setItemRoute } from '../item-route.ts';
 import { legLabel } from '../plan-info.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
@@ -36,6 +36,14 @@ describe('link do trasy autem', () => {
   it('bez miejsca startu sam cel, a cel może być miejscem punktu', () => {
     const noOrigin = { kind: 'transport', placeRef: 'a', leg: { mode: 'car', links: [] } } as unknown as TripDocument['items'][number];
     expect(drivingRouteUrl(doc, noOrigin)).toBe('https://www.google.com/maps/dir/?api=1&destination=42.5%2C41.87&travelmode=driving');
+  });
+
+  it('własny link wygrywa z liczonym, także przy pociągu', () => {
+    const own = (mode: string, routeUrl: string) => item(mode, { leg: { mode, fromPlaceRef: 'a', toPlaceRef: 'b', links: [], routeUrl } });
+    expect(legRouteLink(doc, own('car', 'https://maps.app.goo.gl/AbC'))).toEqual({ url: 'https://maps.app.goo.gl/AbC', label: 'Trasa w Mapach Google' });
+    expect(legRouteLink(doc, own('train', 'https://example.com/trasa'))).toEqual({ url: 'https://example.com/trasa', label: 'Trasa na mapie' });
+    expect(legRouteLink(doc, item('car'))?.label).toBe('Trasa w Mapach Google');
+    expect(legRouteLink(doc, item('train'))).toBeNull();
   });
 
   it('nie dla innych środków transportu ani bez celu', () => {

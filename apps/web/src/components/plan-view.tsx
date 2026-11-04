@@ -9,7 +9,6 @@ import {
   dayLodging,
   dayMap,
   documentProblem as problem,
-  drivingRouteUrl,
   dropItem,
   type DaySchedule,
   fieldLog,
@@ -20,6 +19,7 @@ import {
   flightOf,
   itemIcon,
   legLabel,
+  legRouteLink,
   stopsLabel,
   mapCoverage,
   missingOnMap,
@@ -932,7 +932,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
             const warnings = schedule.warnings.filter((warning) => warning.itemRef === item.ref);
             const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
             const leg = source === undefined ? null : (legLabel(source) ?? stopsLabel(source));
-            const route = source === undefined ? null : drivingRouteUrl(doc, source);
+            const route = source === undefined ? null : legRouteLink(doc, source);
             const flight = source === undefined ? undefined : flightOf(doc, source);
             const flightText = flight === undefined ? undefined : flightLine(flight);
             const offMap = source !== undefined && missingOnMap(doc, source);
@@ -1023,8 +1023,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                 {flightText && <p className="ml-31 text-xs font-semibold text-sea dark:text-teal-300">✈ {flightText}</p>}
                 {leg && <p className="ml-31 text-xs text-zinc-500">{leg}</p>}
                 {route && (
-                  <a href={route} target="_blank" rel="noreferrer" className="ml-31 self-start text-xs text-sea underline">
-                    Trasa w Mapach Google
+                  <a href={route.url} target="_blank" rel="noreferrer" className="ml-31 self-start text-xs text-sea underline">
+                    {route.label}
                   </a>
                 )}
                 {warnings.map((warning, index) => (

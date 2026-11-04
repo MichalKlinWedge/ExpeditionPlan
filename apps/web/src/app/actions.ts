@@ -433,6 +433,43 @@ export async function routeTrip(tripId: string): Promise<FormState> {
 }
 
 /**
+ * Trasa jednego przejazdu po zmianie „skąd” i „dokąd” albo na żądanie, także dla punktu zmienionego
+ * ręcznie. Dystans z planu nie blokuje wyniku (`mismatch`), bo użytkownik sam wskazał końce.
+ */
+export async function routeItem(tripId: string, itemRef: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
+  const denied = await aiAccessError();
+  if (denied) return { error: `Zapisano bez przeliczenia trasy: ${denied}` };
+  const route = routeLookup();
+  if (route === null) return { error: "Zapisano bez przeliczenia trasy: serwer nie ma klucza OPENROUTESERVICE_API_KEY." };
+  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
+  if (error) return { error: message(error) };
+  if (data === null) return { error: "Nie ma takiego wyjazdu." };
+  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const { doc } = stateFromPayload(payload);
+  const open = { ...doc, items: doc.items.map((item) => (item.ref === itemRef && item.leg !== undefined ? { ...item, leg: { ...item.leg, distanceKm: undefined } } : item)) };
+  const { doc: routed, results } = await routeLegs(open, route, new Set([itemRef]));
+  const result = results[0];
+  if (result?.status !== "routed") {
+    const why: Record<string, string> = {
+      no_coordinates: "miejsce startu albo celu nie ma współrzędnych. Przypnij je na stronie „Miejsca” i użyj „Przelicz trasę”.",
+      not_found: "nie znaleziono trasy między tymi miejscami.",
+      failed: "usługa tras nie odpowiedziała, spróbuj za chwilę.",
+    };
+    return { error: `Nie przeliczono trasy: ${why[result?.status ?? ""] ?? "ten środek transportu nie ma tras."} Czas przejazdu to stary szacunek.` };
+  }
+  try {
+    const changed = routed.items.filter((item) => item.ref === itemRef);
+    await saveMergeEdit(supabase, tripId, { doc: TripDocument.parse(routed), created: [], changed, others: [], removed: [], kept: [], copied: {} }, refIndex(payload.tables));
+  } catch (e) {
+    return { error: `Nie zapisano trasy: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  refresh();
+  const minutes = result.after!.durationMin;
+  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${Math.floor(minutes / 60)} h ${Math.round(minutes % 60)} min. Plan dnia się zmienił.` };
+}
+
+/**
  * „Uzupełnij współrzędne miejsc”: miejsca planu bez współrzędnych szukane w Geoapify (dane OSM)
  * tą samą logiką co w „Zaplanuj z AI” — kraj z briefu albo ze strefy wyjazdu, trafienia daleko
  * od reszty planu odrzucone. Pinezek (`provider: user`) i miejsc ze współrzędnymi nie rusza.

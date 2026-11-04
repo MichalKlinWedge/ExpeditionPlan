@@ -16,9 +16,12 @@ const FOOT = new Set(['walk', 'hike']);
 /** Punkt, do którego można podpiąć trasę pieszą: aktywność albo przejście pieszo. */
 export const isFootRouteItem = (item: Item) => item.kind === 'activity' || FOOT.has(item.leg?.mode ?? '');
 
+const GOOGLE_ROUTE_LABEL = 'Trasa w Mapach Google';
+
 /** Etykieta linku do trasy po adresie. */
 export function routeLinkLabel(url: string): string {
-  return /(^|\/\/|\.)mapy\.(com|cz)(\/|$)/i.test(url) ? 'Trasa na mapy.com' : 'Trasa na mapie';
+  if (/(^|\/\/|\.)mapy\.(com|cz)(\/|$)/i.test(url)) return 'Trasa na mapy.com';
+  return /\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.|maps\.)?google\.[a-z.]+\/maps)/i.test(url) || /\/\/maps\.google\./i.test(url) ? GOOGLE_ROUTE_LABEL : 'Trasa na mapie';
 }
 
 const CAR = new Set(['car', 'rental_car', 'taxi', 'hired_driver']);
@@ -40,6 +43,14 @@ export function drivingRouteUrl(doc: Doc, item: Item): string | null {
   if (destination === undefined) return null;
   const origin = point(leg.fromPlaceRef);
   return `https://www.google.com/maps/dir/?api=1${origin === undefined ? '' : `&origin=${encodeURIComponent(origin)}`}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+}
+
+/** Link do trasy przejazdu: własny albo liczony ze „skąd” i „dokąd” dla auta. */
+export function legRouteLink(doc: Doc, item: Item): { url: string; label: string } | null {
+  if (item.kind !== 'transport') return null;
+  if (item.leg?.routeUrl !== undefined) return { url: item.leg.routeUrl, label: routeLinkLabel(item.leg.routeUrl) };
+  const url = drivingRouteUrl(doc, item);
+  return url === null ? null : { url, label: GOOGLE_ROUTE_LABEL };
 }
 
 export type ItemRouteFields = {

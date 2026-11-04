@@ -10,7 +10,7 @@ import {
   guideText,
   itemIcon,
   legLabel,
-  drivingRouteUrl,
+  legRouteLink,
   stopsLabel,
   linkGuideText,
   lodgingDetails,
@@ -143,7 +143,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
   const flight = flightOf(doc, item);
   const leg = legLabel(item) ?? stopsLabel(item);
-  const route = drivingRouteUrl(doc, item);
+  const route = legRouteLink(doc, item);
   // Przy noclegu zamiast przewodnika są dane obiektu.
   const guide = item.kind === 'lodging' ? null : itemGuide(trip, item);
   const notes = doc.notes.filter((note) => note.scope === 'item' && note.targetRef === item.ref).map((note) => (note.title ? `${note.title}: ${note.body}` : note.body));
@@ -206,7 +206,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         {leg && <ThemedText type="small">{leg}</ThemedText>}
         {route && (
           <View style={{ alignSelf: 'flex-start' }}>
-            <Button small label="Trasa w Mapach Google" onPress={() => open(route)} />
+            <Button small label={route.label} onPress={() => open(route.url)} />
           </View>
         )}
         {flight && <ThemedText type="smallBold">✈ {flightLine(flight)}</ThemedText>}

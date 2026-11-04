@@ -297,6 +297,47 @@ export function setItemPlace(doc: Doc, itemRef: string, placeId: string, name: s
   return edit === null ? null : { ...edit, places: [{ place, created: true }] };
 }
 
+export type LegRouteEdit = PlanEdit & { placesChanged: boolean };
+
+/**
+ * Skąd, dokąd i własny link przejazdu. Nazwa znana w planie wskazuje to samo miejsce, nowa tworzy nowe.
+ * Inne końce unieważniają trasę: znika linia i dystans, a czas zostaje jako szacunek, żeby dzień się
+ * nie zawalił, zanim trasa się przeliczy. `null` = bez zmian.
+ */
+export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; toId: string }, fields: { from: string; to: string; routeUrl: string }): LegRouteEdit | null {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  if (item?.leg === undefined) return null;
+  const created: PlanPlace[] = [];
+  const resolve = (typed: string, current: string | undefined, id: string) => {
+    const name = typed.trim();
+    if (name === '') return undefined;
+    const known = [...doc.places, ...created];
+    const same = (place: PlanPlace) => place.name.trim().toLowerCase() === name.toLowerCase();
+    const found = known.find((place) => place.ref === current && same(place)) ?? known.find(same);
+    if (found !== undefined) return found.ref;
+    const place: PlanPlace = { ref: `id-${id}`, name, provider: 'unknown', links: [] };
+    created.push(place);
+    return place.ref;
+  };
+  const from = resolve(fields.from, item.leg.fromPlaceRef, ids.fromId);
+  const to = resolve(fields.to, item.leg.toPlaceRef ?? item.placeRef, ids.toId);
+  const url = fields.routeUrl.trim();
+
+  const placesChanged = from !== item.leg.fromPlaceRef || to !== (item.leg.toPlaceRef ?? item.placeRef);
+  if (!placesChanged && url === (item.leg.routeUrl ?? '')) return null;
+
+  const { fromPlaceRef: _from, toPlaceRef: _to, routeUrl: _url, ...rest } = item.leg;
+  let kept = rest;
+  if (placesChanged) {
+    const { routed: _routed, geometry: _geometry, distanceKm: _km, durationMaxMin: _max, ...still } = rest;
+    kept = still;
+  }
+  const leg = { ...kept, ...(from !== undefined ? { fromPlaceRef: from } : {}), ...(to !== undefined ? { toPlaceRef: to } : {}), ...(url !== '' ? { routeUrl: url } : {}) };
+  const edit = updateItem({ ...doc, places: [...doc.places, ...created] }, itemRef, { leg, ...(to !== undefined ? { placeRef: to } : {}) });
+  if (edit === null) return null;
+  return { ...edit, ...(created.length > 0 ? { places: created.map((place) => ({ place, created: true })) } : {}), placesChanged };
+}
+
 /** 6 miejsc po przecinku ≈ 10 cm — więcej z kliknięcia na mapie i tak nie wynika. */
 const round = (value: number) => Math.round(value * 1e6) / 1e6;
 

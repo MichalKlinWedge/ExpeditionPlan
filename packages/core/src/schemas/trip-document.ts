@@ -231,6 +231,8 @@ export const ItemLeg = z.object({
   toPlaceRef: Ref.optional(),
   /** Czas i dystans z trasy (OpenRouteService), a nie z szacunku AI albo dokumentu. */
   routed: z.boolean().optional(),
+  /** Własny link do trasy, np. z punktami pośrednimi. Tylko http(s): trafia do `href` i przeglądarki telefonu. */
+  routeUrl: z.url().regex(/^https?:\/\//i, 'Link musi zaczynać się od https://.').optional(),
   /**
    * Linia trasy z OpenRouteService do mapy: zakodowana polilinia (format Google, precyzja 5,
    * uproszczona — `polyline.ts`). Bez niej mapa łączy miejsca prosto. Nie wypełnia jej AI.

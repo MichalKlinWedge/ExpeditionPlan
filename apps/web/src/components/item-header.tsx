@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { ItemEditor } from "@/components/item-editor";
+import { ItemLegEditor } from "@/components/item-leg";
 import { ItemPlaceEditor } from "@/components/item-place";
 import { createClient } from "@/lib/supabase/client";
 
@@ -52,7 +53,11 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
         onCancel={() => setOpen(false)}
         onSave={(patch) => save(updateItem(doc, itemRef, patch), () => setOpen(false))}
       />
-      <ItemPlaceEditor key={item.placeRef ?? "brak"} doc={doc} item={item} onEdit={(edit) => save(edit)} disabled={pending} />
+      {item.kind === "transport" && item.leg !== undefined ? (
+        <ItemLegEditor tripId={tripId} doc={doc} item={item} onEdit={save} disabled={pending} />
+      ) : (
+        <ItemPlaceEditor key={item.placeRef ?? "brak"} doc={doc} item={item} onEdit={(edit) => save(edit)} disabled={pending} />
+      )}
       {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

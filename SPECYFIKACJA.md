@@ -432,6 +432,7 @@ Schemat w migracjach `supabase/migrations/*_mvp1_*.sql` realizuje tabele powyże
 
 ### Dodane po MVP-1 (listopad 2026)
 
+- **`leg.routeUrl`** — własny link do trasy przejazdu (np. z punktami pośrednimi), zastępuje link do Map Google liczony ze „skąd” i „dokąd”. Długość i czas nadal liczy OpenRouteService z tych miejsc; zmiana miejsc przelicza trasę od razu.
 - **Miejsce w formularzu rezerwacji noclegu** (`core/booking-place.ts`) — nazwa i współrzędne albo link z mapy ustawiają `bookings.start_place_id`. Na mapie dnia to miejsce ma pierwszeństwo przed `days.base_id`.
 - **„Trekking” i „pieszo” na liście rodzajów** (`core/item-kind.ts`) — w danych to `kind: transport` z `leg.mode` `hike` albo `walk`, nie osobne rodzaje: zostają czas drogi, punkty „skąd/dokąd” i przeliczanie trasy.
 - **`items.stops_min`** — postoje i przerwy w trakcie punktu (przejazdu, trasy, każdego innego). Silnik dolicza je do czasu punktu w obu scenariuszach, raz także przy `roundTrip`; to nie to samo co `buffer_after_min`, który leży po punkcie. Liczba przeżywa przeliczenie trasy, bo nie należy do `leg`.

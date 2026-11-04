@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { addItem, addItemAtPin, addPoolItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, placeUses, removeItem, removeItemClosingGap, renamePlace, replacePlace, setItemPlace, updateItem } from '../plan-edits.ts';
+import { addItem, addItemAtPin, addPoolItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, placeUses, removeItem, setLegRoute, removeItemClosingGap, renamePlace, replacePlace, setItemPlace, updateItem } from '../plan-edits.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -149,6 +149,50 @@ describe('edycja planu (MVP-3)', () => {
     const constrained = maroko.constraints.find((each) => each.itemRef !== undefined) ?? maroko.budgetLines.find((each) => each.itemRef !== undefined);
     expect(constrained).toBeDefined();
     expect(() => removeItem(maroko, constrained!.itemRef!)).toThrow(ItemInUseError);
+  });
+});
+
+describe('skąd i dokąd przejazdu', () => {
+  const gruzja = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/gruzja/plan.json', import.meta.url)), 'utf8')));
+  const ref = 'd2-dojazd-mestia';
+  const routedDoc = TripDocument.parse({ ...gruzja, items: gruzja.items.map((item) => (item.ref === ref ? { ...item, leg: { ...item.leg, durationMin: 224, durationMaxMin: 291, distanceKm: 144, routed: true, geometry: 'abc' } } : item)) });
+  const name = (doc: TripDocument, placeRef: string | undefined) => doc.places.find((place) => place.ref === placeRef)?.name;
+  const ids = { fromId: 'f', toId: 't' };
+  const leg = (doc: TripDocument) => doc.items.find((item) => item.ref === ref)!.leg!;
+  const start = name(routedDoc, leg(routedDoc).fromPlaceRef)!;
+  const end = name(routedDoc, leg(routedDoc).toPlaceRef)!;
+
+  it('nowy start ze znanej nazwy unieważnia trasę, a czas zostaje jako szacunek', () => {
+    const edit = setLegRoute(routedDoc, ref, ids, { from: 'lotnisko kutaisi', to: end, routeUrl: '' })!;
+    expect(edit.placesChanged).toBe(true);
+    expect(leg(edit.doc).fromPlaceRef).toBe('lotnisko-kutaisi');
+    expect(leg(edit.doc)).toMatchObject({ durationMin: 224, mode: 'rental_car' });
+    expect(leg(edit.doc).routed).toBeUndefined();
+    expect(leg(edit.doc).geometry).toBeUndefined();
+    expect(leg(edit.doc).distanceKm).toBeUndefined();
+    expect(edit.places).toBeUndefined();
+    expect(documentProblem(edit.doc)).toBeNull();
+  });
+
+  it('nowa nazwa tworzy miejsce, a punkt wskazuje cel', () => {
+    const edit = setLegRoute(routedDoc, ref, ids, { from: start, to: 'Nowa wioska', routeUrl: '' })!;
+    expect(edit.places?.[0]?.place).toMatchObject({ ref: 'id-t', name: 'Nowa wioska', provider: 'unknown' });
+    expect(leg(edit.doc).toPlaceRef).toBe('id-t');
+    expect(edit.doc.items.find((item) => item.ref === ref)?.placeRef).toBe('id-t');
+    expect(documentProblem(edit.doc)).toBeNull();
+  });
+
+  it('sam własny link nie rusza trasy, a pusty go usuwa', () => {
+    const edit = setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: 'https://maps.app.goo.gl/AbC' })!;
+    expect(edit.placesChanged).toBe(false);
+    expect(leg(edit.doc)).toMatchObject({ routeUrl: 'https://maps.app.goo.gl/AbC', routed: true, distanceKm: 144, geometry: 'abc' });
+    expect(documentProblem(edit.doc)).toBeNull();
+    expect(leg(setLegRoute(edit.doc, ref, ids, { from: start, to: end, routeUrl: '' })!.doc).routeUrl).toBeUndefined();
+  });
+
+  it('bez zmian nic nie zapisuje, a link spoza http(s) nie przechodzi walidacji', () => {
+    expect(setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: '' })).toBeNull();
+    expect(documentProblem(setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: 'javascript:alert(1)' })!.doc)).not.toBeNull();
   });
 });
 
