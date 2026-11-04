@@ -140,6 +140,41 @@ describe('mapa dnia', () => {
     expect(first.numbers['d2-do-bahii']).toBe(1);
   });
 
+  describe('ślad GPX zamiast linii prostej', () => {
+    const near = (point: LngLat): LngLat => [point[0] + 0.001, point[1] + 0.001];
+    const withTrack = (coordinates: LngLat[], refs: string[] = ['d2-do-bahii']) =>
+      TripDocument.parse({
+        ...maroko,
+        tracks: [...maroko.tracks, { ref: 'slad-x', name: 'Ślad', geojson: { type: 'LineString', coordinates } }],
+        items: maroko.items.map((item) => (refs.includes(item.ref) ? { ...item, activity: { ...item.activity, trackRef: 'slad-x' } } : item)),
+      });
+
+    it('ślad kończy się przy następnym punkcie: bez kreski do niego ani do celu przejazdu', () => {
+      const [medersa, bahia] = [at('p-medersa'), at('p-bahia')];
+      const map = dayMap(withTrack([near(medersa), [medersa[0] + 0.01, medersa[1]], near(bahia)]), ['d2-medersa', 'd2-do-bahii', 'd2-bahia']);
+      expect(map.lines).toHaveLength(1);
+      expect(map.lines[0]).toMatchObject({ routed: true, track: true, refs: ['d2-do-bahii'] });
+    });
+
+    it('ślad zaczyna się albo kończy daleko: tylko wtedy kreska do następnego miejsca', () => {
+      const [medersa, bahia] = [at('p-medersa'), at('p-bahia')];
+      const faraway: LngLat = [bahia[0] + 0.5, bahia[1] + 0.5];
+      const late = dayMap(withTrack([near(medersa), faraway]), ['d2-medersa', 'd2-do-bahii', 'd2-bahia']);
+      expect(late.lines.map((line) => line.routed)).toEqual([true, false]);
+      expect(late.lines[1]!.coordinates).toEqual([faraway, bahia]);
+      const early = dayMap(withTrack([faraway, near(bahia)]), ['d2-medersa', 'd2-do-bahii', 'd2-bahia']);
+      expect(early.lines.map((line) => line.routed)).toEqual([false, true]);
+      expect(early.lines[0]!.coordinates).toEqual([medersa, faraway]);
+    });
+
+    it('ten sam ślad w dwóch punktach: jedna linia z oboma punktami i bez kreski między nimi', () => {
+      const [medersa, bahia] = [at('p-medersa'), at('p-bahia')];
+      const map = dayMap(withTrack([near(medersa), near(bahia)], ['d2-do-bahii', 'd2-bahia']), ['d2-medersa', 'd2-do-bahii', 'd2-bahia']);
+      expect(map.lines).toHaveLength(1);
+      expect(map.lines[0]!.refs).toEqual(['d2-do-bahii', 'd2-bahia']);
+    });
+  });
+
   it('linia trasy z innej kolejności (końce daleko od miejsc) ustępuje prostej', () => {
     const elsewhere: LngLat[] = [[-7.5, 31.2], [-7.6, 31.3]];
     const map = dayMap(withRoute(elsewhere), d2);

@@ -155,7 +155,8 @@ export type MapPin = {
 
 /** Kawałek linii dnia [lng, lat]: trasa po drogach z ORS (`routed`) albo prosta między miejscami. */
 /** `track` — ślad GPX aktywności (rysowany jak trasa po drogach). */
-export type MapLine = { coordinates: LngLat[]; routed: boolean; transit?: boolean; track?: true };
+/** `refs` — punkty dnia, które ta linia opisuje (podświetlenie po najechaniu na link do trasy). */
+export type MapLine = { coordinates: LngLat[]; routed: boolean; transit?: boolean; track?: true; refs?: string[] };
 
 /** Przejazd dłuższy niż tyle km to dojazd albo powrót, nie trasa dnia. */
 const TRANSIT_KM = 250;
@@ -215,7 +216,15 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
   /** Miejsca punktów poza dojazdem i powrotem — reszta pinezek to `transit`. */
   const local = new Set<string>();
   let cursor: LngLat | undefined;
+  /** Kursor stoi na końcu śladu GPX, który rzadko trafia co do metra w pinezkę. */
+  let afterTrack = false;
   const straightTo = (point: LngLat, transit = false) => {
+    const arrived = afterTrack && cursor !== undefined && distanceM(cursor, point) <= SNAP_FOOT_M;
+    afterTrack = false;
+    if (arrived) {
+      cursor = point;
+      return;
+    }
     if (cursor !== undefined && (cursor[0] !== point[0] || cursor[1] !== point[1])) {
       const last = lines.at(-1);
       const end = last?.coordinates.at(-1);
@@ -236,7 +245,7 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
   };
   const numbers: Record<string, number> = {};
   const tracks = new Map(doc.tracks.map((track) => [track.ref, track]));
-  const drawn = new Set<string>();
+  const drawn = new Map<string, MapLine>();
   let previousPin: MapPin | undefined;
   refs.forEach((ref, index) => {
     const item = items.get(ref);
@@ -253,10 +262,6 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     }
     // Ślad GPX aktywności — raz na dzień, choćby kilka punktów szło tą samą trasą.
     const track = item.activity?.trackRef === undefined ? undefined : tracks.get(item.activity.trackRef);
-    if (track?.geojson !== undefined && !drawn.has(track.ref)) {
-      drawn.add(track.ref);
-      lines.push({ coordinates: track.geojson.coordinates.map((point) => [point[0]!, point[1]!] as LngLat), routed: true, track: true });
-    }
     const leg = item.kind === 'transport' ? item.leg : undefined;
     const transit = isTransit(doc, item);
     const from = pin(leg?.fromPlaceRef);
@@ -265,9 +270,24 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     // Miejsce używane tylko przez dojazd i powrót (np. lotnisko w domu) jest `transit`.
     if (!transit) for (const found of [from, target]) if (found !== undefined) local.add(found.placeRef);
     const route = leg === undefined ? null : routeLine(leg, cursor, [target === undefined ? undefined : at(target), nextStart(index)]);
-    if (route !== null) {
+    if (track?.geojson !== undefined) {
+      // Ślad zastępuje linię prostą do celu; kreska tylko wtedy, gdy zaczyna się z dala od poprzedniego miejsca.
+      const known = drawn.get(track.ref);
+      if (known !== undefined) {
+        known.refs!.push(ref);
+        cursor = target === undefined ? cursor : at(target);
+      } else {
+        const coordinates = track.geojson.coordinates.map((point) => [point[0]!, point[1]!] as LngLat);
+        if (cursor !== undefined && distanceM(cursor, coordinates[0]!) > SNAP_FOOT_M) straightTo(coordinates[0]!, transit);
+        const line: MapLine = { coordinates, routed: true, track: true, refs: [ref] };
+        drawn.set(track.ref, line);
+        lines.push(line);
+        cursor = coordinates.at(-1);
+        afterTrack = true;
+      }
+    } else if (route !== null) {
       straightTo(route[0]!, transit);
-      lines.push({ coordinates: route, routed: true, ...(transit ? { transit } : {}) });
+      lines.push({ coordinates: route, routed: true, refs: [ref], ...(transit ? { transit } : {}) });
       cursor = route.at(-1);
     } else if (target !== undefined) {
       straightTo(at(target), transit);

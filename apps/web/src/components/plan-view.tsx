@@ -61,7 +61,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DayConstraints, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { ItemPlaceEditor } from "@/components/item-place";
-import { type LatLng, PlanMap } from "@/components/plan-map";
+import { highlightRoute, type LatLng, PlanMap } from "@/components/plan-map";
 import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -755,11 +755,18 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
 }
 
 /** „🗺 trasa” przy punkcie z linkiem do trasy (mapy.com), do podejrzenia przebiegu wprost z planu dnia. */
+const routeHover = (ref: string) => ({
+  onMouseEnter: () => highlightRoute(ref),
+  onMouseLeave: () => highlightRoute(null),
+  onFocus: () => highlightRoute(ref),
+  onBlur: () => highlightRoute(null),
+});
+
 function RouteLink({ doc, item }: { doc: TripDocument; item: Item }) {
   const url = doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.url;
   if (url === undefined || !/^https?:\/\//i.test(url)) return null;
   return (
-    <a href={url} target="_blank" rel="noreferrer" title={routeLinkLabel(url)} className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:underline">
+    <a href={url} target="_blank" rel="noreferrer" title={routeLinkLabel(url)} {...routeHover(item.ref)} className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-signal/20 hover:underline">
       🗺 trasa
     </a>
   );
@@ -1035,7 +1042,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                 {leg && <p className="ml-31 text-xs text-zinc-500">{leg}</p>}
                 {routeStopsLabel(item) && <p className="ml-31 text-xs font-medium text-zinc-600 dark:text-zinc-400">{routeStopsLabel(item)}</p>}
                 {route && (
-                  <a href={route.url} target="_blank" rel="noreferrer" className="ml-31 self-start text-xs text-sea underline">
+                  <a href={route.url} target="_blank" rel="noreferrer" {...routeHover(item.ref)} className="ml-31 self-start text-xs text-sea underline">
                     {route.label}
                   </a>
                 )}

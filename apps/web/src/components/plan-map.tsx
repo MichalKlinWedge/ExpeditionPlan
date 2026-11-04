@@ -32,6 +32,10 @@ function boundsOf(pins: MapPin[]): LngLatBoundsLike | null {
 
 export type LatLng = { lat: number; lng: number };
 
+const routeListeners = new Set<(ref: string | null) => void>();
+/** Podświetla linię punktu na mapie (najechanie na link do trasy). Poza stanem Reacta: przelicza tylko warstwę, nie cały plan. */
+export const highlightRoute = (ref: string | null) => routeListeners.forEach((listener) => listener(ref));
+
 /** Edycja na mapie: wskazywanie miejsca nowego punktu (`picking`) i przesuwanie własnych pinezek. */
 export type MapEditing = {
   picking: boolean;
@@ -122,6 +126,14 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
             layout: { "line-cap": "round", "line-join": "round" },
             paint: { "line-color": "#2e7d74", "line-width": 4, "line-opacity": 0.9 },
           });
+          created.addLayer({
+            id: "path-highlight",
+            type: "line",
+            source: "path",
+            filter: ["in", ["get", "index"], ["literal", []]],
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#e0662f", "line-width": 6 },
+          });
           setMap(created);
         });
       },
@@ -177,6 +189,19 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       fitTo(map, bounds);
     });
   }, [map, data, fitKey, movable, shown]);
+
+  // Najechanie na link do trasy: ta linia dnia w kolorze sygnałowym.
+  useEffect(() => {
+    if (map === null) return;
+    const listener = (ref: string | null) => {
+      const indices = ref === null ? [] : data.lines.flatMap((line, index) => (line.refs?.includes(ref) ? [index] : []));
+      map.setFilter("path-highlight", ["in", ["get", "index"], ["literal", indices]]);
+    };
+    routeListeners.add(listener);
+    return () => {
+      routeListeners.delete(listener);
+    };
+  }, [map, data]);
 
   // Kontener zmienia rozmiar: mapa się przelicza, a po pokazaniu z ukrycia — dopasowuje od nowa.
   useEffect(() => {
@@ -282,7 +307,7 @@ function highlight(markers: { pin: MapPin; marker: Marker }[], selected: string 
 function lines(parts: MapLine[]) {
   return {
     type: "FeatureCollection" as const,
-    features: parts.map((part) => ({ type: "Feature" as const, properties: { routed: part.routed }, geometry: { type: "LineString" as const, coordinates: part.coordinates } })),
+    features: parts.map((part, index) => ({ type: "Feature" as const, properties: { routed: part.routed, index }, geometry: { type: "LineString" as const, coordinates: part.coordinates } })),
   };
 }
 
