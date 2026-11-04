@@ -3,7 +3,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { DayMap, MapLine, MapPin } from "@expeditionplan/core";
-import type { Map as MapLibreMap, Marker } from "maplibre-gl";
+import type { LngLatBoundsLike, Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
@@ -15,6 +15,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
  */
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const FIT = { padding: 48, maxZoom: 15 };
+
+/** Prostokąt obejmujący punkty dnia; szare kropki z puli liczą się tylko, gdy nie ma innych pinezek. */
+function boundsOf(pins: MapPin[]): LngLatBoundsLike | null {
+  const main = pins.filter((pin) => pin.stops.length > 0 || pin.base || pin.arrival);
+  const focus = main.length > 0 ? main : pins;
+  if (focus.length === 0) return null;
+  const lngs = focus.map((pin) => pin.lng);
+  const lats = focus.map((pin) => pin.lat);
+  return [
+    [Math.min(...lngs), Math.min(...lats)],
+    [Math.max(...lngs), Math.max(...lats)],
+  ];
+}
 
 export type LatLng = { lat: number; lng: number };
 
@@ -54,6 +68,8 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
   const markers = useRef<{ pin: MapPin; marker: Marker }[]>([]);
   const draft = useRef<Marker | null>(null);
   const fitted = useRef<string | null>(null);
+  /** Dopasowanie widoku w toku: zmiana rozmiaru mapy je przerywa, więc wtedy trzeba je dokończyć. */
+  const fitting = useRef<LngLatBoundsLike | null>(null);
   /** Licznik pokazań kontenera (rozmiar z 0 na >0) — wtedy dopasowanie widoku od nowa. */
   const [shown, setShown] = useState(0);
   const select = useRef(onSelect);
@@ -117,6 +133,16 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
     };
   }, []);
 
+  const fitTo = (target: MapLibreMap, bounds: LngLatBoundsLike) => {
+    // Najpierw koniec poprzedniego ruchu: jego `moveend` nie może skasować nowego dopasowania.
+    target.stop();
+    fitting.current = bounds;
+    target.once("moveend", () => {
+      fitting.current = null;
+    });
+    target.fitBounds(bounds, { ...FIT, duration: 600 });
+  };
+
   // Dane dnia: linia, pinezki, a przy zmianie dnia — dopasowanie widoku.
   const movable = editing !== null;
   useEffect(() => {
@@ -145,13 +171,10 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       // Ukryty kontener (powrót na stronę zachowaną przez Next, zwinięty układ) ma rozmiar 0 —
       // dopasowanie dałoby widok całego świata; czekamy, aż kontener się pokaże.
       if (container.current === null || container.current.clientWidth === 0 || container.current.clientHeight === 0) return;
-      const main = data.pins.filter((pin) => pin.stops.length > 0 || pin.base || pin.arrival);
-      const focus = main.length > 0 ? main : data.pins;
-      if (focus.length === 0) return;
+      const bounds = boundsOf(data.pins);
+      if (bounds === null) return;
       fitted.current = fitKey;
-      const bounds = new maplibre.LngLatBounds();
-      for (const pin of focus) bounds.extend([pin.lng, pin.lat]);
-      map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 600 });
+      fitTo(map, bounds);
     });
   }, [map, data, fitKey, movable, shown]);
 
@@ -162,7 +185,15 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
     let hidden = element.clientWidth === 0 || element.clientHeight === 0;
     const observer = new ResizeObserver(() => {
       const now = element.clientWidth === 0 || element.clientHeight === 0;
-      if (!now) map.resize();
+      if (!now) {
+        // `resize` zatrzymuje ruch mapy: bez dokończenia zostałby widok sprzed dopasowania, np. cały świat.
+        const pending = fitting.current;
+        map.resize();
+        if (pending !== null) {
+          fitting.current = null;
+          map.fitBounds(pending, { ...FIT, duration: 0 });
+        }
+      }
       if (hidden && !now) {
         fitted.current = null;
         setShown((count) => count + 1);
@@ -177,7 +208,7 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
   useEffect(() => {
     if (map === null) return;
     const pin = highlight(markers.current, selected);
-    if (pin !== undefined && !map.getBounds().contains([pin.lng, pin.lat])) map.easeTo({ center: [pin.lng, pin.lat], duration: 500 });
+    if (pin !== undefined && fitting.current === null && !map.getBounds().contains([pin.lng, pin.lat])) map.easeTo({ center: [pin.lng, pin.lat], duration: 500 });
   }, [map, selected, data]);
 
   // Wskazywanie miejsca nowego punktu: celownik zamiast rączki i znacznik wskazanego miejsca.
@@ -197,6 +228,21 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       {/* Nie `absolute inset-0`: CSS MapLibre (poza warstwami Tailwinda) ustawia `position: relative`. */}
       <div ref={container} className="h-full w-full" />
       {failure && <p className="absolute inset-x-0 top-0 bg-red-50 p-2 text-xs text-red-700">Mapa się nie wczytała: {failure}</p>}
+      {map !== null && data.pins.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            const bounds = boundsOf(data.pins);
+            if (bounds !== null) fitTo(map, bounds);
+          }}
+          title="Pokaż wszystkie punkty"
+          aria-label="Pokaż wszystkie punkty"
+          className="absolute top-[76px] right-[10px] flex size-[29px] items-center justify-center rounded bg-white text-zinc-800 shadow-[0_0_0_2px_rgba(0,0,0,0.1)] hover:bg-zinc-100">
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" />
+          </svg>
+        </button>
+      )}
       {hasTransit && !picking && (
         <button
           onClick={() => setShowTransit((value) => !value)}
