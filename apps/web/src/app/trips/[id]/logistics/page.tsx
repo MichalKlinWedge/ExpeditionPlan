@@ -1,4 +1,4 @@
-import { BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, flightLine, formatMoney, instantToZoned, LogisticsCandidates, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { bookingRemovalNote, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, flightLine, formatMoney, instantToZoned, LogisticsCandidates, removeBooking, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
-import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, FxEditor, NewBooking } from "@/components/logistics-editors";
+import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, FxEditor, NewBooking, RemoveCancelledBooking } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -307,6 +307,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                   ) : (
                     <span className={`text-xs ${status.tone}`}>{status.label}</span>
                   )}
+                  {mayEdit && booking.status === "cancelled" && <RemoveCancelledBooking tripId={id} bookingRef={booking.ref} title={booking.title} note={bookingRemovalNote(removeBooking(doc, booking.ref)!.summary)} />}
                 </div>
                 <p className="text-zinc-600 dark:text-zinc-400">
                   {[when(booking), booking.kind === "flight" ? flightLine(booking) : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · "), cost]

@@ -1,6 +1,6 @@
 "use server";
 
-import { BookingKind, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
+import { BookingKind, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -307,6 +307,38 @@ export async function setBookingStatus(tripId: string, ref: string, status: stri
   const parsed = BookingStatus.safeParse(status);
   if (!parsed.success) return { error: "Nieznany status." };
   return change(tripId, "bookings", ref, (_doc, current) => (current === undefined ? "Tej rezerwacji już nie ma — odśwież stronę." : { ...current, status: parsed.data }));
+}
+
+/**
+ * Usuwa anulowaną rezerwację: najpierw odwołania (`removeBooking`), na końcu sam wiersz. Dokumenty z sejfu
+ * tracą powiązanie, bo inaczej zniknęłyby z listy sejfu na webie; na liście są potem w „Inne dokumenty”.
+ */
+export async function removeCancelledBooking(tripId: string, ref: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
+  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
+  if (error) return { error: message(error) };
+  if (data === null) return { error: "Nie ma takiego wyjazdu." };
+  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const { doc } = stateFromPayload(payload);
+  const booking = doc.bookings.find((each) => each.ref === ref);
+  if (booking === undefined) return { error: "Tej rezerwacji już nie ma — odśwież stronę." };
+  if (booking.status !== "cancelled") return { error: "Usunąć można tylko anulowaną rezerwację — najpierw zmień jej status." };
+  const edit = removeBooking(doc, ref)!;
+  const checked = TripDocument.safeParse(edit.doc);
+  if (!checked.success) {
+    const issue = checked.error.issues[0]!;
+    return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
+  }
+  const ids = refIndex(payload.tables);
+  const unlinked = await supabase.from("documents").update({ booking_id: null }).eq("trip_id", tripId).eq("booking_id", ids[ref]!);
+  if (unlinked.error) return { error: message(unlinked.error) };
+  try {
+    await saveElements(supabase, tripId, checked.data, edit.writes, ids);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  refresh();
+  return { ok: "Usunięto." };
 }
 
 export async function setBookingItems(tripId: string, bookingRef: string, itemRefs: string[]): Promise<FormState> {

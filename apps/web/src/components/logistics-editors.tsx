@@ -7,6 +7,7 @@ import type { FormState } from "@/app/actions";
 import {
   addSuggestedBudgetLine,
   removeBudgetLine,
+  removeCancelledBooking,
   removeContact,
   removeShoppingItem,
   removeTask,
@@ -443,6 +444,20 @@ export function BookingStatusSelect({ tripId, bookingRef, status, statuses, tone
         ))}
       </select>
       {action.pending && <span className="text-xs text-zinc-500">zapisuję…</span>}
+      {action.state.error && <span className="text-xs text-red-600">{action.state.error}</span>}
+    </span>
+  );
+}
+
+/** „Usuń z listy” przy anulowanej rezerwacji; `note` mówi, co straci powiązanie. */
+export function RemoveCancelledBooking({ tripId, bookingRef, title, note }: { tripId: string; bookingRef: string; title: string; note: string }) {
+  const action = useAction();
+  const question = [`Usunąć anulowaną rezerwację „${title}” z listy? W aplikacji nie da się tego cofnąć.`, note, "Jej dokumenty z sejfu (jeśli są) zostaną w „Inne dokumenty”."].filter(Boolean).join("\n\n");
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button type="button" disabled={action.pending} onClick={() => action.run(() => removeCancelledBooking(tripId, bookingRef), question)} className="text-xs underline disabled:opacity-50">
+        {action.pending ? "usuwam…" : "usuń z listy"}
+      </button>
       {action.state.error && <span className="text-xs text-red-600">{action.state.error}</span>}
     </span>
   );

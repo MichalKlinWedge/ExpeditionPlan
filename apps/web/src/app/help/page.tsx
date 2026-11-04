@@ -95,7 +95,7 @@ export default function HelpPage() {
               opis, ceny, linki, opis przewodnika z Wikipedii (📖 przy punkcie znaczy, że opis już jest) i trasa pieszo: link z mapy.com (🗺 w planie dnia) z długością i czasem przepisanymi z mapy, od których liczą się godziny dnia. Plik GPX sam wypełnia długość, czas i podejście oraz rysuje dokładny przebieg na mapie planu.
             </Step>
             <Step name="Rezerwacje i budżet">
-              noclegi, auta, bilety ze statusem (do zarezerwowania → zarezerwowane → opłacone), plan budżetu i wydatki z trasy, także plan a wydatki dzień po dniu.
+              noclegi, auta, bilety ze statusem (do zarezerwowania → zarezerwowane → opłacone; anulowane można usunąć z listy), plan budżetu i wydatki z trasy, także plan a wydatki dzień po dniu.
             </Step>
             <Step name="Zadania, posiłki, lista zakupów, kontakty">
               co trzeba zrobić przed wyjazdem, kto gotuje i dla ilu osób, wspólne zakupy, gospodarze i numery alarmowe.

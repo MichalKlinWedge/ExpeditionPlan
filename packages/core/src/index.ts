@@ -24,6 +24,7 @@ export * from './item-route.ts';
 export * from './pool-nearby.ts';
 export * from './polyline.ts';
 export * from './coordinates.ts';
+export * from './booking-remove.ts';
 export * from './documents.ts';
 export * from './code-raster.ts';
 export * from './booking-info.ts';
