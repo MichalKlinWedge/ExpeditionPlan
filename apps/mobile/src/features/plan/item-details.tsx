@@ -12,6 +12,7 @@ import {
   legLabel,
   stopsLabel,
   linkGuideText,
+  lodgingDetails,
   type PlanItem as Item,
 } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
@@ -141,7 +142,8 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
   const flight = flightOf(doc, item);
   const leg = legLabel(item) ?? stopsLabel(item);
-  const guide = itemGuide(trip, item);
+  // Przy noclegu zamiast przewodnika są dane obiektu.
+  const guide = item.kind === 'lodging' ? null : itemGuide(trip, item);
   const notes = doc.notes.filter((note) => note.scope === 'item' && note.targetRef === item.ref).map((note) => (note.title ? `${note.title}: ${note.body}` : note.body));
   const open = (url: string) => void Linking.openURL(url);
   const targets = guide === null ? [] : guideLinkTargets(doc, trip.live.guides as unknown as GuideRow[], trip.ids, item.ref);
@@ -202,6 +204,12 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         {leg && <ThemedText type="small">{leg}</ThemedText>}
         {flight && <ThemedText type="smallBold">✈ {flightLine(flight)}</ThemedText>}
         {item.description && <ThemedText>{item.description}</ThemedText>}
+        {item.kind === 'lodging' &&
+          lodgingDetails(doc, item).map((line) => (
+            <ThemedText key={line} type="small">
+              {line}
+            </ThemedText>
+          ))}
         {[...item.notes, ...notes].map((note, i) => (
           <ThemedText key={i} type="small" themeColor="textSecondary">
             • {note}

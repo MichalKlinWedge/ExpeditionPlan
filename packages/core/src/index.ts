@@ -45,3 +45,4 @@ export * from './trip-readiness.ts';
 export * from './eat-out.ts';
 export * from './trip-status.ts';
 export * from './trip-reschedule.ts';
+export * from './lodging-info.ts';

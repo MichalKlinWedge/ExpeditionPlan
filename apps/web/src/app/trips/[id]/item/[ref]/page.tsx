@@ -1,4 +1,4 @@
-import { flightLine, flightOf, isFootRouteItem, routeLinkLabel, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, guideRowFor, type GuideSegment, itemIcon, linkGuideText, itemKindLabel, legLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, lodgingBooking, lodgingDetails, lodgingLink, flightLine, flightOf, isFootRouteItem, routeLinkLabel, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, guideRowFor, type GuideSegment, itemIcon, linkGuideText, itemKindLabel, legLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { GuideButtons } from "@/components/guide-button";
 import { ItemHeaderEditor } from "@/components/item-header";
+import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
 import { TrackUpload } from "@/components/track-upload";
 import { Loading, Shell } from "@/components/shell";
@@ -71,6 +72,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const time = item.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}` : null;
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
   const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
+  const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
 
   return (
     <>
@@ -197,6 +199,32 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
         </section>
       )}
 
+      {lodging !== null && (editing || lodging.lines.length > 0 || lodging.contacts.length > 0) && (
+        <section className="card flex flex-col gap-2 p-4 text-sm">
+          <h2 className="text-lg font-semibold">Obiekt</h2>
+          {lodging.lines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+          {lodging.contacts.map((contact) => (
+            <p key={contact.ref}>
+              <span className="text-zinc-500">{contact.name}</span>
+              {contact.phone ? (
+                <>
+                  {" · "}
+                  <a href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`} className="underline">
+                    {contact.phone}
+                  </a>
+                </>
+              ) : null}
+              {contact.email ? ` · ${contact.email}` : null}
+            </p>
+          ))}
+          {editing && <LodgingEditor tripId={id} itemRef={item.ref} link={lodgingLink(item)?.url} />}
+        </section>
+      )}
+
+      {/* Przy noclegu zamiast przewodnika z Wikipedii jest sekcja „Obiekt”. */}
+      {item.kind !== "lodging" && (
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Przewodnik</h2>
         {guide === null ? (
@@ -272,6 +300,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
         )}
         {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guide?.hint} />}
       </section>
+      )}
     </>
   );
 }

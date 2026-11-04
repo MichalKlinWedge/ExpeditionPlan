@@ -461,12 +461,12 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                           )}{" "}
                           <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
                           <RouteLink doc={doc} item={item} />
-                          {itemBase && guided?.includes(item.ref) && (
+                          {itemBase && item.kind !== "lodging" && guided?.includes(item.ref) && (
                             <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                               📖 opis
                             </Link>
                           )}
-                          {itemBase && canEdit && !guided?.includes(item.ref) && (
+                          {itemBase && canEdit && item.kind !== "lodging" && !guided?.includes(item.ref) && (
                             <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="ml-1.5 text-xs text-sea underline dark:text-teal-300">
                               opis AI
                             </Link>
@@ -976,7 +976,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       <span className="font-medium">{item.title}</span>
                     )}
                     {source && <RouteLink doc={doc} item={source} />}
-                    {guided?.includes(item.ref) &&
+                    {item.kind !== "lodging" && guided?.includes(item.ref) &&
                       (itemBase ? (
                         <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                           📖 opis
