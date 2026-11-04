@@ -124,6 +124,30 @@ h2 {
     outline-offset: 2px;
   }
 
+  /* Wybór pliku: przycisk przeglądarki po resecie stylów wygląda jak zwykły tekst, więc dostaje wygląd `btn-secondary`. */
+  input[type="file"]::file-selector-button {
+    margin-right: 0.6rem;
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+    border-radius: 0.6rem;
+    background: var(--surface);
+    color: var(--foreground);
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      border-color 120ms,
+      color 120ms;
+  }
+  input[type="file"]:not(:disabled)::file-selector-button:hover {
+    border-color: var(--color-sea);
+    color: var(--color-sea);
+  }
+  input[type="file"]:disabled::file-selector-button {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   /* Powrót do strony nadrzędnej („← Maroko w cztery noce”): mała pigułka zamiast podkreślonego linku. */
   .back-link {
     display: inline-flex;
