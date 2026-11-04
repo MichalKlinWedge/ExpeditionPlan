@@ -53,7 +53,7 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
         onCancel={() => setOpen(false)}
         onSave={(patch) => save(updateItem(doc, itemRef, patch), () => setOpen(false))}
       />
-      {item.kind === "transport" && item.leg !== undefined ? (
+      {item.kind === "transport" ? (
         <ItemLegEditor tripId={tripId} doc={doc} item={item} onEdit={save} disabled={pending} />
       ) : (
         <ItemPlaceEditor key={item.placeRef ?? "brak"} doc={doc} item={item} onEdit={(edit) => save(edit)} disabled={pending} />

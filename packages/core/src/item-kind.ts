@@ -39,9 +39,8 @@ export function kindPatch(item: Pick<Item, 'kind' | 'leg'> | null, choice: KindC
   const foot = footMode(choice);
   if (foot === undefined && choice !== 'transport') return { kind: choice as Item['kind'], leg: undefined };
   const current = item?.kind === 'transport' ? item.leg : undefined;
-  // „Przejazd” z trekkingu albo przejścia pieszo: bez trybu pieszego, więc domyślnie auto.
-  const mode = foot ?? (footMode(current?.mode) === undefined ? current?.mode : 'car');
-  if (mode === undefined) return { kind: 'transport', leg: current };
+  // „Przejazd” bez szczegółów albo z trekkingu i przejścia pieszo: domyślnie auto.
+  const mode = foot ?? (current === undefined || footMode(current.mode) !== undefined ? 'car' : current.mode);
   if (current === undefined) return { kind: 'transport', leg: { mode, links: [] } };
   if (current.mode === mode) return { kind: 'transport', leg: current };
   // Linia i czas z OpenRouteService dotyczyły poprzedniego środka transportu: zostaje sam szacunek.

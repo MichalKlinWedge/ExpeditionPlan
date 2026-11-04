@@ -190,6 +190,22 @@ describe('skąd i dokąd przejazdu', () => {
     expect(leg(setLegRoute(edit.doc, ref, ids, { from: start, to: end, routeUrl: '' })!.doc).routeUrl).toBeUndefined();
   });
 
+  it('przejazd bez szczegółów dostaje je przy zapisie, domyślnie autem; zwykły punkt nie', () => {
+    const bare = TripDocument.parse({ ...routedDoc, items: routedDoc.items.map((item) => (item.ref === ref ? (({ leg: _leg, ...rest }) => ({ ...rest, durationMin: 60, placeRef: 'lotnisko-kutaisi' }))(item) : item)) });
+    const proposal = setLegRoute(bare, ref, ids, { from: '', to: 'Lotnisko Kutaisi', routeUrl: '' })!;
+    expect(proposal.placesChanged).toBe(true);
+    expect(leg(proposal.doc)).toMatchObject({ mode: 'car', toPlaceRef: 'lotnisko-kutaisi', links: [] });
+    const swapped = setLegRoute(bare, ref, ids, { from: 'Lotnisko Kutaisi', to: 'Mestia', routeUrl: '' })!;
+    const item = swapped.doc.items.find((each) => each.ref === ref)!;
+    expect(item.leg).toMatchObject({ mode: 'car', fromPlaceRef: 'lotnisko-kutaisi' });
+    expect(item.placeRef).toBe(item.leg!.toPlaceRef);
+    expect(item.durationMin).toBe(60);
+    expect(documentProblem(swapped.doc)).toBeNull();
+    expect(setLegRoute(bare, ref, ids, { from: '', to: '', routeUrl: '' })!.placesChanged).toBe(false);
+    const visit = gruzja.items.find((each) => each.kind === 'visit')!.ref;
+    expect(setLegRoute(gruzja, visit, ids, { from: 'A', to: 'B', routeUrl: '' })).toBeNull();
+  });
+
   it('bez zmian nic nie zapisuje, a link spoza http(s) nie przechodzi walidacji', () => {
     expect(setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: '' })).toBeNull();
     expect(documentProblem(setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: 'javascript:alert(1)' })!.doc)).not.toBeNull();

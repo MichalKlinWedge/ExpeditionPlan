@@ -34,6 +34,8 @@ describe('rodzaj punktu: trekking i pieszo', () => {
 
   it('inny rodzaj nie ma szczegółów przejazdu, a przejazd bez nich zostaje bez nich', () => {
     expect(kindPatch({ kind: 'transport', leg: { mode: 'hike', links: [] } }, 'visit')).toEqual({ kind: 'visit', leg: undefined });
-    expect(kindPatch(null, 'transport')).toEqual({ kind: 'transport', leg: undefined });
+    expect(kindPatch(null, 'transport')).toEqual({ kind: 'transport', leg: { mode: 'car', links: [] } });
+    expect(kindPatch({ kind: 'visit', leg: undefined }, 'transport')).toEqual({ kind: 'transport', leg: { mode: 'car', links: [] } });
+    expect(kindPatch({ kind: 'transport', leg: undefined }, 'transport')).toEqual({ kind: 'transport', leg: { mode: 'car', links: [] } });
   });
 });

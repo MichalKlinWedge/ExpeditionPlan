@@ -59,6 +59,11 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
           <input value={url} onChange={(event) => setUrl(event.target.value)} inputMode="url" placeholder="https://maps.app.goo.gl/…" disabled={busy} className={field} />
         </label>
       )}
+      {item.leg === undefined && (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          Ten przejazd nie ma jeszcze „skąd” i „dokąd”.{item.placeRef !== undefined ? " W „Dokąd” jest dotychczasowe miejsce punktu: jeśli to start, przenieś je do „Skąd”." : ""} Zapis utworzy trasę i link do Map Google, domyślnie autem.
+        </p>
+      )}
       <p className="text-xs text-zinc-500">Własny link tylko otwiera trasę: długość i czas przejazdu nadal liczymy ze „skąd” i „dokąd”.</p>
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={save} disabled={busy} className="btn-primary btn-sm">

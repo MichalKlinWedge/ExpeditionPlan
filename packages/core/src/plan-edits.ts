@@ -303,11 +303,14 @@ export type LegRouteEdit = PlanEdit & { placesChanged: boolean };
 /**
  * Skąd, dokąd i własny link przejazdu. Nazwa znana w planie wskazuje to samo miejsce, nowa tworzy nowe.
  * Inne końce unieważniają trasę: znika linia i dystans, a czas zostaje jako szacunek, żeby dzień się
- * nie zawalił, zanim trasa się przeliczy. `null` = bez zmian.
+ * nie zawalił, zanim trasa się przeliczy. Przejazd bez szczegółów (`leg`) dostaje je przy pierwszym
+ * zapisie, domyślnie autem. `null` = bez zmian albo punkt nie jest przejazdem.
  */
 export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; toId: string }, fields: { from: string; to: string; routeUrl: string }): LegRouteEdit | null {
   const item = doc.items.find((each) => each.ref === itemRef);
-  if (item?.leg === undefined) return null;
+  if (item?.kind !== 'transport') return null;
+  const fresh = item.leg === undefined;
+  const current: NonNullable<Item['leg']> = item.leg ?? { mode: 'car', links: [] };
   const created: PlanPlace[] = [];
   const resolve = (typed: string, current: string | undefined, id: string) => {
     const name = typed.trim();
@@ -320,14 +323,14 @@ export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; to
     created.push(place);
     return place.ref;
   };
-  const from = resolve(fields.from, item.leg.fromPlaceRef, ids.fromId);
-  const to = resolve(fields.to, item.leg.toPlaceRef ?? item.placeRef, ids.toId);
+  const from = resolve(fields.from, current.fromPlaceRef, ids.fromId);
+  const to = resolve(fields.to, current.toPlaceRef ?? item.placeRef, ids.toId);
   const url = fields.routeUrl.trim();
 
-  const placesChanged = from !== item.leg.fromPlaceRef || to !== (item.leg.toPlaceRef ?? item.placeRef);
-  if (!placesChanged && url === (item.leg.routeUrl ?? '')) return null;
+  const placesChanged = fresh ? from !== undefined || to !== undefined : from !== current.fromPlaceRef || to !== (current.toPlaceRef ?? item.placeRef);
+  if (!fresh && !placesChanged && url === (current.routeUrl ?? '')) return null;
 
-  const { fromPlaceRef: _from, toPlaceRef: _to, routeUrl: _url, ...rest } = item.leg;
+  const { fromPlaceRef: _from, toPlaceRef: _to, routeUrl: _url, ...rest } = current;
   let kept = rest;
   if (placesChanged) {
     const { routed: _routed, geometry: _geometry, distanceKm: _km, durationMaxMin: _max, ...still } = rest;
