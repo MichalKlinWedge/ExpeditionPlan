@@ -184,6 +184,9 @@ const FOOT_MODES: ReadonlySet<string> = new Set(['walk', 'hike', 'bike']);
 const SNAP_FOOT_M = 1_000;
 const SNAP_CAR_M = 5_000;
 
+/** Klucz noclegu dnia w `DayMap.numbers` i `MapPin.stops`: nocleg nie jest punktem planu, ale ma numer na końcu dnia. */
+export const LODGING_STOP = 'nocleg';
+
 /**
  * Mapa dnia z kolejności podanej przez silnik (`refs` = punkty dnia po wariantach i pominięciach).
  * Przejazd zaczyna się w miejscu „skąd” i kończy w „dokąd” — numer dostaje cel. Kilka punktów
@@ -281,8 +284,11 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
   const base = pin(options.baseRef);
   if (base !== undefined) {
     base.base = true;
-    // Koniec dnia: z ostatniego miejsca do noclegu.
+    // Koniec dnia: z ostatniego miejsca do noclegu, który dostaje ostatni numer.
     straightTo(at(base));
+    const n = Object.keys(numbers).length + 1;
+    numbers[LODGING_STOP] = n;
+    base.stops.push({ ref: LODGING_STOP, n, title: `Nocleg: ${base.name}` });
   }
   if (options.pool) {
     for (const item of doc.items) {

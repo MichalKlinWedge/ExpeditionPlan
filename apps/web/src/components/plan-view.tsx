@@ -19,6 +19,7 @@ import {
   flightOf,
   itemIcon,
   legLabel,
+  LODGING_STOP,
   legRouteLink,
   stopsLabel,
   mapCoverage,
@@ -1093,11 +1094,20 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
           })}
           {/* Nocleg na koniec dnia (baza dnia / rezerwacja tej nocy) — na mapie fioletowa pinezka. */}
           {lodging && (
-            <li className="relative flex flex-col border-l-2 border-zinc-200 pb-1.5 pl-4 dark:border-zinc-800">
+            <li id={`item-${LODGING_STOP}`} className={`relative flex flex-col border-l-2 border-zinc-200 pb-1.5 pl-4 dark:border-zinc-800 ${selected === LODGING_STOP ? "rounded-r bg-signal/10" : ""}`}>
               <span aria-hidden="true" className="absolute top-1.5 -left-[7px] size-3 rounded-full bg-indigo-500 ring-2 ring-white dark:ring-zinc-900" />
               <div className="flex gap-3">
                 <span className="w-28 shrink-0 font-semibold text-ink tabular-nums dark:text-zinc-100">{lodging.booking?.checkInFrom ? `od ${lodging.booking.checkInFrom}` : ""}</span>
                 <span>
+                  {numbers?.[LODGING_STOP] !== undefined && (
+                    <button
+                      onClick={() => onSelect(LODGING_STOP)}
+                      title="Pokaż na mapie"
+                      aria-label={`${numbers[LODGING_STOP]} — pokaż nocleg na mapie`}
+                      className="mr-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1 align-text-bottom text-[10px] font-semibold text-white">
+                      {numbers[LODGING_STOP]}
+                    </button>
+                  )}
                   <span aria-hidden="true" className="mr-1.5">
                     🛏️
                   </span>

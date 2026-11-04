@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { dayLodging, dayMap, isTransit, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
+import { dayLodging, dayMap, LODGING_STOP, isTransit, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
 import { encodePolyline, type LngLat } from '../polyline.ts';
 import { DocItem, TripDocument } from '../schemas/trip-document.ts';
 
@@ -74,6 +74,15 @@ describe('mapa dnia', () => {
     expect(map.lines[0]!.coordinates).toHaveLength(4);
     // Baza dnia 2 (Agafay) nie ma współrzędnych — nie ma jej na mapie.
     expect(map.pins.some((pin) => pin.base)).toBe(false);
+  });
+
+  it('nocleg ze współrzędnymi dostaje ostatni numer dnia, także gdy to miejsce ma już inne numery', () => {
+    const map = dayMap(maroko, d2, { baseRef: 'p-riad' });
+    expect(map.numbers[LODGING_STOP]).toBe(6);
+    const base = map.pins.find((pin) => pin.placeRef === 'p-riad')!;
+    expect(base.base).toBe(true);
+    expect(base.stops.map((stop) => stop.n)).toEqual([1, 6]);
+    expect(base.stops.at(-1)).toMatchObject({ ref: LODGING_STOP, title: expect.stringContaining('Nocleg: ') });
   });
 
   it('dojazd i powrót (lot, przejazd ponad 250 km) da się ukryć — numery się nie zmieniają', () => {
