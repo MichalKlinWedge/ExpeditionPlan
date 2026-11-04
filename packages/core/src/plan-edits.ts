@@ -52,6 +52,46 @@ function place(doc: Doc, dayRef: string, item: Item, beforeRef: string | undefin
   }
 }
 
+/** Spóźnienie mniejsze od tego pokazuje się w planie jako zgodne z godziną. */
+const DRIFT_TOLERANCE_MIN = 15;
+
+/**
+ * Czy godzina punktu nie pasuje do jego nowego miejsca w dniu: już minęła albo przez nią kolejne punkty
+ * spóźniają się względem swoich godzin lub dzień przechodzi przez północ. Porównuje dzień z godziną i bez.
+ */
+function timeClashes(doc: Doc, item: Item, dayRef: string): boolean {
+  const date = doc.days.find((day) => day.ref === dayRef)?.date;
+  const probe = replace(doc, [{ ...item, time: undefined }]);
+  try {
+    const stated = scheduleDay(doc, dayRef).items;
+    const free = scheduleDay(probe, dayRef).items;
+    const late = (items: typeof stated) => items.reduce((sum, each) => sum + (each.ref === item.ref ? 0 : each.driftMin), 0);
+    const pastMidnight = (items: typeof stated) => items.some((each) => each.endDate !== date);
+    return (
+      (stated.find((each) => each.ref === item.ref)?.driftMin ?? 0) > DRIFT_TOLERANCE_MIN ||
+      late(stated) - late(free) > DRIFT_TOLERANCE_MIN ||
+      (pastMidnight(stated) && !pastMidnight(free))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Po przeniesieniu punkt bez sztywnej godziny traci godzinę, która nie pasuje do nowego miejsca, i idzie
+ * „po poprzednim”. Bez tego godzina z innej pory dnia przesuwa cały dzień. Zostają: stała godzina,
+ * dokładna godzina rezerwacji (bilet) i godzina względna, która sama liczy się od poprzedniego punktu.
+ */
+function settleMovedTime(edit: PlanEdit, ref: string, dayRef: string): PlanEdit {
+  const item = edit.doc.items.find((each) => each.ref === ref);
+  const time = item?.time;
+  if (item === undefined || time === undefined || time.precision === 'relative' || time.precision === 'day') return edit;
+  if (item.isFixed || (time.precision === 'exact' && item.bookingRef !== undefined)) return edit;
+  if (!timeClashes(edit.doc, item, dayRef)) return edit;
+  const cleared: Item = { ...item, time: undefined };
+  return { ...edit, doc: replace(edit.doc, [cleared]), changed: edit.changed.map((each) => (each.ref === ref ? cleared : each)) };
+}
+
 /** W górę / w dół w kolejności dnia. */
 export function moveWithinDay(doc: Doc, ref: string, direction: -1 | 1): PlanEdit | null {
   const item = doc.items.find((each) => each.ref === ref);
@@ -63,7 +103,7 @@ export function moveWithinDay(doc: Doc, ref: string, direction: -1 | 1): PlanEdi
   const rest = list.filter((each) => each.ref !== ref);
   const insertAt = direction === -1 ? target : target;
   const changed = place(doc, item.dayRef, item, rest[insertAt - 1]?.ref, rest[insertAt]?.ref);
-  return { doc: replace(doc, changed), changed };
+  return settleMovedTime({ doc: replace(doc, changed), changed }, ref, item.dayRef);
 }
 
 /** Do innego dnia (na koniec) albo do puli (`null`). */
@@ -84,7 +124,7 @@ export function moveToDay(doc: Doc, ref: string, dayRef: string | null): PlanEdi
   }
   const last = dayItems(doc, dayRef).at(-1);
   const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined }, last?.ref, undefined);
-  return { doc: replace(doc, changed), changed };
+  return settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef);
 }
 
 /** Do dnia `dayRef`, zaraz po `afterRef` (`null` = na początek dnia) — dla łatek AI („przenieś za X”). */
@@ -117,7 +157,7 @@ export function dropItem(doc: Doc, ref: string, dayRef: string | null, nextRef?:
   }
   const moved: Item = { ...item, planStatus: 'scheduled', parentRef: sameDay ? item.parentRef : undefined };
   const changed = place(doc, dayRef, moved, others[index - 1]?.ref, others[index]?.ref);
-  return { doc: replace(doc, changed), changed };
+  return settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef);
 }
 
 export function updateItem(doc: Doc, ref: string, patch: Partial<Item>): PlanEdit | null {

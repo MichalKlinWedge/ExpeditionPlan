@@ -152,6 +152,49 @@ describe('edycja planu (MVP-3)', () => {
   });
 });
 
+describe('godzina przenoszonego punktu', () => {
+  const gruzja = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/gruzja/plan.json', import.meta.url)), 'utf8')));
+  const carPickup = (doc: TripDocument) => doc.items.find((item) => item.ref === 'd1-odbior-auta')!;
+  const toTop = (doc: TripDocument, ref: string, dayRef: string) => dropItem(doc, ref, dayRef, dayItems(doc, dayRef).find((item) => item.ref !== ref)!.ref)!;
+
+  it('wieczorny odbiór auta przeniesiony na początek innego dnia nie rozjeżdża godzin', () => {
+    const edit = toTop(gruzja, 'd1-odbior-auta', 'd2');
+    expect(carPickup(edit.doc).time).toBeUndefined();
+    expect(edit.changed.find((item) => item.ref === 'd1-odbior-auta')?.time).toBeUndefined();
+    const after = scheduleDay(edit.doc, 'd2').items;
+    expect(after[0]?.ref).toBe('d1-odbior-auta');
+    expect(after.every((item) => item.endDate === gruzja.days.find((day) => day.ref === 'd2')!.date)).toBe(true);
+    expect(documentProblem(edit.doc)).toBeNull();
+  });
+
+  it('na końcu dnia godzina pasuje i zostaje, a strzałka w górę ją zdejmuje, gdy zaczyna przeszkadzać', () => {
+    const moved = moveToDay(gruzja, 'd1-odbior-auta', 'd2')!;
+    expect(carPickup(moved.doc).time).toMatchObject({ start: '21:45' });
+    let doc = moved.doc;
+    for (let step = dayItems(doc, 'd2').length; step > 0; step -= 1) doc = moveWithinDay(doc, 'd1-odbior-auta', -1)?.doc ?? doc;
+    expect(dayItems(doc, 'd2')[0]?.ref).toBe('d1-odbior-auta');
+    expect(carPickup(doc).time).toBeUndefined();
+  });
+
+  it('stała godzina i dokładna godzina rezerwacji zostają mimo konfliktu', () => {
+    const pinned = (patch: object) => TripDocument.parse({ ...gruzja, items: gruzja.items.map((item) => (item.ref === 'd1-odbior-auta' ? { ...item, ...patch } : item)) });
+    expect(carPickup(toTop(pinned({ isFixed: true }), 'd1-odbior-auta', 'd2').doc).time).toMatchObject({ start: '21:45' });
+    expect(carPickup(toTop(pinned({ time: { precision: 'exact', start: '21:45' } }), 'd1-odbior-auta', 'd2').doc).time).toMatchObject({ start: '21:45' });
+  });
+
+  it('dokładna godzina bez rezerwacji też ustępuje, gdy przesuwa cały dzień', () => {
+    const plain = TripDocument.parse({ ...gruzja, items: gruzja.items.map((item) => (item.ref === 'd1-odbior-auta' ? { ...item, bookingRef: undefined, time: { precision: 'exact', start: '21:45' } } : item)) });
+    expect(carPickup(toTop(plain, 'd1-odbior-auta', 'd2').doc).time).toBeUndefined();
+  });
+
+  it('godzina pasująca do nowego miejsca zostaje', () => {
+    const [first, second] = refs(maroko, 'd2');
+    const edit = moveWithinDay(maroko, second!, -1)!;
+    const before = maroko.items.find((item) => item.ref === first)!;
+    expect(edit.doc.items.find((item) => item.ref === first)?.time).toEqual(before.time);
+  });
+});
+
 describe('usunięcie z zamknięciem luki', () => {
   const doc = (times: Record<string, [precision: 'exact' | 'approx', start: string, duration: number]>) =>
     TripDocument.parse({
