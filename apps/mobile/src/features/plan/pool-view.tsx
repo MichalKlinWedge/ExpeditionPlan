@@ -1,4 +1,4 @@
-import { formatMoney, itemIcon, type PlanItem, priceForGroup } from '@expeditionplan/core';
+import { formatMoney, itemIcon, itemKindLabel, type PlanItem, priceForGroup } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import * as Location from 'expo-location';
 import { useState } from 'react';
@@ -62,7 +62,7 @@ export function PoolView({ trip, onMove, onAdd, onOpen }: Props) {
             const place = places.get(item.leg?.toPlaceRef ?? item.placeRef ?? '');
             const price = item.price === undefined ? null : priceForGroup(item.price, travelers);
             const facts = [
-              KIND[item.kind],
+              itemKindLabel(item, KIND),
               place && place.name !== item.title ? place.name : null,
               item.durationMin !== undefined ? duration(item.durationMin, item.durationMaxMin) : null,
               price === null ? null : `${price.approx ? 'ok. ' : ''}${price.minMinor === price.maxMinor ? formatMoney(price.minMinor, price.currency) : `${formatMoney(price.minMinor, price.currency)}–${formatMoney(price.maxMinor, price.currency)}`} dla grupy`,

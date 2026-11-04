@@ -269,6 +269,8 @@ export const DocItem = z.object({
   durationMin: z.number().int().nonnegative().optional(),
   /** Górna granica, gdy czas trwania jest przedziałem („3–4 h”). */
   durationMaxMin: z.number().int().nonnegative().optional(),
+  /** Postoje i przerwy w trakcie punktu: wydłużają go ponad czas drogi lub trwania i przeżywają przeliczenie trasy. */
+  stopsMin: z.number().int().nonnegative().optional(),
   bufferAfterMin: z.number().int().nonnegative().optional(),
   /** Stała godzina, której przesunięcia nie ruszają (mecz, lot, start pakietu). */
   isFixed: z.boolean().optional(),

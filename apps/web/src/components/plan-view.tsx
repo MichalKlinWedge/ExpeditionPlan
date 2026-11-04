@@ -19,6 +19,7 @@ import {
   flightOf,
   itemIcon,
   legLabel,
+  stopsLabel,
   mapCoverage,
   missingOnMap,
   movePlace,
@@ -33,6 +34,10 @@ import {
   scheduleDay,
   type TripDocument,
   updateItem,
+  itemKindLabel,
+  type KindChoice,
+  kindChoices,
+  kindPatch,
   type DayWeather,
   fetchWeather,
   localToday,
@@ -644,7 +649,7 @@ function MoveSelect({ doc, current, onMove }: { doc: TripDocument; current: stri
 
 function AddItemForm({ onAdd, autoFocus = false }: { onAdd: (fields: Pick<Item, "title" | "kind"> & Partial<Item>) => void; autoFocus?: boolean }) {
   const [title, setTitle] = useState("");
-  const [kind, setKind] = useState<Item["kind"]>("visit");
+  const [kind, setKind] = useState<KindChoice>("visit");
   const [duration, setDuration] = useState("60");
   return (
     <form
@@ -652,12 +657,12 @@ function AddItemForm({ onAdd, autoFocus = false }: { onAdd: (fields: Pick<Item, 
       onSubmit={(event) => {
         event.preventDefault();
         if (title.trim() === "") return;
-        onAdd({ title: title.trim(), kind, durationMin: Number(duration) || undefined });
+        onAdd({ title: title.trim(), ...kindPatch(null, kind), durationMin: Number(duration) || undefined });
         setTitle("");
       }}>
       <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nowy punkt" autoFocus={autoFocus} className="flex-1 field px-2 py-1" />
-      <select value={kind} onChange={(event) => setKind(event.target.value as Item["kind"])} className="field px-2 py-1">
-        {Object.entries(KIND).map(([key, name]) => (
+      <select value={kind} onChange={(event) => setKind(event.target.value as KindChoice)} className="field px-2 py-1">
+        {kindChoices(KIND).map(([key, name]) => (
           <option key={key} value={key}>
             {name}
           </option>
@@ -677,7 +682,7 @@ function AddItemForm({ onAdd, autoFocus = false }: { onAdd: (fields: Pick<Item, 
 function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToPool"] }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [kind, setKind] = useState<Item["kind"]>("visit");
+  const [kind, setKind] = useState<KindChoice>("visit");
   const [place, setPlace] = useState("");
   const [area, setArea] = useState("");
   const [description, setDescription] = useState("");
@@ -697,7 +702,7 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
         onAdd(
           {
             title: title.trim(),
-            kind,
+            ...kindPatch(null, kind),
             ...(area.trim() ? { area: area.trim() } : {}),
             ...(description.trim() ? { description: description.trim() } : {}),
             ...(Number(duration) > 0 ? { durationMin: Number(duration) } : {}),
@@ -711,8 +716,8 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
       }}>
       <div className="flex flex-wrap gap-2">
         <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Co? np. Park Güell, kolacja na dachu, kajaki" autoFocus className="min-w-48 flex-1 field px-2 py-1" />
-        <select value={kind} onChange={(event) => setKind(event.target.value as Item["kind"])} className="field px-2 py-1" aria-label="Rodzaj">
-          {Object.entries(KIND).map(([key, name]) => (
+        <select value={kind} onChange={(event) => setKind(event.target.value as KindChoice)} className="field px-2 py-1" aria-label="Rodzaj">
+          {kindChoices(KIND).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
             </option>
@@ -925,7 +930,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
             const dropHere = dnd?.over?.dayRef === dayRef && dnd.over.nextRef === item.ref && dnd.dragging !== item.ref;
             const warnings = schedule.warnings.filter((warning) => warning.itemRef === item.ref);
             const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
-            const leg = source === undefined ? null : legLabel(source);
+            const leg = source === undefined ? null : (legLabel(source) ?? stopsLabel(source));
             const flight = source === undefined ? undefined : flightOf(doc, source);
             const flightText = flight === undefined ? undefined : flightLine(flight);
             const offMap = source !== undefined && missingOnMap(doc, source);
@@ -983,7 +988,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       ))}
                     <span className="text-zinc-500">
                       {" "}
-                      · {KIND[item.kind]}
+                      · {source === undefined ? KIND[item.kind] : itemKindLabel(source, KIND)}
                       {place && place !== item.title ? ` · ${place}` : ""}
                       {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ""}
                     </span>

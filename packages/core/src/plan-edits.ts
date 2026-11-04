@@ -334,7 +334,7 @@ export function removeItemClosingGap(doc: Doc, ref: string): PlanEdit | null {
   const target = doc.items.find((each) => each.ref === ref);
   const edit = removeItem(doc, ref);
   if (edit === null || target?.dayRef === undefined || target.parentRef !== undefined || (target.participantRefs ?? []).length > 0) return edit;
-  const freed = (target.durationMin ?? 0) + (target.bufferAfterMin ?? 0);
+  const freed = (target.durationMin ?? 0) + (target.stopsMin ?? 0) + (target.bufferAfterMin ?? 0);
   if (freed === 0) return edit;
   const day = doc.days.find((each) => each.ref === target.dayRef)!;
   const original = dayItems(doc, day.ref);

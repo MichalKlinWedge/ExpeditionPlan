@@ -29,6 +29,14 @@ const km = (value: number) => `${value.toLocaleString('pl-PL', { maximumFraction
  * tak samo jak w silniku. `null` = punkt nie jest przejazdem albo nie ma czego pokazać.
  */
 export function legLabel(item: Item): string | null {
+  const label = legTimeLabel(item);
+  return label === null || !item.stopsMin ? label : `${label} + postoje ${formatMinutes(item.stopsMin)}`;
+}
+
+/** Postoje punktu, który nie ma opisu przejazdu (`legLabel` daje `null`). */
+export const stopsLabel = (item: Item): string | null => (item.stopsMin ? `w tym postoje i przerwy: ${formatMinutes(item.stopsMin)}` : null);
+
+function legTimeLabel(item: Item): string | null {
   const leg = item.leg;
   if (item.kind !== 'transport' || leg === undefined) return null;
   if (item.durationMin !== undefined) return `${formatMinutes(item.durationMin)} (wpisane ręcznie)`;

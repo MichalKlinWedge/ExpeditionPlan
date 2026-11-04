@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { PlanItem as Item } from "@expeditionplan/core";
+import { type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item } from "@expeditionplan/core";
 
 /**
  * Edycja punktu planu (MVP-3): nazwa, rodzaj, godzina z precyzją, czas trwania (przedział),
@@ -40,7 +40,7 @@ const num = (text: string) => (text.trim() === "" ? undefined : Math.max(0, Math
 
 type Draft = {
   title: string;
-  kind: Item["kind"];
+  kind: KindChoice;
   precision: string;
   start: string;
   end: string;
@@ -49,6 +49,7 @@ type Draft = {
   from: "anchor" | "previous";
   durationMin: string;
   durationMaxMin: string;
+  stopsMin: string;
   bufferAfterMin: string;
   isFixed: boolean;
   priority: string;
@@ -60,7 +61,7 @@ function toDraft(item: Item): Draft {
   const offset = time?.precision === "relative" ? time.offsetMin : undefined;
   return {
     title: item.title,
-    kind: item.kind,
+    kind: kindChoice(item),
     precision: time?.precision ?? "none",
     start: time && "start" in time ? time.start : "",
     end: time && "end" in time && time.end ? time.end : "",
@@ -69,6 +70,7 @@ function toDraft(item: Item): Draft {
     from: time?.precision === "relative" ? time.from : "previous",
     durationMin: item.durationMin?.toString() ?? "",
     durationMaxMin: item.durationMaxMin?.toString() ?? "",
+    stopsMin: item.stopsMin?.toString() ?? "",
     bufferAfterMin: item.bufferAfterMin?.toString() ?? "",
     isFixed: item.isFixed ?? false,
     priority: item.priority ?? "",
@@ -106,18 +108,19 @@ function toPatch(draft: Draft, item: Item): Partial<Item> {
       time = undefined;
   }
   const cutRank = num(draft.cutRank);
+  const chosen = kindPatch(item, draft.kind);
   return {
     title: draft.title.trim() || item.title,
-    kind: draft.kind,
+    ...chosen,
     time,
-    durationMin: num(draft.durationMin),
+    // Bez szczegółów przejazdu czas drogi zostaje czasem punktu.
+    durationMin: num(draft.durationMin) ?? (chosen.leg === undefined ? item.leg?.durationMin : undefined),
     durationMaxMin: num(draft.durationMaxMin),
+    stopsMin: num(draft.stopsMin) || undefined,
     bufferAfterMin: num(draft.bufferAfterMin),
     isFixed: draft.isFixed || undefined,
     priority: (draft.priority || undefined) as Item["priority"],
     cutRank: cutRank === 0 ? undefined : cutRank,
-    // Szczegóły przejazdu istnieją tylko przy punkcie `transport`.
-    leg: draft.kind === "transport" ? item.leg : undefined,
   };
 }
 
@@ -139,8 +142,8 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
       </label>
       <label className={label}>
         Rodzaj
-        <select className={input} value={draft.kind} onChange={(event) => set({ kind: event.target.value as Item["kind"] })}>
-          {Object.entries(KINDS).map(([key, name]) => (
+        <select className={input} value={draft.kind} onChange={(event) => set({ kind: event.target.value as KindChoice })}>
+          {kindChoices(KINDS).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
             </option>
@@ -203,6 +206,10 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
       <label className={label}>
         Najdłużej (min)
         <input type="number" min={0} className={input} value={draft.durationMaxMin} onChange={(event) => set({ durationMaxMin: event.target.value })} />
+      </label>
+      <label className={label}>
+        Postoje, przerwy (min)
+        <input type="number" min={0} className={input} value={draft.stopsMin} onChange={(event) => set({ stopsMin: event.target.value })} />
       </label>
       <label className={label}>
         Bufor po (min)

@@ -1,4 +1,4 @@
-import { dayItems, flightLine, flightOf, type GuideRow, guideFor, instantToZoned, itemIcon, legLabel, scheduleDay, type TripDocument } from "@expeditionplan/core";
+import { dayItems, flightLine, flightOf, type GuideRow, guideFor, instantToZoned, itemIcon, legLabel, scheduleDay, stopsLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -145,7 +145,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
                 {rows.map((row) => {
                   const item = items.get(row.ref);
                   const place = item?.placeRef === undefined ? undefined : places.get(item.placeRef)?.name;
-                  const leg = item === undefined ? null : legLabel(item);
+                  const leg = item === undefined ? null : (legLabel(item) ?? stopsLabel(item));
                   const flight = item === undefined ? undefined : flightOf(doc, item);
                   const extra = [place, leg, flight ? flightLine(flight) : undefined].filter(Boolean).join(" · ");
                   const guideKey = item?.leg?.toPlaceRef ?? item?.placeRef ?? item?.ref;

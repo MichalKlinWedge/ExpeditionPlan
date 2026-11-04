@@ -1,4 +1,4 @@
-import type { PlanItem as Item, TripDocument } from '@expeditionplan/core';
+import { type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, type TripDocument } from '@expeditionplan/core';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -60,9 +60,10 @@ export function ItemEditor({ item, visible, onCancel, onSave }: EditorProps) {
 function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
   const theme = useTheme();
   const [title, setTitle] = useState(item?.title ?? '');
-  const [kind, setKind] = useState<Item['kind']>(item?.kind ?? 'visit');
+  const [kind, setKind] = useState<KindChoice>(item === null ? 'visit' : kindChoice(item));
   const [time, setTime] = useState(timeText(item));
   const [duration, setDuration] = useState(item?.durationMin?.toString() ?? (item === null ? '60' : ''));
+  const [stops, setStops] = useState(item?.stopsMin?.toString() ?? '');
   const [selfCooked, setSelfCooked] = useState(item?.selfCooked === true);
   const [problem, setProblem] = useState('');
   const input = [styles.input, { color: theme.text, borderColor: theme.backgroundSelected }];
@@ -71,10 +72,14 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
     if (title.trim() === '') return setProblem('Podaj nazwę punktu.');
     if (time.trim() !== '' && !HHMM.test(time.trim())) return setProblem('Godzina w formacie GG:MM, np. 09:30.');
     if (duration.trim() !== '' && !(Number(duration) >= 0)) return setProblem('Czas trwania w minutach.');
+    if (stops.trim() !== '' && !(Number(stops) >= 0)) return setProblem('Postoje i przerwy w minutach.');
+    const chosen = kindPatch(item, kind);
     const fields: ItemFields = {
       title: title.trim(),
-      kind,
-      durationMin: duration.trim() === '' ? undefined : Math.round(Number(duration)),
+      ...chosen,
+      // Bez szczegółów przejazdu czas drogi zostaje czasem punktu.
+      durationMin: duration.trim() === '' ? (chosen.leg === undefined ? item?.leg?.durationMin : undefined) : Math.round(Number(duration)),
+      stopsMin: Math.round(Number(stops)) || undefined,
       selfCooked: kind === 'meal' && selfCooked ? true : undefined,
     };
     // Godzina zmienia się tylko, gdy zmieniło się pole — inaczej zostaje precyzja z planu (pora dnia, przedział…).
@@ -83,8 +88,6 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
       const start = time.trim().padStart(5, '0');
       fields.time = time.trim() === '' ? undefined : { precision: 'exact', start, ...(tz ? { tz } : {}) };
     }
-    // Szczegóły przejazdu istnieją tylko przy punkcie `transport`.
-    if (item !== null && kind !== 'transport') fields.leg = undefined;
     onSave(fields);
   };
 
@@ -110,10 +113,10 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
           Rodzaj
         </ThemedText>
         <View style={styles.wrap}>
-          {Object.entries(KIND).map(([key, name]) => (
+          {kindChoices(KIND).map(([key, name]) => (
             <Pressable
               key={key}
-              onPress={() => setKind(key as Item['kind'])}
+              onPress={() => setKind(key)}
               style={[styles.chip, { borderColor: kind === key ? theme.text : theme.backgroundSelected, backgroundColor: kind === key ? theme.backgroundSelected : 'transparent' }]}>
               <ThemedText type="small" themeColor={kind === key ? 'text' : 'textSecondary'}>
                 {name}
@@ -138,6 +141,10 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
           Czas trwania (minuty)
         </ThemedText>
         <TextInput value={duration} onChangeText={setDuration} style={input} keyboardType="number-pad" />
+        <ThemedText type="small" themeColor="textSecondary">
+          Postoje, przerwy (minuty, wydłużają punkt)
+        </ThemedText>
+        <TextInput value={stops} onChangeText={setStops} style={input} keyboardType="number-pad" />
         {problem !== '' && (
           <ThemedText type="small" style={styles.problem}>
             {problem}

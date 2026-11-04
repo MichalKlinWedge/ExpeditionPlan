@@ -191,9 +191,10 @@ function durationOf(item: Item, scenario: Scenario): number {
   const min = item.durationMin ?? leg?.durationMin;
   const max = item.durationMaxMin ?? leg?.durationMaxMin ?? min;
   const base = scenario === 'pessimistic' ? max : min;
-  if (base !== undefined) return base * (leg?.roundTrip ? 2 : 1);
-  if (item.time?.precision === 'range') return minutesOfDay(item.time.end) - minutesOfDay(item.time.start);
-  return 0;
+  const stops = item.stopsMin ?? 0;
+  if (base !== undefined) return base * (leg?.roundTrip ? 2 : 1) + stops;
+  if (item.time?.precision === 'range') return minutesOfDay(item.time.end) - minutesOfDay(item.time.start) + stops;
+  return stops;
 }
 
 /**

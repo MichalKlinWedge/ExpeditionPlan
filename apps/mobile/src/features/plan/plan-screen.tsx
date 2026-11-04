@@ -13,7 +13,9 @@ import {
   instantToZoned,
   itemIcon,
   ItemInUseError,
+  itemKindLabel,
   legLabel,
+  stopsLabel,
   mapCoverage,
   missingOnMap,
   moveToDay,
@@ -721,7 +723,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
       {schedule?.items.map((item) => {
         const source = byRef.get(item.ref);
         const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
-        const leg = source === undefined ? null : legLabel(source);
+        const leg = source === undefined ? null : (legLabel(source) ?? stopsLabel(source));
         const offMap = source !== undefined && missingOnMap(doc, source);
         const flight = source === undefined ? undefined : flightOf(doc, source);
         const flightText = flight === undefined ? undefined : flightLine(flight);
@@ -752,7 +754,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
               </ThemedText>
             )}
             <ThemedText type="small" themeColor="textSecondary">
-              {KIND[item.kind]}
+              {source === undefined ? KIND[item.kind] : itemKindLabel(source, KIND)}
               {place && place !== item.title ? ` · ${place}` : ''}
               {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ''}
             </ThemedText>
