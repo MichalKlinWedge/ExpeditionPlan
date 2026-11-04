@@ -9,6 +9,7 @@ import { AiPlanButton } from "@/components/ai-plan-button";
 import { BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
+import { TripRescheduleButton } from "@/components/trip-reschedule";
 import { TripStatusButton } from "@/components/trip-status-button";
 import { TripNews } from "@/components/trip-news";
 import { requireUser } from "@/lib/auth";
@@ -119,6 +120,8 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const others = mine.data ?? [];
   const title = trip.data.title!;
   const source = title.startsWith(DRAFT) ? others.find((other) => other.title === title.slice(DRAFT.length) && (other.role === "owner" || other.role === "editor")) : undefined;
+  const today = new Date().toISOString().slice(0, 10);
+  const hasDrafts = !title.startsWith(DRAFT) && others.some((other) => other.title === `${DRAFT}${title}`);
   // Porównanie: ze szkicu — z jego planem; z planu — wybór szkicu na stronie porównania.
   const compareHref = source !== undefined ? `/trips/${source.id}/compare?draft=${id}` : canEdit && others.length > 0 ? `/trips/${id}/compare` : null;
 
@@ -127,7 +130,12 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h1 className="text-3xl font-bold">{trip.data.title}</h1>
-          {canEdit && !title.startsWith(DRAFT) && <TripStatusButton tripId={id} postponed={postponed} termPassed={trip.data.end_date! < new Date().toISOString().slice(0, 10)} />}
+          {canEdit && (
+            <span className="flex flex-wrap items-center gap-2">
+              <TripRescheduleButton tripId={id} startDate={trip.data.start_date!} endDate={trip.data.end_date!} today={today} hasDrafts={hasDrafts} />
+              {!title.startsWith(DRAFT) && <TripStatusButton tripId={id} postponed={postponed} startDate={trip.data.start_date!} endDate={trip.data.end_date!} today={today} hasDrafts={hasDrafts} />}
+            </span>
+          )}
         </div>
         <p className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           {postponed && <span className="chip">odłożony — termin niepewny</span>}

@@ -1359,6 +1359,9 @@ isOneToOne: false
 "pull_changes":
 { Args: { "p_since"?: number,"p_trip": string }; Returns: Json
                            },
+"reschedule_trip":
+{ Args: { "p_changes": Json,"p_end": string,"p_restore"?: boolean,"p_start": string,"p_trip": string,"p_version": number }; Returns: undefined
+                           },
 "storage_trip":
 { Args: { "p_name": string }; Returns: string
                            },

@@ -113,7 +113,11 @@ export default function HelpPage() {
             </Step>
             <Step name="Wyjazdy odłożone">
               termin niepewny albo wyjazd nie wypalił? „Odłóż wyjazd” na jego stronie przenosi go do osobnej sekcji „Odłożone” (nie do archiwum). Plan można dalej układać, a daty są tylko orientacyjne:
-              telefon nie odlicza dni i nie przypomina. „Przywróć do planów” cofa to w każdej chwili.
+              telefon nie odlicza dni i nie przypomina. „Przywróć do planów” cofa to w każdej chwili. Gdy termin już minął, przywrócenie najpierw proponuje nową datę.
+            </Step>
+            <Step name="Zmiana terminu">
+              „Zmień termin” na stronie wyjazdu przesuwa cały plan o tę samą liczbę dni, a długość zostaje. Podgląd przed zapisem pokazuje, co pójdzie z planem (dni, niekupione rezerwacje, terminy zadań i decyzji) i co trzeba sprawdzić samemu:
+              kupione rezerwacje zostają przy swoich datach, bo zmienia się je u dostawcy.
             </Step>
           </ul>
         </Section>
