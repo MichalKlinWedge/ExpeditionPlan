@@ -30,7 +30,7 @@ describe('trasa piesza punktu', () => {
     expect(edit.item.activity).toMatchObject({ trackRef: 'id-nowy', ascentM: 40 });
     expect(edit.item.leg).toMatchObject({ mode: 'walk', durationMin: 35, distanceKm: 2.4 });
     expect(edit.item.leg?.routed).toBe(false);
-    expect(legLabel(edit.item)).toBe('ok. 35 min, ok. 2,4 km (wpisane z mapy)');
+    expect(legLabel(edit.item)).toBe('ok. 35 min, ok. 2,4 km (z podanej trasy)');
     expect(edit.item.leg?.geometry).toBeUndefined();
     // Górna granica 15 min jest już poniżej nowego czasu.
     expect(edit.item.leg?.durationMaxMin).toBeUndefined();
@@ -64,6 +64,23 @@ describe('trasa piesza punktu', () => {
     expect(removed.track.ref).toBe('id-nowy');
     expect(removed.track.url).toBeUndefined();
     expect(setItemRoute(doc, 'nie-ma', 'id-x', {})).toBeNull();
+  });
+
+  it('plik GPX: linia i liczby nadpisują wpisane, link zostaje, nazwa pliku tylko dla nowego śladu', () => {
+    const { doc, ref, dayRef } = withWalk();
+    const geojson = { type: 'LineString' as const, coordinates: [[16.5, 50.2, 700], [16.6, 50.3, 820]] as [number, number, number][] };
+    const typed = setItemRoute(doc, ref, 'id-nowy', { url: URL_A, distanceKm: 2, durationMin: 45 })!;
+    const fromFile = setItemRoute(typed.doc, ref, 'id-inny', { geojson, name: 'Z pliku', distanceKm: 3.1, durationMin: 70, ascentM: 120, descentM: 15 })!;
+    expect(fromFile.trackCreated).toBe(false);
+    expect(fromFile.track).toMatchObject({ ref: 'id-nowy', url: URL_A, geojson, distanceKm: 3.1, durationMin: 70, ascentM: 120, descentM: 15 });
+    expect(fromFile.track.name).toBe(typed.track.name);
+    expect(fromFile.item.activity).toMatchObject({ ascentM: 120, descentM: 15 });
+    expect(fromFile.item.leg).toMatchObject({ durationMin: 70, distanceKm: 3.1, routed: false });
+    const parsed = TripDocument.parse(fromFile.doc);
+    const entry = scheduleDay(parsed, dayRef).items.find((each) => each.ref === ref)!;
+    expect(Math.round((entry.end - entry.start) / 60_000)).toBe(70);
+    expect(setItemRoute(doc, ref, 'id-nowy', { geojson, name: 'Z pliku' })!.track.name).toBe('Z pliku');
+    expect(setItemRoute(doc, ref, 'id-nowy', { geojson, name: null })!.track.name).toBe(doc.items.find((item) => item.ref === ref)!.title);
   });
 
   it('rozpoznaje punkty piesze i linki', () => {

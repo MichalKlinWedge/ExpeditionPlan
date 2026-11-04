@@ -8,7 +8,7 @@ import { saveItemRoute } from "@/app/track-actions";
 /**
  * Trasa z mapy na karcie punktu: link (mapy.com → Udostępnij) i liczby, które mapa pokazuje. Czas od razu
  * przelicza plan dnia. Zapisuje tylko to, co zmieniono — sam link nie rusza czasu ani linii przejazdu.
- * Po wgraniu GPX „Wstaw z pliku” bierze długość i podejście z pliku oraz czas z normy DIN.
+ * Wgrany GPX wypełnia pola sam (nowe `current` po zapisie); „Wstaw z pliku” wraca do jego liczb po ręcznej zmianie.
  */
 
 type Values = { distanceKm?: number; durationMin?: number; ascentM?: number };
@@ -25,6 +25,17 @@ export function RouteEstimate({ tripId, itemRef, url, current, fromFile }: { tri
   const [ascent, setAscent] = useState(text(current.ascentM));
   const [state, setState] = useState<FormState>({});
   const [pending, start] = useTransition();
+
+  // Liczby zmienione poza formularzem (wgrany GPX) trafiają do pól.
+  const saved = `${current.distanceKm}|${current.durationMin}|${current.ascentM}`;
+  const [seen, setSeen] = useState(saved);
+  if (saved !== seen) {
+    setSeen(saved);
+    setKm(text(current.distanceKm));
+    setHours(current.durationMin === undefined ? "" : String(Math.floor(current.durationMin / 60)));
+    setMinutes(current.durationMin === undefined ? "" : String(current.durationMin % 60));
+    setAscent(text(current.ascentM));
+  }
 
   const fill = (values: Values) => {
     if (values.distanceKm !== undefined) setKm(text(values.distanceKm));
@@ -90,7 +101,7 @@ export function RouteEstimate({ tripId, itemRef, url, current, fromFile }: { tri
           {fromFile.durationMin !== undefined ? ` · ok. ${minutesLabel(fromFile.durationMin)}` : ""}
         </button>
       )}
-      <p className="text-xs text-zinc-500">Wpisz liczby z mapy: czas przeliczy godziny tego dnia, a „Przelicz przejazdy” nie nadpisze go szacunkiem. Dokładny przebieg na mapie planu da plik GPX wyeksportowany z mapy.</p>
+      <p className="text-xs text-zinc-500">Wpisz liczby z mapy albo wgraj niżej plik GPX, który sam je wypełni i narysuje przebieg na mapie planu (czas z pliku liczy norma DIN). Czas przeliczy godziny tego dnia, a „Przelicz przejazdy” nie nadpisze go szacunkiem.</p>
       {state.error && <p className="text-xs text-red-600">{state.error}</p>}
       {state.ok && <p className="text-xs text-emerald-700 dark:text-emerald-400">{state.ok}</p>}
     </div>

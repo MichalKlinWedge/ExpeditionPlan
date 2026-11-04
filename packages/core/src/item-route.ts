@@ -3,8 +3,8 @@ import type { TripDocument } from './schemas/trip-document.ts';
 /**
  * Trasa piesza punktu z zewnętrznej mapy: link (np. mapy.com/s/…) i liczby, które ta mapa pokazuje.
  * Zapisuje je w śladzie punktu (`tracks`, nowym albo z `activity.trackRef`), a czas przenosi do punktu —
- * od niego silnik liczy godziny dnia. Liczby wpisuje użytkownik albo bierze z własnego pliku GPX:
- * regulamin Mapy.com zabrania przechowywania wyników ich API (docs/USLUGI.md).
+ * od niego silnik liczy godziny dnia. Liczby wpisuje użytkownik albo dają je linia i statystyki z jego
+ * własnego pliku GPX: regulamin Mapy.com zabrania przechowywania wyników ich API (docs/USLUGI.md).
  */
 
 type Doc = TripDocument;
@@ -27,6 +27,11 @@ export type ItemRouteFields = {
   distanceKm?: number;
   durationMin?: number;
   ascentM?: number;
+  descentM?: number;
+  /** Linia z pliku GPX. */
+  geojson?: NonNullable<Track['geojson']>;
+  /** Nazwa z pliku GPX: tylko dla nowego śladu, istniejący zachowuje swoją. */
+  name?: string | null;
 };
 
 export type ItemRouteEdit = { doc: Doc; item: Item; track: Track; trackCreated: boolean };
@@ -39,14 +44,16 @@ export function setItemRoute(doc: Doc, itemRef: string, newTrackRef: string, fie
   if (item === undefined) return null;
   const current = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
 
-  const { url: _url, ...rest } = current ?? { ref: newTrackRef, name: item.title, url: undefined };
+  const { url: _url, ...rest } = current ?? { ref: newTrackRef, name: fields.name || item.title, url: undefined };
   const url = fields.url === undefined ? _url : (fields.url ?? undefined);
   const track = {
     ...rest,
     ...(url !== undefined ? { url } : {}),
     ...(fields.distanceKm !== undefined ? { distanceKm: fields.distanceKm } : {}),
     ...(fields.ascentM !== undefined ? { ascentM: fields.ascentM } : {}),
+    ...(fields.descentM !== undefined ? { descentM: fields.descentM } : {}),
     ...(fields.durationMin !== undefined ? { durationMin: fields.durationMin } : {}),
+    ...(fields.geojson !== undefined ? { geojson: fields.geojson } : {}),
   } as Track;
 
   let next: Item = {
@@ -56,6 +63,7 @@ export function setItemRoute(doc: Doc, itemRef: string, newTrackRef: string, fie
       trackRef: track.ref,
       ...(fields.distanceKm !== undefined && item.leg === undefined ? { distanceKm: fields.distanceKm } : {}),
       ...(fields.ascentM !== undefined ? { ascentM: fields.ascentM } : {}),
+      ...(fields.descentM !== undefined ? { descentM: fields.descentM } : {}),
     },
   };
 
@@ -65,7 +73,7 @@ export function setItemRoute(doc: Doc, itemRef: string, newTrackRef: string, fie
     next = { ...others, durationMin: minutes, ...keepMax(durationMaxMin, minutes) };
   }
   if (next.leg !== undefined && (minutes !== undefined || fields.distanceKm !== undefined)) {
-    // Czas i dystans są już z mapy, nie z OpenRouteService: linia ORS znika, a „Przelicz przejazdy” omija punkt (`user_locked`).
+    // Czas i dystans są już z podanej trasy, nie z OpenRouteService: linia ORS znika, a „Przelicz przejazdy” omija punkt (`user_locked`).
     // `routed: false` odróżnia je od szacunku (`legLabel`).
     const { routed: _routed, geometry: _geometry, durationMaxMin, ...leg } = next.leg;
     const duration = minutes ?? leg.durationMin;
