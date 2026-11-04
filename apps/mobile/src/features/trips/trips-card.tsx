@@ -1,4 +1,4 @@
-import { localToday } from '@expeditionplan/core';
+import { isPostponed, localToday, tripSections } from '@expeditionplan/core';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -16,8 +16,9 @@ import { supabase } from '@/lib/supabase';
 /**
  * Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy, kto ma dostęp
  * i wejście w plan dnia albo na mapę. Rozwinięty wyjazd staje się wybranym także w zakładkach Plan i Mapa. Bez logowania (`signedIn = false`) — lista i plany z telefonu, do odczytu.
- * Z siecią właściciel usuwa wyjazd, pozostali z niego wychodzą. Wyjazdy po dacie końca — w zwiniętym
- * „Archiwum” pod wyjazdami przed nami (najnowsze na górze).
+ * Z siecią właściciel usuwa wyjazd, pozostali z niego wychodzą. Odłożone (status ustawiany na webie) —
+ * w zwiniętej sekcji bez względu na datę. Wyjazdy po dacie końca — w zwiniętym „Archiwum” pod
+ * wyjazdami przed nami (najnowsze na górze).
  */
 
 const ROLE: Record<string, string> = { owner: 'właściciel', editor: 'edytor', viewer: 'widz' };
@@ -38,6 +39,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const [details, setDetails] = useState<Details | null>(null);
   const [plan, setPlan] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [postponedOpen, setPostponedOpen] = useState(false);
 
   const load = useCallback(async () => {
     const result = await loadMyTrips(signedIn);
@@ -106,9 +108,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
     );
   };
 
-  const today = localToday();
-  const ahead = trips?.filter((trip) => trip.end_date! >= today) ?? [];
-  const archive = (trips?.filter((trip) => trip.end_date! < today) ?? []).sort((a, b) => b.start_date!.localeCompare(a.start_date!));
+  const { ahead, postponed, archive } = tripSections(trips ?? [], localToday());
 
   const tripCard = (trip: Trip) => (
     <ThemedView key={trip.id} type="backgroundElement" style={[styles.trip, { borderColor: open === trip.id ? theme.accent : theme.backgroundSelected }]}>
@@ -118,6 +118,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
             {trip.title}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
+            {isPostponed(trip) ? 'orientacyjnie: ' : ''}
             {trip.start_date} – {trip.end_date} · {ROLE[trip.role!]}
           </ThemedText>
           <OfflineBadge tripId={trip.id!} />
@@ -184,10 +185,19 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
       )}
       {trips !== null && trips.length > 0 && ahead.length === 0 && (
         <ThemedText type="small" themeColor="textSecondary">
-          Żadnego wyjazdu przed Tobą — poprzednie są w archiwum.
+          Żadnego wyjazdu przed Tobą{archive.length > 0 ? ' — poprzednie są w archiwum' : ''}.
         </ThemedText>
       )}
       {ahead.map(tripCard)}
+      {postponed.length > 0 && (
+        <Pressable onPress={() => setPostponedOpen(!postponedOpen)} hitSlop={8} style={styles.archiveHead}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            Odłożone ({postponed.length})
+          </ThemedText>
+          <ThemedText themeColor="accent">{postponedOpen ? '▾' : '▸'}</ThemedText>
+        </Pressable>
+      )}
+      {postponedOpen && postponed.map(tripCard)}
       {archive.length > 0 && (
         <Pressable onPress={() => setArchiveOpen(!archiveOpen)} hitSlop={8} style={styles.archiveHead}>
           <ThemedText type="smallBold" themeColor="textSecondary">

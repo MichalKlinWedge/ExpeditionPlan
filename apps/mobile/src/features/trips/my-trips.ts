@@ -1,3 +1,4 @@
+import { isPostponed } from '@expeditionplan/core';
 import type { Tables } from '@expeditionplan/db';
 import { forgetTrip, pruneLocal, refreshTrip } from '@expeditionplan/sync';
 
@@ -56,12 +57,13 @@ export async function removeTrip(trip: Trip): Promise<string | null> {
   return null;
 }
 
-/** Domyślny wyjazd: trwający dziś, inaczej najbliższy nadchodzący, inaczej ostatni. */
+/** Domyślny wyjazd: trwający dziś, inaczej najbliższy nadchodzący, inaczej ostatni. Odłożony — tylko gdy nie ma innych. */
 export function pickTrip(trips: Trip[]): string | null {
   const today = new Date().toISOString().slice(0, 10);
-  const ongoing = trips.find((trip) => trip.start_date! <= today && today <= trip.end_date!);
-  const upcoming = trips.find((trip) => trip.start_date! > today);
-  return (ongoing ?? upcoming ?? trips.at(-1))?.id ?? null;
+  const planned = trips.filter((trip) => !isPostponed(trip));
+  const ongoing = planned.find((trip) => trip.start_date! <= today && today <= trip.end_date!);
+  const upcoming = planned.find((trip) => trip.start_date! > today);
+  return (ongoing ?? upcoming ?? planned.at(-1) ?? trips.at(-1))?.id ?? null;
 }
 
 const CURRENT_KEY = 'current_trip';

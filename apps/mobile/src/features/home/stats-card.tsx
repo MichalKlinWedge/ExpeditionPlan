@@ -1,4 +1,4 @@
-import { localToday, tripStats, type TripStats } from '@expeditionplan/core';
+import { isPostponed, localToday, tripStats, type TripStats } from '@expeditionplan/core';
 import { pendingCount } from '@expeditionplan/sync';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -19,7 +19,7 @@ import { localDb } from '@/lib/local-db';
  */
 
 type Local = { downloaded: number; items: number; pending: number };
-type Data = { stats: TripStats; local: Local; offline: boolean };
+type Data = { stats: TripStats; local: Local; offline: boolean; postponed: number };
 
 const days = (count: number) => `${count} ${count === 1 ? 'dzień' : 'dni'}`;
 const shortDate = (date: string) => `${Number(date.slice(8))}.${date.slice(5, 7)}`;
@@ -40,7 +40,9 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
     useCallback(() => {
       void loadMyTrips(signedIn).then((result) => {
         const trips = result.trips.map((trip) => ({ id: trip.id!, title: trip.title!, startDate: trip.start_date!, endDate: trip.end_date! }));
-        setData({ stats: tripStats(trips, localToday()), local: localCounts(trips.map((trip) => trip.id)), offline: result.offline });
+        // Odłożone nie odliczają dni ani nie wchodzą do statystyk podróży; pobrane dane liczą się dalej.
+        const planned = trips.filter((_, index) => !isPostponed(result.trips[index]!));
+        setData({ stats: tripStats(planned, localToday()), local: localCounts(trips.map((trip) => trip.id)), offline: result.offline, postponed: trips.length - planned.length });
       });
     }, [signedIn]),
   );
@@ -50,7 +52,7 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
   if (stats.total === 0) {
     return (
       <ThemedText type="small" themeColor="textSecondary">
-        {signedIn ? 'Nie masz jeszcze wyjazdów — utwórz je na webie albo dołącz z linku.' : 'Na telefonie nie ma pobranych wyjazdów.'}
+        {data.postponed > 0 ? `Masz tylko wyjazdy odłożone (${data.postponed}) — są w zakładce Wyjazdy.` : signedIn ? 'Nie masz jeszcze wyjazdów — utwórz je na webie albo dołącz z linku.' : 'Na telefonie nie ma pobranych wyjazdów.'}
       </ThemedText>
     );
   }

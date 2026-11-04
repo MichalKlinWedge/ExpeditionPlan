@@ -1,6 +1,6 @@
 "use server";
 
-import { Currency, IsoDate, parseCoordinates, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
+import { Currency, IsoDate, parseCoordinates, PLANNING, POSTPONED, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { geoapifyLookup, groundPlaces, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, importTrip, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -37,6 +37,7 @@ const NewTrip = z
     endDate: IsoDate,
     primaryTz: TimeZone,
     baseCurrency: Currency,
+    postponed: z.literal("on").optional(),
   })
   .refine((trip) => trip.endDate >= trip.startDate, { message: "Koniec przed początkiem.", path: ["endDate"] });
 
@@ -53,9 +54,20 @@ export async function createTrip(_prev: FormState, form: FormData): Promise<Form
     end_date: parsed.data.endDate,
     primary_tz: parsed.data.primaryTz,
     base_currency: parsed.data.baseCurrency,
+    ...(parsed.data.postponed ? { status: POSTPONED } : {}),
   });
   if (error) return { error: message(error) };
   redirect(`/trips/${id}`);
+}
+
+/** Odłożenie wyjazdu i powrót do planów. O prawie decyduje RLS: UPDATE bez uprawnień zmienia 0 wierszy. */
+export async function setTripPostponed(tripId: string, postponed: boolean): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}`);
+  const { data, error } = await supabase.from("trips").update({ status: postponed ? POSTPONED : PLANNING }).eq("id", tripId).select("id");
+  if (error) return { error: message(error) };
+  if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  refresh();
+  return { ok: postponed ? "Wyjazd odłożony." : "Wyjazd wrócił do planów." };
 }
 
 const NewTraveler = z.object({

@@ -111,6 +111,10 @@ export default function HelpPage() {
               od pierwszego dnia wyjazdu: liczby (punkty, kilometry, wydatki), mapa trasy, dziennik ze zdjęciami dzień po dniu i rozliczenie — także do druku/PDF. Minione wyjazdy są w
               „Archiwum” pod listą wyjazdów.
             </Step>
+            <Step name="Wyjazdy odłożone">
+              termin niepewny albo wyjazd nie wypalił? „Odłóż wyjazd” na jego stronie przenosi go do osobnej sekcji „Odłożone” (nie do archiwum). Plan można dalej układać, a daty są tylko orientacyjne:
+              telefon nie odlicza dni i nie przypomina. „Przywróć do planów” cofa to w każdej chwili.
+            </Step>
           </ul>
         </Section>
 

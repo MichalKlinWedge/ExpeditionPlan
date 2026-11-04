@@ -1,4 +1,4 @@
-import { instantToZoned, tripReadiness } from "@expeditionplan/core";
+import { instantToZoned, isPostponed, tripReadiness } from "@expeditionplan/core";
 import { fetchTripNews, newsRows, type NewsSummary, refIndex, stateFromPayload, summarizeNews } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { AiPlanButton } from "@/components/ai-plan-button";
 import { BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
+import { TripStatusButton } from "@/components/trip-status-button";
 import { TripNews } from "@/components/trip-news";
 import { requireUser } from "@/lib/auth";
 import { ROLE, tripDates } from "@/lib/labels";
@@ -113,6 +114,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   if (trip.data === null) notFound();
   const role = trip.data.role!;
   const canEdit = role === "owner" || role === "editor";
+  const postponed = isPostponed(trip.data);
   // Szkic AI → plan: ze szkicu link do planu o tej samej nazwie, z planu wybór szkicu (szkice AI na górze).
   const others = mine.data ?? [];
   const title = trip.data.title!;
@@ -125,9 +127,14 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h1 className="text-3xl font-bold">{trip.data.title}</h1>
+          {canEdit && !title.startsWith(DRAFT) && <TripStatusButton tripId={id} postponed={postponed} termPassed={trip.data.end_date! < new Date().toISOString().slice(0, 10)} />}
         </div>
         <p className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-          <span className="chip">{tripDates(trip.data.start_date!, trip.data.end_date!)}</span>
+          {postponed && <span className="chip">odłożony — termin niepewny</span>}
+          <span className="chip">
+            {postponed && "orientacyjnie: "}
+            {tripDates(trip.data.start_date!, trip.data.end_date!)}
+          </span>
           <span>{trip.data.primary_tz}</span>
           <span>·</span>
           <span>{trip.data.base_currency}</span>
@@ -141,7 +148,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       </div>
 
       {news !== null && <TripNews tripId={id} news={news} now={new Date().getTime()} />}
-      {readiness !== null && !title.startsWith(DRAFT) && <TripReadiness tripId={id} issues={readiness.issues} daysLeft={readiness.daysLeft} people={role === "owner" ? readiness.people : null} />}
+      {readiness !== null && !postponed && !title.startsWith(DRAFT) && <TripReadiness tripId={id} issues={readiness.issues} daysLeft={readiness.daysLeft} people={role === "owner" ? readiness.people : null} />}
 
       {/* Przy dwóch kolumnach ostatni kafelek bez pary zajmuje cały wiersz. */}
       <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>:last-child:nth-child(odd)]:col-span-2">
@@ -161,7 +168,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           <Tile href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />
         )}
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/print`} icon={<PrinterIcon />} title="Wydruk / PDF" hint="plan na papierze, bez telefonu" />}
-        {!title.startsWith(DRAFT) && trip.data.start_date! <= new Date().toISOString().slice(0, 10) && <Tile href={`/trips/${id}/memories`} icon={<PeakIcon />} title="Pamiątka z wyjazdu" hint="liczby, trasa, zdjęcia dzień po dniu" />}
+        {!title.startsWith(DRAFT) && !postponed && trip.data.start_date! <= new Date().toISOString().slice(0, 10) && <Tile href={`/trips/${id}/memories`} icon={<PeakIcon />} title="Pamiątka z wyjazdu" hint="liczby, trasa, zdjęcia dzień po dniu" />}
       </nav>
 
       {/* Eksport to plik (route handler), nie strona — zwykły link. */}

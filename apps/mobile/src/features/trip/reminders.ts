@@ -1,4 +1,4 @@
-import { dayAlerts, goNoGoReminders, tripReminders, type TripDocument } from '@expeditionplan/core';
+import { dayAlerts, goNoGoReminders, isPostponed, tripReminders, type TripDocument } from '@expeditionplan/core';
 import { cachedTrip } from '@expeditionplan/sync';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
@@ -13,7 +13,8 @@ import { localDb } from '@/lib/local-db';
  * (`goNoGoReminders`) i oś dnia (`dayAlerts`: „Za 15 min: …”, termin decyzji
  * wariantu — najbliższe 25, osobny kanał „Plan dnia”). Włączane w Ustawieniach; przeliczane przy
  * każdym wczytaniu planu i po każdym zdarzeniu dnia (opóźnienie, pominięcie, wybór wariantu) —
- * godziny z silnika razem z zapisami czekającymi w outboxie, więc działa też bez sieci.
+ * godziny z silnika razem z zapisami czekającymi w outboxie, więc działa też bez sieci. Wyjazd
+ * odłożony nie przypomina: jego daty są tylko orientacyjne.
  */
 
 const KEY = 'reminders-enabled';
@@ -51,6 +52,7 @@ async function reschedule(tripId: string, doc: TripDocument): Promise<number> {
   if (!remindersEnabled()) return 0;
   await (channels ??= ensureChannel());
   await clearTrip(tripId);
+  if (cachedTrips()?.some((trip) => trip.id === tripId && isPostponed(trip))) return 0;
   // Opóźnienia, pominięcia i wybory z terenu — także te, które jeszcze czekają na sieć.
   const inputs = cachedTrip(localDb, tripId)?.state.inputs ?? {};
   const now = Date.now();
@@ -78,6 +80,11 @@ export async function refreshCurrentReminders(): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
   for (const trip of cachedTrips() ?? []) {
+    // Odłożony na webie: przypomnienia zaplanowane wcześniej znikają też bez otwierania planu.
+    if (trip.id != null && isPostponed(trip)) {
+      await clearTrip(trip.id);
+      continue;
+    }
     if (trip.id == null || (trip.end_date ?? '') < today || (trip.start_date ?? '') > tomorrow) continue;
     const cached = cachedTrip(localDb, trip.id);
     if (cached) await scheduleTripReminders(trip.id, cached.state.doc);
@@ -92,6 +99,7 @@ export async function enableReminders(): Promise<{ ok: boolean; count: number }>
   await ensureChannel();
   let count = 0;
   for (const trip of cachedTrips() ?? []) {
+    if (isPostponed(trip)) continue;
     const cached = trip.id ? cachedTrip(localDb, trip.id) : null;
     if (cached) count += await scheduleTripReminders(trip.id!, cached.state.doc);
   }

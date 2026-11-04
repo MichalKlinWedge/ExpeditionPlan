@@ -37,6 +37,10 @@ export function NewTripForm() {
           <input name="endDate" type="date" required className={input} />
         </label>
       </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input name="postponed" type="checkbox" />
+        Odłożony — termin jeszcze niepewny, daty są orientacyjne
+      </label>
       <div className="grid grid-cols-2 gap-4">
         <label className={label}>
           Strefa czasowa celu

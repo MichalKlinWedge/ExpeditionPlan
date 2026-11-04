@@ -1,3 +1,4 @@
+import { isPostponed } from '@expeditionplan/core';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -31,6 +32,7 @@ export function TripSwitcher({ trips, selected, onSelect }: { trips: Trip[]; sel
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {trip?.start_date} – {trip?.end_date}
+            {trip && isPostponed(trip) ? ' · odłożony' : ''}
           </ThemedText>
         </View>
         {many && <ThemedText type="linkPrimary">{open ? 'Zwiń ▴' : 'Zmień ▾'}</ThemedText>}
@@ -43,6 +45,7 @@ export function TripSwitcher({ trips, selected, onSelect }: { trips: Trip[]; sel
               <ThemedText numberOfLines={1}>{each.title}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {each.start_date} – {each.end_date}
+                {isPostponed(each) ? ' · odłożony' : ''}
               </ThemedText>
             </Pressable>
           ))}
