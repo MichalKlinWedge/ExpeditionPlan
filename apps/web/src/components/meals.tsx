@@ -1,5 +1,6 @@
 import { headcount, isShopping, mealList, selfCookedTotals, type TripDocument } from "@expeditionplan/core";
 
+import { EatOutOptions } from "@/components/eat-out";
 import { SelfCookedToggle, ShoppingList } from "@/components/logistics-editors";
 
 /**
@@ -59,6 +60,7 @@ export function Meals({ tripId, doc, canEdit }: { tripId: string; doc: TripDocum
                   <SelfCookedToggle tripId={tripId} itemRef={meal.itemRef} value={meal.selfCooked === true} />
                 </>
               )}
+              <EatOutOptions tripId={tripId} doc={doc} ids={{}} itemRef={meal.itemRef} canEdit={false} />
             </li>
           ))}
         </ul>

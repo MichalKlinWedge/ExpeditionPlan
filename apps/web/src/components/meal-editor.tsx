@@ -5,6 +5,7 @@ import { savePlanEdit, uuidv7 } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { EatOutOptions, EatOutSearch } from "@/components/eat-out";
 import { ItemEditor } from "@/components/item-editor";
 import { SelfCookedToggle } from "@/components/logistics-editors";
 import { createClient } from "@/lib/supabase/client";
@@ -12,7 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 /**
  * Posiłki w trybie edycji: nowy posiłek w wybranym dniu (śniadanie, obiad, kolacja…) z godziną
  * „ok.” — wchodzi do planu dnia na swoje miejsce (\`addMeal\` w core), zmiana nazwy, godziny i czasu
- * (formularz jak w planie) i usunięcie. Zapis tą samą drogą co edytor planu (\`savePlanEdit\`).
+ * (formularz jak w planie), usunięcie i — przy jedzeniu na mieście — knajpy w pobliżu (`EatOutSearch`). Zapis tą samą drogą co edytor planu (\`savePlanEdit\`).
  */
 
 const SUGGESTIONS = ["Śniadanie", "Drugie śniadanie", "Lunch", "Obiad", "Podwieczorek", "Kolacja", "Przekąska"];
@@ -24,6 +25,7 @@ const input = "field min-w-0 px-2 py-1 text-sm";
 export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocument; ids: Record<string, string> }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
+  const [searching, setSearching] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const meals = mealList(doc);
@@ -66,6 +68,11 @@ export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocu
                   <button disabled={pending} onClick={() => setEditing(editing === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
                     {editing === meal.itemRef ? "zamknij" : "zmień"}
                   </button>
+                  {!meal.selfCooked && (
+                    <button disabled={pending} onClick={() => setSearching(searching === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
+                      knajpy w pobliżu
+                    </button>
+                  )}
                   <button
                     disabled={pending}
                     onClick={() => {
@@ -81,6 +88,8 @@ export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocu
                   </button>
                 </span>
               </div>
+              <EatOutOptions tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} canEdit />
+              {searching === meal.itemRef && <EatOutSearch tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} onClose={() => setSearching(null)} />}
               {editing === meal.itemRef && item && (
                 <ItemEditor item={item} onCancel={() => setEditing(null)} onSave={(patch) => save(updateItem(doc, meal.itemRef, patch), () => setEditing(null))} />
               )}

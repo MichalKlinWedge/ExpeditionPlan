@@ -1,4 +1,5 @@
 import {
+  type EatOutEdit,
   flightLine,
   flightOf,
   GUIDE_SITE,
@@ -23,6 +24,7 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { EateriesCard } from '@/features/plan/eateries-card';
 import { ItemFactsCard } from '@/features/plan/item-facts';
 import { TrackCard } from '@/features/plan/track-card';
 
@@ -61,6 +63,8 @@ type Props = {
   /** Dokumenty punktu na karcie (bez — sama cena, płatność i kontakty). */
   tripId?: string;
   online?: boolean;
+  /** Zapis knajp wybranych przy posiłku („Knajpy w pobliżu”); bez — sama lista. */
+  onSaveEatOut?: (edit: EatOutEdit) => Promise<void>;
 };
 
 /** Przewodnik punktu z wierszy `audio_guides` telefonu. */
@@ -93,7 +97,7 @@ export function prefetchGuideImages(trip: CachedTrip) {
   if (urls.length > 0) void Image.prefetch(urls, 'disk').catch(() => undefined);
 }
 
-export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online }: Props) {
+export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online, onSaveEatOut }: Props) {
   // Przejścia po odnośnikach: stos punktów nad otwartym; nowy `item` z zewnątrz zaczyna od zera.
   const [path, setPath] = useState<{ root: string | null; stack: Item[] }>({ root: null, stack: [] });
   const stack = path.root === (item?.ref ?? null) ? path.stack : [];
@@ -109,7 +113,7 @@ export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, onl
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
             {current !== null && (
-              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0} tripId={tripId} online={online} />
+              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0} tripId={tripId} online={online} onSaveEatOut={onSaveEatOut} />
             )}
           </SafeAreaView>
         </ThemedView>
@@ -118,9 +122,19 @@ export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, onl
   );
 }
 
-type DetailsProps = { trip: CachedTrip; item: Item; onBack: () => void; backLabel: string; onOpen: (ref: string) => void; autoPlay: boolean; tripId?: string; online?: boolean };
+type DetailsProps = {
+  trip: CachedTrip;
+  item: Item;
+  onBack: () => void;
+  backLabel: string;
+  onOpen: (ref: string) => void;
+  autoPlay: boolean;
+  tripId?: string;
+  online?: boolean;
+  onSaveEatOut?: (edit: EatOutEdit) => Promise<void>;
+};
 
-function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online }: DetailsProps) {
+function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online, onSaveEatOut }: DetailsProps) {
   const doc = trip.state.doc;
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
@@ -198,6 +212,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
           </Pressable>
         ))}
         <ItemFactsCard trip={trip} item={item} tripId={tripId} online={online} />
+        {item.kind === 'meal' && !item.selfCooked && online && tripId !== undefined && <EateriesCard trip={trip} tripId={tripId} item={item} onSave={onSaveEatOut} />}
         <TrackCard doc={doc} item={item} />
 
         {guide !== null && (

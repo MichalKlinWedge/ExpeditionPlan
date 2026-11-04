@@ -140,7 +140,10 @@ export async function saveElements(client: SupabaseClient, tripId: string, doc: 
       op === 'remove'
         ? await table.update({ deleted_at: new Date().toISOString() }).eq('id', id).eq('trip_id', tripId).select('id')
         : op === 'insert'
-          ? await table.insert({ ...rowForUpdate(collection, element, index), id, trip_id: tripId, sort_key: `z${stamp}${String(order++).padStart(3, '0')}` }).select('id')
+          ? await table
+              // Punkty i dni mają własną kolejność (`sortKey`, data) — reszta idzie na koniec.
+              .insert({ ...rowForUpdate(collection, element, index), id, trip_id: tripId, ...(SPECS[collection].ownOrder ? {} : { sort_key: `z${stamp}${String(order++).padStart(3, '0')}` }) })
+              .select('id')
           : await table.update(rowForUpdate(collection, element, index)).eq('id', id).eq('trip_id', tripId).select('id');
     if (error) throw new RemoteError(error.code === '42501' ? 'Brak uprawnień do tej zmiany.' : error.message, error.code);
     if ((data ?? []).length === 0) throw new RemoteError('Brak uprawnień do tej zmiany.', '42501');

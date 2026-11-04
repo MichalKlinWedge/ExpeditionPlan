@@ -1,3 +1,4 @@
+import { activeVariants } from './engine/schedule.ts';
 import { addItem, dayItems, type PlanEdit } from './plan-edits.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { keyBetween } from './sort-key.ts';
@@ -31,12 +32,16 @@ function count(travelers: Traveler[]): People {
 
 export const headcount = (doc: Doc): People => count(doc.travelers);
 
-/** Posiłki dnia po dniu; osoby z `participantRefs` punktu, inaczej cała grupa. */
+/**
+ * Posiłki dnia po dniu; osoby z `participantRefs` punktu, inaczej cała grupa. Posiłek w wariantach
+ * (knajpy do wyboru, `eat-out.ts`) liczy się raz — w wariancie, który jest teraz wybrany.
+ */
 export function mealList(doc: Doc): Meal[] {
   const places = new Map(doc.places.map((place) => [place.ref, place.name]));
+  const active = activeVariants(doc);
   return doc.days.flatMap((day, index) =>
     dayItems(doc, day.ref)
-      .filter((item) => item.kind === 'meal' && item.planStatus === 'scheduled')
+      .filter((item) => item.kind === 'meal' && item.planStatus === 'scheduled' && (item.variantRefs.length === 0 || item.variantRefs.some((ref) => active.has(ref))))
       .map((item) => ({
         dayRef: day.ref,
         date: day.date,

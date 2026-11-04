@@ -7,6 +7,7 @@ import {
   type DaySchedule,
   documentProblem,
   type DayWeather,
+  type EatOutEdit,
   flightLine,
   flightOf,
   instantToZoned,
@@ -39,6 +40,7 @@ import {
   recordDayEvent,
   recordVariantChoice,
   refreshTrip,
+  saveElements,
   savePlanEdit,
   serialPuller,
   summarizeNews,
@@ -266,6 +268,26 @@ ${fresh.rejected[0]!.error}`);
         Alert.alert('Nie zapisano zmiany', `${message(e)}\n\nEdycja planu wymaga połączenia z internetem.`);
       })
       .finally(() => setSaving((count) => count - 1));
+  };
+
+  /**
+   * Knajpy wybrane przy posiłku („Knajpy w pobliżu” w szczegółach): miejsca, grupa „gdzie jemy?”,
+   * warianty i kopie posiłku przez `saveElements` (online, jak edycja planu), potem synchronizacja.
+   * Błąd wraca do karty — tam widać, że nie zapisano.
+   */
+  const saveEatOut = (edit: EatOutEdit) => {
+    if (trip === null) return Promise.reject(new Error('Plan jeszcze się nie wczytał.'));
+    const invalidDoc = documentProblem(edit.doc);
+    if (invalidDoc !== null) return Promise.reject(new Error(invalidDoc));
+    const before = trip;
+    setSaving((count) => count + 1);
+    const run = queue.current.then(async () => {
+      const ids = await saveElements(supabase as unknown as SupabaseClient, tripId, edit.doc, edit.writes, { ...before.ids, ...extraIds.current });
+      extraIds.current = { ...extraIds.current, ...ids };
+      await load();
+    });
+    queue.current = run.catch(() => undefined).finally(() => setSaving((count) => count - 1));
+    return run;
   };
 
   const actions: Actions | null =
@@ -530,7 +552,18 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           </ScrollView>
         </>
       )}
-      {trip !== null && <ItemDetails trip={trip} item={detail} autoPlay={detailPlay} onClose={() => setDetail(null)} tripId={tripId} online={signedIn} />}
+      {/* Po zapisie (np. knajpa jako miejsce posiłku) szczegóły pokazują punkt z odświeżonego planu. */}
+      {trip !== null && (
+        <ItemDetails
+          trip={trip}
+          item={detail === null ? null : (trip.state.doc.items.find((each) => each.ref === detail.ref) ?? detail)}
+          autoPlay={detailPlay}
+          onClose={() => setDetail(null)}
+          tripId={tripId}
+          online={signedIn}
+          onSaveEatOut={signedIn && canAct ? saveEatOut : undefined}
+        />
+      )}
     </View>
   );
 }
