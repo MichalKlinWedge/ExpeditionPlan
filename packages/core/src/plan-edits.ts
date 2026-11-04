@@ -306,7 +306,7 @@ export type LegRouteEdit = PlanEdit & { placesChanged: boolean };
  * nie zawalił, zanim trasa się przeliczy. Przejazd bez szczegółów (`leg`) dostaje je przy pierwszym
  * zapisie, domyślnie autem. `null` = bez zmian albo punkt nie jest przejazdem.
  */
-export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; toId: string }, fields: { from: string; to: string; routeUrl: string }): LegRouteEdit | null {
+export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; toId: string }, fields: { from: string; to: string; routeUrl: string; roundTrip?: boolean }): LegRouteEdit | null {
   const item = doc.items.find((each) => each.ref === itemRef);
   if (item?.kind !== 'transport') return null;
   const fresh = item.leg === undefined;
@@ -328,15 +328,16 @@ export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; to
   const url = fields.routeUrl.trim();
 
   const placesChanged = fresh ? from !== undefined || to !== undefined : from !== current.fromPlaceRef || to !== (current.toPlaceRef ?? item.placeRef);
-  if (!fresh && !placesChanged && url === (current.routeUrl ?? '')) return null;
+  const roundTrip = fields.roundTrip ?? current.roundTrip === true;
+  if (!fresh && !placesChanged && url === (current.routeUrl ?? '') && roundTrip === (current.roundTrip === true)) return null;
 
-  const { fromPlaceRef: _from, toPlaceRef: _to, routeUrl: _url, ...rest } = current;
+  const { fromPlaceRef: _from, toPlaceRef: _to, routeUrl: _url, roundTrip: _roundTrip, ...rest } = current;
   let kept = rest;
   if (placesChanged) {
     const { routed: _routed, geometry: _geometry, distanceKm: _km, durationMaxMin: _max, ...still } = rest;
     kept = still;
   }
-  const leg = { ...kept, ...(from !== undefined ? { fromPlaceRef: from } : {}), ...(to !== undefined ? { toPlaceRef: to } : {}), ...(url !== '' ? { routeUrl: url } : {}) };
+  const leg = { ...kept, ...(from !== undefined ? { fromPlaceRef: from } : {}), ...(to !== undefined ? { toPlaceRef: to } : {}), ...(url !== '' ? { routeUrl: url } : {}), ...(roundTrip ? { roundTrip } : {}) };
   const edit = updateItem({ ...doc, places: [...doc.places, ...created] }, itemRef, { leg, ...(to !== undefined ? { placeRef: to } : {}) });
   if (edit === null) return null;
   return { ...edit, ...(created.length > 0 ? { places: created.map((place) => ({ place, created: true })) } : {}), placesChanged };

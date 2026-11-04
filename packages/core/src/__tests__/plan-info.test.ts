@@ -140,6 +140,17 @@ describe('mapa dnia', () => {
     expect(first.numbers['d2-do-bahii']).toBe(1);
   });
 
+  it('przejazd z trasą ma ją w `refs` linii, a bez trasy własny kawałek prostej do podświetlenia', () => {
+    const [medersa, bahia] = [at('p-medersa'), at('p-bahia')];
+    const straight = dayMap(maroko, d2);
+    expect(straight.straightLegs?.['d2-do-bahii']).toEqual([medersa, bahia]);
+    expect(straight.straightLegs?.['d2-bahia']).toBeUndefined();
+    const road: LngLat[] = [medersa, [medersa[0] + 0.002, medersa[1] - 0.004], bahia];
+    const routed = dayMap(withRoute(road), d2);
+    expect(routed.straightLegs?.['d2-do-bahii']).toBeUndefined();
+    expect(routed.lines.find((line) => line.refs?.includes('d2-do-bahii'))?.routed).toBe(true);
+  });
+
   describe('ślad GPX zamiast linii prostej', () => {
     const near = (point: LngLat): LngLat => [point[0] + 0.001, point[1] + 0.001];
     const withTrack = (coordinates: LngLat[], refs: string[] = ['d2-do-bahii']) =>

@@ -206,6 +206,15 @@ describe('skąd i dokąd przejazdu', () => {
     expect(setLegRoute(gruzja, visit, ids, { from: 'A', to: 'B', routeUrl: '' })).toBeNull();
   });
 
+  it('tam i z powrotem: przełącznik zapisuje sam siebie, nie rusza trasy, a pominięty zostawia stan', () => {
+    const off = setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: '', roundTrip: true })!;
+    expect(leg(off.doc).roundTrip).toBe(true);
+    expect(off.placesChanged).toBe(false);
+    expect(leg(off.doc).routed).toBe(leg(routedDoc).routed);
+    expect(setLegRoute(off.doc, ref, ids, { from: start, to: end, routeUrl: '' })).toBeNull();
+    expect(leg(setLegRoute(off.doc, ref, ids, { from: start, to: end, routeUrl: '', roundTrip: false })!.doc).roundTrip).toBeUndefined();
+  });
+
   it('bez zmian nic nie zapisuje, a link spoza http(s) nie przechodzi walidacji', () => {
     expect(setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: '' })).toBeNull();
     expect(documentProblem(setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: 'javascript:alert(1)' })!.doc)).not.toBeNull();

@@ -30,7 +30,10 @@ const km = (value: number) => `${value.toLocaleString('pl-PL', { maximumFraction
  * tak samo jak w silniku. `null` = punkt nie jest przejazdem albo nie ma czego pokazać.
  */
 export function legLabel(item: Item): string | null {
-  const label = legTimeLabel(item);
+  const time = legTimeLabel(item);
+  // Silnik liczy tu czas drogi dwa razy, więc opis musi to mówić, inaczej godziny wyglądają na błąd.
+  const both = item.leg?.roundTrip && item.durationMin === undefined && item.leg.durationMin !== undefined ? ` · tam i z powrotem: ${formatMinutes(item.leg.durationMin * 2)}` : '';
+  const label = time === null ? null : `${time}${both}`;
   return label === null || !item.stopsMin ? label : `${label} + postoje ${formatMinutes(item.stopsMin)}`;
 }
 
@@ -178,6 +181,8 @@ export type DayMap = {
   lines: MapLine[];
   /** Numer punktu na mapie (tylko punkty z miejscem ze współrzędnymi). */
   numbers: Record<string, number>;
+  /** Przejazdy bez zapisanej trasy: ich kawałek linii prostej, do podświetlenia (w `lines` proste się łączą). */
+  straightLegs?: Record<string, LngLat[]>;
 };
 
 /** Pieszo trasa dociąga się do ścieżki z 1 km, autem do drogi z 5 km (`routing.ts`). */
@@ -244,6 +249,7 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     return undefined;
   };
   const numbers: Record<string, number> = {};
+  const straightLegs: Record<string, LngLat[]> = {};
   const tracks = new Map(doc.tracks.map((track) => [track.ref, track]));
   const drawn = new Map<string, MapLine>();
   let previousPin: MapPin | undefined;
@@ -290,7 +296,9 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
       lines.push({ coordinates: route, routed: true, refs: [ref], ...(transit ? { transit } : {}) });
       cursor = route.at(-1);
     } else if (target !== undefined) {
+      const start = cursor;
       straightTo(at(target), transit);
+      if (leg !== undefined && start !== undefined && (start[0] !== target.lng || start[1] !== target.lat)) straightLegs[ref] = [start, at(target)];
     }
     // Numer przejazdu stoi tam, skąd się rusza: przy „skąd”, a bez niego przy poprzednim miejscu dnia.
     const numbered = leg === undefined ? target : (from ?? previousPin ?? target);
@@ -318,7 +326,7 @@ export function dayMap(doc: Doc, refs: readonly string[], options: { baseRef?: s
     }
   }
   for (const found of pins.values()) if (!local.has(found.placeRef) && !found.base && found.pool === undefined) found.transit = true;
-  return { pins: [...pins.values()], lines, numbers };
+  return { pins: [...pins.values()], lines, numbers, ...(Object.keys(straightLegs).length > 0 ? { straightLegs } : {}) };
 }
 
 /**

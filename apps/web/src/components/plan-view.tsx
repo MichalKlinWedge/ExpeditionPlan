@@ -189,7 +189,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
     }
   }
   const map = dayMap(doc, mapRefs, { baseRef: mapDay ? dayLodging(doc, mapDay.ref)?.placeRef : undefined, pool: true });
-  const mapKey = JSON.stringify([map.lines, map.pins.map((pin) => [pin.placeRef, pin.lat, pin.lng, pin.stops.map((stop) => stop.n), pin.pool?.length])]);
+  const mapKey = JSON.stringify([map.lines, map.straightLegs, map.pins.map((pin) => [pin.placeRef, pin.lat, pin.lng, pin.stops.map((stop) => stop.n), pin.pool?.length])]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- mapa przerysowuje się tylko przy zmianie tego, co pokazuje
   const stableMap = useMemo(() => map, [mapKey]);
 

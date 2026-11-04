@@ -126,11 +126,11 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
             layout: { "line-cap": "round", "line-join": "round" },
             paint: { "line-color": "#2e7d74", "line-width": 4, "line-opacity": 0.9 },
           });
+          created.addSource("path-hover", { type: "geojson", data: lines([]) });
           created.addLayer({
-            id: "path-highlight",
+            id: "path-hover",
             type: "line",
-            source: "path",
-            filter: ["in", ["get", "index"], ["literal", []]],
+            source: "path-hover",
             layout: { "line-cap": "round", "line-join": "round" },
             paint: { "line-color": "#e0662f", "line-width": 6 },
           });
@@ -190,12 +190,13 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
     });
   }, [map, data, fitKey, movable, shown]);
 
-  // Najechanie na link do trasy: ta linia dnia w kolorze sygnałowym.
+  // Najechanie na link do trasy: ślad, trasa po drogach albo kawałek prostej tego punktu w kolorze sygnałowym.
   useEffect(() => {
     if (map === null) return;
     const listener = (ref: string | null) => {
-      const indices = ref === null ? [] : data.lines.flatMap((line, index) => (line.refs?.includes(ref) ? [index] : []));
-      map.setFilter("path-highlight", ["in", ["get", "index"], ["literal", indices]]);
+      const straight = ref === null ? undefined : data.straightLegs?.[ref];
+      const parts: MapLine[] = ref === null ? [] : [...data.lines.filter((line) => line.refs?.includes(ref)), ...(straight === undefined ? [] : [{ coordinates: straight, routed: false }])];
+      (map.getSource("path-hover") as import("maplibre-gl").GeoJSONSource | undefined)?.setData(lines(parts));
     };
     routeListeners.add(listener);
     return () => {
@@ -307,7 +308,7 @@ function highlight(markers: { pin: MapPin; marker: Marker }[], selected: string 
 function lines(parts: MapLine[]) {
   return {
     type: "FeatureCollection" as const,
-    features: parts.map((part, index) => ({ type: "Feature" as const, properties: { routed: part.routed, index }, geometry: { type: "LineString" as const, coordinates: part.coordinates } })),
+    features: parts.map((part) => ({ type: "Feature" as const, properties: { routed: part.routed }, geometry: { type: "LineString" as const, coordinates: part.coordinates } })),
   };
 }
 

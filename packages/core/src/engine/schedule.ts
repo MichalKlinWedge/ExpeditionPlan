@@ -193,10 +193,12 @@ function dayCoordinates(doc: Doc, day: Day, items: Item[], options: ScheduleOpti
 function durationOf(item: Item, scenario: Scenario): number {
   const leg = item.leg;
   const min = item.durationMin ?? leg?.durationMin;
-  const max = item.durationMaxMin ?? leg?.durationMaxMin ?? min;
+  // Czas wpisany w punkt to cały czas punktu: bez górnej granicy z trasy i bez mnożenia „tam i z powrotem”.
+  const typed = item.durationMin !== undefined || item.durationMaxMin !== undefined;
+  const max = item.durationMaxMin ?? (typed ? min : (leg?.durationMaxMin ?? min));
   const base = scenario === 'pessimistic' ? max : min;
   const stops = item.stopsMin ?? 0;
-  if (base !== undefined) return base * (leg?.roundTrip ? 2 : 1) + stops;
+  if (base !== undefined) return base * (leg?.roundTrip && !typed ? 2 : 1) + stops;
   if (item.time?.precision === 'range') return minutesOfDay(item.time.end) - minutesOfDay(item.time.start) + stops;
   return stops;
 }

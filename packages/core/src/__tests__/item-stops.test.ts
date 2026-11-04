@@ -11,6 +11,33 @@ const doc = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('..
 const base = doc.items.find((item) => item.dayRef !== undefined && item.leg !== undefined && item.planStatus === 'scheduled' && item.parentRef === undefined)!;
 
 /** Przejazd 60 min (w gorszym razie 90) z podanymi postojami. */
+describe('czas wpisany w przejazd tam i z powrotem', () => {
+  const ref = base.ref;
+  const build = (patch: object) => {
+    const { durationMin: _d, durationMaxMin: _m, stopsMin: _s, ...rest } = base;
+    const item = { ...rest, leg: { ...base.leg!, durationMin: 120, durationMaxMin: 150, roundTrip: true }, ...patch };
+    return TripDocument.parse({ ...doc, items: doc.items.map((each) => (each.ref === ref ? item : each)) });
+  };
+  const minutes = (document: TripDocument, scenario: 'optimistic' | 'pessimistic' = 'optimistic') => {
+    const entry = scheduleDay(document, base.dayRef!, { scenario }).items.find((each) => each.ref === ref)!;
+    return Math.round((entry.end - entry.start) / 60_000);
+  };
+
+  it('wpisany czas to cały czas punktu, także w scenariuszu pesymistycznym', () => {
+    const typed = build({ durationMin: 60 });
+    expect(minutes(typed)).toBe(60);
+    expect(minutes(typed, 'pessimistic')).toBe(60);
+    expect(legLabel(typed.items.find((each) => each.ref === ref)!)).toBe('1 h (wpisane ręcznie)');
+  });
+
+  it('czas z trasy liczy się dwa razy i opis to mówi', () => {
+    const plain = build({});
+    expect(minutes(plain)).toBe(240);
+    expect(minutes(plain, 'pessimistic')).toBe(300);
+    expect(legLabel(plain.items.find((each) => each.ref === ref)!)).toContain('tam i z powrotem: 4 h');
+  });
+});
+
 function span(patch: { stopsMin?: number; roundTrip?: boolean }, scenario?: 'pessimistic') {
   const { durationMin: _min, durationMaxMin: _max, ...rest } = base;
   const item = { ...rest, leg: { ...base.leg!, durationMin: 60, durationMaxMin: 90, ...(patch.roundTrip ? { roundTrip: true } : {}) }, ...(patch.stopsMin !== undefined ? { stopsMin: patch.stopsMin } : {}) };
