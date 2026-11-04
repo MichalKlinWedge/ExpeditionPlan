@@ -124,7 +124,12 @@ export async function saveItemRoute(tripId: string, itemRef: string, fields: z.i
       ...(durationMin !== undefined ? { durationMin } : {}),
       ...(ascentM !== undefined ? { ascentM } : {}),
     },
-    () => (durationMin !== undefined ? `Zapisano trasę. Czas punktu: ${minutesLabel(durationMin)} — plan dnia przeliczony.` : "Zapisano trasę."),
+    () => {
+      if (durationMin !== undefined) return `Zapisano trasę. Czas punktu: ${minutesLabel(durationMin)} — plan dnia przeliczony.`;
+      // Regulamin Mapy.com nie pozwala zapisywać wyników ich API, więc sam link liczb nie zmienia.
+      if (url && distanceKm === undefined) return "Zapisano link. Długość i czas nie przeliczają się z linku: przepisz je z mapy albo wgraj GPX.";
+      return "Zapisano trasę.";
+    },
   );
 }
 

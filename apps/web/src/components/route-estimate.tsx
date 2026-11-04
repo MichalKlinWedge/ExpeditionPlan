@@ -73,6 +73,7 @@ export function RouteEstimate({ tripId, itemRef, url, current, fromFile }: { tri
       <label className="flex flex-col gap-1 text-xs text-zinc-500">
         Link do trasy (mapy.com → Udostępnij)
         <input value={link} onChange={(event) => setLink(event.target.value)} inputMode="url" placeholder="https://mapy.com/s/…" disabled={pending} className={field} />
+        <span>Link tylko otwiera trasę: długość i czas nie przeliczają się z niego.</span>
       </label>
       <div className="flex flex-wrap items-end gap-3 text-xs text-zinc-500">
         <label className="flex flex-col gap-1">
