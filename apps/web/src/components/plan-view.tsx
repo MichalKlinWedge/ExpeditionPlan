@@ -954,7 +954,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                 id={`item-${item.ref}`}
                 onDragOver={dnd && source ? (event) => dnd.hover(target(event), event) : undefined}
                 onDrop={dnd && source ? (event) => dnd.drop(target(event), event) : undefined}
-                className={`relative flex flex-col border-l-2 border-zinc-200 pb-1.5 pl-4 dark:border-zinc-800 ${source?.parentRef ? "ml-6" : ""} ${selected === item.ref ? "rounded-r bg-signal/10" : ""} ${dnd?.dragging === item.ref ? "opacity-40" : ""}`}>
+                className={`relative flex flex-col border-l-2 border-zinc-200 pb-1.5 pl-4 dark:border-zinc-800 ${item.child ? "ml-6" : ""} ${selected === item.ref ? "rounded-r bg-signal/10" : ""} ${dnd?.dragging === item.ref ? "opacity-40" : ""}`}>
                 {dropHere && <span aria-hidden="true" className="absolute -top-0.5 right-0 left-2 h-1 rounded bg-sea" />}
                 <span aria-hidden="true" className={`absolute top-1.5 -left-[7px] size-3 rounded-full ring-2 ring-white dark:ring-zinc-900 ${DOT[item.kind] ?? "bg-zinc-400"}`} />
                 <div className="flex gap-3">
@@ -1074,8 +1074,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                         wyjmij z trasy
                       </button>
                     ) : (
-                      routeStopTarget(doc, item.ref) && (
-                        <button onClick={() => actions.edit(setRouteStop(doc, item.ref, true))} title={`Atrakcja po drodze: jej czas doliczy się do przejazdu „${routeStopTarget(doc, item.ref)!.title}”`} className="px-1 underline">
+                      routeStopTarget(doc, item.ref, options) && (
+                        <button onClick={() => actions.edit(setRouteStop(doc, item.ref, true, options))} title={`Atrakcja po drodze: jej czas doliczy się do przejazdu „${routeStopTarget(doc, item.ref, options)!.title}”`} className="px-1 underline">
                           ↳ postój w trasie
                         </button>
                       )

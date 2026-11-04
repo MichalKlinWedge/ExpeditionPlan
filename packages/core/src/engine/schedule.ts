@@ -59,6 +59,8 @@ export type ScheduledItem = {
   durationMin: number;
   /** Postój w trasie przejazdu: godziny to tylko przybliżone położenie w ramach przejazdu, plan pokazuje czas trwania. */
   routeStop?: true;
+  /** Podpunkt, którego rodzic liczy się w tym dniu: postój w trasie albo część bloku. */
+  child?: true;
   /** Przy przejeździe: ile z jego czasu to postoje w trasie. */
   routeStopsMin?: number;
   /** Odhaczony w terenie („Zrobione”) — koniec to chwila odhaczenia. */
@@ -229,6 +231,13 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   // Postoje w trasie nie są osobnym krokiem dnia: wydłużają przejazd i trafiają do wyniku zaraz po nim.
   const transports = new Set(dayList.filter((item) => item.kind === 'transport').map((item) => item.ref));
   const isStop = (item: Item) => item.parentRef !== undefined && transports.has(item.parentRef);
+  // Przejazd spoza liczonego dnia (inny wariant, pominięty w terenie) nie jest rodzicem: punkt idzie po kolei jak każdy inny.
+  const inDay = new Set(dayList.map((item) => item.ref));
+  const parentOf = (item: Item): string | undefined => {
+    const ref = item.parentRef;
+    if (ref === undefined || inDay.has(ref)) return ref;
+    return doc.items.find((each) => each.ref === ref)?.kind === 'transport' ? undefined : ref;
+  };
   const items = dayList.filter((item) => !isStop(item));
   const stopsOf = (item: Item) => dayList.filter((each) => isStop(each) && each.parentRef === item.ref);
   const warnings: ScheduleWarning[] = [];
@@ -271,7 +280,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     firstTimed?.time !== undefined && 'start' in firstTimed.time ? at(firstTimed.time.start, firstTimed.time.tz ?? tz) : undefined;
   const leadMin = items
     .slice(0, Math.max(firstIndex, 0))
-    .filter((item) => item.parentRef === undefined && (item.participantRefs ?? []).length === 0)
+    .filter((item) => parentOf(item) === undefined && (item.participantRefs ?? []).length === 0)
     .reduce((sum, item) => sum + durationOf(item, scenario0) + stopsOf(item).reduce((all, stop) => all + durationOf(stop, scenario0), 0) + (item.bufferAfterMin ?? 0), 0);
   const startOfDay =
     day.dayStart !== undefined
@@ -289,7 +298,8 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   const lanes = new Map<string, number>();
   const laneOf = (item: Item): string | undefined => {
     // Podpunkt bloku ma własną ścieżkę nawet bez listy uczestników — dzieje się równolegle z innymi.
-    if (item.parentRef !== undefined) return `blok:${item.parentRef}:${item.ref}`;
+    const parent = parentOf(item);
+    if (parent !== undefined) return `blok:${parent}:${item.ref}`;
     const refs = [...new Set(item.participantRefs ?? [])];
     return refs.length === 0 || (groupSize > 0 && refs.length >= groupSize) ? undefined : refs.sort().join(',');
   };
@@ -302,7 +312,8 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
       cursor = Math.max(cursor, ...lanes.values());
       lanes.clear();
     }
-    const parentStart = item.parentRef === undefined ? undefined : blockStart.get(item.parentRef);
+    const parent = parentOf(item);
+    const parentStart = parent === undefined ? undefined : blockStart.get(parent);
     const laneCursor = parentStart ?? (lane === undefined ? cursor : (lanes.get(lane) ?? cursor));
     let start = laneCursor;
     let stated: number | undefined;
@@ -356,6 +367,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     if (stated !== undefined) scheduled.statedLocal = local(stated).time;
     if (finished !== undefined) scheduled.done = true;
     if (stops.length > 0) scheduled.routeStopsMin = stopsMin;
+    if (parent !== undefined) scheduled.child = true;
     result.push(scheduled);
 
     // Miejsca postoju na trasie nie znamy: rozkładamy je równo w czasie jazdy, tylko po to, żeby punkt miał chwilę w ramach przejazdu.
@@ -377,6 +389,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
         driftMin: 0,
         durationMin: minutes,
         routeStop: true,
+        child: true,
       };
       if (doneAt.has(stop.ref)) entry.done = true;
       result.push(entry);
@@ -449,7 +462,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     const after = end + ((item.bufferAfterMin ?? 0) + legMin) * MINUTE;
     blockStart.set(item.ref, start);
     if (lane === undefined) cursor = after;
-    else if (item.parentRef === undefined) lanes.set(lane, after);
+    else if (parent === undefined) lanes.set(lane, after);
     // Podpunkt bloku nie przesuwa dnia — blok trwa tyle, ile mówi plan.
     previous = scheduled;
   });

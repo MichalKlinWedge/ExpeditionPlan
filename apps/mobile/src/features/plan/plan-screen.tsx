@@ -733,7 +733,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
           <ThemedView
             key={item.ref}
             type="backgroundElement"
-            style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: KIND_COLOR[item.kind] ?? theme.textSecondary }, source?.parentRef !== undefined && styles.child]}>
+            style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: KIND_COLOR[item.kind] ?? theme.textSecondary }, item.child && styles.child]}>
             <ThemedText style={[styles.time, { color: theme.text }]}>
               {item.routeStop ? routeStopTime(item.durationMin) : `${item.startLocal}–${item.endLocal}${item.endDate !== day.date ? ' +1' : ''}`}
               {item.done ? '  ✓ zrobione' : ''}

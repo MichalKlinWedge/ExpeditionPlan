@@ -1,3 +1,4 @@
+import { itemsForDay, type ScheduleOptions } from './engine/schedule.ts';
 import type { PlanEdit } from './plan-edits.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
@@ -17,25 +18,30 @@ export function isRouteStop(doc: Doc, item: Item): boolean {
   return parent?.kind === 'transport' && parent.dayRef === item.dayRef;
 }
 
-/** Przejazd, do którego punkt może dołączyć: najbliższy wcześniejszy punkt dnia poza podpunktami, jeśli jest przejazdem. */
-export function routeStopTarget(doc: Doc, ref: string): Item | null {
+/**
+ * Przejazd, do którego punkt może dołączyć: najbliższy wcześniejszy punkt dnia poza podpunktami, jeśli jest
+ * przejazdem. Liczy się dzień w oglądanym wariancie (`options`), a punkt podpięty pod przejazd spoza tego
+ * wariantu może przejść do tutejszego.
+ */
+export function routeStopTarget(doc: Doc, ref: string, options: ScheduleOptions = {}): Item | null {
   const item = doc.items.find((each) => each.ref === ref);
-  if (item?.dayRef === undefined || item.parentRef !== undefined || item.isFixed) return null;
+  if (item?.dayRef === undefined || item.isFixed) return null;
   if (item.kind === 'transport' || item.kind === 'lodging' || (item.participantRefs ?? []).length > 0) return null;
-  const before = doc.items
-    .filter((each) => each.dayRef === item.dayRef && each.parentRef === undefined && (each.sortKey ?? '') < (item.sortKey ?? '') && (each.planStatus === 'scheduled' || each.variantRefs.length > 0))
-    .sort((a, b) => (a.sortKey ?? '').localeCompare(b.sortKey ?? ''));
-  const previous = before.at(-1);
+  const day = itemsForDay(doc, item.dayRef, options);
+  if (item.parentRef !== undefined && (day.some((each) => each.ref === item.parentRef) || doc.items.find((each) => each.ref === item.parentRef)?.kind !== 'transport')) return null;
+  const index = day.findIndex((each) => each.ref === ref);
+  if (index === -1) return null;
+  const previous = day.slice(0, index).filter((each) => each.parentRef === undefined).at(-1);
   return previous?.kind === 'transport' ? previous : null;
 }
 
 /** Włącza punkt do trasy poprzedniego przejazdu (`true`) albo wyjmuje go z niej (`false`). */
-export function setRouteStop(doc: Doc, ref: string, on: boolean): PlanEdit | null {
+export function setRouteStop(doc: Doc, ref: string, on: boolean, options: ScheduleOptions = {}): PlanEdit | null {
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined) return null;
   let next: Item;
   if (on) {
-    const parent = routeStopTarget(doc, ref);
+    const parent = routeStopTarget(doc, ref, options);
     if (parent === null) return null;
     next = { ...item, parentRef: parent.ref };
   } else {

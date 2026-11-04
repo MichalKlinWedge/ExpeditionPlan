@@ -151,3 +151,46 @@ describe('postoje w trasie', () => {
     expect(tripMemories(doc, field).planned).toBe(tripMemories(plain, field).planned);
   });
 });
+
+describe('postoje a warianty dnia', () => {
+  const maroko = fixture('maroko');
+  const B = { activeVariants: { 'd4-wariant': 'd4-v-b' } };
+  const day = (doc: TripDocument, options = {}) => scheduleDay(doc, 'd4', options).items;
+  const find = (doc: TripDocument, ref: string, options = {}) => day(doc, options).find((item) => item.ref === ref)!;
+  /** Plan zapisany starą wersją: Kozy podpięte pod przejazd z wariantu, który nie jest wybrany. */
+  const stale = TripDocument.parse({ ...maroko, items: maroko.items.map((item) => (item.ref === 'd4-kozy' || item.ref === 'd4-kooperatywa' ? { ...item, parentRef: 'd4b-wyjazd' } : item)) });
+
+  it('„postój w trasie” bierze przejazd z oglądanego wariantu', () => {
+    expect(routeStopTarget(maroko, 'd4-kozy')?.ref).toBe('d4-wyjazd');
+    expect(routeStopTarget(maroko, 'd4-kozy', B)?.ref).toBe('d4b-wyjazd');
+    const doc = setRouteStop(maroko, 'd4-kozy', true)!.doc;
+    expect(doc.items.find((item) => item.ref === 'd4-kozy')?.parentRef).toBe('d4-wyjazd');
+    expect(find(doc, 'd4-kozy')).toMatchObject({ routeStop: true, child: true });
+    expect(find(doc, 'd4-wyjazd').routeStopsMin).toBe(20);
+  });
+
+  it('punkt podpięty pod przejazd spoza wariantu idzie po kolei, bez wcięcia i równoległości', () => {
+    const [kozy, kooperatywa] = [find(stale, 'd4-kozy'), find(stale, 'd4-kooperatywa')];
+    expect(kozy.routeStop).toBeUndefined();
+    expect(kozy.child).toBeUndefined();
+    expect(kooperatywa.child).toBeUndefined();
+    expect(kooperatywa.start).toBe(kozy.end);
+    expect(find(stale, 'd4b-wyjazd', B).routeStopsMin).toBe(50);
+    expect(find(stale, 'd4-kozy', B)).toMatchObject({ routeStop: true, child: true });
+  });
+
+  it('taki punkt da się przepiąć na przejazd z oglądanego wariantu, a postoju w tym wariancie już nie', () => {
+    expect(routeStopTarget(stale, 'd4-kozy')?.ref).toBe('d4-wyjazd');
+    expect(routeStopTarget(stale, 'd4-kozy', B)).toBeNull();
+    const first = setRouteStop(stale, 'd4-kozy', true)!.doc;
+    const both = setRouteStop(first, 'd4-kooperatywa', true)!.doc;
+    expect(find(both, 'd4-wyjazd').routeStopsMin).toBe(50);
+    expect(find(both, 'd4-kooperatywa').routeStop).toBe(true);
+  });
+
+  it('podpunkt zwykłego bloku zostaje równoległy', () => {
+    const chatka = fixture('chatka');
+    const child = chatka.items.find((item) => item.ref === 'ekipa-drewno')!;
+    expect(scheduleDay(chatka, child.dayRef!).items.find((item) => item.ref === child.ref)).toMatchObject({ child: true });
+  });
+});
