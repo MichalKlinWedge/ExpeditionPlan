@@ -107,6 +107,10 @@ export default function HelpPage() {
             <Step name="Kalendarz, wydruk, eksport">
               plan do Google/Apple Calendar (link ICS), wersja do druku/PDF i kopia całego planu w JSON.
             </Step>
+            <Step name="Pamiątka z wyjazdu">
+              od pierwszego dnia wyjazdu: liczby (punkty, kilometry, wydatki), mapa trasy, dziennik ze zdjęciami dzień po dniu i rozliczenie — także do druku/PDF. Minione wyjazdy są w
+              „Archiwum” pod listą wyjazdów.
+            </Step>
           </ul>
         </Section>
 

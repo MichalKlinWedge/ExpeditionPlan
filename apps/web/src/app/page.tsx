@@ -9,6 +9,7 @@ import { ROLE, tripDates } from "@/lib/labels";
 /**
  * Lista moich wyjazdów z moją rolą (widok `my_trips`). „Nowy wyjazd” i przykłady tylko dla kont,
  * które mogą zakładać wyjazdy; konto bez zaproszenia dostaje informację, jak wejść do planu.
+ * Wyjazdy po dacie końca — w zwiniętym „Archiwum” pod wyjazdami przed nami (najnowsze na górze), z pamiątką.
  */
 export default function Home() {
   return (
@@ -24,6 +25,9 @@ async function TripList() {
   const { supabase, canCreateTrips } = await requireUser("/");
   const { data, error } = await supabase.from("my_trips").select("*").order("start_date");
   if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  const today = new Date().toISOString().slice(0, 10);
+  const ahead = data.filter((trip) => trip.end_date! >= today);
+  const archive = data.filter((trip) => trip.end_date! < today).sort((a, b) => b.start_date!.localeCompare(a.start_date!));
   return (
     <>
       <div className="flex items-center justify-between">
@@ -46,32 +50,59 @@ async function TripList() {
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {data.map((trip) => {
-            const draft = trip.title!.startsWith(DRAFT);
-            return (
-              <li key={trip.id}>
-                <Link
-                  href={`/trips/${trip.id}`}
-                  className={`card group flex h-full flex-col gap-2 p-4 transition hover:-translate-y-0.5 hover:border-sea ${draft ? "border-dashed" : ""}`}>
-                  <span className="flex items-start justify-between gap-3">
-                    <span className="font-display text-lg leading-snug font-semibold group-hover:text-sea">{draft ? trip.title!.slice(DRAFT.length) : trip.title}</span>
-                    {draft ? <span className="chip shrink-0">szkic AI</span> : <Countdown start={trip.start_date!} end={trip.end_date!} />}
-                  </span>
-                  <span className="mt-auto text-sm text-zinc-500">
-                    {tripDates(trip.start_date!, trip.end_date!)} · {ROLE[trip.role!]}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {ahead.length > 0 ? (
+            <TripGrid trips={ahead} />
+          ) : (
+            <p className="text-sm text-zinc-500">Żadnego wyjazdu przed Tobą — poprzednie są w archiwum.</p>
+          )}
+          {archive.length > 0 && (
+            <details className="flex flex-col gap-3" data-remember="archiwum">
+              <summary className="cursor-pointer font-semibold text-zinc-600 dark:text-zinc-400">Archiwum ({archive.length})</summary>
+              <div className="mt-3">
+                <TripGrid trips={archive} memories />
+              </div>
+            </details>
+          )}
+        </>
       )}
     </>
   );
 }
 
 const DRAFT = "Szkic AI: ";
+
+type TripRow = { id: string | null; title: string | null; start_date: string | null; end_date: string | null; role: string | null };
+
+function TripGrid({ trips, memories = false }: { trips: TripRow[]; memories?: boolean }) {
+  return (
+    <ul className="grid gap-3 sm:grid-cols-2">
+      {trips.map((trip) => {
+        const draft = trip.title!.startsWith(DRAFT);
+        return (
+          <li key={trip.id} className="flex flex-col gap-1">
+            <Link
+              href={`/trips/${trip.id}`}
+              className={`card group flex h-full flex-col gap-2 p-4 transition hover:-translate-y-0.5 hover:border-sea ${draft ? "border-dashed" : ""}`}>
+              <span className="flex items-start justify-between gap-3">
+                <span className="font-display text-lg leading-snug font-semibold group-hover:text-sea">{draft ? trip.title!.slice(DRAFT.length) : trip.title}</span>
+                {draft ? <span className="chip shrink-0">szkic AI</span> : <Countdown start={trip.start_date!} end={trip.end_date!} />}
+              </span>
+              <span className="mt-auto text-sm text-zinc-500">
+                {tripDates(trip.start_date!, trip.end_date!)} · {ROLE[trip.role!]}
+              </span>
+            </Link>
+            {memories && !draft && (
+              <Link href={`/trips/${trip.id}/memories`} className="self-start text-xs text-sea underline">
+                Pamiątka z wyjazdu →
+              </Link>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 /** „za 54 dni” / „trwa” / „za nami” — data dzisiejsza w strefie przeglądarki nie jest potrzebna, wystarczy dzień. */
 function Countdown({ start, end }: { start: string; end: string }) {

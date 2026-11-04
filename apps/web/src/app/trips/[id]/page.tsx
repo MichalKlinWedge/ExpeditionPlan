@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PhoneIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
 import { TripNews } from "@/components/trip-news";
@@ -161,6 +161,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           <Tile href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />
         )}
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/print`} icon={<PrinterIcon />} title="Wydruk / PDF" hint="plan na papierze, bez telefonu" />}
+        {!title.startsWith(DRAFT) && trip.data.start_date! <= new Date().toISOString().slice(0, 10) && <Tile href={`/trips/${id}/memories`} icon={<PeakIcon />} title="Pamiątka z wyjazdu" hint="liczby, trasa, zdjęcia dzień po dniu" />}
       </nav>
 
       {/* Eksport to plik (route handler), nie strona — zwykły link. */}
