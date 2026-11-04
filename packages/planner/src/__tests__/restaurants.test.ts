@@ -31,6 +31,21 @@ describe('knajpy z Geoapify Places', () => {
     expect(eateryFrom({ properties: { lat: 1, lon: 2 } })).toBeNull();
   });
 
+  it('schroniska: rodzaj „hut” tylko bez kategorii jedzenia, chatka bez obsługi i `food=no` odpadają', async () => {
+    const hut = (tourism: string, extra: object = {}, categories = ['accommodation', 'accommodation.hut']) => ({ properties: { name: 'Jagodna', lat: 50.27, lon: 16.53, categories, datasource: { raw: { tourism, ...extra } } } });
+    expect(eateryFrom(hut('alpine_hut'))?.kind).toBe('hut');
+    expect(eateryFrom(hut('alpine_hut', {}, ['accommodation.hut', 'catering.restaurant']))?.kind).toBe('restaurant');
+    expect(eateryFrom(hut('wilderness_hut'))).toBeNull();
+    expect(eateryFrom(hut('alpine_hut', { food: 'no' }))).toBeNull();
+    const urls: string[] = [];
+    const fake = (async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify({ features: [] }), { status: 200 });
+    }) as typeof fetch;
+    await findEateries('test-key', { lat: 50.27, lng: 16.53, radiusM: 1000, kinds: ['restaurant', 'hut'] }, fake);
+    expect(new URL(urls[0]!).searchParams.get('categories')).toBe('catering.restaurant,accommodation.hut');
+  });
+
   it('zapytanie: kategorie rodzajów, okrąg i bliskość (lon,lat), dieta jako `conditions`', async () => {
     const urls: string[] = [];
     const fake = (async (url: string) => {

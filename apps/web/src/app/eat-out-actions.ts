@@ -17,7 +17,7 @@ import { countriesFor } from "@/lib/countries";
 export type EateryResult = Eatery & { distanceM: number; open: OpenAtMeal; summary: string };
 export type EateryAnswer = { error: string } | { center: SearchCenter; results: EateryResult[] };
 
-const KINDS = new Set<EateryKind>(["restaurant", "fast_food", "cafe", "pub"]);
+const KINDS = new Set<EateryKind>(["restaurant", "fast_food", "cafe", "pub", "hut"]);
 const DIETS = new Set<EateryDiet>(["vegetarian", "vegan", "gluten_free", "halal"]);
 const OPEN_FIRST = { open: 0, partly: 1, unknown: 2, closed: 3 } as const;
 

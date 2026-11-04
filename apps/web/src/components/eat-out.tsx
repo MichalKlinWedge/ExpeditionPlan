@@ -33,7 +33,7 @@ const input = "field min-w-0 px-2 py-1 text-sm";
 
 export function EatOutSearch({ tripId, doc, ids, itemRef, onClose }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string; onClose: () => void }) {
   const router = useRouter();
-  const [kinds, setKinds] = useState<EateryKind[]>(["restaurant", "fast_food"]);
+  const [kinds, setKinds] = useState<EateryKind[]>(["restaurant", "fast_food", "hut"]);
   const [radiusM, setRadiusM] = useState(1000);
   const [diet, setDiet] = useState("");
   const [near, setNear] = useState("");

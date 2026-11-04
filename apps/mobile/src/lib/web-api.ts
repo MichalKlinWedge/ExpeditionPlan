@@ -29,7 +29,7 @@ export async function readReceiptPhoto(tripId: string, currencies: string[], ima
   return body.draft ?? null;
 }
 
-export type EateryKind = 'restaurant' | 'fast_food' | 'cafe' | 'pub';
+export type EateryKind = 'restaurant' | 'fast_food' | 'cafe' | 'pub' | 'hut';
 export type EateryDiet = 'vegetarian' | 'vegan' | 'gluten_free' | 'halal';
 
 /** Wynik `/api/eateries` — jak `EateryResult` w `packages/planner/src/meal-eateries.ts` (`Eatery` z core + odległość i godziny). */

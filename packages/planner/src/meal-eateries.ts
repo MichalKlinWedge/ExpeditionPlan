@@ -20,7 +20,7 @@ export type MealEateriesOptions = {
   center?: SearchCenter;
 };
 
-const KINDS = new Set<EateryKind>(['restaurant', 'fast_food', 'cafe', 'pub']);
+const KINDS = new Set<EateryKind>(['restaurant', 'fast_food', 'cafe', 'pub', 'hut']);
 const DIETS = new Set<EateryDiet>(['vegetarian', 'vegan', 'gluten_free', 'halal']);
 const OPEN_FIRST = { open: 0, partly: 1, unknown: 2, closed: 3 } as const;
 
@@ -32,7 +32,7 @@ const OPEN_FIRST = { open: 0, partly: 1, unknown: 2, closed: 3 } as const;
 export const EateriesRequest = z.object({
   tripId: z.uuid(),
   itemRef: z.string().min(1).max(200),
-  kinds: z.array(z.enum(['restaurant', 'fast_food', 'cafe', 'pub'])).max(4),
+  kinds: z.array(z.enum(['restaurant', 'fast_food', 'cafe', 'pub', 'hut'])).max(5),
   radiusM: z.number().int().min(200).max(5000),
   diet: z.enum(['vegetarian', 'vegan', 'gluten_free', 'halal']).optional(),
   position: z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).optional(),

@@ -13,6 +13,8 @@ const CATEGORIES: Record<EateryKind, string[]> = {
   fast_food: ['catering.fast_food', 'catering.food_court'],
   cafe: ['catering.cafe'],
   pub: ['catering.pub', 'catering.bar', 'catering.biergarten'],
+  // Schroniska są w OSM noclegiem (`tourism=alpine_hut`), zwykle bez znaczników jedzenia.
+  hut: ['accommodation.hut'],
 };
 
 /** Filtry diety z `conditions` Geoapify. */
@@ -41,7 +43,7 @@ const OSM_TYPE: Record<string, string> = { n: 'node', w: 'way', r: 'relation', n
 const yes = (value: unknown) => value === 'yes' || value === 'only';
 
 function kindOf(categories: string[]): EateryKind {
-  for (const kind of ['restaurant', 'fast_food', 'cafe', 'pub'] as const) if (CATEGORIES[kind].some((category) => categories.includes(category))) return kind;
+  for (const kind of ['restaurant', 'fast_food', 'cafe', 'pub', 'hut'] as const) if (CATEGORIES[kind].some((category) => categories.includes(category))) return kind;
   return 'restaurant';
 }
 
@@ -49,6 +51,9 @@ export function eateryFrom(feature: Feature): Eatery | null {
   const p = feature.properties ?? {};
   if (!p.name || typeof p.lat !== 'number' || typeof p.lon !== 'number') return null;
   const raw = p.datasource?.raw ?? {};
+  const kind = kindOf(p.categories ?? []);
+  // Chatka bez obsługi albo schronisko z `food=no` nie nakarmi.
+  if (kind === 'hut' && (raw.tourism === 'wilderness_hut' || raw.food === 'no')) return null;
   const cuisine = raw.cuisine ?? p.catering?.cuisine;
   const hours = raw.opening_hours ?? p.opening_hours;
   const website = raw.website ?? raw['contact:website'] ?? p.website;
@@ -58,7 +63,7 @@ export function eateryFrom(feature: Feature): Eatery | null {
     name: p.name,
     lat: p.lat,
     lng: p.lon,
-    kind: kindOf(p.categories ?? []),
+    kind,
     ...(p.address_line2 ? { address: p.address_line2 } : p.formatted ? { address: p.formatted } : {}),
     ...(cuisine ? { cuisine } : {}),
     ...(hours ? { openingHours: hours } : {}),

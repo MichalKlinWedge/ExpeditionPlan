@@ -48,7 +48,7 @@ type Props = {
 export function EateriesCard({ trip, tripId, item, onSave }: Props) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
-  const [kinds, setKinds] = useState<EateryKind[]>(['restaurant', 'fast_food']);
+  const [kinds, setKinds] = useState<EateryKind[]>(['restaurant', 'fast_food', 'hut']);
   const [radiusM, setRadiusM] = useState(1000);
   const [diet, setDiet] = useState<EateryDiet | ''>('');
   const [answer, setAnswer] = useState<EateryAnswer | null>(null);

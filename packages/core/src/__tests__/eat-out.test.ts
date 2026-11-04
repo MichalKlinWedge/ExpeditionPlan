@@ -41,6 +41,7 @@ describe('knajpy w pobliżu posiłku', () => {
 
   it('kuchnia po polsku i opis z odległością', () => {
     expect(cuisineLabel('pizza;italian;some_thing')).toBe('pizza, włoska, some thing');
+    expect(eaterySummary(eatery('Schronisko', { kind: 'hut' }), null)).toBe('schronisko (posiłki do sprawdzenia)');
     expect(eaterySummary(eatery('Café', { cuisine: 'moroccan', vegetarian: true }), { lat: 31.6258, lng: -7.9891 })).toBe('marokańska · wege · 40 m');
   });
 

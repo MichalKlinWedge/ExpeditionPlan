@@ -20,7 +20,7 @@ type Place = Doc['places'][number];
 type Variant = Doc['variants'][number];
 type Group = Doc['variantGroups'][number];
 
-export type EateryKind = 'restaurant' | 'fast_food' | 'cafe' | 'pub';
+export type EateryKind = 'restaurant' | 'fast_food' | 'cafe' | 'pub' | 'hut';
 
 /** Knajpa z wyszukiwania (Geoapify Places → `planner/src/restaurants.ts`). */
 export type Eatery = {
@@ -40,7 +40,7 @@ export type Eatery = {
   vegan?: boolean;
 };
 
-export const EATERY_KINDS: Record<EateryKind, string> = { restaurant: 'restauracja', fast_food: 'szybkie jedzenie', cafe: 'kawiarnia', pub: 'pub / bar' };
+export const EATERY_KINDS: Record<EateryKind, string> = { restaurant: 'restauracja', fast_food: 'szybkie jedzenie', cafe: 'kawiarnia', pub: 'pub / bar', hut: 'schronisko' };
 
 const CUISINE: Record<string, string> = {
   regional: 'regionalna', local: 'lokalna', italian: 'włoska', pizza: 'pizza', burger: 'burgery', kebab: 'kebab', chinese: 'chińska', japanese: 'japońska',
@@ -137,7 +137,8 @@ export const formatDistance = (meters: number) => (meters < 1000 ? `${Math.round
 /** Opis knajpy do wariantu i listy: „pizza, włoska · 350 m · 12:00–23:00”. */
 export function eaterySummary(eatery: Eatery, center: { lat: number; lng: number } | null, open?: OpenAtMeal): string {
   return [
-    cuisineLabel(eatery.cuisine) ?? EATERY_KINDS[eatery.kind],
+    // OSM zwykle nie mówi, czy schronisko wydaje posiłki.
+    cuisineLabel(eatery.cuisine) ?? (eatery.kind === 'hut' ? 'schronisko (posiłki do sprawdzenia)' : EATERY_KINDS[eatery.kind]),
     eatery.vegan ? 'wegańskie' : eatery.vegetarian ? 'wege' : undefined,
     center === null ? undefined : formatDistance(metersBetween(center, eatery)),
     open?.hours,
