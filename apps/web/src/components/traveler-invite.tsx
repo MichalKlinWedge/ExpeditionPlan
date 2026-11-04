@@ -2,31 +2,24 @@
 
 import { useState, useTransition } from "react";
 
-import { inviteTraveler, type TravelerInviteState } from "@/app/share-actions";
+import type { FormState } from "@/app/actions";
+import { emailTravelerInvite, inviteTraveler, type TravelerInviteState } from "@/app/share-actions";
+import { travelerInviteMessage } from "@/lib/invite-message";
 
 /**
  * „Zaproś” przy osobie z planu bez konta: jednorazowy link dla niej i gotowa wiadomość (link,
- * aplikacja na telefon, instrukcja) do skopiowania albo udostępnienia (SMS, komunikator).
+ * aplikacja na telefon, instrukcja) do wysłania e-mailem z serwisu (gdy jest SMTP), skopiowania
+ * albo udostępnienia (SMS, komunikator).
  */
 export function TravelerInvite({ tripId, travelerId, name, tripTitle, dates }: { tripId: string; travelerId: string; name: string; tripTitle: string; dates: string }) {
   const [role, setRole] = useState<"viewer" | "editor">("viewer");
   const [state, setState] = useState<TravelerInviteState>({});
   const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState<FormState>({});
   const [pending, start] = useTransition();
 
-  const message =
-    state.token === undefined
-      ? null
-      : [
-          `Cześć ${name}!`,
-          `Zapraszam Cię do wyjazdu „${tripTitle}” (${dates}) w Expedition Planner — plan dzień po dniu, mapa i wspólne wydatki.`,
-          "",
-          `1. Otwórz link (tylko dla Ciebie, ważny 14 dni) i zaloguj się linkiem z maila: ${window.location.origin}/join/${state.token}`,
-          state.apkUrl
-            ? `2. Aplikacja na telefon (Android): ${state.apkUrl} — otwórz w Chrome, przy ostrzeżeniu wybierz „Zainstaluj mimo to” i zaloguj się tym samym mailem.`
-            : "2. Link do aplikacji na telefon (Android) wyślę osobno.",
-          `3. Jak to działa: ${window.location.origin}/help`,
-        ].join("\n");
+  const message = state.token === undefined ? null : travelerInviteMessage({ name, tripTitle, dates, origin: window.location.origin, token: state.token, apkUrl: state.apkUrl });
 
   if (message === null) {
     return (
@@ -49,8 +42,23 @@ export function TravelerInvite({ tripId, travelerId, name, tripTitle, dates }: {
   return (
     <span className="flex w-full flex-col gap-1.5">
       <textarea readOnly value={message} rows={7} className="field w-full p-2 text-xs" onFocus={(event) => event.target.select()} aria-label={`Wiadomość z zaproszeniem dla: ${name}`} />
+      {state.canEmail && (
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            start(async () => setSent(await emailTravelerInvite(tripId, travelerId, state.token!, email)));
+          }}>
+          <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} disabled={pending} placeholder="adres@example.com" aria-label={`E-mail: ${name}`} className="field min-w-52 flex-1 px-2 py-1 text-sm" />
+          <button disabled={pending} className="btn-primary btn-sm">
+            {pending ? "Wysyłam…" : "Wyślij e-mailem"}
+          </button>
+          {sent.ok && <span className="text-xs text-emerald-700 dark:text-emerald-400">{sent.ok}</span>}
+          {sent.error && <span className="text-xs text-red-600">{sent.error}</span>}
+        </form>
+      )}
       <span className="flex flex-wrap items-center gap-2">
-        <button type="button" className="btn-primary btn-sm" onClick={() => void navigator.clipboard.writeText(message).then(() => setCopied(true))}>
+        <button type="button" className="btn-secondary btn-sm" onClick={() => void navigator.clipboard.writeText(message).then(() => setCopied(true))}>
           {copied ? "Skopiowano ✓" : "Kopiuj wiadomość"}
         </button>
         {typeof navigator.share === "function" && (
