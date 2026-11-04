@@ -203,6 +203,12 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - Route Matrix = max(źródła, cele) × min(źródła, cele, 10) kredytów; maks. 1000 elementów.
 - Źródło: https://www.geoapify.com/pricing-details/
 
+### Mapy.com REST API (sprawdzone 4.11.2026)
+- **NIE do zapisywanych tras.** Regulamin (obowiązuje od 1.06.2025), pkt 4.6.2: zakaz przechowywania i cache'owania wyników funkcji API oraz eksportu danych z usługi. Plan i telefon offline trzymają czas, dystans i linię, więc wynik API tu nie wejdzie bez zgody Seznam. Atrybucja wymagana (pkt 3.2, 4.4).
+- Routing: `routeType` m.in. `foot_fast`, `foot_hiking`; odpowiedź `length` (m), `duration` (s), `geometry`; maks. 15 punktów pośrednich. Trasa = 4 kredyty, wysokość = 4; taryfa Basic 250 000 kredytów/mies. Adresu końcówki i sposobu podania klucza nie sprawdzono.
+- Używamy wyłącznie linku do trasy (`tracks.url`), liczb przepisanych przez użytkownika z mapy i pliku GPX, który sam wyeksportował. Format krótkich linków `mapy.com/s/…` i parametru `rc` nie jest udokumentowany — nie dekodujemy ich.
+- Źródła: https://developer.mapy.com/en/terms-and-conditions, https://developer.mapy.com/pricing/, https://developer.mapy.com/en/rest-api/funkce/planovani/
+
 ### GraphHopper
 - Free: **500 kredytów/dzień**, max **5 punktów** na zapytanie, limit kredytów na minutę (bez liczby), **tylko niekomercyjnie**. Basic: 69 EUR/mies. netto.
 - Źródło: https://www.graphhopper.com/pricing/

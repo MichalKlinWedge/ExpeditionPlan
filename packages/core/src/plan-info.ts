@@ -37,7 +37,7 @@ export function legLabel(item: Item): string | null {
     return `${leg.distanceKm !== undefined ? `${km(leg.distanceKm)} · ` : ''}${formatMinutes(leg.durationMin)}${worse} (trasa z mapy)`;
   }
   const parts = [leg.durationMin === undefined ? null : `ok. ${formatMinutes(leg.durationMin)}`, leg.distanceKm === undefined ? null : `ok. ${km(leg.distanceKm)}`].filter((part) => part !== null);
-  return parts.length === 0 ? null : `${parts.join(', ')} (szacunek)`;
+  return parts.length === 0 ? null : `${parts.join(', ')} (${leg.routed === false ? 'wpisane z mapy' : 'szacunek'})`;
 }
 
 /** Miejsce punktu bez współrzędnych — nie ma go na mapie, nie policzy się do niego trasy. */

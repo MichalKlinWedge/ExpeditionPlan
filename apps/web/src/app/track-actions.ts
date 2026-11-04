@@ -1,7 +1,7 @@
 "use server";
 
-import { DocTrack, TripDocument } from "@expeditionplan/core";
-import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { DocTrack, setItemRoute, TripDocument } from "@expeditionplan/core";
+import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
 
@@ -90,6 +90,51 @@ export async function saveTrack(tripId: string, itemRef: string, upload: TrackUp
       ok: `Zapisano ślad: ${stats.distanceKm.toLocaleString("pl-PL")} km${stats.ascentM !== null ? `, ↑ ${stats.ascentM} m` : ""}.`,
     };
   });
+}
+
+const RouteFields = z.object({
+  // Tylko http(s): link trafia do `href` i do przeglądarki telefonu.
+  url: z.url().regex(/^https?:\/\//i, "Link musi zaczynać się od https://.").max(500).nullable().optional(),
+  distanceKm: z.number().nonnegative().max(5000).optional(),
+  durationMin: z.number().int().nonnegative().max(14_400).optional(),
+  ascentM: z.number().int().nonnegative().max(30_000).optional(),
+});
+
+/**
+ * Trasa z zewnętrznej mapy: link i liczby wpisane z mapy (`setItemRoute`). Ślad idzie przez `saveElements`,
+ * a punkt przez `savePlanEdit` — ręczna edycja daje `user_locked`, więc „Przelicz przejazdy” jej nie nadpisze.
+ */
+export async function saveItemRoute(tripId: string, itemRef: string, fields: z.input<typeof RouteFields>): Promise<FormState> {
+  const parsed = RouteFields.safeParse(fields);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Niepoprawne dane trasy." };
+  const { url, distanceKm, durationMin, ascentM } = parsed.data;
+  const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
+  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
+  if (error) return { error: message(error) };
+  if (data === null) return { error: "Nie ma takiego wyjazdu." };
+  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const edit = setItemRoute(stateFromPayload(payload).doc, itemRef, `id-${uuidv7()}`, {
+    ...(url !== undefined ? { url } : {}),
+    ...(distanceKm !== undefined ? { distanceKm } : {}),
+    ...(durationMin !== undefined ? { durationMin } : {}),
+    ...(ascentM !== undefined ? { ascentM } : {}),
+  });
+  if (edit === null) return { error: "Tego punktu już nie ma — odśwież stronę." };
+  const checked = TripDocument.safeParse(edit.doc);
+  if (!checked.success) {
+    const issue = checked.error.issues[0]!;
+    return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
+  }
+  const track = checked.data.tracks.find((each) => each.ref === edit.track.ref)!;
+  const item = checked.data.items.find((each) => each.ref === itemRef)!;
+  try {
+    const ids = await saveElements(supabase, tripId, checked.data, [{ collection: "tracks", element: track, op: edit.trackCreated ? "insert" : "update" }], refIndex(payload.tables));
+    await savePlanEdit(supabase, tripId, { doc: checked.data, changed: [item] }, ids);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  refresh();
+  return { ok: durationMin !== undefined ? `Zapisano trasę. Czas punktu: ${Math.floor(durationMin / 60)} h ${durationMin % 60} min — plan dnia przeliczony.` : "Zapisano trasę." };
 }
 
 /** Usuwa samą linię śladu; opis trasy (nazwa, trudność, oznakowanie) zostaje w planie. */

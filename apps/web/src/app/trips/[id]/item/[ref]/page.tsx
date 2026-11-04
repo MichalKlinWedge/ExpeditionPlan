@@ -1,4 +1,4 @@
-import { flightLine, flightOf, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, guideRowFor, type GuideSegment, itemIcon, linkGuideText, legLabel, type TripDocument } from "@expeditionplan/core";
+import { flightLine, flightOf, isFootRouteItem, routeLinkLabel, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, guideRowFor, type GuideSegment, itemIcon, linkGuideText, legLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { GuideButtons } from "@/components/guide-button";
 import { ItemHeaderEditor } from "@/components/item-header";
+import { RouteEstimate } from "@/components/route-estimate";
 import { TrackUpload } from "@/components/track-upload";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -141,18 +142,25 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
         )}
       </section>
 
-      {(track !== undefined || item.kind === "activity" || item.leg?.mode === "walk" || item.leg?.mode === "hike") && (track?.geojson !== undefined || canEdit) && (
+      {(track !== undefined || isFootRouteItem(item)) && (track?.geojson !== undefined || track?.url !== undefined || canEdit) && (
         <section className="card flex flex-col gap-2 p-4 text-sm">
-          <h2 className="text-lg font-semibold">Ślad</h2>
+          <h2 className="text-lg font-semibold">Trasa</h2>
+          {track !== undefined && (
+            <p>
+              <strong>{track.name}</strong>
+              {track.distanceKm !== undefined ? ` · ${track.distanceKm.toLocaleString("pl-PL")} km` : ""}
+              {track.ascentM !== undefined ? ` · ↑ ${track.ascentM} m` : ""}
+              {track.descentM !== undefined ? ` ↓ ${track.descentM} m` : ""}
+              {track.durationMin !== undefined ? ` · ok. ${Math.floor(track.durationMin / 60)} h ${track.durationMin % 60} min` : ""}
+            </p>
+          )}
+          {track?.url !== undefined && /^https?:\/\//i.test(track.url) && (
+            <a href={track.url} target="_blank" rel="noreferrer" className="self-start text-sea underline">
+              🗺 {routeLinkLabel(track.url)}
+            </a>
+          )}
           {track?.geojson !== undefined ? (
             <>
-              <p>
-                <strong>{track.name}</strong>
-                {track.distanceKm !== undefined ? ` · ${track.distanceKm.toLocaleString("pl-PL")} km` : ""}
-                {track.ascentM !== undefined ? ` · ↑ ${track.ascentM} m` : ""}
-                {track.descentM !== undefined ? ` ↓ ${track.descentM} m` : ""}
-                {track.durationMin !== undefined ? ` · ok. ${Math.floor(track.durationMin / 60)} h ${track.durationMin % 60} min (DIN 33466)` : ""}
-              </p>
               {(track.difficulty || track.waymarking) && <p className="text-zinc-600 dark:text-zinc-400">{[track.difficulty, track.waymarking].filter(Boolean).join(" · ")}</p>}
               {item.dayRef && (
                 <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef)}`} className="self-start text-sea underline">
@@ -162,7 +170,28 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
               <p className="text-xs text-zinc-500">Na telefonie ślad jest offline — „Gdzie jestem na śladzie” w szczegółach punktu.</p>
             </>
           ) : (
-            <p className="text-zinc-500">{track ? `Trasa „${track.name}” nie ma jeszcze linii z pliku GPX.` : "Brak śladu GPX."}</p>
+            canEdit && <p className="text-zinc-500">{track ? "Na mapie planu nie ma jeszcze linii tej trasy — da ją plik GPX." : "Brak trasy."}</p>
+          )}
+          {canEdit && (
+            <RouteEstimate
+              tripId={id}
+              itemRef={item.ref}
+              url={track?.url}
+              current={{
+                ...((item.leg?.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm) !== undefined ? { distanceKm: (item.leg?.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm)! } : {}),
+                ...((item.durationMin ?? item.leg?.durationMin) !== undefined ? { durationMin: (item.durationMin ?? item.leg?.durationMin)! } : {}),
+                ...((item.activity?.ascentM ?? track?.ascentM) !== undefined ? { ascentM: (item.activity?.ascentM ?? track?.ascentM)! } : {}),
+              }}
+              fromFile={
+                track?.geojson === undefined
+                  ? undefined
+                  : {
+                      ...(track.distanceKm !== undefined ? { distanceKm: track.distanceKm } : {}),
+                      ...(track.durationMin !== undefined ? { durationMin: track.durationMin } : {}),
+                      ...(track.ascentM !== undefined ? { ascentM: track.ascentM } : {}),
+                    }
+              }
+            />
           )}
           {canEdit && <TrackUpload tripId={id} itemRef={item.ref} hasLine={track?.geojson !== undefined} />}
         </section>

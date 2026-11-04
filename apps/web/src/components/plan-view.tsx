@@ -26,6 +26,7 @@ import {
   moveWithinDay,
   type PlanEdit as Edit,
   type PlanItem as Item,
+  routeLinkLabel,
   proposeCuts,
   removeItemClosingGap,
   type Scenario,
@@ -454,6 +455,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                             item.title
                           )}{" "}
                           <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
+                          <RouteLink doc={doc} item={item} />
                           {itemBase && guided?.includes(item.ref) && (
                             <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                               📖 opis
@@ -741,6 +743,17 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
   );
 }
 
+/** „🗺 trasa” przy punkcie z linkiem do trasy (mapy.com), do podejrzenia przebiegu wprost z planu dnia. */
+function RouteLink({ doc, item }: { doc: TripDocument; item: Item }) {
+  const url = doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.url;
+  if (url === undefined || !/^https?:\/\//i.test(url)) return null;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" title={routeLinkLabel(url)} className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:underline">
+      🗺 trasa
+    </a>
+  );
+}
+
 /** Grupowanie, opis (wszystkie / z opisem / bez), filtry z licznikami i szukanie; „wyczyść” wraca do całej puli. */
 function PoolToolbar({ doc, pool, guided, query, onChange }: { doc: TripDocument; pool: TripDocument["items"]; guided: ReadonlySet<string>; query: PoolQuery; onChange: (query: PoolQuery) => void }) {
   const toggle = (filter: PoolFilter) => onChange({ ...query, filters: query.filters.includes(filter) ? query.filters.filter((each) => each !== filter) : [...query.filters, filter] });
@@ -957,6 +970,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     ) : (
                       <span className="font-medium">{item.title}</span>
                     )}
+                    {source && <RouteLink doc={doc} item={source} />}
                     {guided?.includes(item.ref) &&
                       (itemBase ? (
                         <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">

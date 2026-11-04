@@ -1,4 +1,4 @@
-import { type PlanItem, trackPosition, type TrackPosition, type TripDocument } from '@expeditionplan/core';
+import { type PlanItem, routeLinkLabel, trackPosition, type TrackPosition, type TripDocument } from '@expeditionplan/core';
 import * as Location from 'expo-location';
 import { useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
@@ -10,9 +10,9 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
- * Ślad GPX punktu w szczegółach: długość, przewyższenie, czas i „Gdzie jestem na śladzie” —
- * pozycja z GPS telefonu (działa bez internetu) rzutowana na linię z planu: odległość od śladu,
- * przebyte i pozostałe km, podejścia przed wami.
+ * Trasa punktu w szczegółach: długość, przewyższenie, czas, link do trasy (mapy.com, wymaga internetu),
+ * a przy śladzie GPX „Gdzie jestem na śladzie” — pozycja z GPS telefonu (działa bez internetu) rzutowana
+ * na linię z planu: odległość od śladu, przebyte i pozostałe km, podejścia przed wami.
  */
 
 const km = (value: number) => `${value.toLocaleString('pl-PL')} km`;
@@ -23,11 +23,13 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
   const [position, setPosition] = useState<TrackPosition | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
-  if (track?.geojson === undefined) return null;
-  const line = track.geojson as Parameters<typeof trackPosition>[0];
-  const start = line.coordinates[0]!;
+  const url = track?.url !== undefined && /^https?:\/\//i.test(track.url) ? track.url : undefined;
+  if (track === undefined || (track.geojson === undefined && url === undefined)) return null;
+  const line = track.geojson as Parameters<typeof trackPosition>[0] | undefined;
+  const start = line?.coordinates[0];
 
   const locate = async () => {
+    if (line === undefined) return;
     setStatus('Szukam pozycji…');
     try {
       if (!(await Location.requestForegroundPermissionsAsync()).granted) return setStatus('Brak zgody na lokalizację.');
@@ -43,7 +45,7 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
       <ThemedText type="smallBold" themeColor="accent">
-        ŚLAD
+        {line === undefined ? 'TRASA' : 'ŚLAD'}
       </ThemedText>
       <ThemedText type="small">
         {track.name}
@@ -69,8 +71,9 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
         </ThemedText>
       )}
       <View style={styles.buttons}>
-        <Button small variant="primary" label="📍 Gdzie jestem na śladzie" onPress={() => void locate()} />
-        <Button small label="Do startu" onPress={() => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${start[1]},${start[0]}`)} />
+        {url !== undefined && <Button small label={`🗺 ${routeLinkLabel(url)}`} onPress={() => void Linking.openURL(url)} />}
+        {line !== undefined && <Button small variant="primary" label="📍 Gdzie jestem na śladzie" onPress={() => void locate()} />}
+        {start !== undefined && <Button small label="Do startu" onPress={() => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${start[1]},${start[0]}`)} />}
       </View>
     </ThemedView>
   );
