@@ -67,6 +67,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
 
       {canEdit && (
         <PlanActionButton
+          ai
           run={draftPractical.bind(null, id)}
           label={draft.success ? "Przygotuj nowy szkic z AI" : "Przygotuj z AI"}
           note="Notatki, kontakty alarmowe, pakowanie, zadania i źródła — szkic do akceptacji (Gemini, ok. 30 s)"

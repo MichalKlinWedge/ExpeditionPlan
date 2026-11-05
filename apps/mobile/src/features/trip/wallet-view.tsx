@@ -408,8 +408,8 @@ function ExpenseForm({
       <ThemedText type="smallBold">{initial ? 'Popraw wydatek' : 'Nowy wydatek'}</ThemedText>
       {initial === undefined && tripId !== undefined && (
         <View style={styles.actions}>
-          <Button label="📷 Paragon" small disabled={reading} onPress={() => void scan('camera')} />
-          <Button label="🖼 Z galerii" small disabled={reading} onPress={() => void scan('library')} />
+          <Button label="📷✨ Paragon" small disabled={reading} onPress={() => void scan('camera')} />
+          <Button label="🖼✨ Z galerii" small disabled={reading} onPress={() => void scan('library')} />
           {reading && <ActivityIndicator />}
           {reading && (
             <ThemedText type="small" themeColor="textSecondary">

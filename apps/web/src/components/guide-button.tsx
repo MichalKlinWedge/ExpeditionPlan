@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { describeItem, removeGuide } from "@/app/guide-actions";
+import { SparkIcon } from "@/components/icons";
 
 /**
  * „Przygotuj opis z Wikipedii” / „Odśwież” i „Usuń opis” — akcje serwera z wynikiem pod spodem.
@@ -29,6 +30,7 @@ export function GuideButtons({ tripId, itemRef, guideId, hint: saved = "" }: { t
       </label>
       <div className="flex flex-wrap items-center gap-3">
         <button disabled={pending} onClick={() => start(async () => setState(await describeItem(tripId, itemRef, hint)))} className={guideId ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
+          <SparkIcon className="size-4" />
           {pending ? "Szukam artykułu i piszę… (ok. 10–30 s)" : guideId ? "Odśwież opis" : "Przygotuj opis z Wikipedii (AI)"}
         </button>
         {guideId && (

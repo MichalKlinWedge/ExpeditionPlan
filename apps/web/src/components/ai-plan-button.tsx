@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 
 import { planWithAi } from "@/app/actions";
+import { SparkIcon } from "@/components/icons";
 
 /**
  * „Zaplanuj z AI”: uruchamia łańcuch na serwerze i po sukcesie otwiera plan nowego szkicu.
@@ -39,6 +40,7 @@ export function AiPlanButton({ tripId, children }: { tripId: string; children?: 
           onClick={run}
           disabled={pending}
           className="btn-primary">
+          <SparkIcon className="size-4" />
           {pending ? `AI planuje… ${seconds} s` : "Zaplanuj z AI"}
         </button>
         <span className="text-xs text-zinc-500">

@@ -58,6 +58,7 @@ import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expedition
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { SparkIcon } from "@/components/icons";
 import { DayConstraints, DayEndField, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
@@ -478,6 +479,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                           )}
                           {itemBase && canEdit && item.kind !== "lodging" && !guided?.includes(item.ref) && (
                             <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="ml-1.5 text-xs text-sea underline dark:text-teal-300">
+                              <SparkIcon className="mr-0.5 inline size-3 align-[-1px]" />
                               opis AI
                             </Link>
                           )}

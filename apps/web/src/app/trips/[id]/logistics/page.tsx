@@ -274,6 +274,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
         <p className="text-xs text-zinc-500">Kandydaci na noclegi, auto, transfery — bez rezerwacji: linki prowadzą do wyszukiwarek, „Wybieram” oznacza opcję „do rezerwacji”.</p>
         {canEdit && (
           <PlanActionButton
+            ai
             run={draftCandidates.bind(null, id)}
             label={candidatesDraft.success ? "Nowi kandydaci z AI" : "Kandydaci z AI"}
             note="Noclegi per baza, auto, transfery — szacunki cen do sprawdzenia (Gemini, ok. 30 s)"

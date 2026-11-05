@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { acceptPatch, proposePatch, rejectPatch } from "@/app/tune-actions";
+import { SparkIcon } from "@/components/icons";
 
 /**
  * Czat dostrajający plan: rozmowa, polecenie, podgląd łatki (✓ wykona się, ✗ nie — z powodem)
@@ -94,6 +95,7 @@ export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Tu
         />
         <div className="flex flex-wrap items-center gap-2">
           <button disabled={pending || command.trim() === ""} className="btn-primary">
+            <SparkIcon className="size-4" />
             {pending ? "AI myśli…" : "Zaproponuj zmiany"}
           </button>
           {EXAMPLES.map((example) => (

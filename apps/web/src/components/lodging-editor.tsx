@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { readLodging, saveLodging, saveLodgingLink } from "@/app/lodging-actions";
+import { SparkIcon } from "@/components/icons";
 
 /**
  * Edycja obiektu noclegu na karcie punktu: link do jego strony oraz dane odczytane przez AI z tekstu
@@ -62,6 +63,7 @@ export function LodgingEditor({ tripId, itemRef, link }: { tripId: string; itemR
         </label>
         <p className="text-xs text-zinc-500">Booking.com nie pozwala automatycznie czytać swoich stron, więc dane pochodzą tylko z wklejonego tekstu. AI przygotuje szkic, a Ty wybierzesz, co zapisać.</p>
         <button type="button" disabled={pending || text.trim() === ""} onClick={read} className="btn-primary btn-sm self-start">
+          <SparkIcon className="size-4" />
           {pending ? "Czytam…" : "Odczytaj dane (AI)"}
         </button>
       </div>

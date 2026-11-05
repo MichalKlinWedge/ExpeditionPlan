@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
+import { SparkIcon } from "@/components/icons";
 
 /**
  * Narzędzie planu jako przycisk („Uzupełnij współrzędne”, „Przelicz przejazdy”): akcja serwera
  * z licznikiem sekund (usługi mają limity zapytań na sekundę), wynik pod przyciskiem. Po sukcesie
- * odświeża stronę — widok planu dostaje nową wersję danych i liczy dzień od nowa.
+ * odświeża stronę — widok planu dostaje nową wersję danych i liczy dzień od nowa. `ai` = działanie AI, z ikoną.
  */
-export function PlanActionButton({ run, label, note }: { run: () => Promise<FormState>; label: string; note: string }) {
+export function PlanActionButton({ run, label, note, ai = false }: { run: () => Promise<FormState>; label: string; note: string; ai?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [seconds, setSeconds] = useState(0);
@@ -37,6 +38,7 @@ export function PlanActionButton({ run, label, note }: { run: () => Promise<Form
     <div className="flex flex-col gap-1 text-sm">
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={click} disabled={pending} className="btn-secondary btn-sm">
+          {ai && <SparkIcon className="size-4" />}
           {pending ? `${label}… ${seconds} s` : label}
         </button>
         <span className="text-xs text-zinc-500">{note}</span>
