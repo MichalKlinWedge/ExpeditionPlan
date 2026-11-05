@@ -54,7 +54,7 @@ export function GuideArticle({ guide, targets, itemBase }: { guide: GuideContent
         <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" rel="noreferrer" className="underline">
           CC BY-SA 4.0
         </a>
-        ; streszczenie: AI.
+        ; streszczenie: AI{guide.edited ? ", poprawione ręcznie" : ""}.
       </p>
     </article>
   );

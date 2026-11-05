@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { TripDocument } from './schemas/trip-document.ts';
+
 /**
  * Przewodnik po punkcie planu (SPECYFIKACJA M8, tabela `audio_guides`): krótki opis, ciekawostki,
  * historia i zdjęcia — z artykułu Wikipedii (ugruntowanie), streszczone przez AI. Tekst pochodny
@@ -34,6 +36,8 @@ export const GuideContent = GuideDraft.extend({
   article: z.object({ title: z.string(), url: z.url(), lang: z.string(), site: z.enum(['wikipedia', 'wikivoyage']).default('wikipedia') }),
   /** Wskazówka organizatora dla AI, z którą powstał opis (do ponownego użycia przy odświeżeniu); w opisie miejsca: które dokładnie to miejsce. */
   hint: z.string().optional(),
+  /** Tekst poprawiony ręcznie: nowa wersja z AI by to zastąpiła, więc pytamy przed nią. */
+  edited: z.boolean().optional(),
 });
 
 export type GuideImage = z.infer<typeof GuideImage>;
@@ -93,6 +97,64 @@ export function placeGuide(
     if (found !== null) return found;
   }
   return null;
+}
+
+/** Ręczna poprawka tekstu: zdjęcia, źródło i podpowiedź zostają. */
+export function editGuideText(content: GuideContent, text: z.input<typeof GuideDraft>): GuideContent {
+  const { history: _old, ...rest } = content;
+  return { ...rest, ...GuideDraft.parse(text), edited: true };
+}
+
+type Doc = TripDocument;
+type Item = Doc['items'][number];
+
+const placeRefOf = (item: Item) => item.leg?.toPlaceRef ?? item.placeRef;
+
+/** Punkty planu po kolei: dzień po dniu, a w dniu wg `sortKey`. */
+function plannedItems(doc: Doc): Item[] {
+  const order = new Map([...doc.days].sort((a, b) => a.date.localeCompare(b.date)).map((day, index) => [day.ref, index]));
+  const dayOf = (item: Item) => (item.dayRef === undefined ? Number.MAX_SAFE_INTEGER : (order.get(item.dayRef) ?? Number.MAX_SAFE_INTEGER));
+  return [...doc.items].sort((a, b) => dayOf(a) - dayOf(b) || (a.sortKey ?? '').localeCompare(b.sortKey ?? ''));
+}
+
+/** Opis na liście „Opisy miejsc”. `placeRef` — opis miejsca; `itemRef` — opis punktu bez miejsca; oba puste — tego w planie już nie ma. */
+export type TripGuide = { rowId: string; title: string; content: GuideContent; placeRef?: string; itemRef?: string; usedBy: { ref: string; title: string }[] };
+
+/** Wszystkie opisy wyjazdu, w kolejności pierwszego użycia w planie; opisy niczego już nie pokazywane na końcu. */
+export function tripGuides(doc: Doc, rows: readonly GuideRow[], ids: Record<string, string>, audience = 'adult'): TripGuide[] {
+  const alive = rows.filter((row) => !row.deleted_at && row.audience === audience);
+  const refOf = new Map(Object.entries(ids).map(([ref, id]) => [id, ref]));
+  const used = new Map<string, TripGuide['usedBy']>();
+  for (const item of plannedItems(doc)) {
+    if (item.kind === 'lodging') continue;
+    const placeRef = placeRefOf(item);
+    const row = guideRowFor(alive, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef], audience);
+    if (row !== undefined) used.set(row.id, [...(used.get(row.id) ?? []), { ref: item.ref, title: item.title }]);
+  }
+  const position = (row: GuideRow) => {
+    const index = [...used.keys()].indexOf(row.id);
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  return [...alive].sort((a, b) => position(a) - position(b)).flatMap((row) => {
+    const parsed = GuideContent.safeParse(row.content);
+    if (!parsed.success) return [];
+    const placeRef = row.place_id === null ? undefined : refOf.get(row.place_id);
+    const itemRef = row.place_id !== null || row.item_id === null ? undefined : refOf.get(row.item_id);
+    return [{ rowId: row.id, title: row.title, content: parsed.data, ...(placeRef ? { placeRef } : {}), ...(itemRef ? { itemRef } : {}), usedBy: used.get(row.id) ?? [] }];
+  });
+}
+
+/** Zwiedzanie i aktywności z dniem bez opisu; miejsce opisane raz wystarcza dla wszystkich punktów w nim, więc każde jest tu raz. */
+export function undescribedSights(doc: Doc, rows: readonly GuideRow[], ids: Record<string, string>): Item[] {
+  const seen = new Set<string>();
+  return doc.items.filter((item) => {
+    if ((item.kind !== 'visit' && item.kind !== 'activity') || item.dayRef === undefined || item.planStatus !== 'scheduled') return false;
+    const ref = placeRefOf(item);
+    const key = ref ?? item.ref;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return guideFor(rows, ids[item.ref], ref === undefined ? undefined : ids[ref]) === null;
+  });
 }
 
 /** Tekst do czytania na głos (etap audio) i do kolumny `text`. */

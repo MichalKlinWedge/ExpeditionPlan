@@ -1,6 +1,6 @@
 "use server";
 
-import { GuideContent, GUIDE_LICENSE, type GuideRow, guideFor, guideText, type TripDocument } from "@expeditionplan/core";
+import { editGuideText, GuideContent, GuideDraft, GUIDE_LICENSE, type GuideRow, guideFor, guideText, type TripDocument, undescribedSights } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { describePlace, type GuideLibrary } from "@expeditionplan/planner";
 import { refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
@@ -22,8 +22,6 @@ type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
 
 const message = (error: { message: string; code?: string }) => (error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message);
 
-/** Rodzaje punktów, dla których opis ma sens przy opisach hurtem. */
-const SIGHTS = new Set(["visit", "activity"]);
 /** Ile opisów najwyżej na jedno kliknięcie „hurtem” (każdy ok. 5–15 s, limit akcji 300 s). */
 const BATCH = 12;
 
@@ -213,15 +211,7 @@ export async function describeTrip(tripId: string): Promise<FormState> {
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
   const { doc, ids } = loaded;
-  const seen = new Set<string>();
-  const todo = doc.items.filter((item) => {
-    if (!SIGHTS.has(item.kind) || item.dayRef === undefined || item.planStatus !== "scheduled") return false;
-    const { ref } = placeOf(doc, item);
-    const key = ref ?? item.ref;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return guideFor(loaded.guides, ids[item.ref], ref === undefined ? undefined : ids[ref]) === null;
-  });
+  const todo = undescribedSights(doc, loaded.guides, ids);
   if (todo.length === 0) return { ok: "Wszystkie atrakcje mają już opisy." };
   let done = 0;
   const missing: string[] = [];
@@ -233,6 +223,28 @@ export async function describeTrip(tripId: string): Promise<FormState> {
   refresh();
   const more = todo.length > BATCH ? ` Zostało jeszcze ${todo.length - BATCH} — kliknij ponownie.` : "";
   return { ok: `Opisy: ${done} gotowe${missing.length > 0 ? `, bez pewnego artykułu: ${missing.join(", ")}` : ""}.${more}` };
+}
+
+/** Ręczna poprawka tekstu opisu, tylko w tym wyjeździe: wspólna biblioteka opisów zostaje bez zmian. */
+export async function saveGuideText(tripId: string, guideId: string, text: GuideDraft): Promise<FormState> {
+  const parsed = GuideDraft.safeParse(text);
+  if (!parsed.success) return { error: `Niepoprawny tekst opisu (${parsed.error.issues[0]?.path.join(".") ?? ""}).` };
+  const { supabase } = await requireUser(`/trips/${tripId}/guides`);
+  const { data, error } = await supabase.from("audio_guides").select("content").eq("id", guideId).eq("trip_id", tripId).is("deleted_at", null).maybeSingle();
+  if (error) return { error: message(error) };
+  const current = GuideContent.safeParse(data?.content);
+  if (!current.success) return { error: "Tego opisu już nie ma — odśwież stronę." };
+  const content = editGuideText(current.data, parsed.data);
+  const saved = await supabase
+    .from("audio_guides")
+    .update({ content: content as unknown as NonNullable<Json>, text: guideText(content) })
+    .eq("id", guideId)
+    .eq("trip_id", tripId)
+    .select("id");
+  if (saved.error) return { error: message(saved.error) };
+  if (saved.data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  refresh();
+  return { ok: "Zapisano poprawkę." };
 }
 
 /** Usunięcie opisu (miękkie) — np. gdy artykuł okazał się o czymś innym. */

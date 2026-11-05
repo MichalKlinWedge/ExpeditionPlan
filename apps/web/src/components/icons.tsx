@@ -146,6 +146,13 @@ export const BookIcon = (props: Props) => (
   </Svg>
 );
 
+export const ArticleIcon = (props: Props) => (
+  <Svg {...props}>
+    <rect x="5" y="3.5" width="14" height="17" rx="2" />
+    <path d="M8.5 8h7M8.5 12h7M8.5 16h4" />
+  </Svg>
+);
+
 export const MealIcon = (props: Props) => (
   <Svg {...props}>
     <path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10" />

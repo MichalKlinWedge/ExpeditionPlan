@@ -97,6 +97,9 @@ export default function HelpPage() {
             <Step name="Miejsca">
               wszystkie miejsca planu z listą tego, co z nich korzysta. Organizator i edytor poprawią tu nazwę, adres i współrzędne (wklejone, wskazane na mapie albo znalezione po nazwie), także gdy automat postawił pinezkę w złym miejscu. Zmiana obowiązuje wszędzie, gdzie miejsce jest użyte, a czasy przejazdów trzeba potem przeliczyć w planie. Miejsca ze wszystkich wyjazdów są pod przyciskiem „Wszystkie miejsca” na liście wyjazdów.
             </Step>
+            <Step name="Opisy miejsc">
+              wszystkie opisy z Wikipedii i Wikivoyage w jednym miejscu, a niżej atrakcje, które opisu jeszcze nie mają. Organizator i edytor przygotują opis od nowa, poprawią tekst ręcznie albo go usuną. Poprawka dotyczy tylko tego wyjazdu, a nowa wersja z AI ją zastępuje, więc aplikacja najpierw o to pyta.
+            </Step>
             <Step name="Rezerwacje i budżet">
               noclegi, auta, bilety ze statusem (do zarezerwowania → zarezerwowane → opłacone; anulowane można usunąć z listy), plan budżetu i wydatki z trasy, także plan a wydatki dzień po dniu.
             </Step>
