@@ -18,7 +18,7 @@ export type ReschedulePreview = {
   startDate: string;
   endDate: string;
   offsetDays: number;
-  moved: { days: number; bookings: number; tasks: number; decisions: number };
+  moved: { days: number; bookings: number; tasks: number; decisions: number; travelers: number };
   review: TripShiftReview;
   /** Wydatki, wpisy dziennika i zdarzenia z trasy: fakty przy swoich datach. */
   realEvents: number;
@@ -40,7 +40,7 @@ async function snapshot(supabase: SupabaseClient, tripId: string, startDate: str
     startDate: shift.startDate,
     endDate: shift.endDate,
     offsetDays: shift.offsetDays,
-    moved: { days: shift.moved.days.length, bookings: shift.moved.bookings.length, tasks: shift.moved.tasks.length, decisions: shift.moved.variantGroups.length },
+    moved: { days: shift.moved.days.length, bookings: shift.moved.bookings.length, tasks: shift.moved.tasks.length, decisions: shift.moved.variantGroups.length, travelers: shift.moved.travelers.length },
     review: shift.review,
     realEvents: alive("expenses") + alive("journal_entries") + alive("schedule_events"),
   };

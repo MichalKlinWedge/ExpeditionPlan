@@ -116,6 +116,7 @@ export function RescheduleDialog({ tripId, startDate, endDate, today, hasDrafts,
                 {preview.moved.bookings > 0 && <li>niekupione rezerwacje i kandydaci: {preview.moved.bookings}</li>}
                 {preview.moved.tasks > 0 && <li>terminy zadań: {preview.moved.tasks}</li>}
                 {preview.moved.decisions > 0 && <li>terminy decyzji: {preview.moved.decisions}</li>}
+                {preview.moved.travelers > 0 && <li>daty uczestników: {preview.moved.travelers}</li>}
               </ul>
             </section>
 

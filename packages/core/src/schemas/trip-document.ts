@@ -71,6 +71,12 @@ export const DocTraveler = z.object({
   isDriver: z.boolean().optional(),
   heightCm: z.number().int().positive().optional(),
   notes: noteText.optional(),
+  /** Nie jest pewne, czy jedzie. */
+  tentative: z.boolean().optional(),
+  /** Dołącza później niż reszta; brak = od początku wyjazdu. */
+  fromDate: IsoDate.optional(),
+  /** Wyjeżdża wcześniej niż reszta; brak = do końca wyjazdu. */
+  toDate: IsoDate.optional(),
 });
 
 export const DocPlace = z.object({

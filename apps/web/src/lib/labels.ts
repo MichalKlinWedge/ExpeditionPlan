@@ -7,6 +7,15 @@ export const tripDates = (start: string, end: string) =>
     new Date(`${end}T00:00:00Z`),
   );
 
+const dayMonth = (date: string) => new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+
+/** Część wyjazdu, na którą jedzie uczestnik; `null` = cały wyjazd. */
+export function travelerPresence(from: string | null | undefined, to: string | null | undefined): string | null {
+  if (from && to) return tripDates(from, to);
+  if (from) return `od ${dayMonth(from)}`;
+  return to ? `do ${dayMonth(to)}` : null;
+}
+
 /** Rodzaj rezerwacji (`BookingKind`). */
 export const BOOKING_KIND: Record<string, string> = {
   flight: "lot",

@@ -103,7 +103,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const [trip, members, travelers, days, items, brief, mine, tasks, news, readiness] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id", { count: "exact", head: true }).eq("trip_id", id),
-    supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
+    supabase.from("travelers").select("tentative").eq("trip_id", id).is("deleted_at", null),
     supabase.from("days").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
     supabase.from("items").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
     supabase.from("trip_brief").select("id").eq("trip_id", id).maybeSingle(),
@@ -113,6 +113,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
     loadReadiness(supabase as unknown as SupabaseClient, id),
   ]);
   if (trip.data === null) notFound();
+  const wavering = (travelers.data ?? []).filter((person) => person.tentative).length;
   const role = trip.data.role!;
   const canEdit = role === "owner" || role === "editor";
   const postponed = isPostponed(trip.data);
@@ -170,7 +171,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <Tile href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
         <Tile href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />}
-        <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.count ?? 0} os. jedzie · ${members.count ?? 0} z dostępem`} />
+        <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.data?.length ?? 0} os. jedzie${wavering > 0 ? ` (waha się: ${wavering})` : ""} · ${members.count ?? 0} z dostępem`} />
         {canEdit && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />}
         <Tile href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />
         {compareHref !== null && (

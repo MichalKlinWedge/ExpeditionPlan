@@ -63,6 +63,16 @@ describe('zmiana terminu: pięć planów referencyjnych', () => {
       expect(back.doc).toEqual(document);
     });
 
+    it('daty uczestnika idą za wyjazdem', () => {
+      const first = document.travelers[0]!;
+      const withDates = { ...document, travelers: document.travelers.map((each) => (each.ref === first.ref ? { ...each, fromDate: addDays(document.trip.startDate, 1) } : each)) };
+      const shift = shiftTripDates(withDates, addDays(document.trip.startDate, 30));
+      expect(shift.moved.travelers).toEqual([first.ref]);
+      const moved = shift.doc.travelers.find((each) => each.ref === first.ref)!;
+      expect(moved.fromDate).toBe(addDays(document.trip.startDate, 31));
+      expect(moved.toDate).toBeUndefined();
+    });
+
     it('bez zmiany daty nic się nie przesuwa', () => {
       const shift = shiftTripDates(document, document.trip.startDate);
       expect(shift.doc).toBe(document);

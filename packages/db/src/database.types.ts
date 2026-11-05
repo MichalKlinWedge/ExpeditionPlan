@@ -997,14 +997,14 @@ isOneToOne: false
                   ]
                 },"travelers": {
                   Row: {
-                    "age": number | null,"created_at": string,"deleted_at": string | null,"diet": string | null,"guardian_id": string | null,"height_cm": number | null,"household": string | null,"id": string,"is_driver": boolean | null,"name": string,"nickname": string | null,"notes": string | null,"ref": string | null,"row_version": number,"sort_key": string | null,"trip_id": string,"updated_at": string,"updated_by": string | null,"user_id": string | null
+                    "age": number | null,"created_at": string,"deleted_at": string | null,"diet": string | null,"from_date": string | null,"guardian_id": string | null,"height_cm": number | null,"household": string | null,"id": string,"is_driver": boolean | null,"name": string,"nickname": string | null,"notes": string | null,"ref": string | null,"row_version": number,"sort_key": string | null,"tentative": boolean | null,"to_date": string | null,"trip_id": string,"updated_at": string,"updated_by": string | null,"user_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "age"?: number | null,"created_at"?: string,"deleted_at"?: string | null,"diet"?: string | null,"guardian_id"?: string | null,"height_cm"?: number | null,"household"?: string | null,"id": string,"is_driver"?: boolean | null,"name": string,"nickname"?: string | null,"notes"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string | null
+                    "age"?: number | null,"created_at"?: string,"deleted_at"?: string | null,"diet"?: string | null,"from_date"?: string | null,"guardian_id"?: string | null,"height_cm"?: number | null,"household"?: string | null,"id": string,"is_driver"?: boolean | null,"name": string,"nickname"?: string | null,"notes"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"tentative"?: boolean | null,"to_date"?: string | null,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string | null
                   }
                   Update: {
-                    "age"?: number | null,"created_at"?: string,"deleted_at"?: string | null,"diet"?: string | null,"guardian_id"?: string | null,"height_cm"?: number | null,"household"?: string | null,"id"?: string,"is_driver"?: boolean | null,"name"?: string,"nickname"?: string | null,"notes"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string | null
+                    "age"?: number | null,"created_at"?: string,"deleted_at"?: string | null,"diet"?: string | null,"from_date"?: string | null,"guardian_id"?: string | null,"height_cm"?: number | null,"household"?: string | null,"id"?: string,"is_driver"?: boolean | null,"name"?: string,"nickname"?: string | null,"notes"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"tentative"?: boolean | null,"to_date"?: string | null,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string | null
                   }
                   Relationships: [
                     {

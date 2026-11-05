@@ -3,7 +3,7 @@
 -- Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(20);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000000f1', 'termin-owner@test.local'),
@@ -32,6 +32,8 @@ insert into public.days (id, trip_id, date, tz) values
   ('1f000000-0000-4000-8000-0000000000d3', '1f000000-0000-4000-8000-000000000002', '2027-05-01', 'Europe/Warsaw');
 insert into public.bookings (id, trip_id, kind, status, title, start_date, free_cancellation_until) values
   ('1f000000-0000-4000-8000-0000000000b1', '1f000000-0000-4000-8000-000000000001', 'lodging', 'candidate', 'Oferta', '2027-05-01', '2027-04-20');
+insert into public.travelers (id, trip_id, name, from_date) values
+  ('1f000000-0000-4000-8000-0000000000f1', '1f000000-0000-4000-8000-000000000001', 'Dojeżdża później', '2027-05-02');
 insert into public.tasks (id, trip_id, kind, title, due) values
   ('1f000000-0000-4000-8000-0000000000a1', '1f000000-0000-4000-8000-000000000001', 'todo', 'Zadanie', '{"kind": "absolute", "date": "2027-04-01"}');
 insert into public.variant_groups (id, trip_id, scope, title, condition_kind, decide_by) values
@@ -51,6 +53,7 @@ create function pg_temp.call(p_start date, p_end date, p_restore boolean default
     'bookings', jsonb_build_array(jsonb_build_object('id', '1f000000-0000-4000-8000-0000000000b1', 'start_date', p_start, 'end_date', null, 'free_cancellation_until', p_start - 11)),
     'tasks', jsonb_build_array(jsonb_build_object('id', '1f000000-0000-4000-8000-0000000000a1', 'due', jsonb_build_object('kind', 'absolute', 'date', p_start - 30))),
     'variant_groups', jsonb_build_array(jsonb_build_object('id', '1f000000-0000-4000-8000-0000000000c1', 'decide_by', jsonb_build_object('local', (p_start - 11)::text || 'T18:00', 'tz', 'Europe/Warsaw'))),
+    'travelers', jsonb_build_array(jsonb_build_object('id', '1f000000-0000-4000-8000-0000000000f1', 'from_date', p_end, 'to_date', null)),
     'trip_brief', jsonb_build_array(jsonb_build_object('id', '1f000000-0000-4000-8000-0000000000e1', 'brief', jsonb_build_object('dates', jsonb_build_object('kind', 'fixed', 'start', p_start, 'end', p_end))))
   ), p_restore)
 $$;
@@ -85,6 +88,7 @@ select pg_temp.login('00000000-0000-4000-8000-0000000000f2');
 select lives_ok($$ select pg_temp.call('2027-07-01', '2027-07-02', true) $$, 'edytor zmienia termin i przywraca');
 select is((select status from public.my_trips where id = '1f000000-0000-4000-8000-000000000001'), 'planning', 'p_restore wraca do planów');
 select is((select start_date from public.trips where id = '1f000000-0000-4000-8000-000000000001'), '2027-07-01'::date, 'edytor ustawił termin');
+select is((select from_date from public.travelers where id = '1f000000-0000-4000-8000-0000000000f1'), '2027-07-02'::date, 'data uczestnika poszła za terminem');
 
 -- Wiersz innego wyjazdu w `p_changes` nie zostaje ruszony
 select pg_temp.login('00000000-0000-4000-8000-0000000000f1');

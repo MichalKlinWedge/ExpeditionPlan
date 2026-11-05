@@ -36,7 +36,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
   const [trip, members, travelers, share] = await Promise.all([
     supabase.from("my_trips").select("title, role, start_date, end_date").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, can_add_expenses, profiles(display_name)").eq("trip_id", id).order("created_at"),
-    supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
+    supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver, tentative, from_date, to_date, notes").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
     supabase.from("public_shares").select("enabled, hide").eq("trip_id", id).maybeSingle(),
   ]);
   if (trip.data === null) notFound();
@@ -68,7 +68,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
 
       <section className={section}>
         <h2 className={heading}>Uczestnicy</h2>
-        <TravelerList tripId={id} people={travelers.data ?? []} canEdit={editing} />
+        <TravelerList tripId={id} trip={{ start: trip.data.start_date!, end: trip.data.end_date! }} people={travelers.data ?? []} canEdit={editing} />
       </section>
 
       <section className={section}>

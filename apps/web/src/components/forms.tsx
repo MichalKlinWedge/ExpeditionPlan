@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 
 import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTraveler, removeTrip, updateTraveler } from "@/app/actions";
+import { travelerPresence } from "@/lib/labels";
 
 /** Formularze MVP-1 — stan i błędy z akcji serwera przez `useActionState`. */
 
@@ -89,10 +90,16 @@ export type Traveler = {
   household: string | null;
   guardian_id: string | null;
   is_driver: boolean | null;
+  tentative: boolean | null;
+  from_date: string | null;
+  to_date: string | null;
+  notes: string | null;
 };
 
+type TripRange = { start: string; end: string };
+
 /** Nowy uczestnik albo edycja istniejącego (`traveler`) — te same pola, inna akcja. */
-export function TravelerForm({ tripId, guardians, traveler, onDone }: { tripId: string; guardians: { id: string; name: string }[]; traveler?: Traveler; onDone?: () => void }) {
+export function TravelerForm({ tripId, trip, guardians, traveler, onDone }: { tripId: string; trip: TripRange; guardians: { id: string; name: string }[]; traveler?: Traveler; onDone?: () => void }) {
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = traveler ? await updateTraveler(tripId, traveler.id, prev, form) : await addTraveler(tripId, prev, form);
     if (result.ok && onDone) onDone();
@@ -132,6 +139,22 @@ export function TravelerForm({ tripId, guardians, traveler, onDone }: { tripId: 
       <label className="flex items-center gap-2 text-sm">
         <input name="isDriver" type="checkbox" defaultChecked={traveler?.is_driver ?? false} /> kierowca
       </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input name="tentative" type="checkbox" defaultChecked={traveler?.tentative ?? false} /> waha się
+      </label>
+      <label className={label}>
+        Jedzie od
+        <input name="fromDate" type="date" min={trip.start} max={trip.end} className={input} defaultValue={traveler?.from_date ?? ""} />
+      </label>
+      <label className={label}>
+        Jedzie do
+        <input name="toDate" type="date" min={trip.start} max={trip.end} className={input} defaultValue={traveler?.to_date ?? ""} />
+      </label>
+      <label className={`${label} col-span-2 sm:col-span-3`}>
+        Uwagi
+        <input name="notes" maxLength={2000} className={input} placeholder="np. dojedzie po pracy" defaultValue={traveler?.notes ?? ""} />
+      </label>
+      <p className="col-span-2 text-xs text-zinc-500 sm:col-span-6">Puste daty oznaczają cały wyjazd.</p>
       <div className="col-span-2 flex gap-2 sm:col-span-5">
         <button disabled={pending} className={button}>
           {pending ? "Zapisuję…" : traveler ? "Zapisz" : "Dodaj"}
@@ -150,7 +173,7 @@ export function TravelerForm({ tripId, guardians, traveler, onDone }: { tripId: 
 }
 
 /** Lista uczestników; organizator i edytor zmieniają dane albo usuwają (gdy nic na nich nie wskazuje). */
-export function TravelerList({ tripId, people, canEdit }: { tripId: string; people: Traveler[]; canEdit: boolean }) {
+export function TravelerList({ tripId, trip, people, canEdit }: { tripId: string; trip: TripRange; people: Traveler[]; canEdit: boolean }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [result, setResult] = useState<FormState>({});
   const [pending, start] = useTransition();
@@ -169,7 +192,7 @@ export function TravelerList({ tripId, people, canEdit }: { tripId: string; peop
           {people.map((person) =>
             editing === person.id ? (
               <li key={person.id} className="card p-3">
-                <TravelerForm tripId={tripId} guardians={guardians} traveler={person} onDone={() => setEditing(null)} />
+                <TravelerForm tripId={tripId} trip={trip} guardians={guardians} traveler={person} onDone={() => setEditing(null)} />
               </li>
             ) : (
               <li key={person.id} className="flex flex-wrap items-baseline gap-x-2">
@@ -181,8 +204,10 @@ export function TravelerList({ tripId, people, canEdit }: { tripId: string; peop
                     {person.household ? ` · ${person.household}` : ""}
                     {person.guardian_id ? ` · pod opieką: ${nameOf.get(person.guardian_id) ?? "?"}` : ""}
                     {person.is_driver ? " · kierowca" : ""}
+                    {travelerPresence(person.from_date, person.to_date) ? ` · tylko ${travelerPresence(person.from_date, person.to_date)}` : ""}
                   </span>
                 </span>
+                {person.tentative && <span className="rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">waha się</span>}
                 {canEdit && (
                   <span className="text-xs text-zinc-500">
                     <button onClick={() => { setResult({}); setEditing(person.id); }} className="underline">
@@ -193,13 +218,14 @@ export function TravelerList({ tripId, people, canEdit }: { tripId: string; peop
                     </button>
                   </span>
                 )}
+                {person.notes && <p className="w-full whitespace-pre-line text-xs text-zinc-600 dark:text-zinc-400">{person.notes}</p>}
               </li>
             ),
           )}
         </ul>
       )}
       <Status state={result} />
-      {canEdit && <TravelerForm tripId={tripId} guardians={guardians} />}
+      {canEdit && <TravelerForm tripId={tripId} trip={trip} guardians={guardians} />}
     </div>
   );
 }

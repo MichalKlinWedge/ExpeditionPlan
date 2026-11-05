@@ -35,6 +35,7 @@ export function rescheduleChanges({ shift, ids, briefs = [] }: Omit<RescheduleIn
     })),
     tasks: pick(doc.tasks, moved.tasks).map((task) => ({ id: ids[task.ref]!, due: task.due ?? null })),
     variant_groups: pick(doc.variantGroups, moved.variantGroups).map((group) => ({ id: ids[group.ref]!, decide_by: group.decideBy ?? null })),
+    travelers: pick(doc.travelers, moved.travelers).map((traveler) => ({ id: ids[traveler.ref]!, from_date: traveler.fromDate ?? null, to_date: traveler.toDate ?? null })),
     trip_brief: briefs
       .filter((row) => (row.deleted_at ?? null) === null)
       .flatMap((row) => {

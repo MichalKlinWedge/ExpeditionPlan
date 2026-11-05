@@ -1,6 +1,6 @@
 "use server";
 
-import { Currency, IsoDate, parseCoordinates, PLANNING, POSTPONED, TimeZone, TripBrief, TripDocument } from "@expeditionplan/core";
+import { Currency, IsoDate, parseCoordinates, PLANNING, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { geoapifyLookup, groundPlaces, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, importTrip, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -77,12 +77,28 @@ const NewTraveler = z.object({
   household: z.string().trim().optional(),
   guardianId: z.string().uuid().or(z.literal("")).optional(),
   isDriver: z.literal("on").optional(),
+  tentative: z.literal("on").optional(),
+  fromDate: IsoDate.or(z.literal("")).optional(),
+  toDate: IsoDate.or(z.literal("")).optional(),
+  notes: z.string().trim().max(2000, "Uwagi są za długie.").optional(),
 });
+
+/** Pola „waha się”, zakres dat i uwagi; zakres sprawdzony względem terminu wyjazdu. */
+async function presenceFields(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], tripId: string, data: z.infer<typeof NewTraveler>) {
+  const { data: trip, error } = await supabase.from("my_trips").select("start_date, end_date").eq("id", tripId).maybeSingle();
+  if (error) return { error: message(error) };
+  if (trip === null) return { error: "Nie znaleziono wyjazdu." };
+  const dates = travelerDates(data.fromDate, data.toDate, { startDate: trip.start_date!, endDate: trip.end_date! });
+  if ("error" in dates) return { error: dates.error };
+  return { row: { tentative: data.tentative === "on", from_date: dates.fromDate, to_date: dates.toDate, notes: data.notes || null } };
+}
 
 export async function addTraveler(tripId: string, _prev: FormState, form: FormData): Promise<FormState> {
   const parsed = NewTraveler.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const { supabase } = await requireUser(`/trips/${tripId}`);
+  const presence = await presenceFields(supabase, tripId, parsed.data);
+  if (presence.error !== undefined) return { error: presence.error };
   const { count } = await supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", tripId);
   const { error } = await supabase.from("travelers").insert({
     id: uuidv7(),
@@ -93,6 +109,7 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
     household: parsed.data.household || null,
     guardian_id: parsed.data.guardianId || null,
     is_driver: parsed.data.isDriver === "on",
+    ...presence.row,
     // Na koniec listy; klucz porównywany jak tekst, tak jak w imporcie dokumentu.
     sort_key: String(count ?? 0).padStart(5, "0"),
   });
@@ -101,12 +118,14 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
   return { ok: `Dodano: ${parsed.data.name}` };
 }
 
-/** Zmiana danych uczestnika (imię, wiek, rodzina, opiekun, kierowca). O prawie decyduje RLS. */
+/** Zmiana danych uczestnika (imię, wiek, rodzina, opiekun, kierowca, wahanie, daty, uwagi). O prawie decyduje RLS. */
 export async function updateTraveler(tripId: string, travelerId: string, _prev: FormState, form: FormData): Promise<FormState> {
   const parsed = NewTraveler.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   if (parsed.data.guardianId === travelerId) return { error: "Uczestnik nie może być swoim opiekunem." };
   const { supabase } = await requireUser(`/trips/${tripId}`);
+  const presence = await presenceFields(supabase, tripId, parsed.data);
+  if (presence.error !== undefined) return { error: presence.error };
   const { data, error } = await supabase
     .from("travelers")
     .update({
@@ -116,6 +135,7 @@ export async function updateTraveler(tripId: string, travelerId: string, _prev: 
       household: parsed.data.household || null,
       guardian_id: parsed.data.guardianId || null,
       is_driver: parsed.data.isDriver === "on",
+      ...presence.row,
     })
     .eq("id", travelerId)
     .eq("trip_id", tripId)

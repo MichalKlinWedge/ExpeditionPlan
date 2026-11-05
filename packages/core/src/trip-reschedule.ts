@@ -41,7 +41,7 @@ export type TripShift = {
   /** Dokument po zmianie. */
   doc: Doc;
   /** Klucze elementów, które się zmieniły — tylko one idą do zapisu. */
-  moved: { days: string[]; bookings: string[]; tasks: string[]; variantGroups: string[] };
+  moved: { days: string[]; bookings: string[]; tasks: string[]; variantGroups: string[]; travelers: string[] };
   /** Co człowiek musi sprawdzić sam, bo plan tego nie przesunie albo nie wie, czy słusznie. */
   review: TripShiftReview;
 };
@@ -88,7 +88,7 @@ export function shiftTripDates(doc: Doc, newStart: string): TripShift {
   const offsetDays = daysBetween(doc.trip.startDate, newStart);
   const shift = (date: string) => addDays(date, offsetDays);
   const weekdaysChange = offsetDays % 7 !== 0;
-  const moved: TripShift['moved'] = { days: [], bookings: [], tasks: [], variantGroups: [] };
+  const moved: TripShift['moved'] = { days: [], bookings: [], tasks: [], variantGroups: [], travelers: [] };
   const review: TripShiftReview = { keptBookings: [], uncertainBookings: [], repriceBookings: [], keptTasks: [], dayTitles: [], weekdaysChange, schedule: [] };
   const endDate = shift(doc.trip.endDate);
   if (offsetDays === 0) return { offsetDays, startDate: newStart, endDate, doc, moved, review };
@@ -138,7 +138,17 @@ export function shiftTripDates(doc: Doc, newStart: string): TripShift {
     return { ...group, decideBy: { ...group.decideBy, local: `${shift(local.slice(0, 10))}${local.slice(10)}` } };
   });
 
-  const next: Doc = { ...doc, trip: { ...doc.trip, startDate: newStart, endDate }, days, bookings, tasks, variantGroups };
+  const travelers = doc.travelers.map((traveler) => {
+    if (traveler.fromDate === undefined && traveler.toDate === undefined) return traveler;
+    moved.travelers.push(traveler.ref);
+    return {
+      ...traveler,
+      ...(traveler.fromDate ? { fromDate: shift(traveler.fromDate) } : {}),
+      ...(traveler.toDate ? { toDate: shift(traveler.toDate) } : {}),
+    };
+  });
+
+  const next: Doc = { ...doc, trip: { ...doc.trip, startDate: newStart, endDate }, days, bookings, tasks, variantGroups, travelers };
   const before = seriousWarnings(doc);
   review.schedule = [...seriousWarnings(next)].filter(([key]) => !before.has(key)).map(([, warning]) => warning);
   return { offsetDays, startDate: newStart, endDate, doc: next, moved, review };
