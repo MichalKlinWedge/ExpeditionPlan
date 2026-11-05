@@ -17,6 +17,7 @@ import { type LatLng, PlanMap } from "@/components/plan-map";
  * Duplikaty (podpowiedź z `similarPlaces` albo wybrane z listy) scala się do miejsca, przy którym się klika.
  * Pozycję zmienia się kliknięciem i osobnym zapisem, bez przeciągania: miejsce jest wspólne dla wielu punktów.
  * Pod kwadratową mapą jest opis wybranego miejsca (`placeGuide`) i przygotowanie nowego z AI.
+ * Miejsca bez współrzędnych (postój na trasie, przerwa na szlaku) stoją na końcu listy, w osobnej podsekcji i bez ostrzeżenia.
  */
 
 export type PlaceRowData = {
@@ -74,6 +75,9 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
   const needle = query.trim().toLowerCase();
   const shown = places.filter((place) => (filter === "all" || (filter === "missing" ? place.lat === undefined : place.usage.total === 0)) && (needle === "" || `${place.name} ${place.address ?? ""}`.toLowerCase().includes(needle)));
 
+  const onMap = shown.filter((place) => place.lat !== undefined);
+  const offMap = shown.filter((place) => place.lat === undefined);
+
   const chosen = places.find((place) => place.ref === selected);
 
   const stopPicking = () => {
@@ -101,6 +105,29 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
     mapBox.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   };
 
+  const row = (place: PlaceRowData) => (
+    <PlaceRow
+      key={place.id}
+      tripId={tripId}
+      place={place}
+      others={places.filter((each) => each.ref !== place.ref)}
+      canEdit={canEdit}
+      hasRouted={hasRouted}
+      open={open === place.ref}
+      selected={selected === place.ref}
+      onShow={() => show(place.ref)}
+      onToggle={() => {
+        stopPicking();
+        setSelected(place.ref);
+        setOpen(open === place.ref ? null : place.ref);
+      }}
+      picking={picking === place.ref}
+      picked={picking === place.ref ? picked : null}
+      onStartPicking={() => startPicking(place.ref)}
+      onStopPicking={stopPicking}
+    />
+  );
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {/* Długi opis przewija się w tej kolumnie, więc mapa i lista zostają obok siebie. Miejsce na pasek jest zarezerwowane: inaczej mapa zmieniałaby rozmiar przy dłuższym opisie. */}
@@ -123,7 +150,7 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
           {(
             [
               ["all", "Wszystkie"],
-              ["missing", "Bez współrzędnych"],
+              ["missing", "Bez lokalizacji"],
               ["unused", "Nieużywane"],
             ] as const
           ).map(([key, label]) => (
@@ -135,30 +162,16 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
         </div>
 
         {shown.length === 0 && <p className="text-sm text-zinc-500">Nic tu nie ma — zmień filtr albo szukany tekst.</p>}
-        <ul className="flex flex-col gap-2">
-          {shown.map((place) => (
-            <PlaceRow
-              key={place.id}
-              tripId={tripId}
-              place={place}
-              others={places.filter((each) => each.ref !== place.ref)}
-              canEdit={canEdit}
-              hasRouted={hasRouted}
-              open={open === place.ref}
-              selected={selected === place.ref}
-              onShow={() => show(place.ref)}
-              onToggle={() => {
-                stopPicking();
-                setSelected(place.ref);
-                setOpen(open === place.ref ? null : place.ref);
-              }}
-              picking={picking === place.ref}
-              picked={picking === place.ref ? picked : null}
-              onStartPicking={() => startPicking(place.ref)}
-              onStopPicking={stopPicking}
-            />
-          ))}
-        </ul>
+        {onMap.length > 0 && <ul className="flex flex-col gap-2">{onMap.map(row)}</ul>}
+        {offMap.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <div>
+              <h2 className="text-sm font-semibold">Bez dokładnej lokalizacji</h2>
+              <p className="text-xs text-zinc-500">Na przykład postój na trasie albo przerwa na szlaku.{canEdit ? " Współrzędne nie są tu potrzebne, a gdy jednak się przydadzą, dodasz je przez „zmień”." : ""}</p>
+            </div>
+            <ul className="flex flex-col gap-2">{offMap.map(row)}</ul>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -285,7 +298,6 @@ function PlaceRow({
         ) : (
           <strong>{place.name}</strong>
         )}
-        {!located && <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">bez współrzędnych</span>}
         {canEdit && (
           <button type="button" onClick={onToggle} aria-expanded={open} className="ml-auto text-xs underline">
             {open ? "zwiń" : "zmień"}
