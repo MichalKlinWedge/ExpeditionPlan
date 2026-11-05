@@ -16,6 +16,7 @@ export type Constraint = Doc['constraints'][number];
 export type Note = Doc['notes'][number];
 
 export type RuleWrite =
+  | { collection: 'days'; element: Doc['days'][number]; op: 'update' }
   | { collection: 'variantGroups'; element: VariantGroup; op: 'insert' | 'update' | 'remove' }
   | { collection: 'variants'; element: Variant; op: 'insert' | 'update' | 'remove' }
   | { collection: 'constraints'; element: Constraint & { ref: string }; op: 'insert' | 'update' | 'remove' }
@@ -252,6 +253,16 @@ export function removeConstraint(doc: Doc, ref: string): RulesEdit | null {
     writes: [{ collection: 'constraints', element: { ...constraint, ref }, op: 'remove' }],
     changed: [],
   };
+}
+
+// --- Koniec dnia ------------------------------------------------------------------------------
+
+/** Planowany koniec dnia: późniejszy koniec ostatniego punktu daje ostrzeżenie, a brak godziny je wyłącza. */
+export function setDayEnd(doc: Doc, dayRef: string, dayEnd: string | undefined): RulesEdit | null {
+  const day = doc.days.find((each) => each.ref === dayRef);
+  if (day === undefined || (day.dayEnd ?? '') === (dayEnd ?? '')) return null;
+  const next = clean({ ...day, dayEnd });
+  return { doc: { ...doc, days: swap(doc.days, [next]) }, writes: [{ collection: 'days', element: next, op: 'update' }], changed: [] };
 }
 
 // --- Notatki dnia ----------------------------------------------------------------------------

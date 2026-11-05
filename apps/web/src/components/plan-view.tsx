@@ -58,7 +58,7 @@ import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expedition
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { DayConstraints, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
+import { DayConstraints, DayEndField, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { ItemPlaceEditor } from "@/components/item-place";
 import { highlightRoute, type LatLng, PlanMap } from "@/components/plan-map";
@@ -1153,6 +1153,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
             {warning.message}
           </p>
         ))}
+
+      <DayEndField dayRef={dayRef} value={day.dayEnd} onRules={onRules} />
 
       {schedule && <DayConstraints doc={doc} dayRef={dayRef} items={schedule.items} warnings={schedule.warnings} onRules={onRules} />}
 

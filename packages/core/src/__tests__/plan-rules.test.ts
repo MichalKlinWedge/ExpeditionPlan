@@ -18,6 +18,7 @@ import {
   removeNote,
   removeVariant,
   removeVariantGroup,
+  setDayEnd,
   setItemVariant,
   updateConstraint,
   updateNote,
@@ -186,5 +187,27 @@ describe('notatki dnia w edytorze', () => {
     expect(removed.writes[0]!.op).toBe('remove');
     expect(TripDocument.safeParse(removed.doc).success).toBe(true);
     expect(removeNote(removed.doc, 'id-nowa')).toBeNull();
+  });
+});
+
+describe('planowany koniec dnia', () => {
+  const late = (doc: TripDocument, day: string) => scheduleDay(doc, day).warnings.some((warning) => warning.kind === 'after_day_end');
+
+  it('godzina włącza ostrzeżenie, a puste pole je wyłącza i usuwa pole z dnia', () => {
+    const early = setDayEnd(maroko, 'd2', '00:01')!;
+    expect(early.writes).toEqual([{ collection: 'days', element: early.doc.days.find((day) => day.ref === 'd2'), op: 'update' }]);
+    expect(late(early.doc, 'd2')).toBe(true);
+    expect(TripDocument.safeParse(early.doc).success).toBe(true);
+
+    const none = setDayEnd(early.doc, 'd2', undefined)!;
+    expect('dayEnd' in none.doc.days.find((day) => day.ref === 'd2')!).toBe(false);
+    expect(late(none.doc, 'd2')).toBe(false);
+    expect(TripDocument.safeParse(none.doc).success).toBe(true);
+  });
+
+  it('bez zmiany albo przy nieznanym dniu nie ma czego zapisać', () => {
+    const set = setDayEnd(maroko, 'd2', '21:00')!;
+    expect(setDayEnd(set.doc, 'd2', '21:00')).toBeNull();
+    expect(setDayEnd(maroko, 'nie-ma', '21:00')).toBeNull();
   });
 });

@@ -19,6 +19,7 @@ import {
   removeVariantGroup,
   type RulesEdit,
   type ScheduleWarning,
+  setDayEnd,
   setItemVariant,
   type TripDocument,
   type Note,
@@ -355,6 +356,32 @@ export function ItemVariants({ doc, dayRef, itemRef, onRules }: { doc: Doc; dayR
       </select>
     );
   });
+}
+
+// --- Koniec dnia ------------------------------------------------------------------------------
+
+/** Zapis po wyjściu z pola: niepełna godzina wraca do poprzedniej, a puste pole wyłącza ostrzeżenie. */
+export function DayEndField({ dayRef, value, onRules }: { dayRef: string; value: string | undefined; onRules: OnRules | null }) {
+  if (onRules === null) return null;
+  return (
+    <label className="flex flex-wrap items-center gap-2 self-start text-xs text-zinc-500">
+      Planowany koniec dnia
+      <input
+        key={value ?? ""}
+        type="time"
+        defaultValue={value ?? ""}
+        className={input}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+        onBlur={(event) => {
+          if (event.target.validity.badInput) event.target.value = value ?? "";
+          else onRules((doc) => setDayEnd(doc, dayRef, event.target.value || undefined));
+        }}
+      />
+      <span>puste pole = bez ostrzeżenia</span>
+    </label>
+  );
 }
 
 // --- Ograniczenia ----------------------------------------------------------------------------
