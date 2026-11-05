@@ -105,7 +105,7 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
 
       {map.pins.length > 0 && (
         <Section title="Mapa wyprawy">
-          <MemoriesMap map={map} />
+          <MemoriesMap map={map} banner />
         </Section>
       )}
 

@@ -57,9 +57,11 @@ type Props = {
   emptyText?: string;
   /** Kwadrat zamiast wysokości ekranu: pod mapą jest treść. */
   square?: boolean;
+  /** Prostokąt na szerokość strony: połowa zwykłej wysokości. */
+  banner?: boolean;
 };
 
-export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null, emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.", square = false }: Props) {
+export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null, emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.", square = false, banner = false }: Props) {
   const container = useRef<HTMLDivElement>(null);
   // Dojazd i powrót (lot, długa droga) domyślnie ukryte — skala kraju gubi szczegóły na miejscu.
   const [showTransit, setShowTransit] = useState(false);
@@ -252,7 +254,7 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
   }, [map, picking, picked]);
 
   return (
-    <div className={`relative w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 ${square ? "aspect-square shrink-0" : "h-72 lg:h-[calc(100vh-8rem)]"} ${picking ? "ring-2 ring-signal" : ""}`}>
+    <div className={`relative w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 ${square ? "aspect-square shrink-0" : banner ? "h-72 lg:h-[calc(50vh-4rem)]" : "h-72 lg:h-[calc(100vh-8rem)]"} ${picking ? "ring-2 ring-signal" : ""}`}>
       {/* Nie `absolute inset-0`: CSS MapLibre (poza warstwami Tailwinda) ustawia `position: relative`. */}
       <div ref={container} className="h-full w-full" />
       {failure && <p className="absolute inset-x-0 top-0 bg-red-50 p-2 text-xs text-red-700">Mapa się nie wczytała: {failure}</p>}
