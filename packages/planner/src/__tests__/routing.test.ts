@@ -1,7 +1,8 @@
 import { decodePolyline, encodePolyline, type LngLat, TripDocument } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
-import { legEnds, orsRoute, type RouteLookup, routeLegs } from '../routing.ts';
+import type { GeocodeHit, Lookup } from '../ground.ts';
+import { legEnds, locateLegEnds, orsRoute, type RouteLookup, routeLegs } from '../routing.ts';
 
 const doc = TripDocument.parse({
   schemaVersion: 1,
@@ -66,6 +67,66 @@ describe('trasy przejazdów (ORS)', () => {
       ],
     });
     expect(legEnds(wyjazd, wyjazd.items[1]!)).toEqual({ from: { lat: 31.62, lng: -7.99 }, to: { lat: 31.45, lng: -8.1 } });
+  });
+
+  it('wskazany koniec bez współrzędnych: nie liczy trasy z sąsiada ani bazy dnia', async () => {
+    const dom = TripDocument.parse({
+      ...doc,
+      places: [...doc.places, { ref: 'p-dom', name: 'Kryniczno' }],
+      items: [{ ref: 'w', dayRef: 'd1', sortKey: '0010', kind: 'transport', title: 'Dojazd', placeRef: 'p-dinara', leg: { mode: 'car', fromPlaceRef: 'p-dom', toPlaceRef: 'p-dinara' } }],
+    });
+    expect(legEnds(dom, dom.items[0]!)).toEqual({ from: undefined, to: { lat: 43.95, lng: 16.42 } });
+    const lookup: RouteLookup = async () => ({ distanceKm: 5, durationMin: 10 });
+    const { results } = await routeLegs(dom, lookup);
+    expect(results[0]!.status).toBe('no_coordinates');
+  });
+
+  describe('locateLegEnds', () => {
+    const village: GeocodeHit = { lat: 51.13, lng: 16.67, displayName: 'Kryniczno, DS, Polska', osmType: '', osmId: 0, category: 'place', countryCode: 'pl' };
+    const leg = (extra: object[] = []) =>
+      TripDocument.parse({
+        ...doc,
+        places: [...doc.places, { ref: 'p-dom', name: 'Kryniczno' }, ...extra],
+        items: [{ ref: 'w', dayRef: 'd1', sortKey: '0010', kind: 'transport', title: 'Dojazd', leg: { mode: 'car', fromPlaceRef: 'p-dom', toPlaceRef: 'p-dinara' } }],
+      });
+
+    it('miejscowość daleko od planu wystarcza; szuka też w kraju domowym; trasa idzie od niej', async () => {
+      const countries: string[][] = [];
+      const lookup: Lookup = async (_query, within) => {
+        countries.push(within);
+        return village;
+      };
+      const dom = leg();
+      const found = await locateLegEnds(dom, dom.items[0]!, lookup, ['HR']);
+      expect(countries).toEqual([['hr', 'pl']]);
+      expect(found).toHaveLength(1);
+      expect(found[0]!.foundAs).toBe('Kryniczno, DS, Polska');
+      expect(found[0]!.place).toMatchObject({ ref: 'p-dom', lat: 51.13, lng: 16.67, provider: 'osm' });
+      const located = { ...dom, places: dom.places.map((place) => (place.ref === 'p-dom' ? found[0]!.place : place)) };
+      expect(legEnds(located, located.items[0]!).from).toEqual({ lat: 51.13, lng: 16.67 });
+    });
+
+    it('nie szuka końców ze współrzędnymi, opisowych, a bez trafienia i przy awarii zwraca pusto', async () => {
+      const queries: string[] = [];
+      const nothing: Lookup = async (query) => {
+        queries.push(query);
+        return null;
+      };
+      const dom = leg();
+      expect(await locateLegEnds(dom, dom.items[0]!, nothing, [])).toEqual([]);
+      expect(queries).toEqual(['Kryniczno']);
+      expect(await locateLegEnds(dom, dom.items[0]!, async () => { throw new Error('Geoapify 500'); }, [])).toEqual([]);
+
+      queries.length = 0;
+      const opisowe = TripDocument.parse({ ...dom, places: dom.places.map((place) => (place.ref === 'p-dom' ? { ...place, name: 'Nocleg u znajomych' } : place)) });
+      expect(await locateLegEnds(opisowe, opisowe.items[0]!, nothing, [])).toEqual([]);
+      expect(queries).toEqual([]);
+    });
+
+    it('lotu nie szuka: ORS i tak go nie policzy', async () => {
+      const lot = doc.items.find((item) => item.ref === 'lot')!;
+      expect(await locateLegEnds(doc, lot, async () => village, [])).toEqual([]);
+    });
   });
 
   it('trasa niepasująca do dystansu z planu (×2,5) nie nadpisuje szacunku', async () => {

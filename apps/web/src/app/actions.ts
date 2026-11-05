@@ -2,7 +2,7 @@
 
 import { Currency, IsoDate, parseCoordinates, PLANNING, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { geoapifyLookup, groundPlaces, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
+import { geoapifyLookup, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, importTrip, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { refresh } from "next/cache";
@@ -492,6 +492,8 @@ export async function routeTrip(tripId: string): Promise<FormState> {
 /**
  * Trasa jednego przejazdu po zmianie „skąd” i „dokąd” albo na żądanie, także dla punktu zmienionego
  * ręcznie. Dystans z planu nie blokuje wyniku (`mismatch`), bo użytkownik sam wskazał końce.
+ * Koniec bez współrzędnych jest szukany po nazwie (Geoapify); współrzędne zapisują się razem z trasą,
+ * a komunikat mówi, co znaleziono, żeby dało się wychwycić inną miejscowość o tej samej nazwie.
  */
 export async function routeItem(tripId: string, itemRef: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
@@ -499,17 +501,29 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
   if (denied) return { error: `Zapisano bez przeliczenia trasy: ${denied}` };
   const route = routeLookup();
   if (route === null) return { error: "Zapisano bez przeliczenia trasy: serwer nie ma klucza OPENROUTESERVICE_API_KEY." };
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
+  const [{ data, error }, briefRow] = await Promise.all([
+    supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 }),
+    supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
+  ]);
   if (error) return { error: message(error) };
   if (data === null) return { error: "Nie ma takiego wyjazdu." };
   const payload = data as Parameters<typeof stateFromPayload>[0];
   const { doc } = stateFromPayload(payload);
-  const open = { ...doc, items: doc.items.map((item) => (item.ref === itemRef && item.leg !== undefined ? { ...item, leg: { ...item.leg, distanceKm: undefined } } : item)) };
+  const target = doc.items.find((item) => item.ref === itemRef);
+  const geoapify = process.env.GEOAPIFY_API_KEY ?? "";
+  const brief = TripBrief.safeParse(briefRow.data?.brief);
+  const located = target === undefined || geoapify === "" ? [] : await locateLegEnds(doc, target, geoapifyLookup(geoapify), countriesFor(brief.success ? brief.data : null, doc.trip.primaryTz));
+  const placed = new Map(located.map(({ place }) => [place.ref, place]));
+  const open = {
+    ...doc,
+    places: doc.places.map((place) => placed.get(place.ref) ?? place),
+    items: doc.items.map((item) => (item.ref === itemRef && item.leg !== undefined ? { ...item, leg: { ...item.leg, distanceKm: undefined } } : item)),
+  };
   const { doc: routed, results } = await routeLegs(open, route, new Set([itemRef]));
   const result = results[0];
   if (result?.status !== "routed") {
     const why: Record<string, string> = {
-      no_coordinates: "miejsce startu albo celu nie ma współrzędnych. Przypnij je na stronie „Miejsca” i użyj „Przelicz trasę”.",
+      no_coordinates: "nie udało się znaleźć miejsca startu albo celu po nazwie. Przypnij je na stronie „Miejsca” i użyj „Przelicz trasę”.",
       not_found: "nie znaleziono trasy między tymi miejscami.",
       failed: "usługa tras nie odpowiedziała, spróbuj za chwilę.",
     };
@@ -517,13 +531,21 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
   }
   try {
     const changed = routed.items.filter((item) => item.ref === itemRef);
-    await saveMergeEdit(supabase, tripId, { doc: TripDocument.parse(routed), created: [], changed, others: [], removed: [], kept: [], copied: {} }, refIndex(payload.tables));
+    const ids = refIndex(payload.tables);
+    const owner = new Map(COLLECTIONS.flatMap((collection) => (doc[collection] as { ref?: string }[]).flatMap((element) => (element.ref ? [[element.ref, collection] as const] : []))));
+    const index = { idOf: (ref: string) => ids[ref]!, collectionOf: (ref: string) => owner.get(ref) };
+    for (const { place } of located) {
+      const { error: placeError } = await supabase.from("places").update(rowForUpdate("places", place, index) as never).eq("id", index.idOf(place.ref));
+      if (placeError) throw new Error(message(placeError));
+    }
+    await saveMergeEdit(supabase, tripId, { doc: TripDocument.parse(routed), created: [], changed, others: [], removed: [], kept: [], copied: {} }, ids);
   } catch (e) {
     return { error: `Nie zapisano trasy: ${e instanceof Error ? e.message : String(e)}` };
   }
   refresh();
   const minutes = result.after!.durationMin;
-  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${Math.floor(minutes / 60)} h ${Math.round(minutes % 60)} min. Plan dnia się zmienił.` };
+  const foundAs = located.map((each) => `„${each.place.name}” to ${each.foundAs}`).join(", ");
+  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${Math.floor(minutes / 60)} h ${Math.round(minutes % 60)} min. Plan dnia się zmienił.${foundAs === "" ? "" : ` Znalezione po nazwie: ${foundAs}. Jeśli to inne miejsce, przypnij je na stronie „Miejsca”.`}` };
 }
 
 /**

@@ -1,5 +1,8 @@
 import { decodePolyline, encodePolyline, simplifyPath, type TripDocument } from '@expeditionplan/core';
 
+import { HOME_COUNTRY, type Lookup, withCoordinates } from './ground.ts';
+import { candidateQueries, skipReason } from './queries.ts';
+
 /**
  * Realne czasy przejazdów z OpenRouteService (docs/USLUGI.md: 2000 tras/dzień, 40/min, darmowy).
  * AI szacuje jazdę z pamięci — na Dinarze „Szybenik → Dinara 75 min” wobec realnej godziny.
@@ -61,30 +64,57 @@ const coords = (place: Place | undefined): LatLng | undefined =>
  * Miejsce samego przejazdu bywa i startem („Wyjazd z parkingu”), i celem („Przejazd do
  * Szybenika”), więc służy tylko wtedy, gdy po przejeździe nie ma już punktu z miejscem.
  * Sąsiedzi z tego samego wariantu — punkt wersji B nie jedzie z punktu wersji A.
+ * Koniec wskazany w `leg`, ale bez współrzędnych, zostaje pusty: zgadnięty z sąsiadów dałby trasę
+ * z innego miejsca niż to, które widać w „skąd” (start w domu, a 5 km od bazy dnia).
  */
 export function legEnds(doc: Doc, item: Item): { from?: LatLng; to?: LatLng } {
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const at = (ref: string | undefined) => (ref === undefined ? undefined : coords(places.get(ref)));
   let from = at(item.leg?.fromPlaceRef);
   let to = at(item.leg?.toPlaceRef);
-  if ((from === undefined || to === undefined) && item.dayRef !== undefined) {
+  const guessFrom = item.leg?.fromPlaceRef === undefined;
+  const guessTo = item.leg?.toPlaceRef === undefined;
+  if ((guessFrom || guessTo) && item.dayRef !== undefined) {
     const fits = (each: Item) => each.variantRefs.length === 0 || each.variantRefs.some((ref) => item.variantRefs.includes(ref));
     const day = doc.items
       .filter((each) => each.dayRef === item.dayRef && each.parentRef === undefined && (each.ref === item.ref || fits(each)))
       .sort((a, b) => (a.sortKey ?? '').localeCompare(b.sortKey ?? ''));
     const index = day.findIndex((each) => each.ref === item.ref);
     const arrival = (each: Item) => at(each.leg?.toPlaceRef ?? each.placeRef);
-    if (from === undefined) {
+    if (guessFrom) {
       const previous = day.slice(0, index).reverse().find((each) => arrival(each) !== undefined);
       const base = doc.days.find((each) => each.ref === item.dayRef)?.baseRef;
       from = previous === undefined ? at(base) : arrival(previous);
     }
-    if (to === undefined) {
+    if (guessTo) {
       const next = day.slice(index + 1).find((each) => at(each.leg?.fromPlaceRef ?? each.placeRef) !== undefined);
       to = next === undefined ? at(item.placeRef) : at(next.leg?.fromPlaceRef ?? next.placeRef);
     }
   }
   return { from, to };
+}
+
+/**
+ * Końce przejazdu wskazane w `leg`, ale bez współrzędnych, szukane po nazwie. Inaczej niż w
+ * `groundPlaces` miejscowość jest dobrym trafieniem, a odległość od reszty planu nie wyklucza
+ * wyniku: start bywa w domu, setki kilometrów od wyjazdu. Nazwę trafienia trzeba pokazać
+ * użytkownikowi. Awaria wyszukiwarki = brak trafienia.
+ */
+export async function locateLegEnds(doc: Doc, item: Item, lookup: Lookup, countries: string[]): Promise<{ place: Place; foundAs: string }[]> {
+  if (item.leg === undefined || PROFILE[item.leg.mode] === undefined) return [];
+  const refs = new Set([item.leg.fromPlaceRef, item.leg.toPlaceRef]);
+  const missing = doc.places.filter((place) => refs.has(place.ref) && coords(place) === undefined && skipReason(place) === null);
+  const within = [...new Set([...countries.map((code) => code.toLowerCase()), HOME_COUNTRY])];
+  const located: { place: Place; foundAs: string }[] = [];
+  for (const place of missing) {
+    for (const query of candidateQueries(place)) {
+      const hit = await lookup(query, within).catch(() => null);
+      if (hit === null) continue;
+      located.push({ place: withCoordinates(place, hit), foundAs: hit.displayName });
+      break;
+    }
+  }
+  return located;
 }
 
 const sameSpot = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lng - b.lng) < 1e-4;
