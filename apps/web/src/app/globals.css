@@ -35,6 +35,9 @@
   --foreground: var(--color-ink);
   --surface: #ffffff;
   --line: var(--color-zinc-200);
+  --btn-bg: color-mix(in srgb, var(--color-sea) 16%, var(--surface));
+  --btn-bg-hover: color-mix(in srgb, var(--color-sea) 30%, var(--surface));
+  --btn-line: color-mix(in srgb, var(--color-sea) 50%, var(--surface));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,6 +46,9 @@
     --foreground: #f1ebdd;
     --surface: var(--color-zinc-900);
     --line: var(--color-zinc-800);
+    --btn-bg: color-mix(in srgb, var(--color-sea) 42%, var(--surface));
+    --btn-bg-hover: color-mix(in srgb, var(--color-sea) 60%, var(--surface));
+    --btn-line: var(--color-sea);
   }
 }
 
@@ -97,14 +103,16 @@ h2 {
     background: var(--color-signal-dark);
     transform: translateY(-1px);
   }
+  /* Wypełnione tło i cień odróżniają przycisk od pola tekstowego, które jest białe z cienką ramką. */
   .btn-secondary {
-    background: var(--surface);
+    background: var(--btn-bg);
     color: var(--foreground);
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+    border: 1.5px solid var(--btn-line);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.14);
   }
   .btn-secondary:hover:not(:disabled) {
+    background: var(--btn-bg-hover);
     border-color: var(--color-sea);
-    color: var(--color-sea);
   }
   .btn-sm {
     padding: 0.3rem 0.7rem;
@@ -127,21 +135,22 @@ h2 {
   /* Wybór pliku: przycisk przeglądarki po resecie stylów wygląda jak zwykły tekst, więc dostaje wygląd `btn-secondary`. */
   input[type="file"]::file-selector-button {
     margin-right: 0.6rem;
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+    border: 1.5px solid var(--btn-line);
     border-radius: 0.6rem;
-    background: var(--surface);
+    background: var(--btn-bg);
     color: var(--foreground);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.14);
     padding: 0.3rem 0.7rem;
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
     transition:
-      border-color 120ms,
-      color 120ms;
+      background-color 120ms,
+      border-color 120ms;
   }
   input[type="file"]:not(:disabled)::file-selector-button:hover {
+    background: var(--btn-bg-hover);
     border-color: var(--color-sea);
-    color: var(--color-sea);
   }
   input[type="file"]:disabled::file-selector-button {
     opacity: 0.5;
