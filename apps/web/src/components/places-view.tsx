@@ -11,6 +11,7 @@ import { type LatLng, PlanMap } from "@/components/plan-map";
 /**
  * Wszystkie miejsca wyjazdu: lista i mapa z tymi samymi numerami. Organizator i edytor poprawiają nazwę,
  * adres i współrzędne (wklejone, wskazane na mapie albo znalezione po nazwie) i usuwają nieużywane miejsca.
+ * Numer albo nazwa na liście wyróżnia pinezkę, tak jak numer punktu w planie; pinezka wyróżnia wiersz.
  * Pozycję zmienia się kliknięciem i osobnym zapisem, bez przeciągania: miejsce jest wspólne dla wielu punktów.
  */
 
@@ -39,6 +40,7 @@ const usageLabel = ({ items, bookings, days, legs }: PlaceUsage) =>
 export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: string; places: PlaceRowData[]; canEdit: boolean; hasRouted: boolean }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
   const [picked, setPicked] = useState<LatLng | null>(null);
@@ -65,13 +67,20 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
     stopPicking();
     setFilter("all");
     setQuery("");
-    setOpen(ref);
+    setSelected(ref);
+    if (canEdit) setOpen(ref);
     // Po wyczyszczeniu filtra wiersz może dopiero się pojawić.
     window.setTimeout(() => document.getElementById(`miejsce-${ref}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 50);
   };
   const startPicking = (ref: string) => {
     setPicked(null);
     setPicking(ref);
+    setSelected(ref);
+    mapBox.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+  /** Na telefonie mapa jest nad listą, więc wyróżniona pinezka musi wrócić na ekran. */
+  const show = (ref: string) => {
+    setSelected(ref);
     mapBox.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   };
 
@@ -81,12 +90,12 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
         <PlanMap
           map={map}
           fitKey="miejsca"
-          selected={open}
+          selected={selected}
           onSelect={select}
           emptyText="Żadne miejsce nie ma jeszcze współrzędnych."
           editing={canEdit ? { picking: picking !== null, picked, onPick: setPicked, onMovePlace: () => {}, hints: ["Kliknij mapę w nowym położeniu tego miejsca.", "Zapisz pozycję przy miejscu na liście albo kliknij mapę jeszcze raz."] } : null}
         />
-        <p className="text-xs text-zinc-500">Numery na mapie odpowiadają numerom na liście. Kliknięcie pinezki otwiera miejsce na liście.</p>
+        <p className="text-xs text-zinc-500">Numery na mapie odpowiadają numerom na liście. Kliknięcie numeru albo nazwy na liście pokazuje miejsce na mapie, a kliknięcie pinezki otwiera je na liście.</p>
       </aside>
 
       <section className="flex min-w-0 flex-col gap-3">
@@ -115,8 +124,11 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
               canEdit={canEdit}
               hasRouted={hasRouted}
               open={open === place.ref}
+              selected={selected === place.ref}
+              onShow={() => show(place.ref)}
               onToggle={() => {
                 stopPicking();
+                setSelected(place.ref);
                 setOpen(open === place.ref ? null : place.ref);
               }}
               picking={picking === place.ref}
@@ -137,6 +149,8 @@ function PlaceRow({
   canEdit,
   hasRouted,
   open,
+  selected,
+  onShow,
   onToggle,
   picking,
   picked,
@@ -148,6 +162,8 @@ function PlaceRow({
   canEdit: boolean;
   hasRouted: boolean;
   open: boolean;
+  selected: boolean;
+  onShow: () => void;
   onToggle: () => void;
   picking: boolean;
   picked: LatLng | null;
@@ -185,10 +201,16 @@ function PlaceRow({
   const linked = [...usage.items.map((item) => ({ key: item.ref, title: item.title, href: `/trips/${tripId}/item/${item.ref}` })), ...usage.bookings.map((booking) => ({ key: booking.ref, title: booking.title, href: `/trips/${tripId}/logistics` }))];
 
   return (
-    <li id={`miejsce-${place.ref}`} className={`card flex scroll-mt-4 flex-col gap-2 p-3 text-sm ${open ? "ring-2 ring-sea" : ""}`}>
+    <li id={`miejsce-${place.ref}`} className={`card flex scroll-mt-4 flex-col gap-2 p-3 text-sm ${selected || open ? "ring-2 ring-sea" : ""}`}>
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        {place.n !== undefined && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-sea px-1 text-xs font-semibold text-white">{place.n}</span>}
-        <strong>{place.name}</strong>
+        {located ? (
+          <button type="button" onClick={onShow} aria-pressed={selected} title="Pokaż na mapie" className="flex items-baseline gap-x-2 text-left hover:text-sea">
+            {place.n !== undefined && <span className="flex h-5 min-w-5 items-center justify-center self-center rounded-full bg-sea px-1 text-xs font-semibold text-white">{place.n}</span>}
+            <strong>{place.name}</strong>
+          </button>
+        ) : (
+          <strong>{place.name}</strong>
+        )}
         {!located && <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">bez współrzędnych</span>}
         {canEdit && (
           <button type="button" onClick={onToggle} aria-expanded={open} className="ml-auto text-xs underline">
