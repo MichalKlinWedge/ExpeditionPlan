@@ -20,14 +20,16 @@ export default function PlacesPage(props: PageProps<"/trips/[id]/places">) {
   return (
     <Shell wide>
       <Suspense fallback={<Loading />}>
-        <View params={props.params} />
+        <View params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </Shell>
   );
 }
 
-async function View({ params }: { params: Promise<{ id: string }> }) {
+async function View({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
+  // Wejście z listy wszystkich miejsc: to miejsce jest od razu wybrane.
+  const { miejsce } = await searchParams;
   const { supabase } = await requireUser(`/trips/${id}/places`);
   const [{ data, error }, membership] = await Promise.all([supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }), supabase.from("my_trips").select("role").eq("id", id).maybeSingle()]);
   if (error) return <p className="text-sm text-red-600">{error.message}</p>;
@@ -55,11 +57,14 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
           ← {doc.trip.title}
         </Link>
         <h1 className="text-2xl font-semibold">Miejsca</h1>
+        <Link href="/places" className="self-start text-xs text-zinc-500 underline hover:text-sea">
+          Miejsca ze wszystkich wyjazdów
+        </Link>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {canEdit ? "Miejsce jest wspólne dla punktów, które z niego korzystają: zmiana nazwy lub współrzędnych obowiązuje wszędzie." : "Miejsca, z których korzysta ten plan."}
         </p>
       </div>
-      {places.length === 0 ? <p className="text-sm text-zinc-500">Ten plan nie ma jeszcze miejsc.</p> : <PlacesView tripId={id} places={places} canEdit={canEdit} hasRouted={doc.items.some((item) => item.leg?.routed === true)} />}
+      {places.length === 0 ? <p className="text-sm text-zinc-500">Ten plan nie ma jeszcze miejsc.</p> : <PlacesView tripId={id} places={places} canEdit={canEdit} hasRouted={doc.items.some((item) => item.leg?.routed === true)} initial={typeof miejsce === "string" ? miejsce : null} />}
     </>
   );
 }

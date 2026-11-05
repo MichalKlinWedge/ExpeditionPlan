@@ -49,14 +49,18 @@ const MOVED_M = 100;
 const usageLabel = ({ items, bookings, days, legs, travelers }: PlaceUsage) =>
   [items.length > 0 && `punkty: ${items.length}`, bookings.length > 0 && `rezerwacje: ${bookings.length}`, days > 0 && `baza dni: ${days}`, legs > 0 && `przejazdy: ${legs}`, travelers > 0 && `uczestnicy: ${travelers}`].filter(Boolean).join(", ");
 
-export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: string; places: PlaceRowData[]; canEdit: boolean; hasRouted: boolean }) {
+export function PlacesView({ tripId, places, canEdit, hasRouted, initial = null }: { tripId: string; places: PlaceRowData[]; canEdit: boolean; hasRouted: boolean; initial?: string | null }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initial);
   const [open, setOpen] = useState<string | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
   const [picked, setPicked] = useState<LatLng | null>(null);
   const mapBox = useRef<HTMLDivElement>(null);
+  // Wejście z listy wszystkich miejsc: wiersz wybranego miejsca ma być na ekranie.
+  useEffect(() => {
+    if (initial !== null) document.getElementById(`miejsce-${initial}`)?.scrollIntoView({ block: "nearest" });
+  }, [initial]);
   // Nowe miejsce: kolumna wraca na górę, żeby mapa z pinezką była widoczna po czytaniu długiego opisu.
   useEffect(() => {
     if (selected !== null) mapBox.current?.scrollTo({ top: 0 });

@@ -100,6 +100,70 @@ export function similarPlaces(doc: Doc): Record<string, string[]> {
   return found;
 }
 
+/** Wiersze z bazy do listy miejsc ze wszystkich wyjazdów. Kolejność `trips` to kolejność wyjazdów przy miejscu. */
+export type AcrossTripsRows = {
+  trips: readonly { id: string; title: string }[];
+  places: readonly { id: string; trip_id: string; ref: string | null; name: string; address: string | null; lat: number | null; lng: number | null }[];
+  items: readonly { id: string; trip_id: string; kind: string; place_id: string | null; leg: unknown }[];
+  guides: readonly { place_id: string | null; item_id: string | null; audience: string }[];
+};
+
+export type SharedPlace = {
+  name: string;
+  address?: string;
+  /** Wystąpienia miejsca: w każdym wyjeździe to osobny wiersz z własnym opisem. */
+  trips: { tripId: string; tripTitle: string; ref: string; guide: boolean }[];
+};
+
+/**
+ * Miejsca ze wszystkich wyjazdów: to samo miejsce z różnych wyjazdów to jeden wiersz (ta sama nazwa, chyba że
+ * współrzędne są daleko od siebie, jak w `similarPlaces`). Opis liczy się tak jak w `placeGuide`: własny miejsca
+ * albo punktu, który do niego prowadzi.
+ */
+export function placesAcrossTrips({ trips, places, items, guides }: AcrossTripsRows): SharedPlace[] {
+  // Miejsce dodane poza dokumentem (start uczestnika) nie ma refa w bazie: dokument nadaje mu ten zastępczy.
+  const refOf = (place: AcrossTripsRows['places'][number]) => place.ref ?? `id-${place.id}`;
+  const idByRef = new Map(places.map((place) => [`${place.trip_id}:${refOf(place)}`, place.id]));
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  const guided = new Set<string>();
+  for (const guide of guides) {
+    if (guide.audience !== 'adult') continue;
+    if (guide.place_id !== null) {
+      guided.add(guide.place_id);
+      continue;
+    }
+    const item = guide.item_id === null ? undefined : itemById.get(guide.item_id);
+    if (item === undefined || item.kind === 'lodging') continue;
+    const target = (item.leg as { toPlaceRef?: string } | null)?.toPlaceRef;
+    const placeId = target !== undefined ? idByRef.get(`${item.trip_id}:${target}`) : item.place_id;
+    if (placeId) guided.add(placeId);
+  }
+
+  type Group = SharedPlace & { at?: [number, number] };
+  const groups = new Map<string, Group[]>();
+  for (const trip of trips) {
+    for (const place of places) {
+      if (place.trip_id !== trip.id) continue;
+      const at: [number, number] | undefined = place.lat !== null && place.lng !== null ? [place.lng, place.lat] : undefined;
+      const key = plainName(place.name) || place.id;
+      const named = groups.get(key) ?? [];
+      let group = named.find((each) => each.at === undefined || at === undefined || distanceM(each.at, at) <= SAME_NAME_M);
+      if (group === undefined) {
+        group = { name: place.name, trips: [] };
+        named.push(group);
+        groups.set(key, named);
+      }
+      if (group.at === undefined && at !== undefined) group.at = at;
+      if (group.address === undefined && place.address) group.address = place.address;
+      group.trips.push({ tripId: trip.id, tripTitle: trip.title, ref: refOf(place), guide: guided.has(place.id) });
+    }
+  }
+  return [...groups.values()]
+    .flat()
+    .map(({ at: _at, ...shared }) => shared)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+}
+
 export type PlaceMergeWrite = {
   collection: 'travelers' | 'items' | 'days' | 'bookings' | 'legs' | 'sources' | 'places';
   element: { ref: string } & Record<string, unknown>;

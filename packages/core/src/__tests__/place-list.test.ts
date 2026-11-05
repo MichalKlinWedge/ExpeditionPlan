@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { mergePlaces, placeList, placeUsage, removeUnusedPlace, similarPlaces } from '../place-list.ts';
+import { mergePlaces, placeList, placesAcrossTrips, placeUsage, removeUnusedPlace, similarPlaces } from '../place-list.ts';
 import { placeUses } from '../plan-edits.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
@@ -160,5 +160,62 @@ describe('scalanie miejsc', () => {
     expect(similar.a).toEqual(['b', 'c', 'd']);
     expect(similar.c).toEqual(['a']);
     expect(similar.e).toEqual(['d']);
+  });
+});
+
+describe('miejsca ze wszystkich wyjazdów', () => {
+  const trips = [{ id: 't1', title: 'Barcelona' }, { id: 't2', title: 'Maroko' }];
+  const place = (id: string, trip_id: string, name: string, at?: [number, number], address: string | null = null) => ({ id, trip_id, ref: `${id}-ref`, name, address, lat: at?.[0] ?? null, lng: at?.[1] ?? null });
+  const none = { items: [], guides: [] };
+
+  it('ta sama nazwa blisko siebie to jeden wiersz z oboma wyjazdami, daleko to dwa', () => {
+    const list = placesAcrossTrips({
+      trips,
+      places: [
+        place('a', 't1', 'Lotnisko', [41.3, 2.08]),
+        place('b', 't2', 'LOTNISKO', [41.3001, 2.0801], 'El Prat'),
+        place('c', 't2', 'Lotnisko', [31.6, -8.03]),
+      ],
+      ...none,
+    });
+    expect(list).toHaveLength(2);
+    expect(list[0]!.trips.map((each) => each.tripTitle)).toEqual(['Barcelona', 'Maroko']);
+    expect(list[0]!.address).toBe('El Prat');
+    expect(list[1]!.trips.map((each) => each.ref)).toEqual(['c-ref']);
+  });
+
+  it('bez współrzędnych łączy się po nazwie, a wynik idzie alfabetycznie', () => {
+    const list = placesAcrossTrips({ trips, places: [place('z', 't1', 'Żabka'), place('a', 't1', 'Ateny', [37.98, 23.72]), place('b', 't2', 'Ateny')], ...none });
+    expect(list.map((each) => [each.name, each.trips.length])).toEqual([['Ateny', 2], ['Żabka', 1]]);
+  });
+
+  it('opis liczy się osobno w każdym wyjeździe: własny miejsca albo punktu, który do niego prowadzi', () => {
+    const list = placesAcrossTrips({
+      trips,
+      places: [place('own', 't1', 'Własny'), place('none', 't2', 'Własny'), place('item', 't1', 'Z punktu'), place('leg', 't1', 'Z przejazdu'), place('from', 't1', 'Skąd'), place('hotel', 't1', 'Hotel'), place('kid', 't1', 'Dla dzieci')],
+      items: [
+        { id: 'i1', trip_id: 't1', kind: 'visit', place_id: 'item', leg: null },
+        { id: 'i2', trip_id: 't1', kind: 'transport', place_id: 'from', leg: { toPlaceRef: 'leg-ref' } },
+        { id: 'i3', trip_id: 't1', kind: 'lodging', place_id: 'hotel', leg: null },
+      ],
+      guides: [
+        { place_id: 'own', item_id: null, audience: 'adult' },
+        { place_id: null, item_id: 'i1', audience: 'adult' },
+        { place_id: null, item_id: 'i2', audience: 'adult' },
+        { place_id: null, item_id: 'i3', audience: 'adult' },
+        { place_id: 'kid', item_id: null, audience: 'child' },
+      ],
+    });
+    const guided = Object.fromEntries(list.map((each) => [each.name, each.trips.map((trip) => trip.guide)]));
+    expect(guided).toEqual({ Własny: [true, false], 'Z punktu': [true], 'Z przejazdu': [true], Skąd: [false], Hotel: [false], 'Dla dzieci': [false] });
+  });
+
+  it('miejsce bez refa w bazie dostaje ref zastępczy, jak w dokumencie', () => {
+    const list = placesAcrossTrips({ trips, places: [{ ...place('a', 't1', 'Start'), ref: null }], ...none });
+    expect(list[0]!.trips[0]!.ref).toBe('id-a');
+  });
+
+  it('miejsce z wyjazdu spoza listy (szkic) nie wchodzi', () => {
+    expect(placesAcrossTrips({ trips: [trips[0]!], places: [place('a', 't2', 'Ateny')], ...none })).toEqual([]);
   });
 });
