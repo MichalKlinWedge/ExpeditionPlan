@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { readVenueText, VENUE_TEXT_LIMIT, venuePrompt } from '../venue.ts';
 
-const empty = { description: null, address: null, openingHours: null, website: null, prices: [], rating: null };
+const empty = { points: [], address: null, openingHours: null, website: null, prices: [], rating: null };
 
 function clientAnswering(...answers: unknown[]) {
   const prompts: string[] = [];
@@ -27,8 +27,14 @@ describe('dane lokalu z wklejonego tekstu', () => {
     expect(prompt).not.toContain('KONIEC');
   });
 
-  it('zwraca szkic z oceną i cenami', async () => {
-    const answer = { ...empty, isVenue: true, description: 'Mała pizzeria.', rating: { value: 4.6, scale: 5, count: 1240, source: 'Google Maps' }, prices: [{ name: 'Margherita', currency: 'PLN', minMinor: 3200, maxMinor: 3200 }] };
+  it('zapisane punkty idą do promptu, żeby kolejny odczyt ich nie powtarzał', () => {
+    expect(venuePrompt('Pizzeria', 'tekst', ['Mała pizzeria.'])).toContain('nie powtarzaj ich');
+    expect(venuePrompt('Pizzeria', 'tekst', ['Mała pizzeria.'])).toContain('Mała pizzeria.');
+    expect(venuePrompt('Pizzeria', 'tekst')).not.toContain('nie powtarzaj ich');
+  });
+
+  it('zwraca szkic z punktami, oceną i cenami', async () => {
+    const answer = { ...empty, isVenue: true, points: ['Mała pizzeria.', 'Płatność gotówką.'], rating: { value: 4.6, scale: 5, count: 1240, source: 'Google Maps' }, prices: [{ name: 'Margherita', currency: 'PLN', minMinor: 3200, maxMinor: 3200 }] };
     const { client } = clientAnswering(answer);
     expect(await readVenueText(client, 'Pizzeria', 'tekst')).toEqual(answer);
   });

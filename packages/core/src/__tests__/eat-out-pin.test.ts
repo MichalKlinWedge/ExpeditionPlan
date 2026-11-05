@@ -106,11 +106,11 @@ describe('przypinanie knajp do posiłku', () => {
 
   it('usunięcie opisu i odczyt z tekstu nie odbierają miejscu statusu knajpy', () => {
     const first = addEatOutChoices(atChatka(), MEAL, [{ eatery: eatery('Chatka Górzystów') }], newRef)!;
-    const read = applyVenueDraft(first.doc, 'chatka', { isVenue: true, description: 'Opis.', address: null, openingHours: null, website: null, prices: [], rating: null }, ['description'], '2026-11-05')!.doc;
-    expect(read.places.find((each) => each.ref === 'chatka')!.venue).toEqual({ description: 'Opis.', prices: [], readOn: '2026-11-05' });
+    const read = applyVenueDraft(first.doc, 'chatka', { isVenue: true, points: ['Opis.'], address: null, openingHours: null, website: null, prices: [], rating: null }, ['point:0'], '2026-11-05')!.doc;
+    expect(read.places.find((each) => each.ref === 'chatka')!.venue).toEqual({ points: ['Opis.'], prices: [], readOn: '2026-11-05' });
     const cleared = removeVenue(read, 'chatka')!.doc;
     expect(mealEateries(cleared, MEAL)).toHaveLength(1);
-    const addressOnly = applyVenueDraft(first.doc, 'chatka', { isVenue: true, description: null, address: 'A', openingHours: null, website: null, prices: [], rating: null }, ['address'], '2026-11-05')!.doc;
-    expect(addressOnly.places.find((each) => each.ref === 'chatka')!.venue).toEqual({ prices: [] });
+    const addressOnly = applyVenueDraft(first.doc, 'chatka', { isVenue: true, points: [], address: 'A', openingHours: null, website: null, prices: [], rating: null }, ['address'], '2026-11-05')!.doc;
+    expect(addressOnly.places.find((each) => each.ref === 'chatka')!.venue).toEqual({ points: [], prices: [] });
   });
 });

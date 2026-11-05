@@ -1,15 +1,16 @@
 "use client";
 
-import { eateryKindLabel, type TripDocument, type VenueDraft, type VenueDraftRow, venuePriceLabel, venueRatingLabel } from "@expeditionplan/core";
+import { eateryKindLabel, type TripDocument, type VenueDraft, type VenueDraftRow, venuePoints } from "@expeditionplan/core";
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { clearVenue, readVenue, saveVenue } from "@/app/venue-actions";
 import { SparkIcon } from "@/components/icons";
+import { VenueEntries } from "@/components/venue-entries";
 
 /**
- * Dane knajpy pod mapą „Posiłków”: to, co dała wyszukiwarka (rodzaj, adres, godziny, strona, kuchnia), oraz opis, ocena i przykładowe
- * ceny z wklejonego tekstu. Organizator i edytor wklejają tekst i wybierają, co zapisać. Opisu samego miejsca tu nie ma: jest w „Miejscach”.
+ * Dane knajpy pod mapą „Posiłków”: to, co dała wyszukiwarka (rodzaj, adres, godziny, strona, kuchnia), oraz punkty opisu, ocena i przykładowe
+ * ceny (`VenueEntries`). Organizator i edytor wklejają tekst i wybierają, co dopisać. Opisu samego miejsca tu nie ma: jest w „Miejscach”.
  */
 
 type Place = TripDocument["places"][number];
@@ -19,7 +20,7 @@ const shortDate = (date: string) => new Intl.DateTimeFormat("pl-PL", { day: "num
 export function VenueCard({ tripId, place, isEatery, canEdit, editing }: { tripId: string; place: Place; isEatery: boolean; canEdit: boolean; editing: boolean }) {
   const { venue } = place;
   const facts = place.address || place.openingHours || place.website;
-  const read = venue?.description || venue?.rating || (venue?.prices.length ?? 0) > 0;
+  const read = venuePoints(venue).length > 0 || venue?.rating !== undefined || (venue?.prices.length ?? 0) > 0;
   const kind = eateryKindLabel(place);
   if (!isEatery) {
     return (
@@ -35,23 +36,7 @@ export function VenueCard({ tripId, place, isEatery, canEdit, editing }: { tripI
         {place.name}
         {kind && <span className="ml-2 text-sm font-normal text-zinc-500">{kind}</span>}
       </h2>
-      {venue?.rating && (
-        <p>
-          <span aria-hidden="true">★ </span>
-          <strong>{venueRatingLabel(venue.rating)}</strong>
-        </p>
-      )}
-      {venue?.description && <p>{venue.description}</p>}
-      {venue && venue.prices.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <h3 className="font-semibold">Przykładowe ceny</h3>
-          <ul className="list-disc pl-5">
-            {venue.prices.map((price) => (
-              <li key={price.name}>{venuePriceLabel(price)}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <VenueEntries tripId={tripId} place={place} editing={canEdit && editing} />
       {facts && (
         <p className="text-xs text-zinc-600 dark:text-zinc-400">
           {[place.address, place.openingHours].filter(Boolean).join(" · ")}
@@ -66,14 +51,14 @@ export function VenueCard({ tripId, place, isEatery, canEdit, editing }: { tripI
         </p>
       )}
       {place.notes && <p className="text-xs text-zinc-600 dark:text-zinc-400">{place.notes}</p>}
-      {venue?.readOn && <p className="text-xs text-zinc-500">Z tekstu wklejonego {shortDate(venue.readOn)}. Ceny i ocena mogły się od tego czasu zmienić.</p>}
+      {venue?.readOn && <p className="text-xs text-zinc-500">Ostatni odczyt z wklejonego tekstu: {shortDate(venue.readOn)}. Ceny i ocena mogły się od tego czasu zmienić.</p>}
       {!read && <p className="text-sm text-zinc-500">Brak opisu, cen i oceny.{canEdit ? "" : " Organizator może je dodać."}</p>}
-      {canEdit && <VenueEditor key={place.ref} tripId={tripId} place={place} read={Boolean(read)} />}
+      {canEdit && <VenueEditor key={place.ref} tripId={tripId} place={place} canClear={read && editing} />}
     </section>
   );
 }
 
-function VenueEditor({ tripId, place, read: hasRead }: { tripId: string; place: Place; read: boolean }) {
+function VenueEditor({ tripId, place, canClear }: { tripId: string; place: Place; canClear: boolean }) {
   const [text, setText] = useState("");
   const [state, setState] = useState<FormState>({});
   const [draft, setDraft] = useState<{ draft: VenueDraft; rows: VenueDraftRow[] } | null>(null);
@@ -112,27 +97,27 @@ function VenueEditor({ tripId, place, read: hasRead }: { tripId: string; place: 
         <a href={`https://www.google.com/maps/search/?api=1&query=${query}`} target="_blank" rel="noreferrer" className="underline">
           Otwórz lokal w Google Maps
         </a>
-        . AI przygotuje szkic, a Ty wybierzesz, co zapisać.
+        . AI przygotuje punkty, a Ty wybierzesz, które dopisać. To, co już jest zapisane, zostaje.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" disabled={pending || text.trim() === ""} onClick={read} className="btn-primary btn-sm">
           <SparkIcon className="size-4" />
           {pending ? "Czytam…" : "Odczytaj dane lokalu (AI)"}
         </button>
-        {hasRead && (
+        {canClear && (
           <button
             type="button"
             disabled={pending}
-            onClick={() => window.confirm("Usunąć opis, ceny i ocenę tego lokalu?") && start(async () => setState(await clearVenue(tripId, place.ref)))}
+            onClick={() => window.confirm("Usunąć wszystkie punkty, ceny i ocenę tego lokalu?") && start(async () => setState(await clearVenue(tripId, place.ref)))}
             className="text-xs underline disabled:opacity-50">
-            usuń dane lokalu
+            usuń wszystko
           </button>
         )}
       </div>
 
       {draft && (
         <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-3">
-          <p className="font-medium">Co zapisać?</p>
+          <p className="font-medium">Co dopisać?</p>
           <ul className="flex flex-col gap-1.5">
             {draft.rows.map((row) => (
               <li key={row.key}>
@@ -152,7 +137,7 @@ function VenueEditor({ tripId, place, read: hasRead }: { tripId: string; place: 
                   />
                   <span>
                     <span className="text-zinc-500">{row.label}:</span> {row.value}
-                    {row.current && <span className="block text-xs text-amber-700 dark:text-amber-400">teraz zapisane: {row.current}</span>}
+                    {row.current && <span className="block text-xs text-amber-700 dark:text-amber-400">zastąpi zapisane: {row.current}</span>}
                   </span>
                 </label>
               </li>
@@ -160,7 +145,7 @@ function VenueEditor({ tripId, place, read: hasRead }: { tripId: string; place: 
           </ul>
           <div className="flex gap-2">
             <button type="button" disabled={pending || picked.size === 0} onClick={save} className="btn-primary btn-sm">
-              Zapisz zaznaczone
+              Dopisz zaznaczone
             </button>
             <button type="button" disabled={pending} onClick={() => setDraft(null)} className="btn-secondary btn-sm">
               Anuluj

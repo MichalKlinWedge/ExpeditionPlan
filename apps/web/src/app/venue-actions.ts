@@ -1,6 +1,6 @@
 "use server";
 
-import { applyVenueDraft, removeVenue, TripDocument, VENUE_FIELDS, VenueDraft, type VenueDraftRow, venueDraftRows } from "@expeditionplan/core";
+import { applyVenueDraft, editVenuePoint, editVenuePrice, removeVenue, removeVenueRating, TripDocument, VENUE_FIELD, VENUE_POINT_LIMIT, VenueDraft, type VenueDraftRow, venueDraftRows, venuePoints, VenuePrice } from "@expeditionplan/core";
 import { readVenueText, VENUE_TEXT_LIMIT } from "@expeditionplan/planner";
 import { refIndex, saveElements, stateFromPayload } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
@@ -17,7 +17,8 @@ import { requireUser } from "@/lib/auth";
 
 export type VenueReadState = FormState & { draft?: VenueDraft; rows?: VenueDraftRow[] };
 
-const FIELDS = z.array(z.enum(VENUE_FIELDS));
+const FIELDS = z.array(z.string().regex(VENUE_FIELD)).max(30);
+const GONE = "Tego już nie ma albo taki punkt już jest — odśwież stronę.";
 
 async function loadTrip(tripId: string) {
   const { supabase } = await requireUser(`/trips/${tripId}/meals`);
@@ -42,7 +43,7 @@ export async function readVenue(tripId: string, placeRef: string, text: string):
   const place = loaded.doc.places.find((each) => each.ref === placeRef);
   if (place === undefined) return { error: "Tego miejsca już nie ma — odśwież stronę." };
   try {
-    const draft = await readVenueText(gemini.client, place.name, pasted, { timeoutMs: 60_000 });
+    const draft = await readVenueText(gemini.client, place.name, pasted, { known: venuePoints(place.venue), timeoutMs: 60_000 });
     if (draft === null) return { error: "W tym tekście nie ma danych lokalu." };
     const rows = venueDraftRows(place, draft);
     if (rows.length === 0) return { ok: "W tekście nie ma nic nowego względem tego, co już jest zapisane." };
@@ -53,7 +54,7 @@ export async function readVenue(tripId: string, placeRef: string, text: string):
 }
 
 async function save(tripId: string, edit: ReturnType<typeof removeVenue>, loaded: Exclude<Awaited<ReturnType<typeof loadTrip>>, { error: string }>, ok: string): Promise<FormState> {
-  if (edit === null) return { error: "Tego miejsca już nie ma — odśwież stronę." };
+  if (edit === null) return { error: GONE };
   const checked = TripDocument.safeParse(edit.doc);
   if (!checked.success) {
     const issue = checked.error.issues[0]!;
@@ -68,7 +69,7 @@ async function save(tripId: string, edit: ReturnType<typeof removeVenue>, loaded
   return { ok };
 }
 
-/** Zapisuje pola zaznaczone w podglądzie. */
+/** Dopisuje wiersze zaznaczone w podglądzie. */
 export async function saveVenue(tripId: string, placeRef: string, input: VenueDraft, fields: string[]): Promise<FormState> {
   const draft = VenueDraft.safeParse(input);
   const picked = FIELDS.safeParse(fields);
@@ -76,10 +77,34 @@ export async function saveVenue(tripId: string, placeRef: string, input: VenueDr
   if (picked.data.length === 0) return { error: "Zaznacz, co zapisać." };
   const loaded = await loadTrip(tripId);
   if ("error" in loaded) return { error: loaded.error };
-  return save(tripId, applyVenueDraft(loaded.doc, placeRef, draft.data, picked.data, new Date().toISOString().slice(0, 10)), loaded, "Zapisano dane lokalu.");
+  return save(tripId, applyVenueDraft(loaded.doc, placeRef, draft.data, picked.data, new Date().toISOString().slice(0, 10)), loaded, "Dopisano zaznaczone.");
 }
 
-/** Usuwa opis, ceny i ocenę lokalu. */
+/** Punkt opisu: `old === null` dodaje nowy, `next === null` usuwa. */
+export async function saveVenuePoint(tripId: string, placeRef: string, old: string | null, next: string | null): Promise<FormState> {
+  if (next !== null && next.trim().length > VENUE_POINT_LIMIT) return { error: `Punkt może mieć najwyżej ${VENUE_POINT_LIMIT} znaków.` };
+  const loaded = await loadTrip(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  return save(tripId, editVenuePoint(loaded.doc, placeRef, old, next), loaded, "Zapisano.");
+}
+
+/** Przykładowa cena: `oldName === null` dodaje nową, `next === null` usuwa. */
+export async function saveVenuePrice(tripId: string, placeRef: string, oldName: string | null, next: VenuePrice | null): Promise<FormState> {
+  const price = next === null ? null : VenuePrice.safeParse(next);
+  if (price !== null && !price.success) return { error: "Niepoprawna cena." };
+  const loaded = await loadTrip(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  return save(tripId, editVenuePrice(loaded.doc, placeRef, oldName, price === null ? null : price.data), loaded, "Zapisano.");
+}
+
+/** Usuwa ocenę. */
+export async function dropVenueRating(tripId: string, placeRef: string): Promise<FormState> {
+  const loaded = await loadTrip(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  return save(tripId, removeVenueRating(loaded.doc, placeRef), loaded, "Usunięto ocenę.");
+}
+
+/** Usuwa punkty, ceny i ocenę lokalu. */
 export async function clearVenue(tripId: string, placeRef: string): Promise<FormState> {
   const loaded = await loadTrip(tripId);
   if ("error" in loaded) return { error: loaded.error };
