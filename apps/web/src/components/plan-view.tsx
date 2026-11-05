@@ -459,7 +459,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                         {dnd ? <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} /> : <span aria-hidden="true">•</span>}
                         <span>
                           {itemBase ? (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" className="hover:text-sea hover:underline">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" {...routeHover(item.ref)} className="hover:text-sea hover:underline">
                               {item.title}
                             </Link>
                           ) : (
@@ -754,7 +754,7 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
   );
 }
 
-/** „🗺 trasa” przy punkcie z linkiem do trasy (mapy.com), do podejrzenia przebiegu wprost z planu dnia. */
+/** Najechanie na nazwę punktu albo „🗺 trasa” podświetla jego linię na mapie; punkt bez linii niczego nie zmienia. */
 const routeHover = (ref: string) => ({
   onMouseEnter: () => highlightRoute(ref),
   onMouseLeave: () => highlightRoute(null),
@@ -762,6 +762,7 @@ const routeHover = (ref: string) => ({
   onBlur: () => highlightRoute(null),
 });
 
+/** „🗺 trasa” przy punkcie z linkiem do trasy (mapy.com), do podejrzenia przebiegu wprost z planu dnia. */
 function RouteLink({ doc, item }: { doc: TripDocument; item: Item }) {
   const url = doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.url;
   if (url === undefined || !/^https?:\/\//i.test(url)) return null;
@@ -989,11 +990,11 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       </span>
                     )}
                     {itemBase ? (
-                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" className="font-medium hover:text-sea hover:underline">
+                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" {...routeHover(item.ref)} className="font-medium hover:text-sea hover:underline">
                         {item.title}
                       </Link>
                     ) : (
-                      <span className="font-medium">{item.title}</span>
+                      <span {...routeHover(item.ref)} className="font-medium">{item.title}</span>
                     )}
                     {source && <RouteLink doc={doc} item={source} />}
                     {item.kind !== "lodging" && guided?.includes(item.ref) &&
