@@ -9,10 +9,11 @@ import { z } from "zod";
 import type { FormState } from "@/app/actions";
 import { aiAccessError, geminiClient } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+import { fetchVenueSiteText, VenueSiteError } from "@/lib/venue-site";
 
 /**
- * Lokal na stronie „Posiłki”: dane z tekstu, który wkleił użytkownik. Strony ani ocen nie pobieramy
- * (`core/venue-info.ts`). O prawie do zapisu decyduje RLS (organizator, edytor).
+ * Lokal na stronie „Posiłki”: dane z tekstu, który wkleił użytkownik, albo ze strony samego lokalu, pobranej na jego kliknięcie
+ * (`lib/venue-site.ts`). Serwisów z ocenami nie czytamy (`core/venue-info.ts`). O prawie do zapisu decyduje RLS (organizator, edytor).
  */
 
 export type VenueReadState = FormState & { draft?: VenueDraft; rows?: VenueDraftRow[] };
@@ -34,6 +35,23 @@ export async function readVenue(tripId: string, placeRef: string, text: string):
   const pasted = text.trim();
   if (pasted === "") return { error: "Wklej tekst ze strony lokalu." };
   if (pasted.length > VENUE_TEXT_LIMIT) return { error: `Tekst jest za długi: wklej najwyżej ${VENUE_TEXT_LIMIT.toLocaleString("pl-PL")} znaków, bez komentarzy gości.` };
+  return draftFrom(tripId, placeRef, () => pasted, "pasted");
+}
+
+/** Pobiera stronę lokalu i jej menu, a potem działa jak wklejony tekst: szkic do podglądu, bez zapisu. */
+export async function readVenueSite(tripId: string, placeRef: string): Promise<VenueReadState> {
+  return draftFrom(
+    tripId,
+    placeRef,
+    async (website) => {
+      if (website === undefined) throw new VenueSiteError("Ten lokal nie ma zapisanej strony.");
+      return fetchVenueSiteText(website);
+    },
+    "site",
+  );
+}
+
+async function draftFrom(tripId: string, placeRef: string, source: (website: string | undefined) => string | Promise<string>, kind: "pasted" | "site"): Promise<VenueReadState> {
   const denied = await aiAccessError();
   if (denied !== null) return { error: denied };
   const gemini = geminiClient();
@@ -43,10 +61,11 @@ export async function readVenue(tripId: string, placeRef: string, text: string):
   const place = loaded.doc.places.find((each) => each.ref === placeRef);
   if (place === undefined) return { error: "Tego miejsca już nie ma — odśwież stronę." };
   try {
-    const draft = await readVenueText(gemini.client, place.name, pasted, { known: venuePoints(place.venue), timeoutMs: 60_000 });
-    if (draft === null) return { error: "W tym tekście nie ma danych lokalu." };
+    const text = await source(place.website);
+    const draft = await readVenueText(gemini.client, place.name, text, { known: venuePoints(place.venue), source: kind, timeoutMs: 60_000 });
+    if (draft === null) return { error: kind === "site" ? "Na tej stronie nie ma danych lokalu." : "W tym tekście nie ma danych lokalu." };
     const rows = venueDraftRows(place, draft);
-    if (rows.length === 0) return { ok: "W tekście nie ma nic nowego względem tego, co już jest zapisane." };
+    if (rows.length === 0) return { ok: kind === "site" ? "Na stronie nie ma nic nowego względem tego, co już jest zapisane." : "W tekście nie ma nic nowego względem tego, co już jest zapisane." };
     return { draft, rows };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };

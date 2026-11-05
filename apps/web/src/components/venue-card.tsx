@@ -4,7 +4,7 @@ import { eateryKindLabel, type TripDocument, type VenueDraft, type VenueDraftRow
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { clearVenue, readVenue, saveVenue } from "@/app/venue-actions";
+import { clearVenue, readVenue, readVenueSite, saveVenue, type VenueReadState } from "@/app/venue-actions";
 import { SparkIcon } from "@/components/icons";
 import { VenueEntries } from "@/components/venue-entries";
 
@@ -51,7 +51,7 @@ export function VenueCard({ tripId, place, isEatery, canEdit, editing }: { tripI
         </p>
       )}
       {place.notes && <p className="text-xs text-zinc-600 dark:text-zinc-400">{place.notes}</p>}
-      {venue?.readOn && <p className="text-xs text-zinc-500">Ostatni odczyt z wklejonego tekstu: {shortDate(venue.readOn)}. Ceny i ocena mogły się od tego czasu zmienić.</p>}
+      {venue?.readOn && <p className="text-xs text-zinc-500">Ostatni odczyt: {shortDate(venue.readOn)}. Ceny i ocena mogły się od tego czasu zmienić.</p>}
       {!read && <p className="text-sm text-zinc-500">Brak opisu, cen i oceny.{canEdit ? "" : " Organizator może je dodać."}</p>}
       {canEdit && <VenueEditor key={place.ref} tripId={tripId} place={place} canClear={read && editing} />}
     </section>
@@ -64,11 +64,14 @@ function VenueEditor({ tripId, place, canClear }: { tripId: string; place: Place
   const [draft, setDraft] = useState<{ draft: VenueDraft; rows: VenueDraftRow[] } | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [pending, start] = useTransition();
+  const [reading, setReading] = useState<"text" | "site" | null>(null);
   const query = encodeURIComponent([place.name, place.address].filter(Boolean).join(" "));
 
-  const read = () =>
+  const read = (kind: "text" | "site", action: () => Promise<VenueReadState>) =>
     start(async () => {
-      const result = await readVenue(tripId, place.ref, text);
+      setReading(kind);
+      const result = await action();
+      setReading(null);
       setState(result);
       if (result.draft && result.rows) {
         setDraft({ draft: result.draft, rows: result.rows });
@@ -88,21 +91,30 @@ function VenueEditor({ tripId, place, canClear }: { tripId: string; place: Place
 
   return (
     <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+      {place.website && (
+        <div className="flex flex-col gap-1">
+          <button type="button" disabled={pending} onClick={() => read("site", () => readVenueSite(tripId, place.ref))} className="btn-secondary btn-sm self-start">
+            <SparkIcon className="size-4" />
+            {reading === "site" ? "Czytam stronę… (ok. 10–30 s)" : "Odczytaj opis i menu ze strony lokalu (AI)"}
+          </button>
+          <p className="text-xs text-zinc-500">Pobiera raz stronę lokalu i jej menu. Oceny zwykle tam nie ma: tę wklej niżej.</p>
+        </div>
+      )}
       <label className="flex flex-col gap-1 text-xs text-zinc-500">
         Wklej tekst ze strony lokalu: opis, ocenę, menu z cenami
         <textarea value={text} onChange={(event) => setText(event.target.value)} rows={5} maxLength={20_000} disabled={pending} placeholder="Zaznacz i skopiuj tekst, np. z Google Maps, TripAdvisora albo menu lokalu." className="field p-2 text-sm" />
       </label>
       <p className="text-xs text-zinc-500">
-        Serwisy z ocenami nie pozwalają ich automatycznie pobierać i zapisywać, więc dane pochodzą tylko z wklejonego tekstu.{" "}
+        Serwisy z ocenami nie pozwalają ich automatycznie pobierać i zapisywać, więc ocena pochodzi tylko z wklejonego tekstu.{" "}
         <a href={`https://www.google.com/maps/search/?api=1&query=${query}`} target="_blank" rel="noreferrer" className="underline">
           Otwórz lokal w Google Maps
         </a>
         . AI przygotuje punkty, a Ty wybierzesz, które dopisać. To, co już jest zapisane, zostaje.
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" disabled={pending || text.trim() === ""} onClick={read} className="btn-primary btn-sm">
+        <button type="button" disabled={pending || text.trim() === ""} onClick={() => read("text", () => readVenue(tripId, place.ref, text))} className="btn-primary btn-sm">
           <SparkIcon className="size-4" />
-          {pending ? "Czytam…" : "Odczytaj dane lokalu (AI)"}
+          {reading === "text" ? "Czytam…" : "Odczytaj dane lokalu (AI)"}
         </button>
         {canClear && (
           <button
