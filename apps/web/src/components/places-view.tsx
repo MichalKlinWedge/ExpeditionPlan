@@ -1,17 +1,18 @@
 "use client";
 
-import type { DayMap, PlaceUsage } from "@expeditionplan/core";
+import { type DayMap, distanceM, type PlaceUsage } from "@expeditionplan/core";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { type FormState, pinPlace, searchPlace } from "@/app/actions";
-import { removePlace, savePlaceDetails } from "@/app/place-actions";
+import { mergePlace, removePlace, savePlaceDetails } from "@/app/place-actions";
 import { type LatLng, PlanMap } from "@/components/plan-map";
 
 /**
  * Wszystkie miejsca wyjazdu: lista i mapa z tymi samymi numerami. Organizator i edytor poprawiają nazwę,
  * adres i współrzędne (wklejone, wskazane na mapie albo znalezione po nazwie) i usuwają nieużywane miejsca.
  * Numer albo nazwa na liście wyróżnia pinezkę, tak jak numer punktu w planie; pinezka wyróżnia wiersz.
+ * Duplikaty (podpowiedź z `similarPlaces` albo wybrane z listy) scala się do miejsca, przy którym się klika.
  * Pozycję zmienia się kliknięciem i osobnym zapisem, bez przeciągania: miejsce jest wspólne dla wielu punktów.
  */
 
@@ -26,6 +27,8 @@ export type PlaceRowData = {
   searchName?: string | undefined;
   usage: PlaceUsage;
   n?: number | undefined;
+  /** Refy możliwych duplikatów. */
+  similar: string[];
 };
 
 type Filter = "all" | "missing" | "unused";
@@ -33,6 +36,10 @@ type Filter = "all" | "missing" | "unused";
 const PROVIDER: Record<PlaceRowData["provider"], string> = { osm: "z OpenStreetMap", geoapify: "z Geoapify", user: "wpisane ręcznie", unknown: "źródło nieustalone" };
 const input = "field min-w-0 flex-1 px-2 py-1 text-sm";
 const button = "btn-secondary btn-sm";
+
+/** Dalej niż tyle: ostrzeżenie przed scaleniem. Bliżej niż `MOVED_M` trasy przejazdów dalej pasują. */
+const FAR_M = 1000;
+const MOVED_M = 100;
 
 const usageLabel = ({ items, bookings, days, legs }: PlaceUsage) =>
   [items.length > 0 && `punkty: ${items.length}`, bookings.length > 0 && `rezerwacje: ${bookings.length}`, days > 0 && `baza dni: ${days}`, legs > 0 && `przejazdy: ${legs}`].filter(Boolean).join(", ");
@@ -121,6 +128,7 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
               key={place.id}
               tripId={tripId}
               place={place}
+              others={places.filter((each) => each.ref !== place.ref)}
               canEdit={canEdit}
               hasRouted={hasRouted}
               open={open === place.ref}
@@ -146,6 +154,7 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
 function PlaceRow({
   tripId,
   place,
+  others,
   canEdit,
   hasRouted,
   open,
@@ -159,6 +168,7 @@ function PlaceRow({
 }: {
   tripId: string;
   place: PlaceRowData;
+  others: PlaceRowData[];
   canEdit: boolean;
   hasRouted: boolean;
   open: boolean;
@@ -176,6 +186,13 @@ function PlaceRow({
   const [search, setSearch] = useState(place.searchName ?? place.name);
   const [result, setResult] = useState<FormState>({});
   const [moved, setMoved] = useState(false);
+  const [mergeRef, setMergeRef] = useState("");
+  // Scalenie może uzupełnić adres z drugiego miejsca: pole ma pokazać to, co jest zapisane.
+  const [savedAddress, setSavedAddress] = useState(place.address);
+  if (savedAddress !== place.address) {
+    setSavedAddress(place.address);
+    setAddress(place.address ?? "");
+  }
   const [pending, start] = useTransition();
   const pickBar = useRef<HTMLDivElement>(null);
   // Na telefonie lista jest pod mapą: po wskazaniu pokazuje przycisk zapisu.
@@ -197,6 +214,20 @@ function PlaceRow({
       if (answer.ok) done?.();
       return answer;
     }, true);
+
+  const merge = (drop: PlaceRowData) => {
+    const far = located && drop.lat !== undefined && drop.lng !== undefined ? distanceM([place.lng!, place.lat!], [drop.lng, drop.lat]) : 0;
+    const uses = drop.usage.total > 0 ? ` Przejdą na nie: ${usageLabel(drop.usage)}.` : "";
+    const warning = far > FAR_M ? ` Uwaga: te miejsca są ${(far / 1000).toFixed(1).replace(".", ",")} km od siebie, punkty dostaną współrzędne „${place.name}”.` : "";
+    if (!window.confirm(`Scalić „${drop.name}” do „${place.name}”? „${drop.name}” zniknie.${uses}${warning} W aplikacji nie da się tego cofnąć.`)) return;
+    const changesPosition = drop.lat !== undefined && (!located || far > MOVED_M);
+    run(async () => {
+      const answer = await mergePlace(tripId, place.ref, drop.ref);
+      if (answer.ok) setMergeRef("");
+      return answer;
+    }, changesPosition);
+  };
+  const similar = others.filter((each) => place.similar.includes(each.ref));
 
   const linked = [...usage.items.map((item) => ({ key: item.ref, title: item.title, href: `/trips/${tripId}/item/${item.ref}` })), ...usage.bookings.map((booking) => ({ key: booking.ref, title: booking.title, href: `/trips/${tripId}/logistics` }))];
 
@@ -230,6 +261,22 @@ function PlaceRow({
         )}
         {PROVIDER[place.provider]} · {usage.total > 0 ? usageLabel(usage) : "nieużywane"}
       </p>
+      {canEdit && similar.length > 0 && (
+        <div className="flex flex-col gap-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {similar.map((each) => (
+            <p key={each.ref} className="flex flex-wrap items-baseline gap-x-2">
+              <span>
+                Możliwy duplikat: {each.n !== undefined ? `${each.n}. ` : ""}
+                {each.name}
+                {each.usage.total > 0 ? ` (${usageLabel(each.usage)})` : " (nieużywane)"}
+              </span>
+              <button type="button" disabled={pending} onClick={() => merge(each)} className="underline disabled:opacity-50">
+                scal tutaj
+              </button>
+            </p>
+          ))}
+        </div>
+      )}
 
       {open && (
         <div className="flex flex-col gap-3 border-t border-zinc-200 pt-2 dark:border-zinc-800">
@@ -310,6 +357,26 @@ function PlaceRow({
               </button>
             </form>
           </div>
+
+          {others.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-zinc-500">Scal z innym miejscem: to miejsce zostaje, a wybrane znika i wszystko, co z niego korzysta, przechodzi tutaj.</p>
+              <div className="flex flex-wrap gap-2">
+                <select value={mergeRef} onChange={(event) => setMergeRef(event.target.value)} disabled={pending} aria-label={`Scal z miejscem: ${place.name}`} className={input}>
+                  <option value="">Wybierz miejsce…</option>
+                  {others.map((each) => (
+                    <option key={each.ref} value={each.ref}>
+                      {each.n !== undefined ? `${each.n}. ` : ""}
+                      {each.name}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" disabled={pending || mergeRef === ""} onClick={() => merge(others.find((each) => each.ref === mergeRef)!)} className={button}>
+                  Scal
+                </button>
+              </div>
+            </div>
+          )}
 
           {usage.total === 0 && (
             <button

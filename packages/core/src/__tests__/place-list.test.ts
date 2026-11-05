@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { placeList, placeUsage, removeUnusedPlace } from '../place-list.ts';
+import { mergePlaces, placeList, placeUsage, removeUnusedPlace, similarPlaces } from '../place-list.ts';
 import { placeUses } from '../plan-edits.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
@@ -64,5 +64,87 @@ describe('lista miejsc', () => {
       ['places', 'remove'],
     ]);
     expect(TripDocument.safeParse(edit.doc).success).toBe(true);
+  });
+});
+
+describe('scalanie miejsc', () => {
+  const withPlaces = (slug: string, ...extra: object[]) => {
+    const base = fixture(slug);
+    return TripDocument.parse({ ...base, places: [...base.places, ...extra] });
+  };
+
+  it('każda para miejsc z pięciu planów: dokument spójny, żadne odwołanie nie zostaje, użycia się sumują', () => {
+    for (const slug of SLUGS) {
+      const doc = fixture(slug);
+      for (const drop of doc.places) {
+        const keep = doc.places.find((each) => each.ref !== drop.ref);
+        if (keep === undefined) continue;
+        const edit = mergePlaces(doc, keep.ref, drop.ref)!;
+        const label = `${slug}/${drop.ref}`;
+        expect(TripDocument.safeParse(edit.doc).success, label).toBe(true);
+        expect(JSON.stringify(edit.doc), label).not.toContain(`"${drop.ref}"`);
+        const before = placeUsage(doc, keep.ref).total + placeUsage(doc, drop.ref).total;
+        // Punkt może korzystać z obu miejsc, wtedy liczy się raz.
+        expect(placeUsage(edit.doc, keep.ref).total, label).toBeLessThanOrEqual(before);
+        expect(placeUsage(edit.doc, keep.ref).total, label).toBeGreaterThanOrEqual(Math.max(placeUsage(doc, keep.ref).total, placeUsage(doc, drop.ref).total));
+        expect(edit.writes.at(-1)).toMatchObject({ collection: 'places', op: 'remove', element: { ref: drop.ref } });
+        expect(edit.writes.at(-2)).toMatchObject({ collection: 'places', op: 'update', element: { ref: keep.ref } });
+      }
+    }
+  });
+
+  it('punkty, przejazdy, dni i rezerwacje przechodzą na zostające miejsce', () => {
+    const base = fixture('dinara');
+    const place = base.places[0]!;
+    const doc = TripDocument.parse({
+      ...base,
+      places: [...base.places, { ref: 'dup', name: place.name, provider: 'unknown', links: [] }],
+      items: base.items.map((item, index) => (index === 0 ? { ...item, kind: 'transport', placeRef: 'dup', leg: { mode: 'car', links: [], fromPlaceRef: 'dup', toPlaceRef: 'dup' } } : item)),
+      days: base.days.map((day, index) => (index === 0 ? { ...day, baseRef: 'dup' } : day)),
+      bookings: [...base.bookings, { ref: 'r-x', kind: 'lodging', status: 'booked', title: 'Nocleg', startPlaceRef: 'dup', endPlaceRef: 'dup' }],
+    });
+    const edit = mergePlaces(doc, place.ref, 'dup')!;
+    const item = edit.doc.items[0]!;
+    expect([item.placeRef, item.leg?.fromPlaceRef, item.leg?.toPlaceRef]).toEqual([place.ref, place.ref, place.ref]);
+    expect(edit.doc.days[0]!.baseRef).toBe(place.ref);
+    expect(edit.doc.bookings.find((each) => each.ref === 'r-x')).toMatchObject({ startPlaceRef: place.ref, endPlaceRef: place.ref });
+    expect(edit.writes.map((write) => write.collection).slice(0, 3)).toEqual(['items', 'days', 'bookings']);
+  });
+
+  it('zostające miejsce bierze z drugiego tylko to, czego nie ma, a współrzędne razem ze źródłem', () => {
+    const doc = withPlaces(
+      'dinara',
+      { ref: 'a', name: 'Chatka', provider: 'unknown', links: [{ label: 'Strona', url: 'https://a.example/' }], notes: 'Pierwsza' },
+      { ref: 'b', name: 'Chatka Górska', provider: 'osm', lat: 50.1, lng: 15.2, address: 'Orle 1', links: [{ label: 'Strona', url: 'https://a.example/' }, { label: 'Mapa', url: 'https://b.example/' }], notes: 'Druga' },
+      { ref: 'c', name: 'Inna', provider: 'user', lat: 51, lng: 16, address: 'Własny', links: [] },
+    );
+    const merged = mergePlaces(doc, 'a', 'b')!.doc.places.find((each) => each.ref === 'a')!;
+    expect(merged).toMatchObject({ name: 'Chatka', lat: 50.1, lng: 15.2, provider: 'osm', address: 'Orle 1', notes: 'Pierwsza\nDruga' });
+    expect(merged.links.map((link) => link.url)).toEqual(['https://a.example/', 'https://b.example/']);
+    const kept = mergePlaces(doc, 'c', 'b')!.doc.places.find((each) => each.ref === 'c')!;
+    expect(kept).toMatchObject({ lat: 51, lng: 16, provider: 'user', address: 'Własny', name: 'Inna' });
+  });
+
+  it('nie scala miejsca samego ze sobą ani nieistniejącego', () => {
+    const doc = fixture('dinara');
+    const ref = doc.places[0]!.ref;
+    expect(mergePlaces(doc, ref, ref)).toBeNull();
+    expect(mergePlaces(doc, ref, 'nie-ma')).toBeNull();
+    expect(mergePlaces(doc, 'nie-ma', ref)).toBeNull();
+  });
+
+  it('podpowiedź duplikatów: nazwa bez względu na wielkość liter i znaki, te same współrzędne, daleko to nie duplikat', () => {
+    const doc = withPlaces(
+      'dinara',
+      { ref: 'a', name: 'Chatka Górzystów', provider: 'osm', lat: 50.85469, lng: 15.36079, links: [] },
+      { ref: 'b', name: 'chatka  gorzystow', provider: 'osm', lat: 50.8547, lng: 15.3608, links: [] },
+      { ref: 'c', name: 'Schronisko', provider: 'osm', lat: 50.85469, lng: 15.36079, links: [] },
+      { ref: 'd', name: 'Chatka Górzystów', provider: 'unknown', links: [] },
+      { ref: 'e', name: 'Chatka Górzystów', provider: 'osm', lat: 49, lng: 20, links: [] },
+    );
+    const similar = similarPlaces(doc);
+    expect(similar.a).toEqual(['b', 'c', 'd']);
+    expect(similar.c).toEqual(['a']);
+    expect(similar.e).toEqual(['d']);
   });
 });
