@@ -6,6 +6,7 @@ import { z } from 'zod';
  * artykułu (Wikipedia albo Wikivoyage) = CC BY-SA 4.0 z linkiem do źródła; każde zdjęcie z Commons ma własną licencję i autora.
  * Jeden przewodnik na miejsce (`place_id`), a gdy punkt nie ma miejsca — na punkt (`item_id`).
  * Opis ze wskazówką („opłaty i bramki na A7”) jest zawsze na punkt — dotyczy tego punktu, nie miejsca.
+ * Doprecyzowanie ze strony „Miejsca” („wieś w powiecie trzebnickim”) zostaje przy miejscu.
  */
 
 export const GuideImage = z.object({
@@ -31,7 +32,7 @@ export const GuideContent = GuideDraft.extend({
   images: z.array(GuideImage).default([]),
   /** Artykuł, z którego powstał opis. */
   article: z.object({ title: z.string(), url: z.url(), lang: z.string(), site: z.enum(['wikipedia', 'wikivoyage']).default('wikipedia') }),
-  /** Wskazówka organizatora dla AI, z którą powstał opis (do ponownego użycia przy odświeżeniu). */
+  /** Wskazówka organizatora dla AI, z którą powstał opis (do ponownego użycia przy odświeżeniu); w opisie miejsca: które dokładnie to miejsce. */
   hint: z.string().optional(),
 });
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { type GuideContent, GUIDE_LICENSE, type GuideRow, guideFor, guideText, type TripDocument } from "@expeditionplan/core";
+import { GuideContent, GUIDE_LICENSE, type GuideRow, guideFor, guideText, type TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { describePlace } from "@expeditionplan/planner";
 import { refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
@@ -60,9 +60,10 @@ function areaCenter(doc: Doc, area: string | undefined): { lat: number; lng: num
 /**
  * Jeden opis: `null` = gotowy, inaczej powód (brak artykułu, błąd). Ze wskazówką (`hint`) opis
  * dotyczy punktu, nie miejsca („Autostradą A7” — opłaty na A7, nie parking na końcu): tytuł z punktu,
- * zapis tylko z `item_id`, więc nie zasłania opisu miejsca w innych punktach.
+ * zapis tylko z `item_id`, więc nie zasłania opisu miejsca w innych punktach. `which` mówi, które to miejsce,
+ * gdy wiele nosi tę nazwę: opis dalej należy do miejsca.
  */
-async function describeOne(supabase: Supabase, client: Parameters<typeof describePlace>[1]["client"], tripId: string, doc: Doc, ids: Record<string, string>, item: Item, hint?: string): Promise<{ ok: string } | { error: string }> {
+async function describeOne(supabase: Supabase, client: Parameters<typeof describePlace>[1]["client"], tripId: string, doc: Doc, ids: Record<string, string>, item: Item, hint?: string, which?: string): Promise<{ ok: string } | { error: string }> {
   const { ref: found, place } = placeOf(doc, item);
   const placeRef = hint ? undefined : found;
   const name = hint ? item.title : (place?.name ?? item.title);
@@ -81,7 +82,7 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
         lng: place?.lng,
         near,
         context: { itemTitle: item.title, description: item.description, area: base?.name ?? item.area, trip: doc.trip.title },
-        ...(hint ? { hint } : {}),
+        ...(hint ? { hint } : which ? { which } : {}),
       },
       { client, timeoutMs: 60_000 },
     );
@@ -89,6 +90,7 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
     return { error: `Nie udało się przygotować opisu „${name}”: ${e instanceof Error ? e.message : String(e)}` };
   }
   if (content === null) {
+    if (!hint && which) return notFoundWhich(name, which);
     return {
       error: hint
         ? `Nie znalazłem w Wikipedii ani Wikivoyage artykułu o „${hint}”. Spróbuj nazwać temat inaczej (np. nazwa drogi albo obiektu, „jazda autem w Maroku”).`
@@ -96,6 +98,15 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
     };
   }
   return storeGuide(supabase, tripId, name, content, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef], item.ref);
+}
+
+const notFoundWhich = (name: string, which: string) => ({ error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu o „${name}” (${which}). Spróbuj opisać to miejsce inaczej, np. gmina, powiat albo pełna nazwa.` });
+
+/** Doprecyzowanie, z którym powstał obecny opis miejsca: odświeżenie nie może wrócić do imienniczki. */
+function savedWhich(guides: GuideRow[], placeId: string | undefined): string | undefined {
+  if (placeId === undefined) return undefined;
+  const row = guides.find((each) => !each.deleted_at && each.place_id === placeId);
+  return row === undefined ? undefined : GuideContent.safeParse(row.content).data?.hint;
 }
 
 /** Zapis opisu: jeden na miejsce, a bez miejsca na punkt. */
@@ -126,7 +137,9 @@ export async function describeItem(tripId: string, itemRef: string, hint = ""): 
   const item = loaded.doc.items.find((each) => each.ref === itemRef);
   if (item === undefined) return { error: "Tego punktu już nie ma — odśwież stronę." };
   const clean = hint.trim().slice(0, 300);
-  const result = await describeOne(loaded.supabase, loaded.client, tripId, loaded.doc, loaded.ids, item, clean || undefined);
+  const placeRef = placeOf(loaded.doc, item).ref;
+  const which = clean === "" && placeRef !== undefined ? savedWhich(loaded.guides, loaded.ids[placeRef]) : undefined;
+  const result = await describeOne(loaded.supabase, loaded.client, tripId, loaded.doc, loaded.ids, item, clean || undefined, which);
   // Opis miejsca bez wskazówki: własny opis punktu (dawniej ze wskazówką) by go zasłaniał — znika (miękko).
   const itemId = loaded.ids[item.ref];
   const own = loaded.guides.find((row) => !row.deleted_at && row.item_id === itemId && row.place_id === null);
@@ -137,22 +150,28 @@ export async function describeItem(tripId: string, itemRef: string, hint = ""): 
   return result;
 }
 
-/** Opis miejsca ze strony „Miejsca”: z punktu, który tam prowadzi, a miejsce bez punktów (baza, rezerwacja) opisuje samo siebie. */
-export async function describePlaceGuide(tripId: string, placeRef: string): Promise<FormState> {
+/**
+ * Opis miejsca ze strony „Miejsca”: z punktu, który tam prowadzi, a miejsce bez punktów (baza, rezerwacja) opisuje samo siebie.
+ * `which` — które dokładnie miejsce, gdy wiele nosi tę nazwę; puste = szukanie po nazwie i współrzędnych.
+ */
+export async function describePlaceGuide(tripId: string, placeRef: string, which = ""): Promise<FormState> {
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
   const { doc, ids, supabase, client } = loaded;
   const place = doc.places.find((each) => each.ref === placeRef);
   if (place === undefined) return { error: "Tego miejsca już nie ma — odśwież stronę." };
   const item = doc.items.find((each) => placeOf(doc, each).ref === placeRef && each.kind !== "lodging");
+  const clean = which.trim().slice(0, 200);
   let result: FormState;
   if (item !== undefined) {
-    result = await describeOne(supabase, client, tripId, doc, ids, item);
+    result = await describeOne(supabase, client, tripId, doc, ids, item, undefined, clean || undefined);
   } else {
     try {
-      const content = await describePlace({ name: place.name, kind: "visit", lat: place.lat, lng: place.lng, context: { itemTitle: place.name, trip: doc.trip.title } }, { client, timeoutMs: 60_000 });
+      const content = await describePlace({ name: place.name, kind: "visit", lat: place.lat, lng: place.lng, context: { itemTitle: place.name, trip: doc.trip.title }, ...(clean ? { which: clean } : {}) }, { client, timeoutMs: 60_000 });
       result = content === null
-        ? { error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${place.name}”. Opis bez źródła byłby zgadywaniem — pomijam.` }
+        ? clean
+          ? notFoundWhich(place.name, clean)
+          : { error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${place.name}”. Opis bez źródła byłby zgadywaniem — pomijam.` }
         : await storeGuide(supabase, tripId, place.name, content, undefined, ids[placeRef], placeRef);
     } catch (e) {
       result = { error: `Nie udało się przygotować opisu „${place.name}”: ${e instanceof Error ? e.message : String(e)}` };

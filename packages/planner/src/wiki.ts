@@ -68,11 +68,12 @@ function km(a: { lat: number; lng: number }, b: { lat: number; lon: number }) {
 /**
  * Artykuł o miejscu: wyszukiwanie po nazwie (przy współrzędnych — tylko hasła w promieniu 15 km
  * albo bez współrzędnych, ale z pasującym tytułem), a gdy nic — najbliższe hasło w promieniu 1 km
- * z większością słów nazwy w tytule („Twierdza Szybenik” nie dostanie artykułu o mieście). `null` = nie ma pewnego dopasowania.
+ * z większością słów nazwy w tytule („Twierdza Szybenik” nie dostanie artykułu o mieście). Strona ujednoznaczniająca
+ * nigdy nie jest artykułem o miejscu. `query` zastępuje nazwę w wyszukiwaniu, tytuł dalej porównuje się z nazwą. `null` = nie ma pewnego dopasowania.
  */
-export async function findArticle(name: string, at: { lat: number; lng: number } | null, lang: string, fetchImpl: Fetch = fetch): Promise<{ title: string; url: string } | null> {
-  const found = await api(lang, { generator: 'search', gsrsearch: name, gsrlimit: '6', prop: 'coordinates|info', inprop: 'url' }, fetchImpl);
-  const pages = (((found.query as { pages?: Page[] } | undefined)?.pages ?? []) as (Page & { index?: number })[]).sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+export async function findArticle(name: string, at: { lat: number; lng: number } | null, lang: string, fetchImpl: Fetch = fetch, query = name): Promise<{ title: string; url: string } | null> {
+  const found = await api(lang, { generator: 'search', gsrsearch: query, gsrlimit: '6', prop: 'coordinates|info|pageprops', inprop: 'url', ppprop: 'disambiguation' }, fetchImpl);
+  const pages = (((found.query as { pages?: Page[] } | undefined)?.pages ?? []) as (Page & { index?: number })[]).filter((page) => page.pageprops?.disambiguation === undefined).sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
   const near = pages.find((page) => {
     const where = page.coordinates?.[0];
     if (at !== null && where !== undefined) return km(at, where) <= 15 && titleMatch(name, page.title) >= 0.6;
@@ -135,9 +136,10 @@ export async function articleImages(title: string, lang: string, limit = 4, fetc
   return images;
 }
 
-export function guidePrompt(place: { name: string; kind: string; hint?: string }, article: WikiArticle): string {
+export function guidePrompt(place: { name: string; kind: string; hint?: string; which?: string }, article: WikiArticle): string {
   return [
     `Przygotuj krótki przewodnik po miejscu „${place.name}” (${place.kind}) dla rodziny zwiedzającej je podczas wyjazdu.`,
+    ...(place.which ? [`Chodzi dokładnie o: „${place.which}”. Gdy artykuł wspomina inne miejsca o tej nazwie, pisz tylko o tym.`] : []),
     ...(place.hint
       ? [
           '',
@@ -173,6 +175,8 @@ export type PlaceQuery = {
   context?: { itemTitle?: string; description?: string; area?: string; trip?: string };
   /** Wskazówka organizatora: o czym ma być opis („opłaty i bramki na A7”) — ma pierwszeństwo przed nazwą miejsca. */
   hint?: string;
+  /** Które dokładnie miejsce, gdy wiele nosi tę nazwę („wieś w powiecie trzebnickim”); ma pierwszeństwo przed pinezką, która może stać u imienniczki. */
+  which?: string;
 };
 
 const Suggestions = z.object({
@@ -192,6 +196,7 @@ export function suggestPrompt(place: PlaceQuery): string {
       : [
           'Podaj tytuły ISTNIEJĄCYCH artykułów w Wikipedii albo Wikivoyage (polskich lub angielskich), które opisują to miejsce.',
           'Gdy samo miejsce nie ma artykułu, podaj artykuł o obiekcie, którego jest częścią (np. medyna dla suków, park narodowy dla szlaku w nim) — ale nie o całym mieście ani kraju.',
+          ...(place.which ? [`Tę nazwę może nosić wiele miejsc. Organizator wskazał, o które chodzi: „${place.which}”. Podaj artykuły tylko o tym jednym.`] : []),
         ]),
     'Tytuł dokładnie tak, jak w Wikipedii/Wikivoyage. Nie zgaduj: kod sprawdzi, czy artykuł istnieje i leży przy miejscu, a zły tytuł tylko kosztuje. Gdy nie znasz żadnego — pusta lista.',
     '',
@@ -199,7 +204,7 @@ export function suggestPrompt(place: PlaceQuery): string {
     schemaOf(Suggestions),
     '',
     'Miejsce:',
-    JSON.stringify({ ...(place.hint ? { wskazowka: place.hint } : {}), miejsce: place.name, rodzaj: place.kind, punkt: place.context?.itemTitle, opis: place.context?.description?.slice(0, 400), okolica: place.context?.area, wyjazd: place.context?.trip }),
+    JSON.stringify({ ...(place.hint ? { wskazowka: place.hint } : {}), ...(place.which ? { ktore_dokladnie: place.which } : {}), miejsce: place.name, rodzaj: place.kind, punkt: place.context?.itemTitle, opis: place.context?.description?.slice(0, 400), okolica: place.context?.area, wyjazd: place.context?.trip }),
   ].join('\n');
 }
 
@@ -207,7 +212,8 @@ export function suggestPrompt(place: PlaceQuery): string {
  * Sprawdzenie podpowiedzi: artykuł istnieje, nie jest ujednoznacznieniem i ma współrzędne w promieniu
  * od miejsca (3 km) albo od bazy dnia (25 km). Bez punktu odniesienia — tylko przy pasującym tytule.
  * Ze wskazówką organizatora temat wskazał człowiek, a źródło widać przy opisie: wystarczy artykuł bez
- * współrzędnych (droga, „jazda autem w Maroku”) albo w promieniu 300 km (ten sam region).
+ * współrzędnych (droga, „jazda autem w Maroku”) albo w promieniu 300 km (ten sam region). Tak samo po wskazaniu,
+ * które to miejsce: pinezka może stać u imienniczki.
  */
 export async function checkSuggestion(
   candidate: { site: WikiSite; lang: string; title: string },
@@ -220,7 +226,7 @@ export async function checkSuggestion(
   const where = page.coordinates?.[0];
   const exact = place.lat !== undefined && place.lng !== undefined ? { lat: place.lat, lng: place.lng } : null;
   const origin = exact ?? place.near ?? null;
-  if (place.hint) return where === undefined || origin === null || km(origin, where) <= 300 ? { title: page.title, url: page.fullurl } : null;
+  if (place.hint || place.which) return where === undefined || origin === null || km(origin, where) <= 300 ? { title: page.title, url: page.fullurl } : null;
   if (origin === null) return titleMatch(place.name, page.title) >= 0.75 ? { title: page.title, url: page.fullurl } : null;
   if (where === undefined || km(origin, where) > (exact ? 3 : 25)) return null;
   return { title: page.title, url: page.fullurl };
@@ -232,6 +238,7 @@ export type GuideDeps = { client: AiClient; timeoutMs?: number; onUsage?: (usage
  * Przewodnik po miejscu: artykuł w polskiej Wikipedii, potem w angielskiej; gdy żaden nie pasuje —
  * tytuły podpowiedziane przez AI (Wikipedia i Wikivoyage), każdy sprawdzony przez `checkSuggestion`.
  * Ze wskazówką organizatora (`hint`) od razu podpowiedzi AI — nazwa miejsca może prowadzić gdzie indziej.
+ * Ze wskazaniem miejsca (`which`) wyszukiwanie po nazwie i tym tekście, bez pinezki; zostaje ono w `hint` opisu do odświeżenia.
  * Opis zawsze po polsku. `null` = brak artykułu, którego dopasowanie jest pewne.
  */
 export async function describePlace(place: PlaceQuery, deps: GuideDeps): Promise<GuideContent | null> {
@@ -240,7 +247,7 @@ export async function describePlace(place: PlaceQuery, deps: GuideDeps): Promise
   const at = place.lat !== undefined && place.lng !== undefined ? { lat: place.lat, lng: place.lng } : (place.near ?? null);
   let article: WikiArticle | null = null;
   for (const lang of place.hint ? [] : ['pl', 'en']) {
-    const found = await findArticle(place.name, at, lang, fetchImpl);
+    const found = await findArticle(place.name, place.which ? null : at, lang, fetchImpl, place.which ? `${place.name} ${place.which}` : place.name);
     if (found === null) continue;
     const text = await articleText(found.title, lang, fetchImpl);
     if (text.length < 300) continue;
@@ -262,5 +269,5 @@ export async function describePlace(place: PlaceQuery, deps: GuideDeps): Promise
   if (article === null) return null;
   const answer = await askStructured(deps.client, GuideDraft, guidePrompt(place, article), { ...ai, maxTokens: 3000, label: `przewodnik ${place.name}` });
   const images = await articleImages(article.title, article.lang, 4, fetchImpl, article.site).catch(() => []);
-  return { ...answer.data, images, article: { title: article.title, url: article.url, lang: article.lang, site: article.site }, ...(place.hint ? { hint: place.hint } : {}) };
+  return { ...answer.data, images, article: { title: article.title, url: article.url, lang: article.lang, site: article.site }, ...(place.hint || place.which ? { hint: place.hint ?? place.which } : {}) };
 }

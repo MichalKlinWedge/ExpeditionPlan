@@ -240,7 +240,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
         ) : (
           <GuideArticle guide={guide} targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/trips/${id}/item/`} />
         )}
-        {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guide?.hint} />}
+        {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guideRow?.place_id === null ? guide?.hint : undefined} />}
       </section>
       )}
     </>

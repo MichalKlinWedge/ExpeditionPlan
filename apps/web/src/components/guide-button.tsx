@@ -6,14 +6,22 @@ import type { FormState } from "@/app/actions";
 import { describeItem, describePlaceGuide, removeGuide } from "@/app/guide-actions";
 import { SparkIcon } from "@/components/icons";
 
-/** Opis miejsca na stronie „Miejsca”: nowy albo odświeżony; `guideId` to własny opis miejsca, nie opis punktu. */
-export function PlaceGuideButtons({ tripId, placeRef, guideId, label }: { tripId: string; placeRef: string; guideId: string | null; label: string }) {
+/**
+ * Opis miejsca na stronie „Miejsca”: nowy albo odświeżony; `guideId` to własny opis miejsca, nie opis punktu.
+ * Pole „O które dokładnie miejsce chodzi” rozstrzyga, gdy wiele miejsc nosi tę samą nazwę.
+ */
+export function PlaceGuideButtons({ tripId, placeRef, guideId, label, which: saved = "" }: { tripId: string; placeRef: string; guideId: string | null; label: string; which?: string | undefined }) {
   const [state, setState] = useState<FormState>({});
   const [pending, start] = useTransition();
+  const [which, setWhich] = useState(saved);
   return (
     <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1 text-xs text-zinc-500">
+        O które dokładnie miejsce chodzi (opcjonalnie, gdy wiele nosi tę nazwę)
+        <input value={which} onChange={(event) => setWhich(event.target.value)} maxLength={200} disabled={pending} placeholder="np. wieś w powiecie trzebnickim" className="field w-full px-2 py-1 text-sm" />
+      </label>
       <div className="flex flex-wrap items-center gap-3">
-        <button disabled={pending} onClick={() => start(async () => setState(await describePlaceGuide(tripId, placeRef)))} className={guideId ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
+        <button disabled={pending} onClick={() => start(async () => setState(await describePlaceGuide(tripId, placeRef, which)))} className={guideId ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
           <SparkIcon className="size-4" />
           {pending ? "Szukam artykułu i piszę… (ok. 10–30 s)" : label}
         </button>

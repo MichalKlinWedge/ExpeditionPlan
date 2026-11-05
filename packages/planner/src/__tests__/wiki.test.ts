@@ -7,10 +7,12 @@ import { checkSuggestion, describePlace, findArticle, titleMatch } from '../wiki
 /** Wikipedia w pamięci: odpowiedzi wg parametrów zapytania. */
 function fakeWiki(answers: { search?: unknown[]; geo?: unknown[]; extract?: string; images?: unknown[]; pages?: Record<string, unknown> }) {
   const calls: string[] = [];
+  const searches: string[] = [];
   const fetchImpl = (async (input: URL | string) => {
     const url = new URL(String(input));
     const params = url.searchParams;
     calls.push(`${url.hostname}:${params.get('generator') ?? params.get('prop')}`);
+    if (params.get('gsrsearch') !== null) searches.push(params.get('gsrsearch')!);
     const pages =
       params.get('generator') === 'search'
         ? answers.search
@@ -25,7 +27,7 @@ function fakeWiki(answers: { search?: unknown[]; geo?: unknown[]; extract?: stri
     const known = url.hostname.startsWith('pl.') || params.get('prop')?.includes('pageprops') || params.get('prop') === 'extracts';
     return new Response(JSON.stringify({ query: { pages: known ? pages : [] } }));
   }) as typeof fetch;
-  return { fetchImpl, calls };
+  return { fetchImpl, calls, searches };
 }
 
 const at = { lat: 41.4036, lng: 2.1744 };
@@ -45,6 +47,49 @@ describe('przewodnik z Wikipedii', () => {
       ],
     });
     expect(await findArticle('Sagrada Família', at, 'pl', fetchImpl)).toEqual({ title: 'Sagrada Família', url: 'https://pl.wikipedia.org/wiki/Sagrada_Fam%C3%ADlia' });
+  });
+
+  it('strona ujednoznaczniająca nie jest artykułem o miejscu', async () => {
+    const { fetchImpl } = fakeWiki({
+      search: [
+        { index: 1, title: 'Kryniczno', fullurl: 'https://pl.wikipedia.org/wiki/Kryniczno', pageprops: { disambiguation: '' } },
+        { index: 2, title: 'Kryniczno (powiat trzebnicki)', fullurl: 'https://pl.wikipedia.org/wiki/Kryniczno_(powiat_trzebnicki)', coordinates: [{ lat: 51.21, lon: 17.04 }] },
+      ],
+    });
+    expect((await findArticle('Kryniczno', { lat: 51.20771, lng: 17.0396 }, 'pl', fetchImpl))?.title).toBe('Kryniczno (powiat trzebnicki)');
+  });
+
+  it('wskazanie, które to miejsce: szukanie z tym tekstem, pinezka u imienniczki nie przeszkadza, tekst zostaje w opisie', async () => {
+    const { fetchImpl, searches } = fakeWiki({
+      search: [{ index: 1, title: 'Kryniczno (powiat średzki)', fullurl: 'https://pl.wikipedia.org/wiki/Kryniczno_(powiat_%C5%9Bredzki)', coordinates: [{ lat: 51.03, lon: 16.63 }] }],
+      extract: 'Wieś w Polsce. '.repeat(30),
+      images: [],
+    });
+    const prompts: string[] = [];
+    const client: AiClient = {
+      defaultProvider: 'GEMINI',
+      ask: async (prompt: string) => {
+        prompts.push(prompt);
+        return { text: JSON.stringify({ summary: 'Wieś.', facts: [], tips: [] }), provider: 'GEMINI', model: 'test' };
+      },
+      listModels: async () => [],
+    };
+    const pinnedElsewhere = { lat: 51.20771, lng: 17.0396 };
+    const content = await describePlace({ name: 'Kryniczno', kind: 'visit', ...pinnedElsewhere, which: 'powiat średzki' }, { client, fetchImpl });
+    expect(searches[0]).toBe('Kryniczno powiat średzki');
+    expect(content?.article.title).toBe('Kryniczno (powiat średzki)');
+    expect(content?.hint).toBe('powiat średzki');
+    expect(prompts[0]).toContain('Chodzi dokładnie o: „powiat średzki”');
+  });
+
+  it('wskazanie miejsca w sprawdzaniu podpowiedzi: pinezka u imienniczki nie odrzuca artykułu', async () => {
+    const { fetchImpl } = fakeWiki({
+      pages: { 'pl.wikipedia.org:Kryniczno (powiat średzki)': { title: 'Kryniczno (powiat średzki)', fullurl: 'https://pl.wikipedia.org/wiki/K', coordinates: [{ lat: 51.03, lon: 16.63 }] } },
+    });
+    const candidate = { site: 'wikipedia', lang: 'pl', title: 'Kryniczno (powiat średzki)' } as const;
+    const place = { name: 'Kryniczno', kind: 'visit', lat: 51.20771, lng: 17.0396 };
+    expect(await checkSuggestion(candidate, place, fetchImpl)).toBeNull();
+    expect((await checkSuggestion(candidate, { ...place, which: 'powiat średzki' }, fetchImpl))?.title).toBe('Kryniczno (powiat średzki)');
   });
 
   it('bez artykułu — nic: podpowiedź AI bez pokrycia nie daje opisu', async () => {

@@ -189,7 +189,7 @@ function PlaceDescription({ tripId, place, canEdit }: { tripId: string; place: P
           <GuideArticle guide={guide.content} targets={[]} itemBase={`/trips/${tripId}/item/`} />
         </>
       )}
-      {canEdit && <PlaceGuideButtons tripId={tripId} placeRef={place.ref} guideId={own ? guide.rowId : null} label={own ? "Odśwież opis" : "Przygotuj opis miejsca (AI)"} />}
+      {canEdit && <PlaceGuideButtons tripId={tripId} placeRef={place.ref} guideId={own ? guide.rowId : null} label={own ? "Odśwież opis" : "Przygotuj opis miejsca (AI)"} which={own ? guide.content.hint : undefined} />}
     </section>
   );
 }
