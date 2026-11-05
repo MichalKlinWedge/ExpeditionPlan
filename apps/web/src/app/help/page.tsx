@@ -186,7 +186,7 @@ export default function HelpPage() {
         </Section>
       </div>
 
-      <Link href="/" className="self-start text-sm text-zinc-500 underline hover:text-sea">
+      <Link href="/" className="btn-secondary self-start">
         ← Wyjazdy
       </Link>
     </Shell>

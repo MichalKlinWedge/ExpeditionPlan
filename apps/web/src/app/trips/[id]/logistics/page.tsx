@@ -335,7 +335,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
         {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />}
       </section>
 
-      <Link href={`/trips/${id}/tasks`} className="self-start text-sm text-zinc-500 underline hover:text-sea">
+      <Link href={`/trips/${id}/tasks`} className="btn-secondary self-start">
         Zadania — otwarte {open.length} →
       </Link>
     </>

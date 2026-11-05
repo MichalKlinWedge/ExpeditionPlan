@@ -92,7 +92,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
         )}
       </section>
 
-      <Link href={`/trips/${id}/contacts`} className="self-start text-sm text-zinc-500 underline hover:text-sea">
+      <Link href={`/trips/${id}/contacts`} className="btn-secondary self-start">
         Kontakty i numery alarmowe ({doc.contacts.length}) →
       </Link>
 
