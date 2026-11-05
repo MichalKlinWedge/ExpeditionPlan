@@ -181,7 +181,7 @@ export default function HelpPage() {
             <Step name="Aktualizacje">przychodzą same — aplikacja pokaże znaczek nowej wersji i zaproponuje restart. Czasem trzeba zainstalować nowy APK z linku od organizatora.</Step>
             <Step name="Mapa bez internetu jest pusta">przed wyjazdem pobierz wyjazd offline (zakładka Wyjazdy), najlepiej przez Wi-Fi.</Step>
             <Step name="Godziny w planie">to „nie wcześniej niż” — w czasie lokalnym miejsca, do którego jedziesz, nie w czasie telefonu.</Step>
-            <Step name="Kto widzi moje dane">tylko członkowie wyjazdu. Publiczny link podglądu (jeśli organizator go utworzy) nigdy nie pokazuje sejfu dokumentów, a koszty, nazwiska i adres noclegu organizator może ukryć.</Step>
+            <Step name="Kto widzi moje dane">tylko członkowie wyjazdu. Publiczny link podglądu (jeśli organizator go utworzy) otwiera ogólny opis wyprawy z przejściem do planu dzień po dniu i nigdy nie pokazuje sejfu dokumentów, a koszty, nazwiska i adres noclegu organizator może ukryć.</Step>
           </ul>
         </Section>
       </div>

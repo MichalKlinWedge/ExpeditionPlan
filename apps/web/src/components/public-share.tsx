@@ -19,8 +19,8 @@ export function PublicShare({ tripId, enabled, hide }: { tripId: string; enabled
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p className="text-zinc-600 dark:text-zinc-400">
-        {enabled ? "Link jest włączony — kto go ma, widzi plan dnia i mapę bez logowania." : "Plan dnia i mapa pod linkiem, bez logowania — dla rodziny i znajomych bez konta."} Kontakty, budżet, zadania i kody rezerwacji nie są
-        pokazywane nigdy. Opisy punktów widać tak, jak je napisano.
+        {enabled ? "Link jest włączony — kto go ma, widzi opis wyprawy, plan dnia i mapę bez logowania." : "Opis wyprawy, plan dnia i mapa pod linkiem, bez logowania — dla rodziny i znajomych bez konta."} Kontakty, budżet, zadania i kody rezerwacji nie są
+        pokazywane nigdy. Opisy punktów widać tak, jak je napisano. Opis wyprawy pokazuje też cel i podsumowanie wyjazdu oraz ostrzeżenia, bez zdań z kwotami przy ukrytych cenach; przy ukrytych imionach tych trzech rzeczy nie ma.
       </p>
       <form action={action} className="flex flex-col gap-2">
         <label className="flex items-center gap-2">

@@ -52,7 +52,7 @@ async function PublicItem({ params }: { params: Promise<{ token: string; ref: st
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/p/${encodeURIComponent(token)}?day=${encodeURIComponent(item.dayRef ?? "pool")}`} className="back-link self-start">
+        <Link href={`/p/${encodeURIComponent(token)}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}`} className="back-link self-start">
           ← Plan: {doc.trip.title}
         </Link>
         <h1 className="flex items-center gap-2 text-2xl font-semibold">

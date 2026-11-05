@@ -1,4 +1,4 @@
-import { GUIDE_SITE, type GuideContent, type GuideLinkTarget, type GuideSegment, linkGuideText } from "@expeditionplan/core";
+import { GUIDE_SITE, type GuideContent, type GuideImage, type GuideLinkTarget, type GuideSegment, linkGuideText } from "@expeditionplan/core";
 import Link from "next/link";
 
 /**
@@ -15,24 +15,7 @@ export function GuideArticle({ guide, targets, itemBase }: { guide: GuideContent
       {guide.images.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           {guide.images.map((image) => (
-            <figure key={image.url} className="flex flex-col gap-1">
-              <a href={image.sourceUrl} target="_blank" rel="noreferrer">
-                {/* Zdjęcia z Commons (upload.wikimedia.org) — zwykły <img>, miniatura 960 px. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={image.thumbUrl} alt={image.title} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />
-              </a>
-              <figcaption className="text-[11px] leading-tight text-zinc-500">
-                {image.author ? `${image.author}, ` : ""}
-                {image.licenseUrl ? (
-                  <a href={image.licenseUrl} target="_blank" rel="noreferrer" className="underline">
-                    {image.license}
-                  </a>
-                ) : (
-                  image.license
-                )}
-                , Wikimedia Commons
-              </figcaption>
-            </figure>
+            <GuideFigure key={image.url} image={image} />
           ))}
         </div>
       )}
@@ -74,6 +57,30 @@ export function GuideArticle({ guide, targets, itemBase }: { guide: GuideContent
         ; streszczenie: AI.
       </p>
     </article>
+  );
+}
+
+/** Zdjęcie z Commons z autorem i licencją: wymaga ich licencja, więc nie ma go bez podpisu. */
+export function GuideFigure({ image }: { image: GuideImage }) {
+  return (
+    <figure className="flex flex-col gap-1">
+      <a href={image.sourceUrl} target="_blank" rel="noreferrer">
+        {/* Zdjęcia z Commons (upload.wikimedia.org) — zwykły <img>, miniatura 960 px. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={image.thumbUrl} alt={image.title} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />
+      </a>
+      <figcaption className="text-[11px] leading-tight text-zinc-500">
+        {image.author ? `${image.author}, ` : ""}
+        {image.licenseUrl ? (
+          <a href={image.licenseUrl} target="_blank" rel="noreferrer" className="underline">
+            {image.license}
+          </a>
+        ) : (
+          image.license
+        )}
+        , Wikimedia Commons
+      </figcaption>
+    </figure>
   );
 }
 

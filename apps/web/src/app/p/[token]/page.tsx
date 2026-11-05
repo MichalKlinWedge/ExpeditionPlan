@@ -1,64 +1,220 @@
-import { guideFor, type GuideRow } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import { dayMap, tripOverview } from "@expeditionplan/core";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { PlanView } from "@/components/plan-view";
+import { GuideFigure } from "@/components/guide-article";
+import { MemoriesMap } from "@/components/memories-map";
+import { PublicTripHeader } from "@/components/public-trip-header";
 import { Loading, Shell } from "@/components/shell";
-import { tripDates } from "@/lib/labels";
-import { createClient } from "@/lib/supabase/server";
+import { Stat } from "@/components/stat";
+import { BOOKING_KIND } from "@/lib/labels";
+import { EXPIRED_LINK, loadPublicTrip } from "@/lib/public-trip";
 
 /**
- * Publiczny podgląd planu z linku właściciela (`public_trip`) — bez logowania, tylko do odczytu.
- * Dane prywatne (kontakty, ceny, kody rezerwacji, budżet) odfiltrowuje baza, nie ta strona.
+ * Wejście z publicznego linku: najważniejsze informacje o wyprawie na jednej stronie, zebrane z planu (`tripOverview`),
+ * bez AI i zawsze aktualne. Plan dzień po dniu jest pod `/plan`. Dane prywatne odfiltrowuje baza, a ręcznie wpisany
+ * tekst `tripOverview`. Wszystko renderuje serwer: do przeglądarki idzie tylko to, co widać.
  */
 
 // Link prywatny — nie do wyszukiwarek.
-export const metadata: Metadata = { title: "Plan wyjazdu — Expedition Planner", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Opis wyprawy — Expedition Planner", robots: { index: false, follow: false } };
 
-export default function PublicPlanPage(props: PageProps<"/p/[token]">) {
+export default function PublicOverviewPage(props: PageProps<"/p/[token]">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
-        <PublicPlan params={props.params} searchParams={props.searchParams} />
+        <Overview params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </Shell>
   );
 }
 
-async function PublicPlan({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+const date = (value: string, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("pl-PL", { ...options, timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
+const dayDate = (value: string) => date(value, { weekday: "short", day: "numeric", month: "long" });
+const shortDate = (value: string) => date(value, { day: "numeric", month: "long" });
+const km = (value: number) => `${value.toLocaleString("pl-PL")} km`;
+const plural = (n: number, one: string, few: string, many: string) => (n === 1 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? few : many);
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+async function Overview({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { token } = await params;
-  const { day } = await searchParams;
-  const { data, error } = await (await createClient()).rpc("public_trip", { p_token: token });
-  if (error || data === null) {
-    return <p className="card p-5 text-zinc-600 dark:text-zinc-400">Ten link do planu wygasł albo właściciel go wyłączył.</p>;
-  }
-  const payload = data as Parameters<typeof stateFromPayload>[0] & { trip: { id: string } };
-  const state = stateFromPayload(payload);
-  const trip = state.doc.trip;
-  const ids = refIndex(payload.tables);
-  const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
-  const guided = state.doc.items.flatMap((item) => {
-    const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
-    return item.kind !== "lodging" && guideFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]) !== null ? [item.ref] : [];
-  });
+  const base = `/p/${encodeURIComponent(token)}`;
+  // Stare linki do dnia planu (`?day=`) prowadzą dalej do planu.
+  const { day: oldDay } = await searchParams;
+  if (typeof oldDay === "string") redirect(`${base}/plan?day=${encodeURIComponent(oldDay)}`);
+
+  const loaded = await loadPublicTrip(token);
+  if (loaded === null) return <p className="card p-5 text-zinc-600 dark:text-zinc-400">{EXPIRED_LINK}</p>;
+  const { state, guideOf, hide } = loaded;
+  const { doc, inputs } = state;
+  const guideByRef = new Map(doc.items.flatMap((item) => {
+    const guide = guideOf(item);
+    return guide === null ? [] : [[item.ref, guide] as const];
+  }));
+  const overview = tripOverview(doc, { activeVariants: inputs.activeVariants, pulled: inputs.pulled, guided: [...guideByRef.keys()], hide });
+  const { stats } = overview;
+  const map = dayMap(doc, stats.routeRefs);
+  const hasVariants = doc.variantGroups.length > 0;
+
   return (
     <>
-      <section className="topo flex flex-col gap-2 rounded-2xl px-6 py-6 shadow-md">
-        <span className="chip self-start bg-signal! text-white!">Podgląd planu</span>
-        <h1 className="text-3xl font-bold text-white">{trip.title}</h1>
-        <p className="text-zinc-200">{tripDates(trip.startDate, trip.endDate)} · tylko do odczytu</p>
+      <PublicTripHeader token={token} trip={doc.trip} active="overview" />
+
+      {(overview.subtitle || overview.goal || overview.summary || overview.route.length > 0 || overview.names.length > 0) && (
+        <section className="flex flex-col gap-2">
+          {overview.subtitle && <p className="text-lg font-medium">{overview.subtitle}</p>}
+          {overview.goal && <p className="whitespace-pre-line">{overview.goal}</p>}
+          {overview.summary && <p className="whitespace-pre-line text-zinc-600 dark:text-zinc-400">{overview.summary}</p>}
+          {overview.route.length > 0 && (
+            <p className="text-sm">
+              <span className="font-semibold">Trasa:</span> {overview.route.join(" → ")}
+            </p>
+          )}
+          {overview.names.length > 0 && (
+            <p className="text-sm">
+              <span className="font-semibold">Jadą:</span> {overview.names.join(", ")}
+            </p>
+          )}
+        </section>
+      )}
+
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Stat value={String(stats.days)} label={plural(stats.days, "dzień", "dni", "dni")} />
+        {overview.nights > 0 && <Stat value={String(overview.nights)} label={plural(overview.nights, "noc", "noce", "nocy")} />}
+        {overview.people > 0 && <Stat value={String(overview.people)} label={plural(overview.people, "osoba", "osoby", "osób")} />}
+        <Stat value={String(stats.planned)} label={plural(stats.planned, "punkt w planie", "punkty w planie", "punktów w planie")} />
+        {stats.footKm > 0 && <Stat value={km(stats.footKm)} label={stats.ascentM > 0 ? `pieszo · ↑ ${stats.ascentM.toLocaleString("pl-PL")} m` : "pieszo"} />}
+        {stats.driveKm > 0 && <Stat value={km(stats.driveKm)} label="autem" />}
+        {stats.transitKm > 0 && <Stat value={km(stats.transitKm)} label="komunikacją" />}
+        {stats.flightKm > 0 && <Stat value={km(stats.flightKm)} label="samolotem" />}
       </section>
-      <PlanView
-        state={state}
-        tripId={payload.trip.id}
-        ids={ids}
-        canEdit={false}
-        itemBase={`/p/${encodeURIComponent(token)}/item/`}
-        guided={guided}
-        guidedOnly
-        {...(typeof day === "string" ? { initialDay: day } : {})}
-      />
+
+      {map.pins.length > 0 && (
+        <Section title="Mapa wyprawy">
+          <MemoriesMap map={map} />
+        </Section>
+      )}
+
+      {overview.highlights.length > 0 && (
+        <Section title="Najważniejsze punkty">
+          <ul className="grid items-start gap-3 sm:grid-cols-2">
+            {overview.highlights.map((highlight) => {
+              const guide = guideByRef.get(highlight.ref);
+              const image = guide?.images[0];
+              return (
+                <li key={highlight.ref} className="card flex flex-col gap-1.5 p-3 text-sm">
+                  {image !== undefined && <GuideFigure image={image} />}
+                  <span className="font-medium">
+                    {guide !== undefined ? (
+                      <Link href={`${base}/item/${encodeURIComponent(highlight.ref)}`} className="text-sea underline decoration-sea/40 underline-offset-2 hover:decoration-sea">
+                        {highlight.title}
+                      </Link>
+                    ) : (
+                      highlight.title
+                    )}
+                  </span>
+                  <span className="text-xs text-zinc-500">Dzień {highlight.dayNo}</span>
+                  {guide !== undefined && <p className="line-clamp-3 text-zinc-600 dark:text-zinc-400">{guide.summary}</p>}
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      )}
+
+      <Section title="Dzień po dniu">
+        <ol className="card divide-y divide-zinc-200 dark:divide-zinc-800">
+          {overview.days.map((day) => (
+            <li key={day.ref} className="flex flex-col gap-1 p-3 text-sm">
+              <Link href={`${base}/plan?day=${encodeURIComponent(day.ref)}`} className="font-medium hover:text-sea">
+                Dzień {day.no} · {dayDate(day.date)}
+                {day.title ? ` — ${day.title}` : ""}
+              </Link>
+              {day.summary && <p className="text-zinc-600 dark:text-zinc-400">{day.summary}</p>}
+              {day.points.length > 0 && (
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  {day.points.slice(0, 5).join(" · ")}
+                  {day.points.length > 5 && ` · i ${day.points.length - 5} więcej`}
+                </p>
+              )}
+              {day.lodging && <p className="text-xs text-zinc-500">⌂ {day.lodging}</p>}
+            </li>
+          ))}
+        </ol>
+        {hasVariants && <p className="text-xs text-zinc-500">Tam, gdzie plan ma warianty, opis pokazuje wybrany albo polecany. Pozostałe są w planie dzień po dniu.</p>}
+      </Section>
+
+      {overview.stays.length > 0 && (
+        <Section title="Noclegi">
+          <ul className="flex flex-col gap-1 text-sm">
+            {overview.stays.map((stay) => (
+              <li key={`${stay.from}:${stay.name}`}>
+                <span className="font-medium">{stay.name}</span>
+                <span className="text-zinc-500">
+                  {" "}
+                  · {shortDate(stay.from)} – {shortDate(stay.to)} · {stay.nights} {plural(stay.nights, "noc", "noce", "nocy")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {overview.transport.length > 0 && (
+        <Section title="Przejazdy">
+          <ul className="flex flex-col gap-1 text-sm">
+            {overview.transport.map((each) => (
+              <li key={each.ref}>
+                <span className="font-medium">{each.title}</span>
+                <span className="text-zinc-500">
+                  {" "}
+                  · {BOOKING_KIND[each.kind] ?? each.kind}
+                  {each.date ? ` · ${shortDate(each.date)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {overview.choices.length > 0 && (
+        <Section title="Jeszcze do wyboru">
+          <ul className="flex flex-col gap-1 text-sm">
+            {overview.choices.map((choice) => (
+              <li key={choice.ref}>
+                <span className="font-medium">{choice.title}:</span> {choice.options.join(" albo ")}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {overview.notes.length > 0 && (
+        <Section title="Warto wiedzieć">
+          <ul className="flex flex-col gap-2 text-sm">
+            {overview.notes.map((note, index) => (
+              <li key={index}>
+                {note.title && <span className="font-medium">{note.title}: </span>}
+                {note.body}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      <Link href={`${base}/plan`} className="btn-primary self-start">
+        Zobacz cały plan dzień po dniu
+      </Link>
     </>
   );
 }

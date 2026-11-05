@@ -8,6 +8,7 @@ import { MemoriesMap } from "@/components/memories-map";
 import { PrintButton } from "@/components/print-button";
 import { Settlement } from "@/components/settlement";
 import { Loading, Shell } from "@/components/shell";
+import { Stat } from "@/components/stat";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
 
@@ -32,15 +33,6 @@ type ExpenseRow = { amount_minor: number; currency: string; category: string | n
 
 const weekday = (date: string) =>
   new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)).replace(/^./, (first) => first.toUpperCase());
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex flex-col rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800/50">
-      <span className="font-display text-xl font-bold tabular-nums">{value}</span>
-      <span className="text-xs text-zinc-500">{label}</span>
-    </div>
-  );
-}
 
 /** Ślad trasy bez kafelków — do druku: linie i pinezki w rzucie z poprawką na szerokość geograficzną. */
 function RouteTrace({ map }: { map: DayMap }) {
