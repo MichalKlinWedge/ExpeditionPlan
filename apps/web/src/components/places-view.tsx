@@ -103,8 +103,8 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      {/* Długi opis przewija się w tej kolumnie, więc mapa i lista zostają obok siebie. */}
-      <aside ref={mapBox} className="flex scroll-mt-4 flex-col gap-2 lg:sticky lg:top-6 lg:order-last lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:[overflow-anchor:none]">
+      {/* Długi opis przewija się w tej kolumnie, więc mapa i lista zostają obok siebie. Miejsce na pasek jest zarezerwowane: inaczej mapa zmieniałaby rozmiar przy dłuższym opisie. */}
+      <aside ref={mapBox} className="flex scroll-mt-4 flex-col gap-2 lg:sticky lg:top-6 lg:order-last lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:[overflow-anchor:none] lg:[scrollbar-gutter:stable]">
         <PlanMap
           map={map}
           fitKey="miejsca"
