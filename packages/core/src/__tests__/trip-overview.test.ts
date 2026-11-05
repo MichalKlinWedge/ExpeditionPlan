@@ -110,3 +110,37 @@ describe('opis wyprawy', () => {
     expect(overview.transport.some((each) => candidates.includes(each.ref))).toBe(false);
   });
 });
+
+describe('kilometry pieszo przy wariantach', () => {
+  /** Dwie trasy do wyboru: polecana krótsza i dłuższa z większym przewyższeniem. */
+  function withRoutes(chosen?: string) {
+    const base = fixture('dinara');
+    const group = { ref: 'g-trasa', scope: 'day' as const, dayRef: base.days[0]!.ref, title: 'Którą trasą?', conditionKind: 'choice' as const, ...(chosen ? { chosenRef: chosen } : {}) };
+    const variant = (ref: string, recommended?: boolean) => ({ ref, groupRef: group.ref, label: ref, ...(recommended ? { recommended } : {}), pros: [], cons: [], excludesRefs: [] });
+    const template = base.items.find((item) => item.dayRef === base.days[0]!.ref && item.kind !== 'transport')!;
+    const hike = (ref: string, variantRef: string, distanceKm: number, ascentM: number) => ({ ...template, ref, title: ref, kind: 'activity' as const, sortKey: ref.length === 8 ? 'zz1' : 'zz2', leg: undefined, parentRef: undefined, bookingRef: undefined, variantRefs: [variantRef], activity: { distanceKm, ascentM } });
+    return TripDocument.parse({ ...base, variantGroups: [...base.variantGroups, group], variants: [...base.variants, variant('krotka', true), variant('dluga')], items: [...base.items, hike('t-krotka', 'krotka', 10, 100), hike('t-dluga', 'dluga', 25, 900)] });
+  }
+
+  it('nierozstrzygnięty wybór: najdłuższy wariant obok liczb z polecanego', () => {
+    const plain = tripOverview(fixture('dinara'));
+    const overview = tripOverview(withRoutes());
+    expect(overview.stats.footKm).toBeCloseTo(tripOverview(fixture('dinara')).stats.footKm + 10, 1);
+    expect(overview.footMax?.km).toBeCloseTo(overview.stats.footKm + 15, 1);
+    expect(overview.footMax?.ascentM).toBe(overview.stats.ascentM + 800);
+    expect(overview.stats.planned).toBe(plain.stats.planned + 1);
+  });
+
+  it('rozstrzygnięty wybór albo wskazany z zewnątrz zostaje przy swoim', () => {
+    const decided = tripOverview(withRoutes('krotka'));
+    expect(decided.footMax).toEqual(tripOverview(fixture('dinara')).footMax);
+    const pointed = tripOverview(withRoutes(), { activeVariants: { 'g-trasa': 'krotka' } });
+    expect(pointed.footMax).toEqual(tripOverview(fixture('dinara')).footMax);
+  });
+
+  it('bez różnicy między wariantami nie ma osobnej liczby', () => {
+    const base = fixture('maroko');
+    const noLonger = { ...base, variantGroups: [], variants: [], items: base.items.filter((item) => item.variantRefs.length === 0) };
+    expect(tripOverview(noLonger).footMax).toBeUndefined();
+  });
+});

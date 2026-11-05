@@ -38,6 +38,8 @@ export type TripOverview = {
   tentative: number;
   nights: number;
   stats: TripMemories;
+  /** Najdłuższa droga pieszo z nierozstrzygniętych wariantów; brak, gdy nie różni się od `stats`. */
+  footMax?: { km: number; ascentM: number };
   highlights: OverviewHighlight[];
   days: OverviewDay[];
   stays: OverviewStay[];
@@ -74,6 +76,25 @@ const HIGHLIGHTS_PER_DAY = 2;
 const isSight = (item: Item) => item.kind === 'visit' || item.kind === 'activity' || (item.kind === 'transport' && item.leg?.mode === 'hike');
 
 const nextDate = (date: string) => new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * Kilometry pieszo przy najdłuższych wariantach: w każdej nierozstrzygniętej grupie po kolei wariant z największą
+ * liczbą kilometrów, a przy równych z większym przewyższeniem. Grupa już rozstrzygnięta albo ustawiona z zewnątrz zostaje przy swoim.
+ */
+function longestFoot(doc: Doc, schedule: Pick<ScheduleOptions, 'activeVariants' | 'pulled'>): TripMemories {
+  const stats = (activeVariants: Record<string, string>) => tripMemories(doc, { done: [], skipRefs: [], ...schedule, activeVariants });
+  const picked: Record<string, string> = { ...schedule.activeVariants };
+  for (const group of doc.variantGroups) {
+    if (group.chosenRef !== undefined || picked[group.ref] !== undefined) continue;
+    let best: { ref: string; km: number; ascentM: number } | undefined;
+    for (const variant of doc.variants.filter((each) => each.groupRef === group.ref)) {
+      const { footKm, ascentM } = stats({ ...picked, [group.ref]: variant.ref });
+      if (best === undefined || footKm > best.km || (footKm === best.km && ascentM > best.ascentM)) best = { ref: variant.ref, km: footKm, ascentM };
+    }
+    if (best !== undefined) picked[group.ref] = best.ref;
+  }
+  return stats(picked);
+}
 
 export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverview {
   const schedule = { ...(options.activeVariants ? { activeVariants: options.activeVariants } : {}), ...(options.pulled ? { pulled: options.pulled } : {}) };
@@ -152,6 +173,8 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
   const tentative = Math.min(options.tentative ?? 0, doc.travelers.length);
   const goal = hideNames ? undefined : clean(doc.trip.goal);
   const summary = hideNames ? undefined : clean(doc.trip.summary);
+  const stats = tripMemories(doc, { done: [], skipRefs: [], ...schedule });
+  const longest = longestFoot(doc, schedule);
 
   return {
     ...(doc.trip.subtitle ? { subtitle: doc.trip.subtitle } : {}),
@@ -162,7 +185,8 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
     people: doc.travelers.length - tentative,
     tentative,
     nights,
-    stats: tripMemories(doc, { done: [], skipRefs: [], ...schedule }),
+    stats,
+    ...(longest.footKm > stats.footKm || longest.ascentM > stats.ascentM ? { footMax: { km: longest.footKm, ascentM: longest.ascentM } } : {}),
     highlights,
     days,
     stays,

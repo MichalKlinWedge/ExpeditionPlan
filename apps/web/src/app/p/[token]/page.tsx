@@ -63,6 +63,7 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
   const overview = tripOverview(doc, { activeVariants: inputs.activeVariants, pulled: inputs.pulled, guided: new Map([...guideByRef].map(([ref, guide]) => [ref, guide.summary])), hide, tentative });
   const { stats } = overview;
   const map = dayMap(doc, stats.routeRefs);
+  const foot = overview.footMax ?? { km: stats.footKm, ascentM: stats.ascentM };
   const hasVariants = doc.variantGroups.length > 0;
 
   return (
@@ -97,7 +98,7 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
           />
         )}
         <Stat value={String(stats.planned)} label={plural(stats.planned, "punkt w planie", "punkty w planie", "punktów w planie")} />
-        {stats.footKm > 0 && <Stat value={km(stats.footKm)} label={stats.ascentM > 0 ? `pieszo · ↑ ${stats.ascentM.toLocaleString("pl-PL")} m` : "pieszo"} />}
+        {foot.km > 0 && <Stat value={`${overview.footMax ? "do " : ""}${km(foot.km)}`} label={`pieszo${foot.ascentM > 0 ? ` · ↑ ${foot.ascentM.toLocaleString("pl-PL")} m` : ""}${overview.footMax ? " · najdłuższy wariant" : ""}`} />}
         {stats.driveKm > 0 && <Stat value={km(stats.driveKm)} label="autem" />}
         {stats.transitKm > 0 && <Stat value={km(stats.transitKm)} label="komunikacją" />}
         {stats.flightKm > 0 && <Stat value={km(stats.flightKm)} label="samolotem" />}
