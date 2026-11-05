@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { nowAndNext } from '../engine/now.ts';
 import { proposeCuts, scheduleDay } from '../engine/schedule.ts';
 import { dayMap, routeStopsLabel } from '../plan-info.ts';
-import { moveToDay } from '../plan-edits.ts';
+import { moveToDay, removeItem } from '../plan-edits.ts';
 import { isRouteStop, routeStopTarget, setRouteStop } from '../route-stops.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 import { tripMemories } from '../trip-memories.ts';
@@ -186,6 +186,39 @@ describe('postoje a warianty dnia', () => {
     const both = setRouteStop(first, 'd4-kooperatywa', true)!.doc;
     expect(find(both, 'd4-wyjazd').routeStopsMin).toBe(50);
     expect(find(both, 'd4-kooperatywa').routeStop).toBe(true);
+  });
+
+  it('każdy wariant pamięta swój postój, a wyjęcie z trasy dotyczy tylko oglądanego', () => {
+    const a = setRouteStop(maroko, 'd4-kozy', true)!.doc;
+    const both = setRouteStop(a, 'd4-kozy', true, B)!.doc;
+    expect(find(both, 'd4-kozy')).toMatchObject({ routeStop: true, child: true });
+    expect(find(both, 'd4-kozy', B)).toMatchObject({ routeStop: true, child: true });
+    expect(find(both, 'd4-wyjazd').routeStopsMin).toBe(20);
+    expect(find(both, 'd4b-wyjazd', B).routeStopsMin).toBe(20);
+    expect(routeStopTarget(both, 'd4-kozy', B)).toBeNull();
+    expect(TripDocument.safeParse(both).success).toBe(true);
+
+    const onlyA = setRouteStop(both, 'd4-kozy', false, B)!.doc;
+    expect(find(onlyA, 'd4-kozy').routeStop).toBe(true);
+    expect(find(onlyA, 'd4-kozy', B).routeStop).toBeUndefined();
+
+    const onlyB = setRouteStop(both, 'd4-kozy', false)!.doc;
+    expect(find(onlyB, 'd4-kozy').routeStop).toBeUndefined();
+    expect(find(onlyB, 'd4-kozy', B).routeStop).toBe(true);
+    expect(onlyB.items.find((item) => item.ref === 'd4-kozy')).toMatchObject({ parentRef: 'd4b-wyjazd', routeParentRefs: [] });
+
+    const none = setRouteStop(onlyA, 'd4-kozy', false)!.doc;
+    expect(none.items.find((item) => item.ref === 'd4-kozy')?.parentRef).toBeUndefined();
+  });
+
+  it('usunięty przejazd i przeniesiony punkt nie zostawiają wiszących postojów', () => {
+    const both = setRouteStop(setRouteStop(maroko, 'd4-kozy', true)!.doc, 'd4-kozy', true, B)!.doc;
+    const gone = removeItem(both, 'd4b-wyjazd')!.doc;
+    expect(gone.items.find((item) => item.ref === 'd4-kozy')).toMatchObject({ parentRef: 'd4-wyjazd', routeParentRefs: [] });
+    expect(TripDocument.safeParse(gone).success).toBe(true);
+    const moved = moveToDay(both, 'd4-kozy', 'd3')!.doc.items.find((item) => item.ref === 'd4-kozy')!;
+    expect(moved.parentRef).toBeUndefined();
+    expect(moved.routeParentRefs).toEqual([]);
   });
 
   it('podpunkt zwykłego bloku zostaje równoległy', () => {

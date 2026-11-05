@@ -176,7 +176,13 @@ export function itemsForDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     const placed: Item = { ...source, dayRef, planStatus: 'scheduled', time: local !== undefined && local.date === day!.date ? { precision: 'approx', start: local.time } : undefined };
     items.splice(at === -1 ? items.length : at + 1, 0, placed);
   }
-  return items;
+  // Postój pamięta przejazd każdego wariantu: rodzicem jest ten, który liczy się w tym dniu.
+  const counted = new Set(items.map((item) => item.ref));
+  return items.map((item) => {
+    if (item.parentRef === undefined || counted.has(item.parentRef)) return item;
+    const here = item.routeParentRefs.find((ref) => counted.has(ref));
+    return here === undefined ? item : { ...item, parentRef: here };
+  });
 }
 
 function dayCoordinates(doc: Doc, day: Day, items: Item[], options: ScheduleOptions) {

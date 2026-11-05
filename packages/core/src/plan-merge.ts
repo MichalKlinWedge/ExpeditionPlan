@@ -160,6 +160,7 @@ class Merger {
         placeRef: this.place(source.placeRef),
         // Blok i „zamiast” zostają tylko wtedy, gdy przenosi się też punkt, na który wskazują.
         parentRef: source.parentRef === undefined ? undefined : refs.get(source.parentRef),
+        routeParentRefs: source.routeParentRefs.flatMap((each) => (refs.has(each) ? [refs.get(each)!] : [])),
         replacesRefs: source.replacesRefs.flatMap((each) => (refs.has(each) ? [refs.get(each)!] : [])),
         variantRefs: [],
         bookingRef: undefined,

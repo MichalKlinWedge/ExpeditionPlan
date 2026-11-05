@@ -277,6 +277,8 @@ export const DocItem = z.object({
    * Rodzic `transport` to co innego: podpunkt jest postojem w trasie i wydłuża przejazd (`route-stops.ts`).
    */
   parentRef: Ref.optional(),
+  /** Przejazdy z innych wariantów, na których ten punkt też jest postojem: każdy wariant pamięta swój (`route-stops.ts`). */
+  routeParentRefs: z.array(Ref).default([]),
   description: z.string().optional(),
   placeRef: Ref.optional(),
   time: ItemTime.optional(),
@@ -770,6 +772,7 @@ export function checkReferences(doc: Shape): { path: (string | number)[]; messag
     it.variantRefs.forEach((v, j) => expect(['items', i, 'variantRefs', j], v, 'variants'));
     expect(['items', i, 'placeRef'], it.placeRef, 'places');
     expect(['items', i, 'parentRef'], it.parentRef, 'items');
+    it.routeParentRefs.forEach((r, j) => expect(['items', i, 'routeParentRefs', j], r, 'items'));
     if (it.parentRef !== undefined && it.parentRef === it.ref) {
       problems.push({ path: ['items', i, 'parentRef'], message: 'Punkt nie może być własnym blokiem.' });
     }

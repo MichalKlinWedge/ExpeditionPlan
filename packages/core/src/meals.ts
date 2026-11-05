@@ -111,12 +111,12 @@ export function linkMeal(doc: Doc, ref: string, parentRef: string | null, option
   if (parentRef === null) {
     const { parentRef: previous, ...free } = meal;
     // Godzina liczona od punktu traci sens: bez niej posiłek idzie zaraz po nim.
-    return placeAfterBlock(doc, { ...free, time: free.time?.precision === 'relative' ? undefined : free.time }, previous!);
+    return placeAfterBlock(doc, { ...free, routeParentRefs: [], time: free.time?.precision === 'relative' ? undefined : free.time }, previous!);
   }
   const parent = mealPointsFor(doc, ref, options).find((item) => item.ref === parentRef);
   if (parent === undefined) return null;
-  if (parent.kind === 'transport') return placeAfterBlock(doc, { ...meal, parentRef }, parentRef);
-  const edit = placeAfterBlock(doc, { ...meal, parentRef, placeRef: meal.placeRef ?? parent.placeRef, time: undefined }, parentRef);
+  if (parent.kind === 'transport') return placeAfterBlock(doc, { ...meal, parentRef, routeParentRefs: [] }, parentRef);
+  const edit = placeAfterBlock(doc, { ...meal, parentRef, routeParentRefs: [], placeRef: meal.placeRef ?? parent.placeRef, time: undefined }, parentRef);
   const fields = timeAtPoint(edit.doc, { ...edit.doc.items.find((item) => item.ref === ref)!, time: meal.time }, parentRef, options);
   const apply = (item: Item) => (item.ref === ref ? { ...item, ...fields } : item);
   return { ...edit, doc: { ...edit.doc, items: edit.doc.items.map(apply) }, changed: edit.changed.map(apply) };

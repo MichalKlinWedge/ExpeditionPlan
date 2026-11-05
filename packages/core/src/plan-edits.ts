@@ -1,4 +1,4 @@
-import { detachRouteStops } from './route-stops.ts';
+import { detachRouteStops, dropRouteParent } from './route-stops.ts';
 import { isTransit } from './plan-info.ts';
 import { itemsForDay, type ScheduleOptions, scheduleDay } from './engine/schedule.ts';
 import { MINUTE, minutesOfDay, zonedToInstant } from './engine/time.ts';
@@ -167,15 +167,16 @@ export function moveToDay(doc: Doc, ref: string, dayRef: string | null): PlanEdi
       dayRef: undefined,
       sortKey: undefined,
       parentRef: undefined,
+      routeParentRefs: [],
       planStatus: item.planStatus === 'scheduled' ? 'candidate' : item.planStatus,
       time: item.time?.precision === 'relative' ? undefined : item.time,
     };
     // Podpunkty zostają w dniu, już jako zwykłe punkty.
-    const freed = doc.items.filter((each) => each.parentRef === ref).map(({ parentRef: _parent, ...rest }) => rest as Item);
+    const freed = doc.items.filter((each) => each.parentRef === ref || each.routeParentRefs.includes(ref)).map((each) => dropRouteParent(each, ref));
     return { doc: replace(doc, [pooled, ...freed]), changed: [pooled, ...freed] };
   }
   const last = dayItems(doc, dayRef).at(-1);
-  const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined }, last?.ref, undefined);
+  const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined, routeParentRefs: [] }, last?.ref, undefined);
   return detachRouteStops(carryChildren(settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef), ref), ref);
 }
 
@@ -188,7 +189,7 @@ export function moveAfter(doc: Doc, ref: string, dayRef: string, afterRef: strin
   if (afterRef !== null && index === -1) return null;
   // Zaraz po bloku `afterRef`, nie w jego środku.
   while (index >= 0 && others[index + 1]?.parentRef === afterRef) index++;
-  const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined }, others[index]?.ref, others[index + 1]?.ref);
+  const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined, routeParentRefs: [] }, others[index]?.ref, others[index + 1]?.ref);
   return detachRouteStops(carryChildren({ doc: replace(doc, changed), changed }, ref), ref);
 }
 
@@ -212,7 +213,7 @@ export function dropItem(doc: Doc, ref: string, dayRef: string | null, nextRef?:
   while (others[index] !== undefined && inBlock(others, others[index]!) && !sibling(others[index])) index++;
   const previous = others[index - 1];
   const staysInBlock = sameDay && item.parentRef !== undefined && (previous?.ref === item.parentRef || sibling(previous));
-  const moved: Item = { ...item, planStatus: 'scheduled', parentRef: staysInBlock ? item.parentRef : undefined };
+  const moved: Item = { ...item, planStatus: 'scheduled', parentRef: staysInBlock ? item.parentRef : undefined, routeParentRefs: staysInBlock ? item.routeParentRefs : [] };
   const changed = place(doc, dayRef, moved, previous?.ref, others[index]?.ref);
   return detachRouteStops(carryChildren(settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef), ref), ref);
 }
@@ -229,6 +230,7 @@ export function addItem(doc: Doc, dayRef: string, id: string, fields: Pick<Item,
   const last = dayItems(doc, dayRef).at(-1);
   const item: Item = {
     replacesRefs: [],
+    routeParentRefs: [],
     variantRefs: [],
     links: [],
     notes: [],
@@ -263,6 +265,7 @@ export function addPoolItem(
       : undefined;
   const item: Item = {
     replacesRefs: [],
+    routeParentRefs: [],
     variantRefs: [],
     links: [],
     notes: [],
@@ -436,10 +439,9 @@ export function removeItem(doc: Doc, ref: string): PlanEdit | null {
   if (uses.length > 0) throw new ItemInUseError(target.title, [...new Set(uses)]);
 
   const items = doc.items
-    .filter((each) => each.ref !== ref && (each.parentRef === ref || each.replacesRefs.includes(ref)))
+    .filter((each) => each.ref !== ref && (each.parentRef === ref || each.routeParentRefs.includes(ref) || each.replacesRefs.includes(ref)))
     .map((each) => ({
-      ...each,
-      parentRef: each.parentRef === ref ? undefined : each.parentRef,
+      ...dropRouteParent(each, ref),
       replacesRefs: each.replacesRefs.filter((other) => other !== ref),
     }));
   const variants = doc.variants

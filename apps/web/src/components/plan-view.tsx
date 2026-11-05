@@ -1076,7 +1076,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     </button>
                     <MoveSelect doc={doc} current={dayRef} onMove={(target) => actions.moveTo(item.ref, target)} />
                     {item.routeStop ? (
-                      <button onClick={() => actions.edit(setRouteStop(doc, item.ref, false))} title="Punkt wraca do zwykłej kolejności dnia" className="px-1 underline">
+                      <button onClick={() => actions.edit(setRouteStop(doc, item.ref, false, options))} title="Punkt wraca do zwykłej kolejności dnia" className="px-1 underline">
                         wyjmij z trasy
                       </button>
                     ) : (
