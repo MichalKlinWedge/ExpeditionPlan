@@ -78,7 +78,8 @@ export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, guid
     <View style={styles.wrap}>
       <View style={[styles.square, { borderColor: theme.backgroundSelected }]}>
         {/* Nowy dzień albo przełączony dojazd = nowa mapa z widokiem dopasowanym do pinezek. */}
-        <MapView key={`${dayRef}:${shown}`} mapStyle={mapStyle} androidView="surface" onPress={() => onSelect(null)}>
+        {/* Jawne `dragPan`: tylko wtedy mapa na Androidzie zabiera dotyk przewijaniu strony. Bez tego strona łapie ruch w pionie. */}
+        <MapView key={`${dayRef}:${shown}`} mapStyle={mapStyle} androidView="surface" dragPan onPress={() => onSelect(null)}>
           <Camera ref={camera} initialViewState={start} />
           <UserLocation accuracy />
           <DayLines lines={view.lines} id="plan-day" />
