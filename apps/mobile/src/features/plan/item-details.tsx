@@ -277,7 +277,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
             )}
             <Pressable onPress={() => open(guide.article.url)} hitSlop={6}>
               <ThemedText type="small" themeColor="textSecondary">
-                Na podstawie artykułu „{guide.article.title}” z {GUIDE_SITE[guide.article.site]}, licencja CC BY-SA 4.0; streszczenie: AI.
+                {guide.article.site === 'web' ? `Na podstawie strony „${guide.article.title}”; streszczenie: AI.` : `Na podstawie artykułu „${guide.article.title}” z ${GUIDE_SITE[guide.article.site]}, licencja CC BY-SA 4.0; streszczenie: AI.`}
               </ThemedText>
             </Pressable>
           </View>

@@ -15,10 +15,10 @@ export function venueSiteProblem(url: string): string | null {
   try {
     parsed = new URL(url);
   } catch {
-    return 'Adres strony lokalu jest niepoprawny.';
+    return 'Adres strony jest niepoprawny.';
   }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'Adres strony lokalu jest niepoprawny.';
-  if (NOT_OWN_SITE.test(parsed.hostname)) return `${parsed.hostname} to serwis, a nie strona lokalu, a takich stron nie czytamy automatycznie. Wklej tekst ręcznie.`;
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'Adres strony jest niepoprawny.';
+  if (NOT_OWN_SITE.test(parsed.hostname)) return `${parsed.hostname} to serwis pośredni, a takich stron nie czytamy automatycznie. Wklej tekst ręcznie.`;
   return null;
 }
 

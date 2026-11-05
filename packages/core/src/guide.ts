@@ -6,6 +6,7 @@ import type { TripDocument } from './schemas/trip-document.ts';
  * Przewodnik po punkcie planu (SPECYFIKACJA M8, tabela `audio_guides`): krótki opis, ciekawostki,
  * historia i zdjęcia — z artykułu Wikipedii (ugruntowanie), streszczone przez AI. Tekst pochodny
  * artykułu (Wikipedia albo Wikivoyage) = CC BY-SA 4.0 z linkiem do źródła; każde zdjęcie z Commons ma własną licencję i autora.
+ * Źródło `web` to strona wskazana przez użytkownika: własne streszczenie z linkiem, bez tej licencji i bez zdjęć z tej strony.
  * Jeden przewodnik na miejsce (`place_id`), a gdy punkt nie ma miejsca — na punkt (`item_id`).
  * Opis ze wskazówką („opłaty i bramki na A7”) jest zawsze na punkt — dotyczy tego punktu, nie miejsca.
  * Doprecyzowanie ze strony „Miejsca” („wieś w powiecie trzebnickim”) zostaje przy miejscu.
@@ -33,11 +34,13 @@ export const GuideDraft = z.object({
 export const GuideContent = GuideDraft.extend({
   images: z.array(GuideImage).default([]),
   /** Artykuł, z którego powstał opis. */
-  article: z.object({ title: z.string(), url: z.url(), lang: z.string(), site: z.enum(['wikipedia', 'wikivoyage']).default('wikipedia') }),
+  article: z.object({ title: z.string(), url: z.url(), lang: z.string(), site: z.enum(['wikipedia', 'wikivoyage', 'web']).default('wikipedia') }),
   /** Wskazówka organizatora dla AI, z którą powstał opis (do ponownego użycia przy odświeżeniu); w opisie miejsca: które dokładnie to miejsce. */
   hint: z.string().optional(),
   /** Tekst poprawiony ręcznie: nowa wersja z AI by to zastąpiła, więc pytamy przed nią. */
   edited: z.boolean().optional(),
+  /** Zdjęcia zmienione ręcznie: tak samo, nowa wersja z AI by je zastąpiła. */
+  imagesEdited: z.boolean().optional(),
 });
 
 export type GuideImage = z.infer<typeof GuideImage>;
@@ -47,7 +50,7 @@ export type GuideContent = z.infer<typeof GuideContent>;
 export const GUIDE_LICENSE = 'CC BY-SA 4.0';
 
 /** „z Wikipedii” / „z Wikivoyage” — podpis źródła przewodnika. */
-export const GUIDE_SITE: Record<'wikipedia' | 'wikivoyage', string> = { wikipedia: 'Wikipedii', wikivoyage: 'Wikivoyage' };
+export const GUIDE_SITE: Record<'wikipedia' | 'wikivoyage' | 'web', string> = { wikipedia: 'Wikipedii', wikivoyage: 'Wikivoyage', web: 'strony' };
 
 /** Wiersz `audio_guides` tak, jak przychodzi z `pull_changes`. */
 export type GuideRow = { id: string; item_id: string | null; place_id: string | null; audience: string; lang: string; title: string; content: unknown; deleted_at?: string | null };
@@ -103,6 +106,29 @@ export function placeGuide(
 export function editGuideText(content: GuideContent, text: z.input<typeof GuideDraft>): GuideContent {
   const { history: _old, ...rest } = content;
   return { ...rest, ...GuideDraft.parse(text), edited: true };
+}
+
+/** Najwięcej zdjęć w opisie po ręcznych zmianach. */
+export const MAX_GUIDE_IMAGES = 8;
+
+const WIKIMEDIA_FILE = /^https:\/\/[a-z0-9.-]+\.wikimedia\.org\//;
+const WIKIMEDIA_PAGE = /^https:\/\/([a-z0-9-]+\.)*(wikimedia|wikipedia|wikivoyage)\.org\//;
+
+/** Zdjęcie wybrane ręcznie musi pochodzić z Wikimedia i mieć licencję: opis jest też na publicznym linku. */
+export function isWikimediaImage(image: GuideImage): boolean {
+  return WIKIMEDIA_FILE.test(image.url) && WIKIMEDIA_FILE.test(image.thumbUrl) && WIKIMEDIA_PAGE.test(image.sourceUrl) && Boolean(image.license?.trim());
+}
+
+export function removeGuideImage(content: GuideContent, url: string): GuideContent {
+  return { ...content, images: content.images.filter((image) => image.url !== url), imagesEdited: true };
+}
+
+/** Wymiana zdjęcia `replaceUrl` na tym samym miejscu, bez niego dopisanie na końcu. Zdjęcie, które już jest w opisie, nic nie zmienia. */
+export function putGuideImage(content: GuideContent, image: GuideImage, replaceUrl?: string): GuideContent {
+  if (content.images.some((each) => each.url === image.url)) return content;
+  const at = content.images.findIndex((each) => each.url === replaceUrl);
+  const images = at === -1 ? [...content.images, image] : content.images.map((each, index) => (index === at ? image : each));
+  return { ...content, images: images.slice(0, MAX_GUIDE_IMAGES), imagesEdited: true };
 }
 
 type Doc = TripDocument;

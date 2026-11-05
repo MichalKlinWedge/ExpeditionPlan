@@ -46,14 +46,19 @@ export function GuideArticle({ guide, targets, itemBase }: { guide: GuideContent
         </div>
       )}
       <p className="text-xs text-zinc-500">
-        Na podstawie artykułu{" "}
+        Na podstawie {guide.article.site === "web" ? "strony" : "artykułu"}{" "}
         <a href={guide.article.url} target="_blank" rel="noreferrer" className="underline">
           „{guide.article.title}”
-        </a>{" "}
-        z {GUIDE_SITE[guide.article.site]} ({guide.article.lang}), licencja{" "}
-        <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" rel="noreferrer" className="underline">
-          CC BY-SA 4.0
         </a>
+        {guide.article.site !== "web" && (
+          <>
+            {" "}
+            z {GUIDE_SITE[guide.article.site]} ({guide.article.lang}), licencja{" "}
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" rel="noreferrer" className="underline">
+              CC BY-SA 4.0
+            </a>
+          </>
+        )}
         ; streszczenie: AI{guide.edited ? ", poprawione ręcznie" : ""}.
       </p>
     </article>

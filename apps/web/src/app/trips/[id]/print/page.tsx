@@ -182,7 +182,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
 
       <footer className="border-t border-zinc-300 pt-2 text-xs text-zinc-500">
         Godziny orientacyjne (scenariusz optymistyczny)
-        {printed.size > 0 ? " · Opisy miejsc: streszczenia AI artykułów z Wikipedii i Wikivoyage (CC BY-SA 4.0)" : ""} · Expedition Planner
+        {printed.size > 0 ? " · Opisy miejsc: streszczenia AI artykułów z Wikipedii i Wikivoyage (CC BY-SA 4.0) oraz stron podanych przy opisie" : ""} · Expedition Planner
       </footer>
     </article>
   );

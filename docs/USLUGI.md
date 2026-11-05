@@ -304,14 +304,17 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 **Krótko:** darmowe API bez klucza; warunkiem jest atrybucja i licencja tekstu. Warunki spisane z dokumentacji Wikimedia znanej z wcześniejszych prac — **w tej sesji nie odczytano stron ponownie**, przed szerszym użyciem sprawdzić linki poniżej.
 
 - Zapytania: MediaWiki Action API (`https://<lang>.wikipedia.org/w/api.php`), bez klucza. Wymagany opisowy `User-Agent` z danymi kontaktowymi (polityka User-Agent Wikimedia: https://meta.wikimedia.org/wiki/User-Agent_policy); zapytania seryjnie, nie równolegle (https://www.mediawiki.org/wiki/API:Etiquette). W kodzie: `packages/planner/src/wiki.ts`, opisy hurtem po kolei.
+- Wikidane (`www.wikidata.org/w/api.php`, `wbsearchentities`, `wbgetentities`; dane CC0): tylko do znalezienia artykułu w innym języku po nazwie i współrzędnych. Tekst dalej pochodzi z artykułu Wikipedii albo Wikivoyage, więc obowiązuje ta sama atrybucja. Warunki znane z dokumentacji, nieodczytane ponownie 5.11.2026.
 - Tekst artykułów: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). Streszczenie AI to utwór zależny — pokazujemy link do artykułu, licencję i informację, że streszczenie zrobiło AI.
-- Zdjęcia: pliki z Commons mają różne licencje (CC BY, CC BY-SA, PD, CC0). Pokazujemy tylko pliki z licencją w metadanych (`LicenseShortName`), z autorem i linkiem do strony pliku. Miniatury z `upload.wikimedia.org` / `thumb.wikimedia.org` (hotlinking dozwolony), na telefonie w pamięci podręcznej do użytku offline.
+- Zdjęcia: pliki z Commons mają różne licencje (CC BY, CC BY-SA, PD, CC0). Pokazujemy tylko pliki z licencją w metadanych (`LicenseShortName`), z autorem i linkiem do strony pliku. Miniatury z `upload.wikimedia.org` / `thumb.wikimedia.org` (hotlinking dozwolony), na telefonie w pamięci podręcznej do użytku offline. Ręczny wybór zdjęcia do opisu (wyszukiwanie w `commons.wikimedia.org`) podlega tym samym zasadom; serwer przyjmuje tylko pliki z Wikimedia z licencją.
 
 ## 13. Strony lokali (opis i menu knajpy, 5.11.2026)
 
 Bez API i bez klucza: `apps/web/src/lib/venue-site.ts` pobiera stronę samego lokalu (adres z OSM) i najwyżej jedną podstronę z menu, tylko na kliknięcie użytkownika, a AI robi z tego szkic do zatwierdzenia. Warunki każdej strony są inne i nie da się ich sprawdzić z góry, więc ograniczamy zakres: opisowy `User-Agent`, `robots.txt` respektowany, jedno odczytanie, bez kopiowania całej strony do bazy (zapisujemy tylko krótkie punkty i przykładowe ceny, które wybrał człowiek).
 
 **NIE:** serwisy pośrednie, nawet gdy są wpisane jako „strona” lokalu (Booking, TripAdvisor, Google, Facebook, Instagram, TheFork, Pyszne, Glovo i inne, lista `NOT_OWN_SITE` w `planner/src/venue-page.ts`). Średniej oceny stąd zwykle nie ma: nadal pochodzi tylko z tekstu wklejonego przez użytkownika (§3, §11).
+
+Na tych samych warunkach działa strona wskazana przez użytkownika jako źródło opisu miejsca (`describeFromSource`), bez podstron. Zapisujemy tylko streszczenie AI własnymi słowami i link do strony; bez licencji CC BY-SA, bez zdjęć z tej strony, a pobrany albo wklejony tekst nie trafia do bazy. Streszczenie jest widoczne także na publicznym linku, więc za wybór źródła odpowiada użytkownik.
 
 ## Wnioski dla specyfikacji
 

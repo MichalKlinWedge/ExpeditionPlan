@@ -55,7 +55,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         </Link>
         <h1 className="text-2xl font-semibold">Opisy miejsc</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Opisy z Wikipedii i Wikivoyage przy punktach planu: {guides.length}.{canEdit ? " Każdy możesz przygotować od nowa, poprawić ręcznie albo usunąć." : ""}
+          Opisy z Wikipedii, Wikivoyage i wskazanych stron przy punktach planu: {guides.length}.{canEdit ? " Każdy możesz przygotować od nowa, poprawić ręcznie albo usunąć." : ""}
         </p>
       </div>
       {canEdit && missing.length > 0 && <PlanActionButton ai run={describeTrip.bind(null, id)} label={`Przygotuj brakujące opisy (${missing.length})`} note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />}

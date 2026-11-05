@@ -2,7 +2,7 @@ import type { AiClient } from '@expeditionplan/ai';
 import { GuideContent } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
-import { checkSuggestion, describePlace, findArticle, type GuideLibrary, titleMatch } from '../wiki.ts';
+import { articleImages, checkSuggestion, commonsImages, coreName, describeFromPage, describePlace, findArticle, type GuideLibrary, titleMatch, wikiArticleOf, wikidataArticles } from '../wiki.ts';
 
 /** Wikipedia w pamięci: odpowiedzi wg parametrów zapytania. */
 function fakeWiki(answers: { search?: unknown[]; geo?: unknown[]; extract?: string; images?: unknown[]; pages?: Record<string, unknown> }) {
@@ -31,6 +31,167 @@ function fakeWiki(answers: { search?: unknown[]; geo?: unknown[]; extract?: stri
 }
 
 const at = { lat: 41.4036, lng: 2.1744 };
+
+describe('inne źródła opisu', () => {
+  const near = { lat: 42.9, lng: 43.0 };
+  const wikidata = (search: unknown[], entities: Record<string, unknown>) =>
+    (async (input: URL | string) => {
+      const params = new URL(String(input)).searchParams;
+      return new Response(JSON.stringify(params.get('action') === 'wbsearchentities' ? { search } : { entities }));
+    }) as typeof fetch;
+  const coords = (latitude: number, longitude: number) => ({ P625: [{ mainsnak: { datavalue: { value: { latitude, longitude } } } }] });
+
+  it('hasło bez współrzędnych z obcymi słowami w tytule nie jest artykułem o miejscu', async () => {
+    const search = (pages: unknown[]) => fakeWiki({ search: pages, geo: [] }).fetchImpl;
+    const page = (title: string) => ({ index: 1, title, fullurl: `https://pl.wikipedia.org/wiki/${encodeURIComponent(title)}` });
+    expect(await findArticle('El Born', near, 'pl', search([page('Cupra Born')]))).toBeNull();
+    expect(await findArticle('Paradise Valley', near, 'pl', search([page('Paradise Valley (album)')]))).toBeNull();
+    expect(await findArticle('Sasin', near, 'pl', search([page('Sasin')]), 'Sasin', { coordsOnly: true })).toBeNull();
+    expect((await findArticle('Muzeum Swanetii', near, 'pl', search([page('Muzeum Swanetii')])))?.title).toBe('Muzeum Swanetii');
+  });
+
+  it('AI dostaje prawdziwe artykuły przy pinezce i tylko wtedy, gdy nazwa nic nie dała', async () => {
+    const prompts: string[] = [];
+    const fetchImpl = (async (input: URL | string) => {
+      const url = new URL(String(input));
+      const nearby = url.hostname === 'en.wikipedia.org' && url.searchParams.get('list') === 'geosearch';
+      return new Response(JSON.stringify({ query: nearby ? { geosearch: [{ title: 'Shkhara' }] } : { pages: [] } }));
+    }) as typeof fetch;
+    const client = {
+      ask: async (prompt: string) => {
+        prompts.push(prompt);
+        return { text: JSON.stringify({ candidates: [] }) };
+      },
+    } as unknown as AiClient;
+    expect(await describePlace({ name: 'Lodowiec Szchara', kind: 'visit', ...near }, { client, fetchImpl })).toBeNull();
+    expect(prompts[0]).toContain('en: Shkhara');
+    prompts.length = 0;
+    await describePlace({ name: 'Lodowiec Szchara', kind: 'visit', near }, { client, fetchImpl });
+    expect(prompts[0]).not.toContain('Shkhara');
+  });
+
+  it('przeciążony model przy podpowiedziach to błąd, a nie „nie znalazłem”', async () => {
+    const fetchImpl = (async () => new Response(JSON.stringify({ query: { pages: [] } }))) as typeof fetch;
+    const overloaded = {
+      ask: async () => {
+        throw new Error('Model jest przeciążony');
+      },
+    } as unknown as AiClient;
+    await expect(describePlace({ name: 'Lodowiec Szchara', kind: 'visit', ...near }, { client: overloaded, fetchImpl })).rejects.toThrow('przeciążony');
+    const nonsense = { ask: async () => ({ text: 'to nie JSON' }) } as unknown as AiClient;
+    expect(await describePlace({ name: 'Lodowiec Szchara', kind: 'visit', ...near }, { client: nonsense, fetchImpl })).toBeNull();
+  });
+
+  it('nazwa bez dopisków z planu', () => {
+    expect(coreName('Dinara (1831 m n.p.m.)')).toBe('Dinara');
+    expect(coreName('MNAC — schody i tarasy')).toBe('MNAC');
+    expect(coreName('Arenas de Barcelona (dawna arena byków) — dach')).toBe('Arenas de Barcelona');
+    expect(coreName('Bielsko-Biała')).toBe('Bielsko-Biała');
+    expect(coreName('(bez nazwy)')).toBe('(bez nazwy)');
+  });
+
+  it('Wikidane: artykuły w dowolnym języku, Wikipedia przed Wikivoyage, bez wiki botów i innych projektów', async () => {
+    const articles = await wikidataArticles(
+      'Uszguli',
+      near,
+      wikidata([{ id: 'Q1', label: 'Ushguli', match: { text: 'Uszguli' } }], {
+        Q1: {
+          claims: coords(42.91, 43.01),
+          sitelinks: {
+            kawiki: { title: 'უშგული', url: 'https://ka.wikipedia.org/wiki/A' },
+            enwikivoyage: { title: 'Ushguli', url: 'https://en.wikivoyage.org/wiki/Ushguli' },
+            frwiki: { title: 'Ouchgouli', url: 'https://fr.wikipedia.org/wiki/Ouchgouli' },
+            cebwiki: { title: 'Ushguli', url: 'https://ceb.wikipedia.org/wiki/Ushguli' },
+            commonswiki: { title: 'Category:Ushguli', url: 'https://commons.wikimedia.org/wiki/Category:Ushguli' },
+            enwikiquote: { title: 'Ushguli', url: 'https://en.wikiquote.org/wiki/Ushguli' },
+          },
+        },
+      }),
+    );
+    expect(articles.map((each) => `${each.site}:${each.lang}`)).toEqual(['wikipedia:fr', 'wikipedia:ka', 'wikivoyage:en']);
+  });
+
+  it('Wikidane: po angielsku szuka polskiej nazwy w zapisie angielskim', async () => {
+    const searched: (string | null)[] = [];
+    const fetchImpl = (async (input: URL | string) => {
+      const params = new URL(String(input)).searchParams;
+      searched.push(params.get('search'));
+      return new Response(JSON.stringify({ search: [] }));
+    }) as typeof fetch;
+    await wikidataArticles('Uszguli', near, fetchImpl);
+    expect(searched).toEqual(['Uszguli', 'Ushguli']);
+  });
+
+  it('Wikidane: daleka imienniczka, hasło bez współrzędnych i inna nazwa odpadają', async () => {
+    const link = { sitelinks: { enwiki: { title: 'X', url: 'https://en.wikipedia.org/wiki/X' } } };
+    const far = wikidata([{ id: 'Q1', label: 'Uszguli' }], { Q1: { claims: coords(10, 10), ...link } });
+    expect(await wikidataArticles('Uszguli', near, far)).toEqual([]);
+    const noCoords = wikidata([{ id: 'Q1', label: 'Uszguli' }], { Q1: { claims: {}, ...link } });
+    expect(await wikidataArticles('Uszguli', near, noCoords)).toEqual([]);
+    const other = wikidata([{ id: 'Q1', label: 'Tbilisi' }], { Q1: { claims: coords(42.9, 43), ...link } });
+    expect(await wikidataArticles('Uszguli', near, other)).toEqual([]);
+  });
+
+  it('opis z miejsca bez artykułu pod polską nazwą powstaje z artykułu znalezionego przez Wikidane', async () => {
+    const fetchImpl = (async (input: URL | string) => {
+      const url = new URL(String(input));
+      const params = url.searchParams;
+      if (url.hostname === 'www.wikidata.org') {
+        return new Response(JSON.stringify(params.get('action') === 'wbsearchentities' ? { search: [{ id: 'Q1', label: 'Uszguli' }] } : { entities: { Q1: { claims: coords(42.9, 43), sitelinks: { frwiki: { title: 'Ouchgouli', url: 'https://fr.wikipedia.org/wiki/Ouchgouli' } } } } }));
+      }
+      if (url.hostname === 'fr.wikipedia.org' && params.get('prop') === 'extracts') return new Response(JSON.stringify({ query: { pages: [{ extract: 'Tekst. '.repeat(100) }] } }));
+      return new Response(JSON.stringify({ query: { pages: [] } }));
+    }) as typeof fetch;
+    const client = { ask: async () => ({ text: JSON.stringify({ summary: 'Opis.', facts: [], tips: [] }) }) } as unknown as AiClient;
+    const guide = await describePlace({ name: 'Uszguli', kind: 'visit', ...near }, { client, fetchImpl });
+    expect(guide?.article).toEqual({ title: 'Ouchgouli', url: 'https://fr.wikipedia.org/wiki/Ouchgouli', lang: 'fr', site: 'wikipedia' });
+  });
+
+  it('adres artykułu: tylko Wikipedia i Wikivoyage, z tytułem i językiem', () => {
+    expect(wikiArticleOf('https://hr.wikipedia.org/wiki/Dinara_(planina)?x=1')).toEqual({ lang: 'hr', site: 'wikipedia', title: 'Dinara (planina)' });
+    expect(wikiArticleOf('https://en.m.wikivoyage.org/wiki/Svaneti')).toEqual({ lang: 'en', site: 'wikivoyage', title: 'Svaneti' });
+    expect(wikiArticleOf('https://en.wikipedia.org.example.com/wiki/A')).toBeNull();
+    expect(wikiArticleOf('https://example.com/wiki/A')).toBeNull();
+  });
+
+  it('strona wskazana przez użytkownika: źródło „web”, bez zdjęć, a za krótki tekst nie daje opisu', async () => {
+    const client = { ask: async () => ({ text: JSON.stringify({ summary: 'Opis.', facts: [], tips: [] }) }) } as unknown as AiClient;
+    const noFetch = (async () => {
+      throw new Error('bez pobierania');
+    }) as typeof fetch;
+    const place = { name: 'Chatka', kind: 'visit' };
+    const guide = await describeFromPage(place, { url: 'https://www.parknarodowy.pl/chatka', text: 'Tekst o chatce. '.repeat(30) }, { client, fetchImpl: noFetch });
+    expect(guide).toMatchObject({ images: [], article: { title: 'parknarodowy.pl', url: 'https://www.parknarodowy.pl/chatka', site: 'web' } });
+    expect(GuideContent.safeParse(guide).success).toBe(true);
+    expect(await describeFromPage(place, { url: 'https://www.parknarodowy.pl/chatka', text: 'Mało.' }, { client, fetchImpl: noFetch })).toBeNull();
+  });
+});
+
+describe('zdjęcia do wyboru', () => {
+  const file = (name: string, index: number, license: string | undefined = 'CC BY-SA 4.0') => ({
+    title: `File:${name}.jpg`,
+    index,
+    imageinfo: [{ url: `https://upload.wikimedia.org/${name}.jpg`, thumburl: `https://upload.wikimedia.org/thumb/${name}.jpg`, descriptionurl: `https://commons.wikimedia.org/wiki/File:${name}.jpg`, mime: 'image/jpeg', width: 2000, extmetadata: license ? { LicenseShortName: { value: license } } : {} }],
+  });
+
+  it('Commons: szuka bitmap wśród plików, w kolejności trafności, tylko z licencją i bez map', async () => {
+    const urls: URL[] = [];
+    const fetchImpl = (async (input: URL | string) => {
+      urls.push(new URL(String(input)));
+      return new Response(JSON.stringify({ query: { pages: [file('Drugie', 2), file('Bez_licencji', 3, ''), file('Mapa_miasta', 4), file('Pierwsze', 1)] } }));
+    }) as typeof fetch;
+    const images = await commonsImages('Sagrada Família', 24, fetchImpl);
+    expect(images.map((image) => image.title)).toEqual(['Pierwsze', 'Drugie']);
+    expect(urls[0]!.hostname).toBe('commons.wikimedia.org');
+    expect(urls[0]!.searchParams.get('gsrsearch')).toBe('Sagrada Família filetype:bitmap');
+    expect(urls[0]!.searchParams.get('gsrnamespace')).toBe('6');
+  });
+
+  it('artykuł: limit decyduje, ile zdjęć wraca', async () => {
+    const { fetchImpl } = fakeWiki({ images: [file('A', 1), file('B', 2), file('C', 3)] });
+    expect(await articleImages('Sagrada Família', 'pl', 2, fetchImpl)).toHaveLength(2);
+  });
+});
 
 describe('przewodnik z Wikipedii', () => {
   it('dopasowanie tytułu bez polskich znaków i wielkości liter', () => {

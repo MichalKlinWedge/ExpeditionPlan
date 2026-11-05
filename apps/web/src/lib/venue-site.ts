@@ -26,7 +26,7 @@ async function assertPublicHost(url: URL) {
   try {
     addresses = await lookup(url.hostname.replace(/^\[|\]$/g, ""), { all: true });
   } catch {
-    throw new VenueSiteError(`Nie znalazłem serwera ${url.hostname}. Strona lokalu może już nie działać.`);
+    throw new VenueSiteError(`Nie znalazłem serwera ${url.hostname}. Strona może już nie działać.`);
   }
   if (addresses.length === 0 || !addresses.every(({ address }) => isPublicAddress(address))) throw new VenueSiteError("Ten adres nie prowadzi do strony w internecie.");
 }
@@ -83,25 +83,30 @@ async function allowed(url: URL): Promise<boolean> {
 }
 
 /** Tekst strony lokalu i jej menu, gotowy dla AI. Błąd `VenueSiteError` ma treść do pokazania. */
-export async function fetchVenueSiteText(address: string): Promise<string> {
+export const fetchVenueSiteText = (address: string) => readSite(address, true);
+
+/** Tekst jednej strony wskazanej przez użytkownika (źródło opisu miejsca), na tych samych warunkach. */
+export const fetchPageText = (address: string) => readSite(address, false);
+
+async function readSite(address: string, withMenu: boolean): Promise<string> {
   const problem = venueSiteProblem(address);
   if (problem !== null) throw new VenueSiteError(problem);
   const start = new URL(address);
   try {
     if (!(await allowed(start))) throw new VenueSiteError("Ta strona nie pozwala na automatyczne czytanie (robots.txt). Wklej tekst ręcznie.");
     const home = await fetchPage(start.href, /text\/html|application\/xhtml|text\/plain/i);
-    if (home === null) throw new VenueSiteError("Nie udało się pobrać strony lokalu. Wklej tekst ręcznie.");
+    if (home === null) throw new VenueSiteError("Nie udało się pobrać tej strony. Wklej tekst ręcznie.");
     const parts = [htmlToText(home.body)];
-    const menu = menuLinks(home.body, home.url)[0];
+    const menu = withMenu ? menuLinks(home.body, home.url)[0] : undefined;
     if (menu !== undefined && (await allowed(new URL(menu)))) {
       const page = await fetchPage(menu, /text\/html|application\/xhtml/i).catch(() => null);
       if (page !== null) parts.push(htmlToText(page.body));
     }
     const text = parts.join("\n\n").slice(0, VENUE_TEXT_LIMIT);
-    if (text.length < 200) throw new VenueSiteError("Na stronie prawie nie ma tekstu: menu może być w PDF-ie albo na zdjęciu. Wklej tekst ręcznie.");
+    if (text.length < 200) throw new VenueSiteError("Na stronie prawie nie ma tekstu: treść może być w PDF-ie albo na zdjęciu. Wklej tekst ręcznie.");
     return text;
   } catch (e) {
     if (e instanceof VenueSiteError) throw e;
-    throw new VenueSiteError("Nie udało się pobrać strony lokalu. Wklej tekst ręcznie.");
+    throw new VenueSiteError("Nie udało się pobrać tej strony. Wklej tekst ręcznie.");
   }
 }

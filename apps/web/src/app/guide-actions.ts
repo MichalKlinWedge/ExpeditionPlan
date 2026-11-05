@@ -1,14 +1,15 @@
 "use server";
 
-import { editGuideText, GuideContent, GuideDraft, GUIDE_LICENSE, type GuideRow, guideFor, guideText, type TripDocument, undescribedSights } from "@expeditionplan/core";
+import { editGuideText, GuideContent, GuideDraft, GuideImage, GUIDE_LICENSE, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, putGuideImage, removeGuideImage, type TripDocument, undescribedSights } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { describePlace, type GuideLibrary } from "@expeditionplan/planner";
+import { articleImages, commonsImages, coreName, describeFromPage, describePlace, type GuideLibrary, wikiArticleOf } from "@expeditionplan/planner";
 import { refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
 import { aiAccessError, plannerDeps } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+import { fetchPageText, VenueSiteError } from "@/lib/venue-site";
 
 /**
  * Przewodnik po punkcie (M8, etap 1): artykuł z Wikipedii dla miejsca punktu, streszczenie przez
@@ -112,13 +113,13 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
     return {
       error: hint
         ? `Nie znalazłem w Wikipedii ani Wikivoyage artykułu o „${hint}”. Spróbuj nazwać temat inaczej (np. nazwa drogi albo obiektu, „jazda autem w Maroku”).`
-        : `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${name}”. Opis bez źródła byłby zgadywaniem — pomijam. Możesz podpowiedzieć AI, o czym ma być opis.`,
+        : `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${name}”. Opis bez źródła byłby zgadywaniem — pomijam. Możesz podpowiedzieć AI, o czym ma być opis, albo podać stronę o tym miejscu.`,
     };
   }
   return storeGuide(supabase, tripId, name, content, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef], item.ref);
 }
 
-const notFoundWhich = (name: string, which: string) => ({ error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu o „${name}” (${which}). Spróbuj opisać to miejsce inaczej, np. gmina, powiat albo pełna nazwa.` });
+const notFoundWhich = (name: string, which: string) => ({ error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu o „${name}” (${which}). Spróbuj opisać to miejsce inaczej, np. gmina, powiat albo pełna nazwa, albo podaj stronę o nim.` });
 
 /** Doprecyzowanie, z którym powstał obecny opis miejsca: odświeżenie nie może wrócić do imienniczki. */
 function savedWhich(guides: GuideRow[], placeId: string | undefined): string | undefined {
@@ -126,6 +127,8 @@ function savedWhich(guides: GuideRow[], placeId: string | undefined): string | u
   const row = guides.find((each) => !each.deleted_at && each.place_id === placeId);
   return row === undefined ? undefined : GuideContent.safeParse(row.content).data?.hint;
 }
+
+const SOURCE_NAME = { wikipedia: "Wikipedia", wikivoyage: "Wikivoyage", web: "Strona" } as const;
 
 /** Zapis opisu: jeden na miejsce, a bez miejsca na punkt. */
 async function storeGuide(supabase: Supabase, tripId: string, name: string, content: GuideContent, itemId: string | undefined, placeId: string | undefined, fallbackKey: string): Promise<{ ok: string } | { error: string }> {
@@ -139,13 +142,13 @@ async function storeGuide(supabase: Supabase, tripId: string, name: string, cont
     title: name,
     text: guideText(content),
     content: content as unknown as NonNullable<Json>,
-    sources: [{ title: `${content.article.site === "wikivoyage" ? "Wikivoyage" : "Wikipedia"}: ${content.article.title}`, url: content.article.url }] as unknown as NonNullable<Json>,
-    license: GUIDE_LICENSE,
+    sources: [{ title: `${SOURCE_NAME[content.article.site]}: ${content.article.title}`, url: content.article.url }] as unknown as NonNullable<Json>,
+    license: content.article.site === "web" ? null : GUIDE_LICENSE,
     status: "ready",
     deleted_at: null,
   });
   if (error) return { error: message(error) };
-  return { ok: `Opis gotowy (z artykułu „${content.article.title}” — ${content.article.site === "wikivoyage" ? "Wikivoyage" : "Wikipedia"}, ${content.images.length} zdj.).` };
+  return { ok: `Opis gotowy (źródło: ${SOURCE_NAME[content.article.site]} „${content.article.title}” (${content.article.lang}), ${content.images.length} zdj.).` };
 }
 
 /** `hint` — wskazówka organizatora dla AI („opłaty i bramki na A7, czym płacić”); pusta = opis miejsca. */
@@ -193,12 +196,52 @@ export async function describePlaceGuide(tripId: string, placeRef: string, which
       result = content === null
         ? clean
           ? notFoundWhich(place.name, clean)
-          : { error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${place.name}”. Opis bez źródła byłby zgadywaniem — pomijam.` }
+          : { error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${place.name}”. Opis bez źródła byłby zgadywaniem — pomijam. Możesz podać stronę o tym miejscu.` }
         : await storeGuide(supabase, tripId, place.name, content, undefined, ids[placeRef], placeRef);
     } catch (e) {
       result = { error: `Nie udało się przygotować opisu „${place.name}”: ${e instanceof Error ? e.message : String(e)}` };
     }
   }
+  if ("ok" in result) refresh();
+  return result;
+}
+
+/**
+ * Opis ze źródła wskazanego przez użytkownika, gdy automat nic nie znalazł: link do Wikipedii albo Wikivoyage, inna strona (pobrana na tych warunkach
+ * co strona lokalu, `docs/USLUGI.md` §13) albo tekst wklejony z niej. Zapisujemy tylko streszczenie i link. Opis należy do miejsca, a bez miejsca do punktu.
+ */
+export async function describeFromSource(tripId: string, target: { itemRef?: string; placeRef?: string }, address: string, pasted = ""): Promise<FormState> {
+  const url = address.trim();
+  if (!/^https?:\/\/[^\s]+$/i.test(url) || !URL.canParse(url)) return { error: "Podaj pełny adres strony, od https://." };
+  const loaded = await load(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { doc, ids, supabase, client } = loaded;
+  const item = target.itemRef === undefined ? undefined : doc.items.find((each) => each.ref === target.itemRef);
+  const placeRef = target.placeRef ?? (item === undefined ? undefined : placeOf(doc, item).ref);
+  const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
+  const name = place?.name ?? item?.title;
+  if (name === undefined) return { error: "Tego miejsca już nie ma — odśwież stronę." };
+  const typed = pasted.trim();
+  let text = typed;
+  if (typed === "" && wikiArticleOf(url) === null) {
+    try {
+      text = await fetchPageText(url);
+    } catch (e) {
+      return { error: e instanceof VenueSiteError ? e.message : "Nie udało się pobrać tej strony. Wklej tekst ręcznie." };
+    }
+  }
+  let content;
+  try {
+    content = await describeFromPage({ name, kind: item?.kind ?? "visit", context: { itemTitle: item?.title ?? name, description: item?.description, trip: doc.trip.title } }, text === "" ? { url } : { url, text }, { client, timeoutMs: 60_000 });
+  } catch (e) {
+    return { error: `Nie udało się przygotować opisu „${name}”: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  if (content === null) return { error: "W tym źródle jest za mało tekstu, żeby zrobić z niego opis." };
+  const itemId = item === undefined ? undefined : ids[item.ref];
+  const result = await storeGuide(supabase, tripId, name, content, itemId, placeRef === undefined ? undefined : ids[placeRef], item?.ref ?? name);
+  // Opis miejsca: dawny własny opis punktu (ze wskazówką) by go zasłaniał.
+  const own = itemId === undefined || placeRef === undefined ? undefined : loaded.guides.find((row) => !row.deleted_at && row.item_id === itemId && row.place_id === null);
+  if ("ok" in result && own !== undefined) await supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", own.id).eq("trip_id", tripId);
   if ("ok" in result) refresh();
   return result;
 }
@@ -229,12 +272,22 @@ export async function describeTrip(tripId: string): Promise<FormState> {
 export async function saveGuideText(tripId: string, guideId: string, text: GuideDraft): Promise<FormState> {
   const parsed = GuideDraft.safeParse(text);
   if (!parsed.success) return { error: `Niepoprawny tekst opisu (${parsed.error.issues[0]?.path.join(".") ?? ""}).` };
-  const { supabase } = await requireUser(`/trips/${tripId}/guides`);
-  const { data, error } = await supabase.from("audio_guides").select("content").eq("id", guideId).eq("trip_id", tripId).is("deleted_at", null).maybeSingle();
+  return changeGuide(tripId, guideId, (current) => editGuideText(current, parsed.data), "Zapisano poprawkę.");
+}
+
+async function readGuide(supabase: Supabase, tripId: string, guideId: string): Promise<{ content: GuideContent; title: string } | { error: string }> {
+  const { data, error } = await supabase.from("audio_guides").select("content, title").eq("id", guideId).eq("trip_id", tripId).is("deleted_at", null).maybeSingle();
   if (error) return { error: message(error) };
   const current = GuideContent.safeParse(data?.content);
-  if (!current.success) return { error: "Tego opisu już nie ma — odśwież stronę." };
-  const content = editGuideText(current.data, parsed.data);
+  return current.success && data !== null ? { content: current.data, title: data.title } : { error: "Tego opisu już nie ma — odśwież stronę." };
+}
+
+/** Ręczna zmiana opisu w tym wyjeździe: wspólna biblioteka opisów zostaje bez zmian. */
+async function changeGuide(tripId: string, guideId: string, change: (current: GuideContent) => GuideContent, ok: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/guides`);
+  const current = await readGuide(supabase, tripId, guideId);
+  if ("error" in current) return current;
+  const content = change(current.content);
   const saved = await supabase
     .from("audio_guides")
     .update({ content: content as unknown as NonNullable<Json>, text: guideText(content) })
@@ -244,7 +297,36 @@ export async function saveGuideText(tripId: string, guideId: string, text: Guide
   if (saved.error) return { error: message(saved.error) };
   if (saved.data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
-  return { ok: "Zapisano poprawkę." };
+  return { ok };
+}
+
+/**
+ * Zdjęcia do wyboru: z artykułu opisu i z wyszukiwania w Commons po kolei, a `query` to własne hasło (tylko Commons).
+ * Bez AI, a odpowiada tylko na opis, który użytkownik może odczytać.
+ */
+export async function findGuideImages(tripId: string, guideId: string, query = ""): Promise<{ images: GuideImage[] } | { error: string }> {
+  const { supabase } = await requireUser(`/trips/${tripId}/guides`);
+  const current = await readGuide(supabase, tripId, guideId);
+  if ("error" in current) return current;
+  const { article } = current.content;
+  const asked = query.trim().slice(0, 100);
+  const fromArticle = asked === "" && article.site !== "web" ? await articleImages(article.title, article.lang, 24, fetch, article.site).catch(() => null) : [];
+  // Tytuł artykułu bywa dokładniejszy niż nazwa z planu, a strona wskazana ręcznie ma tylko adres.
+  const fromCommons = await commonsImages(asked || coreName(article.site === "web" ? current.title : article.title)).catch(() => null);
+  if (fromArticle === null && fromCommons === null) return { error: "Nie udało się pobrać zdjęć z Wikimedia. Spróbuj za chwilę." };
+  const images = [...(fromArticle ?? []), ...(fromCommons ?? [])];
+  return { images: images.filter((image, index) => images.findIndex((each) => each.url === image.url) === index) };
+}
+
+/** Wybrane zdjęcie: na miejsce `replaceUrl`, a bez niego jako kolejne. */
+export async function pickGuideImage(tripId: string, guideId: string, image: GuideImage, replaceUrl?: string): Promise<FormState> {
+  const parsed = GuideImage.safeParse(image);
+  if (!parsed.success || !isWikimediaImage(parsed.data)) return { error: "To zdjęcie nie pochodzi z Wikimedia albo nie ma licencji." };
+  return changeGuide(tripId, guideId, (current) => putGuideImage(current, parsed.data, replaceUrl), replaceUrl ? "Wymieniono zdjęcie." : `Dodano zdjęcie (najwyżej ${MAX_GUIDE_IMAGES}).`);
+}
+
+export async function dropGuideImage(tripId: string, guideId: string, url: string): Promise<FormState> {
+  return changeGuide(tripId, guideId, (current) => removeGuideImage(current, url), "Usunięto zdjęcie.");
 }
 
 /** Usunięcie opisu (miękkie) — np. gdy artykuł okazał się o czymś innym. */
