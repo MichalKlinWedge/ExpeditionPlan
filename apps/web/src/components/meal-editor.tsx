@@ -1,6 +1,6 @@
 "use client";
 
-import { addMeal, documentProblem, ItemInUseError, mealList, mealPoints, type PlanEdit, removeItemClosingGap, scheduleDay, type TripDocument, updateItem } from "@expeditionplan/core";
+import { addMeal, documentProblem, ItemInUseError, mealDays, mealPoints, type PlanEdit, removeItemClosingGap, type TripDocument, updateItem } from "@expeditionplan/core";
 import { savePlanEdit, uuidv7 } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -9,6 +9,7 @@ import { EatOutOptions, EatOutSearch } from "@/components/eat-out";
 import { ItemEditor } from "@/components/item-editor";
 import { SelfCookedToggle } from "@/components/logistics-editors";
 import { MealLink, PointOptions } from "@/components/meal-link";
+import { MealDaySection, MealHead, mealRowClass, mealRowId, type MealSelection } from "@/components/meal-row";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -23,13 +24,13 @@ const shortDay = (date: string) => new Intl.DateTimeFormat("pl-PL", { weekday: "
 
 const input = "field min-w-0 px-2 py-1 text-sm";
 
-export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocument; ids: Record<string, string> }) {
+export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; doc: TripDocument; ids: Record<string, string>; selection: MealSelection }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [searching, setSearching] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const meals = mealList(doc);
+  const days = mealDays(doc);
   const byRef = new Map(doc.items.map((item) => [item.ref, item]));
 
   const save = (edit: PlanEdit | null, done?: () => void) => {
@@ -50,57 +51,51 @@ export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocu
 
   return (
     <div className="flex flex-col gap-3 text-sm">
-      {meals.length === 0 && <p className="text-zinc-500">W planie nie ma jeszcze posiłków — dodaj pierwszy niżej.</p>}
-      <ul className="flex flex-col gap-1">
-        {meals.map((meal) => {
-          const item = byRef.get(meal.itemRef);
-          // Spięty posiłek nie ma własnej godziny: liczy ją od punktu.
-          const counted = meal.at && !meal.at.stop ? scheduleDay(doc, meal.dayRef).items.find((each) => each.ref === meal.itemRef)?.startLocal : undefined;
-          const time = item?.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}` : counted ? `ok. ${counted}` : null;
-          return (
-            <li key={meal.itemRef} className="flex flex-col">
-              <div>
-                <span className="text-zinc-500">
-                  Dzień {meal.dayNo} · {shortDay(meal.date)}
-                  {time ? ` · ${time}` : ""}:
-                </span>{" "}
-                {meal.selfCooked && <span aria-hidden="true">🍳 </span>}
-                {meal.title}
-                {meal.place && <span className="text-zinc-500"> · {meal.place}</span>} <SelfCookedToggle tripId={tripId} itemRef={meal.itemRef} value={meal.selfCooked === true} />
-                <MealLink doc={doc} itemRef={meal.itemRef} disabled={pending} onEdit={(edit) => save(edit)} />
-                <span className="ml-1 text-xs text-zinc-500">
-                  <button disabled={pending} onClick={() => setEditing(editing === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
-                    {editing === meal.itemRef ? "zamknij" : "zmień"}
-                  </button>
-                  {!meal.selfCooked && (
-                    <button disabled={pending} onClick={() => setSearching(searching === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
-                      knajpy w pobliżu
+      {days.every((day) => day.meals.length === 0) && <p className="text-zinc-500">W planie nie ma jeszcze posiłków — dodaj pierwszy niżej.</p>}
+      {days.map((day) => (
+        <MealDaySection key={day.dayRef} day={day}>
+          {day.meals.map((meal) => {
+            const item = byRef.get(meal.itemRef);
+            return (
+              <li key={meal.itemRef} id={mealRowId(meal)} className={mealRowClass(meal, selection.selected)}>
+                <MealHead doc={doc} meal={meal} selection={selection} />
+                <div>
+                  <SelfCookedToggle tripId={tripId} itemRef={meal.itemRef} value={meal.selfCooked === true} />
+                  <MealLink doc={doc} itemRef={meal.itemRef} disabled={pending} onEdit={(edit) => save(edit)} />
+                  <span className="ml-1 text-xs text-zinc-500">
+                    <button disabled={pending} onClick={() => setEditing(editing === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
+                      {editing === meal.itemRef ? "zamknij" : "zmień"}
                     </button>
-                  )}
-                  <button
-                    disabled={pending}
-                    onClick={() => {
-                      if (!window.confirm(`Usunąć posiłek „${meal.title}” z planu?`)) return;
-                      try {
-                        save(removeItemClosingGap(doc, meal.itemRef));
-                      } catch (e) {
-                        setError(e instanceof ItemInUseError ? e.message : String(e));
-                      }
-                    }}
-                    className="px-1 underline">
-                    usuń
-                  </button>
-                </span>
-              </div>
-              <EatOutOptions tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} canEdit />
-              {searching === meal.itemRef && <EatOutSearch tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} onClose={() => setSearching(null)} />}
-              {editing === meal.itemRef && item && (
-                <ItemEditor item={item} onCancel={() => setEditing(null)} onSave={(patch) => save(updateItem(doc, meal.itemRef, patch), () => setEditing(null))} />
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                    {!meal.selfCooked && (
+                      <button disabled={pending} onClick={() => setSearching(searching === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
+                        knajpy w pobliżu
+                      </button>
+                    )}
+                    <button
+                      disabled={pending}
+                      onClick={() => {
+                        if (!window.confirm(`Usunąć posiłek „${meal.title}” z planu?`)) return;
+                        try {
+                          save(removeItemClosingGap(doc, meal.itemRef));
+                        } catch (e) {
+                          setError(e instanceof ItemInUseError ? e.message : String(e));
+                        }
+                      }}
+                      className="px-1 underline">
+                      usuń
+                    </button>
+                  </span>
+                </div>
+                <EatOutOptions tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} canEdit />
+                {searching === meal.itemRef && <EatOutSearch tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} onClose={() => setSearching(null)} />}
+                {editing === meal.itemRef && item && (
+                  <ItemEditor item={item} onCancel={() => setEditing(null)} onSave={(patch) => save(updateItem(doc, meal.itemRef, patch), () => setEditing(null))} />
+                )}
+              </li>
+            );
+          })}
+        </MealDaySection>
+      ))}
       {doc.days.length > 0 && (
         <section className="mt-3 flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
           <h3 className="font-semibold">Nowy posiłek</h3>

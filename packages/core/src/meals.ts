@@ -1,6 +1,7 @@
 import { activeVariants, itemsForDay, type ScheduleOptions, scheduleDay } from './engine/schedule.ts';
 import { MINUTE, minutesOfDay, zonedToInstant } from './engine/time.ts';
 import { addItem, dayItems, heldTime, placeAfterBlock, type PlanEdit } from './plan-edits.ts';
+import type { DayMap } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { keyBetween } from './sort-key.ts';
 
@@ -22,7 +23,7 @@ export const SHOPPING_CATEGORY = 'zakupy';
 export const isShopping = (item: Pick<Packing, 'category'>) => item.category.trim().toLowerCase() === SHOPPING_CATEGORY;
 
 export type People = { adults: number; children: number };
-export type Meal = { dayRef: string; date: string; dayNo: number; itemRef: string; title: string; place?: string; selfCooked?: boolean; people: People; at?: MealPoint };
+export type Meal = { dayRef: string; date: string; dayNo: number; itemRef: string; title: string; placeRef?: string; place?: string; selfCooked?: boolean; people: People; at?: MealPoint };
 /** Punkt planu, przy którym jest posiłek; `stop` = przejazd, posiłek to postój w trasie. */
 export type MealPoint = { ref: string; title: string; stop: boolean };
 
@@ -53,12 +54,53 @@ export function mealList(doc: Doc): Meal[] {
         dayNo: index + 1,
         itemRef: item.ref,
         title: item.title,
+        ...(item.placeRef === undefined ? {} : { placeRef: item.placeRef }),
         place: item.placeRef === undefined ? undefined : places.get(item.placeRef),
         selfCooked: item.selfCooked,
         ...(item.parentRef !== undefined && items.has(item.parentRef) ? { at: { ref: item.parentRef, title: items.get(item.parentRef)!.title, stop: items.get(item.parentRef)!.kind === 'transport' } } : {}),
         people: item.participantRefs === undefined ? headcount(doc) : count(doc.travelers.filter((traveler) => item.participantRefs!.includes(traveler.ref))),
       })),
   );
+}
+
+/** Dzień z jego posiłkami, także bez żadnego: na stronie „Posiłki” widać, gdzie nic nie zaplanowano. */
+export type MealDay = { dayRef: string; date: string; dayNo: number; meals: Meal[] };
+
+export function mealDays(doc: Doc, meals: Meal[] = mealList(doc)): MealDay[] {
+  return doc.days.map((day, index) => ({ dayRef: day.ref, date: day.date, dayNo: index + 1, meals: meals.filter((meal) => meal.dayRef === day.ref) }));
+}
+
+/**
+ * Mapa posiłków: numer na miejsce ze współrzędnymi, po kolei od pierwszego użycia. Posiłki w tym samym
+ * lokalu mają ten sam numer, bo mapa i opis pod nią dotyczą miejsca, nie posiłku.
+ */
+export function mealMap(doc: Doc, meals: Meal[] = mealList(doc)): { numbers: Record<string, number>; map: DayMap } {
+  const places = new Map(doc.places.map((place) => [place.ref, place]));
+  const numbers: Record<string, number> = {};
+  const pins: DayMap['pins'] = [];
+  for (const meal of meals) {
+    const place = meal.placeRef === undefined ? undefined : places.get(meal.placeRef);
+    if (place?.lat === undefined || place.lng === undefined) continue;
+    const line = `Dzień ${meal.dayNo}: ${meal.title}`;
+    const pin = pins.find((each) => each.placeRef === place.ref);
+    if (pin !== undefined) {
+      pin.stops[0]!.title += `, ${line}`;
+      continue;
+    }
+    const n = pins.length + 1;
+    numbers[place.ref] = n;
+    pins.push({ placeRef: place.ref, name: place.name, lat: place.lat, lng: place.lng, stops: [{ ref: place.ref, n, title: line }] });
+  }
+  return { numbers, map: { pins, lines: [], numbers: {} } };
+}
+
+/** Godzina posiłku do listy: własna („ok. 13:00”), a posiłek spięty z punktem liczy ją od punktu. Postój w trasie godziny nie pokazuje. */
+export function mealTime(doc: Doc, meal: Meal): string | null {
+  const time = doc.items.find((item) => item.ref === meal.itemRef)?.time;
+  if (time !== undefined && 'start' in time && time.start !== undefined) return `${time.precision === 'approx' ? 'ok. ' : ''}${time.start}`;
+  if (meal.at === undefined || meal.at.stop) return null;
+  const counted = scheduleDay(doc, meal.dayRef).items.find((each) => each.ref === meal.itemRef)?.startLocal;
+  return counted ? `ok. ${counted}` : null;
 }
 
 /** Ile posiłków robicie sami i ile to „posiłko-osób” (dorośli i dzieci osobno). */

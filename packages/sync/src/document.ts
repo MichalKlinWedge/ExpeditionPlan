@@ -132,7 +132,7 @@ export const SPECS: Record<Collection, Spec> = {
   },
   places: {
     table: 'places',
-    fields: ['name', 'searchName', 'category', 'lat', 'lng', 'address', 'provider', 'openingHours', 'elevationM', 'website', 'links', 'notes'],
+    fields: ['name', 'searchName', 'category', 'lat', 'lng', 'address', 'provider', 'openingHours', 'elevationM', 'website', 'links', 'notes', 'venue'],
   },
   variantGroups: {
     table: 'variant_groups',

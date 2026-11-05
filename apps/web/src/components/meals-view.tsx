@@ -1,0 +1,101 @@
+"use client";
+
+import { headcount, mealDays, mealList, mealMap, type PlaceGuide, selfCookedTotals, type TripDocument } from "@expeditionplan/core";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import { EatOutOptions } from "@/components/eat-out";
+import { MealEditor } from "@/components/meal-editor";
+import { MealDaySection, MealHead, mealRowClass, mealRowId, type MealSelection } from "@/components/meal-row";
+import { PlanMap } from "@/components/plan-map";
+import { VenueCard } from "@/components/venue-card";
+
+/**
+ * Posiłki jak Miejsca: po lewej dzień po dniu, po prawej mapa i opis lokalu. Posiłki ze współrzędnymi mają numer miejsca;
+ * numer albo nazwa wyróżnia pinezkę i pokazuje opis, pinezka przewija listę do pierwszego posiłku w tym miejscu.
+ * Dodawanie, zmiana i usuwanie posiłków są po „Edytuj” (`MealEditor`), a opis lokalu organizator i edytor dodają od razu.
+ */
+
+const people = (each: { adults: number; children: number }) => `${each.adults} dor.${each.children > 0 ? ` + ${each.children} dz.` : ""}`;
+
+export function MealsView({ tripId, doc, ids, guides, mayEdit, editing }: { tripId: string; doc: TripDocument; ids: Record<string, string>; guides: Record<string, PlaceGuide>; mayEdit: boolean; editing: boolean }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const mapBox = useRef<HTMLDivElement>(null);
+  const meals = useMemo(() => mealList(doc), [doc]);
+  const { numbers, map } = useMemo(() => mealMap(doc, meals), [doc, meals]);
+  const days = mealDays(doc, meals);
+  const { adults, children } = headcount(doc);
+  const own = selfCookedTotals(meals);
+  const chosen = doc.places.find((place) => place.ref === selected);
+
+  // Nowe miejsce: kolumna wraca na górę, żeby mapa z pinezką była widoczna po czytaniu długiego opisu.
+  useEffect(() => {
+    if (selected !== null) mapBox.current?.scrollTo({ top: 0 });
+  }, [selected]);
+
+  const selection: MealSelection = {
+    numbers,
+    selected,
+    // Na telefonie mapa jest nad listą, więc wyróżniona pinezka musi wrócić na ekran.
+    onSelect: (placeRef) => {
+      setSelected(placeRef);
+      mapBox.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    },
+  };
+  const fromMap = (placeRef: string) => {
+    setSelected(placeRef);
+    const first = meals.find((meal) => meal.placeRef === placeRef);
+    if (first !== undefined) document.getElementById(mealRowId(first))?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <aside ref={mapBox} className="flex scroll-mt-4 flex-col gap-2 lg:sticky lg:top-6 lg:order-last lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:[overflow-anchor:none] lg:[scrollbar-gutter:stable]">
+        <PlanMap map={map} fitKey="posilki" square selected={selected} onSelect={fromMap} emptyText="Żaden posiłek nie ma jeszcze miejsca ze współrzędnymi." />
+        <p className="text-xs text-zinc-500">Numery na mapie odpowiadają numerom przy posiłkach. Posiłki w tym samym lokalu mają ten sam numer. Kliknięcie numeru albo nazwy pokazuje lokal na mapie i jego opis.</p>
+        {chosen && <VenueCard key={chosen.ref} tripId={tripId} place={chosen} guide={guides[chosen.ref] ?? null} canEdit={mayEdit} showEditor={meals.some((meal) => meal.placeRef === chosen.ref && !meal.selfCooked)} />}
+      </aside>
+
+      <section className="flex min-w-0 flex-col gap-4">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          {doc.travelers.length > 0 ? (
+            <>
+              Na posiłek: <strong>{adults} dorosłych</strong>
+              {children > 0 && (
+                <>
+                  {" "}
+                  + <strong>{children} dzieci</strong>
+                </>
+              )}
+              .
+            </>
+          ) : (
+            "Brak uczestników — dodaj ich w „Uczestnicy i dostęp”."
+          )}
+          {own.meals > 0 && (
+            <>
+              {" "}
+              🍳 Gotujecie sami: <strong>{own.meals}</strong> {own.meals === 1 ? "posiłek" : own.meals < 5 ? "posiłki" : "posiłków"}, razem porcji: <strong>{people(own)}</strong>.
+            </>
+          )}
+        </p>
+        {editing ? (
+          <MealEditor tripId={tripId} doc={doc} ids={ids} selection={selection} />
+        ) : meals.length === 0 ? (
+          <p className="text-sm text-zinc-500">W planie nie ma posiłków (punktów „jedzenie”).</p>
+        ) : (
+          days.map((day) => (
+            <MealDaySection key={day.dayRef} day={day}>
+              {day.meals.map((meal) => (
+                <li key={meal.itemRef} id={mealRowId(meal)} className={mealRowClass(meal, selected)}>
+                  <MealHead doc={doc} meal={meal} selection={selection} />
+                  {meal.selfCooked && <p className="text-xs text-zinc-500">Porcje: {people(meal.people)}</p>}
+                  <EatOutOptions tripId={tripId} doc={doc} ids={{}} itemRef={meal.itemRef} canEdit={false} />
+                </li>
+              ))}
+            </MealDaySection>
+          ))
+        )}
+      </section>
+    </div>
+  );
+}

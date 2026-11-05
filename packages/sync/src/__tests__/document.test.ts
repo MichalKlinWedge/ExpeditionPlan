@@ -26,6 +26,14 @@ const byRef = <T extends { ref: string }>(list: T[]) => [...list].sort((a, b) =>
 describe('dokument ↔ wiersze tabel (MVP-1)', () => {
   it('jest pięć planów wzorcowych', () => expect(slugs).toHaveLength(5));
 
+  it('dane lokalu przy miejscu przechodzą przez wiersze', () => {
+    const doc = load(slugs[0]!);
+    const venue = { description: 'Mała pizzeria.', prices: [{ name: 'Margherita', currency: 'PLN', minMinor: 3200, maxMinor: 3200 }], rating: { value: 4.6, scale: 5 }, readOn: '2026-11-05' };
+    const ref = doc.places[0]!.ref;
+    const server = asServer(rowsFromDocument({ ...doc, places: doc.places.map((place) => (place.ref === ref ? { ...place, venue } : place)) }, uuidv7(), uuidv7));
+    expect(documentFromRows(server.trip, server.tables).places.find((place) => place.ref === ref)?.venue).toEqual(venue);
+  });
+
   it.each(slugs)('%s: dokument → wiersze → dokument bez strat', (slug) => {
     const doc = load(slug);
     const server = asServer(rowsFromDocument(doc, uuidv7(), uuidv7));

@@ -1,20 +1,19 @@
-import type { TripDocument } from "@expeditionplan/core";
+import { type GuideRow, mealList, type PlaceGuide, placeGuide, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EditToggle, editMode } from "@/components/edit-toggle";
-import { MealEditor } from "@/components/meal-editor";
-import { Meals } from "@/components/meals";
+import { MealsView } from "@/components/meals-view";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
-/** Posiłki z planu dzień po dniu: ile osób (dorośli i dzieci), które gotujecie sami i ile porcji. Dodawanie, zmiana, usuwanie i „gotujemy sami” — po „Edytuj”. */
+/** Posiłki dzień po dniu, a obok mapa i opis lokalu: ile osób (dorośli i dzieci), które gotujecie sami i ile porcji. Dodawanie, zmiana, usuwanie i „gotujemy sami” — po „Edytuj”. */
 
 export default function MealsPage(props: PageProps<"/trips/[id]/meals">) {
   return (
-    <Shell>
+    <Shell wide>
       <Suspense fallback={<Loading />}>
         <View params={props.params} searchParams={props.searchParams} />
       </Suspense>
@@ -41,6 +40,14 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
   }
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const canEdit = mayEdit && wantsEdit;
+  const ids = refIndex(payload.tables);
+  const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
+  const guides: Record<string, PlaceGuide> = {};
+  for (const { placeRef } of mealList(doc)) {
+    if (placeRef === undefined || guides[placeRef] !== undefined) continue;
+    const guide = placeGuide(doc.items, rows, ids, placeRef);
+    if (guide !== null) guides[placeRef] = guide;
+  }
 
   return (
     <>
@@ -53,9 +60,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
         </div>
         {mayEdit && <EditToggle href={`/trips/${id}/meals`} editing={canEdit} />}
       </div>
-      <section className="flex flex-col gap-3 card p-4">
-        {canEdit ? <MealEditor tripId={id} doc={doc} ids={refIndex(payload.tables)} /> : <Meals tripId={id} doc={doc} canEdit={false} />}
-      </section>
+      <MealsView tripId={id} doc={doc} ids={ids} guides={guides} mayEdit={mayEdit} editing={canEdit} />
     </>
   );
 }

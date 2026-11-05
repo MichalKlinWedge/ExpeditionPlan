@@ -82,6 +82,31 @@ export const DocTraveler = z.object({
   endPlaceRef: Ref.optional(),
 });
 
+/** Przykładowa cena z karty lokalu. Tylko do pokazania, nic z niej nie liczymy. */
+export const VenuePrice = z
+  .object({ name: text, currency: Currency, minMinor: MinorAmount, maxMinor: MinorAmount })
+  .refine((price) => price.minMinor <= price.maxMinor, { message: 'Dolna granica ceny nie może być większa od górnej.', path: ['maxMinor'] });
+export type VenuePrice = z.infer<typeof VenuePrice>;
+
+/** Średnia ocena tak, jak podaje źródło: skala i serwis są częścią informacji. */
+export const VenueRating = z
+  .object({ value: z.number().positive(), scale: z.number().positive().max(100), count: z.number().int().positive().optional(), source: z.string().optional() })
+  .refine((rating) => rating.value <= rating.scale, { message: 'Ocena nie może przekraczać skali.', path: ['value'] });
+export type VenueRating = z.infer<typeof VenueRating>;
+
+/**
+ * Lokal (restauracja, kawiarnia): dane odczytane z tekstu wklejonego przez użytkownika (`venue-info.ts`).
+ * Sami niczego nie pobieramy, a warunki Google zakazują zapisywania ocen z Places i z Grounding (docs/USLUGI.md §3, §11).
+ */
+export const Venue = z.object({
+  description: z.string().optional(),
+  prices: z.array(VenuePrice).default([]),
+  rating: VenueRating.optional(),
+  /** Kiedy wklejono tekst: ceny i oceny się starzeją. */
+  readOn: IsoDate,
+});
+export type Venue = z.infer<typeof Venue>;
+
 export const DocPlace = z.object({
   ref: Ref,
   name: text,
@@ -102,6 +127,7 @@ export const DocPlace = z.object({
   website: z.url().optional(),
   links: z.array(Link).default([]),
   notes: noteText.optional(),
+  venue: Venue.optional(),
 });
 
 // ---------------------------------------------------------------------------------------------
