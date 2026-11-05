@@ -14,6 +14,8 @@ import {
   itemIcon,
   ItemInUseError,
   itemKindLabel,
+  LODGING_STOP,
+  type MapPin,
   legLabel,
   stopsLabel,
   mapCoverage,
@@ -54,7 +56,7 @@ import {
 } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Modal, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button as AppButton } from '@/components/button';
@@ -63,7 +65,7 @@ import { Segmented, Tabs } from '@/components/segmented';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { DayMap } from '@/features/plan/day-map';
+import { DayMap, useDayStops } from '@/features/plan/day-map';
 import { ContactList } from '@/features/plan/item-facts';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
@@ -168,6 +170,7 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const [saving, setSaving] = useState(0);
   /** Id nowych punktów, zanim synchronizacja wpisze je do bazy telefonu. */
   const extraIds = useRef<Record<string, string>>({});
+  const scroll = useRef<ScrollViewInstance>(null);
   /** Zapisy idą po kolei — kolejna zmiana może dotyczyć punktu dodanego przed chwilą. */
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [sync, setSync] = useState<{ busy: boolean; syncedAt?: string; error?: string }>({ busy: signedIn });
@@ -493,7 +496,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               />
             </View>
           </View>
-          <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]}>
+          <ScrollView ref={scroll} contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]}>
             {showPool && trip !== null && (
               <PoolView
                 trip={trip}
@@ -520,6 +523,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                     setDetailPlay(false);
                     setDetail(item);
                   }}
+                  onShowMap={(y) => scroll.current?.scrollTo({ y, animated: true })}
                   guides={trip === null ? undefined : guidedPlaces(trip)}
                   onGuide={(item, play) => {
                     setDetailPlay(play);
@@ -600,6 +604,8 @@ type DayProps = {
   weatherAt?: string;
   /** Szczegóły punktu (dotknięcie nazwy). */
   onOpen?: (item: PlanItem) => void;
+  /** Przewinięcie do mapy dnia (dotknięcie numeru albo karty punktu); `y` w treści przewijanej strony. */
+  onShowMap?: (y: number) => void;
   /** Punkty z przewodnikiem — znaczek 📖. */
   guided?: Set<string>;
   /** Miejsca z przewodnikiem do mapy dnia i „Poczytaj / Posłuchaj” z karty pinezki. */
@@ -632,7 +638,22 @@ const KIND_COLOR: Record<string, string> = {
   decision: '#F59E0B',
 };
 
-function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt, onOpen, guided, guides, onGuide }: DayProps) {
+/** Numer punktu jak na pinezce mapy: ten sam kolor, a wybrany na mapie — pomarańczowy. Dotknięcie pokazuje punkt na mapie. */
+function StopNumber({ n, pin, chosen, onPress }: { n: number; pin: MapPin | undefined; chosen: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={`${n} — pokaż na mapie`}
+      style={[styles.stopNumber, { backgroundColor: chosen ? theme.primary : pin?.base ? LODGING : theme.accent }]}>
+      <ThemedText style={styles.stopNumberText}>{n}</ThemedText>
+    </Pressable>
+  );
+}
+
+function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt, onOpen, onShowMap, guided, guides, onGuide }: DayProps) {
   const theme = useTheme();
   const { doc, inputs } = state;
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
@@ -657,9 +678,25 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
   const lodging = dayLodging(doc, dayRef);
   const sun = schedule?.facts.sun;
   const slack = schedule?.slack ? SLACK[schedule.slack] : undefined;
+  const { map, pinOf } = useDayStops(doc, schedule?.items.map((item) => item.ref).join(',') ?? '', lodging?.placeRef);
+  const [mapPlace, setMapPlace] = useState<string | null>(null);
+  const [mapFocus, setMapFocus] = useState<{ lng: number; lat: number } | null>(null);
+  const dayTop = useRef(0);
+  const mapTop = useRef(0);
+  const showOnMap = (ref: string) => {
+    const pin = pinOf.get(ref);
+    if (pin === undefined) return;
+    setMapPlace(pin.placeRef);
+    setMapFocus({ lng: pin.lng, lat: pin.lat });
+    onShowMap?.(Math.max(dayTop.current + mapTop.current - Spacing.two, 0));
+  };
+  const stopNumber = (ref: string) => {
+    const n = map.numbers[ref];
+    return n === undefined ? null : <StopNumber n={n} pin={pinOf.get(ref)} chosen={pinOf.get(ref)?.placeRef === mapPlace} onPress={() => showOnMap(ref)} />;
+  };
 
   return (
-    <View style={styles.day}>
+    <View style={styles.day} onLayout={(event) => (dayTop.current = event.nativeEvent.layout.y)}>
       <ThemedText style={styles.dayTitle}>
         {weekday(day.date)}
         {day.title ? ` — ${day.title}` : ''}
@@ -736,47 +773,53 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
             key={item.ref}
             type="backgroundElement"
             style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: KIND_COLOR[item.kind] ?? theme.textSecondary }, item.child && styles.child]}>
-            <ThemedText style={[styles.time, { color: theme.text }]}>
-              {item.routeStop ? routeStopTime(item.durationMin) : `${item.startLocal}–${item.endLocal}${item.endDate !== day.date ? ' +1' : ''}`}
-              {item.done ? '  ✓ zrobione' : ''}
-              {inputs.pulled.some((each) => each.itemRef === item.ref) ? '  · z puli' : ''}
-            </ThemedText>
-            <Pressable disabled={source === undefined || onOpen === undefined} onPress={() => source && onOpen?.(source)} hitSlop={4}>
-              <ThemedText type="smallBold" style={styles.itemTitle}>
-                {source ? `${itemIcon(doc, source)} ` : ''}
-                {item.title}
-                {guided?.has(item.ref) ? '  📖' : ''}
-                <ThemedText type="small" themeColor="accent">
-                  {'  ›'}
+            {/* Karta prowadzi na mapę, a nazwa — do szczegółów. */}
+            <Pressable accessible={false} disabled={!pinOf.has(item.ref)} onPress={() => showOnMap(item.ref)} style={styles.itemBody}>
+              <ThemedText style={[styles.time, { color: theme.text }]}>
+                {item.routeStop ? routeStopTime(item.durationMin) : `${item.startLocal}–${item.endLocal}${item.endDate !== day.date ? ' +1' : ''}`}
+                {item.done ? '  ✓ zrobione' : ''}
+                {inputs.pulled.some((each) => each.itemRef === item.ref) ? '  · z puli' : ''}
+              </ThemedText>
+              <View style={styles.titleRow}>
+                {stopNumber(item.ref)}
+                <Pressable disabled={source === undefined || onOpen === undefined} onPress={() => source && onOpen?.(source)} hitSlop={4} style={styles.titleText}>
+                  <ThemedText type="smallBold" style={styles.itemTitle}>
+                    {source ? `${itemIcon(doc, source)} ` : ''}
+                    {item.title}
+                    {guided?.has(item.ref) ? '  📖' : ''}
+                    <ThemedText type="small" themeColor="accent">
+                      {'  ›'}
+                    </ThemedText>
+                  </ThemedText>
+                </Pressable>
+              </View>
+              {flightText && (
+                <ThemedText type="smallBold" themeColor="accent">
+                  ✈ {flightText}
                 </ThemedText>
+              )}
+              <ThemedText type="small" themeColor="textSecondary">
+                {source === undefined ? KIND[item.kind] : itemKindLabel(source, KIND)}
+                {place && place !== item.title ? ` · ${place}` : ''}
+                {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ''}
               </ThemedText>
+              {leg && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {leg}
+                </ThemedText>
+              )}
+              {routeStopsLabel(item) && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {routeStopsLabel(item)}
+                </ThemedText>
+              )}
+              {offMap && (
+                <ThemedText type="small" style={{ color: SOFT }}>
+                  brak na mapie (miejsce bez współrzędnych)
+                </ThemedText>
+              )}
+              <Warnings list={schedule!.warnings.filter((warning) => warning.itemRef === item.ref)} />
             </Pressable>
-            {flightText && (
-              <ThemedText type="smallBold" themeColor="accent">
-                ✈ {flightText}
-              </ThemedText>
-            )}
-            <ThemedText type="small" themeColor="textSecondary">
-              {source === undefined ? KIND[item.kind] : itemKindLabel(source, KIND)}
-              {place && place !== item.title ? ` · ${place}` : ''}
-              {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ''}
-            </ThemedText>
-            {leg && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {leg}
-              </ThemedText>
-            )}
-            {routeStopsLabel(item) && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {routeStopsLabel(item)}
-              </ThemedText>
-            )}
-            {offMap && (
-              <ThemedText type="small" style={{ color: SOFT }}>
-                brak na mapie (miejsce bez współrzędnych)
-              </ThemedText>
-            )}
-            <Warnings list={schedule!.warnings.filter((warning) => warning.itemRef === item.ref)} />
             {actions && source && (
               <View style={styles.edit}>
                 <EditButton label="↑" onPress={() => actions.move(item.ref, -1)} />
@@ -801,10 +844,15 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
       {/* Nocleg na koniec dnia (baza dnia / rezerwacja tej nocy) — na mapie pinezka ⌂. */}
       {schedule && lodging && (
         <ThemedView type="backgroundElement" style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: LODGING }]}>
-          {lodging.booking?.checkInFrom ? <ThemedText style={[styles.time, { color: theme.text }]}>od {lodging.booking.checkInFrom}</ThemedText> : null}
-          <ThemedText type="smallBold" style={styles.itemTitle}>
-            🛏️ Nocleg: {lodging.name}
-          </ThemedText>
+          <Pressable accessible={false} disabled={!pinOf.has(LODGING_STOP)} onPress={() => showOnMap(LODGING_STOP)} style={styles.itemBody}>
+            {lodging.booking?.checkInFrom ? <ThemedText style={[styles.time, { color: theme.text }]}>od {lodging.booking.checkInFrom}</ThemedText> : null}
+            <View style={styles.titleRow}>
+              {stopNumber(LODGING_STOP)}
+              <ThemedText type="smallBold" style={[styles.itemTitle, styles.titleText]}>
+                🛏️ Nocleg: {lodging.name}
+              </ThemedText>
+            </View>
+          </Pressable>
           {lodging.booking && (lodging.booking.title !== lodging.name || lodging.booking.code) ? (
             <ThemedText type="small" themeColor="textSecondary">
               {[lodging.booking.title !== lodging.name ? lodging.booking.title : null, lodging.booking.code ? `kod ${lodging.booking.code}` : null].filter(Boolean).join(' · ')}
@@ -852,7 +900,11 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
 
       {schedule && <Warnings list={schedule.warnings.filter((warning) => warning.itemRef === undefined)} />}
 
-      {schedule && <DayMap doc={doc} dayRef={dayRef} schedule={schedule} guides={guides} onGuide={onGuide} />}
+      {schedule && (
+        <View onLayout={(event) => (mapTop.current = event.nativeEvent.layout.y)}>
+          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={setMapPlace} focus={mapFocus} guides={guides} onGuide={onGuide} />
+        </View>
+      )}
 
       {cuts.length > 0 && (
         <View style={styles.group}>
@@ -918,6 +970,11 @@ const styles = StyleSheet.create({
   item: { padding: Spacing.three, borderRadius: 14, gap: 2, borderWidth: 1, borderLeftWidth: 5 },
   time: { fontSize: 15, lineHeight: 20, fontWeight: 800, fontVariant: ['tabular-nums'] },
   itemTitle: { fontSize: 16, lineHeight: 22 },
+  itemBody: { gap: 2 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  titleText: { flexShrink: 1 },
+  stopNumber: { minWidth: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  stopNumberText: { color: '#FFFFFF', fontSize: 11, lineHeight: 15, fontWeight: 800 },
   dayTitle: { fontSize: 20, lineHeight: 26, fontWeight: 800 },
   hint: { borderWidth: 1.5, borderRadius: 12, padding: Spacing.two },
   child: { marginLeft: Spacing.four },

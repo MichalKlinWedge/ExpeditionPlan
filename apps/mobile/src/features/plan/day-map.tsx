@@ -1,6 +1,6 @@
-import { dayLodging, dayMap, type DaySchedule, type PlanItem, type TripDocument } from '@expeditionplan/core';
-import { Camera, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
-import { useMemo, useState } from 'react';
+import { dayMap, type DayMap as DayMapData, type DaySchedule, type PlanItem, type TripDocument } from '@expeditionplan/core';
+import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -13,30 +13,50 @@ import { useTheme } from '@/hooks/use-theme';
  * Kwadratowa mapa pod planem dnia: pinezki z numerami kolejności z silnika (ta sama `dayMap` co
  * na webie i w zakładce Mapa), trasy przejazdów i własna pozycja. Dotknięcie pinezki pokazuje
  * punkty w tym miejscu, „Nawiguj” i — gdy miejsce ma przewodnik — „Poczytaj / Posłuchaj”. Kafle z pobranej mapy offline działają bez sieci.
+ * Wybrana pinezka i numery na liście punktów to ten sam stan w planie dnia.
  */
 
+/**
+ * Numery i pinezki dnia dla listy punktów i mapy. `refs` to kolejność z silnika w jednym napisie,
+ * więc przelicza się przy zmianie planu dnia, a nie przy każdym odświeżeniu „teraz”.
+ */
+export function useDayStops(doc: TripDocument, refs: string, baseRef: string | undefined) {
+  return useMemo(() => {
+    const map = dayMap(doc, refs === '' ? [] : refs.split(','), { baseRef });
+    return { map, pinOf: new Map(map.pins.flatMap((pin) => pin.stops.map((stop) => [stop.ref, pin] as const))) };
+  }, [doc, refs, baseRef]);
+}
+
 type Props = {
-  doc: TripDocument;
   dayRef: string;
   schedule: DaySchedule;
+  /** Mapa z kolejności dnia: te same numery co na liście punktów. */
+  full: DayMapData;
+  selected: string | null;
+  onSelect: (placeRef: string | null) => void;
+  /** Punkt wybrany na liście: mapa przesuwa się do niego. Nowy obiekt przy każdym dotknięciu. */
+  focus: { lng: number; lat: number } | null;
   /** Miejsca z przewodnikiem: `placeRef` → punkt (`guidedPlaces`). */
   guides?: Map<string, PlanItem>;
   onGuide?: (item: PlanItem, play: boolean) => void;
 };
 
-export function DayMap({ doc, dayRef, schedule, guides, onGuide }: Props) {
+export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, guides, onGuide }: Props) {
   const theme = useTheme();
   const mapStyle = useMapStyle();
-  const [selected, setSelected] = useState<string | null>(null);
-  const baseRef = dayLodging(doc, dayRef)?.placeRef;
-  const refs = schedule.items.map((item) => item.ref).join(',');
-  // Klucz z kolejności — przelicza się przy zmianie planu dnia, nie przy każdym odświeżeniu „teraz”.
-  const full = useMemo(() => dayMap(doc, refs === '' ? [] : refs.split(','), { baseRef }), [doc, refs, baseRef]);
+  const camera = useRef<CameraRef>(null);
   const [showTransit, setShowTransit] = useState(false);
   const transit = hasTransit(full);
+  // Punkt wybrany na liście bywa dojazdem: wtedy dojazd widać mimo wyłączonego przełącznika.
+  const transitChosen = full.pins.some((each) => each.placeRef === selected && each.transit);
   // Dzień złożony z samego dojazdu — pokazujemy go mimo wyłączonego przełącznika.
-  const view = withoutTransit(full, showTransit || full.pins.every((pin) => pin.transit));
+  const shown = showTransit || transitChosen || full.pins.every((pin) => pin.transit);
+  const view = withoutTransit(full, shown);
   const times = new Map(schedule.items.map((item) => [item.ref, item.startLocal]));
+
+  useEffect(() => {
+    if (focus !== null) camera.current?.flyTo({ center: [focus.lng, focus.lat], duration: 500 });
+  }, [focus]);
 
   if (view.pins.length === 0) {
     return (
@@ -58,19 +78,27 @@ export function DayMap({ doc, dayRef, schedule, guides, onGuide }: Props) {
     <View style={styles.wrap}>
       <View style={[styles.square, { borderColor: theme.backgroundSelected }]}>
         {/* Nowy dzień albo przełączony dojazd = nowa mapa z widokiem dopasowanym do pinezek. */}
-        <MapView key={`${dayRef}:${showTransit}`} mapStyle={mapStyle} androidView="surface" onPress={() => setSelected(null)}>
-          <Camera initialViewState={start} />
+        <MapView key={`${dayRef}:${shown}`} mapStyle={mapStyle} androidView="surface" onPress={() => onSelect(null)}>
+          <Camera ref={camera} initialViewState={start} />
           <UserLocation accuracy />
           <DayLines lines={view.lines} id="plan-day" />
-          <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} guided={guides === undefined ? undefined : new Set(guides.keys())} />
+          <PinMarkers pins={view.pins} selected={selected} onSelect={onSelect} guided={guides === undefined ? undefined : new Set(guides.keys())} />
         </MapView>
-        {transit && <TransitToggle value={showTransit} onChange={setShowTransit} />}
+        {transit && (
+          <TransitToggle
+            value={showTransit || transitChosen}
+            onChange={(value) => {
+              setShowTransit(value);
+              if (!value && transitChosen) onSelect(null);
+            }}
+          />
+        )}
       </View>
       {pin ? (
         <PinCard
           pin={pin}
           times={times}
-          onClose={() => setSelected(null)}
+          onClose={() => onSelect(null)}
           small
           guide={(() => {
             const item = guides?.get(pin.placeRef);
