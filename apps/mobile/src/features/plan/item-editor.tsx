@@ -1,4 +1,4 @@
-import { type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, type TripDocument } from '@expeditionplan/core';
+import { type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode, type TripDocument } from '@expeditionplan/core';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -61,6 +61,7 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
   const theme = useTheme();
   const [title, setTitle] = useState(item?.title ?? '');
   const [kind, setKind] = useState<KindChoice>(item === null ? 'visit' : kindChoice(item));
+  const [vehicle, setVehicle] = useState<PublicMode>((item === null ? undefined : publicMode(item)) ?? PUBLIC_MODES[0]![0]);
   const [time, setTime] = useState(timeText(item));
   const [duration, setDuration] = useState(item?.durationMin?.toString() ?? (item === null ? '60' : ''));
   const [stops, setStops] = useState(item?.stopsMin?.toString() ?? '');
@@ -73,7 +74,7 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
     if (time.trim() !== '' && !HHMM.test(time.trim())) return setProblem('Godzina w formacie GG:MM, np. 09:30.');
     if (duration.trim() !== '' && !(Number(duration) >= 0)) return setProblem('Czas trwania w minutach.');
     if (stops.trim() !== '' && !(Number(stops) >= 0)) return setProblem('Postoje i przerwy w minutach.');
-    const chosen = kindPatch(item, kind);
+    const chosen = kindPatch(item, kind, vehicle);
     const fields: ItemFields = {
       title: title.trim(),
       ...chosen,
@@ -124,6 +125,20 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
             </Pressable>
           ))}
         </View>
+        {kind === 'public' && (
+          <View style={styles.wrap}>
+            {PUBLIC_MODES.map(([key, name]) => (
+              <Pressable
+                key={key}
+                onPress={() => setVehicle(key)}
+                style={[styles.chip, { borderColor: vehicle === key ? theme.text : theme.backgroundSelected, backgroundColor: vehicle === key ? theme.backgroundSelected : 'transparent' }]}>
+                <ThemedText type="small" themeColor={vehicle === key ? 'text' : 'textSecondary'}>
+                  {name}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        )}
         {kind === 'meal' && (
           <Pressable
             onPress={() => setSelfCooked(!selfCooked)}

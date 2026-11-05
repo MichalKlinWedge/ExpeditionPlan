@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item } from "@expeditionplan/core";
+import { type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode } from "@expeditionplan/core";
 
 /**
  * Edycja punktu planu (MVP-3): nazwa, rodzaj, godzina z precyzją, czas trwania (przedział),
@@ -54,6 +54,7 @@ type Draft = {
   isFixed: boolean;
   priority: string;
   cutRank: string;
+  vehicle: PublicMode;
 };
 
 function toDraft(item: Item): Draft {
@@ -75,6 +76,7 @@ function toDraft(item: Item): Draft {
     isFixed: item.isFixed ?? false,
     priority: item.priority ?? "",
     cutRank: item.cutRank?.toString() ?? "",
+    vehicle: publicMode(item) ?? PUBLIC_MODES[0]![0],
   };
 }
 
@@ -108,7 +110,7 @@ function toPatch(draft: Draft, item: Item): Partial<Item> {
       time = undefined;
   }
   const cutRank = num(draft.cutRank);
-  const chosen = kindPatch(item, draft.kind);
+  const chosen = kindPatch(item, draft.kind, draft.vehicle);
   return {
     title: draft.title.trim() || item.title,
     ...chosen,
@@ -150,6 +152,18 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
           ))}
         </select>
       </label>
+      {draft.kind === "public" && (
+        <label className={label}>
+          Środek transportu
+          <select className={input} value={draft.vehicle} onChange={(event) => set({ vehicle: event.target.value as PublicMode })}>
+            {PUBLIC_MODES.map(([key, name]) => (
+              <option key={key} value={key}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className={label}>
         Godzina
         <select className={input} value={draft.precision} onChange={(event) => set({ precision: event.target.value })}>
