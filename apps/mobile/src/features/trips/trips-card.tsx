@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase';
  * i wejście w plan dnia albo na mapę. Rozwinięty wyjazd staje się wybranym także w zakładkach Plan i Mapa. Bez logowania (`signedIn = false`) — lista i plany z telefonu, do odczytu.
  * Z siecią właściciel usuwa wyjazd, pozostali z niego wychodzą. Odłożone (status ustawiany na webie) —
  * w zwiniętej sekcji bez względu na datę. Wyjazdy po dacie końca — w zwiniętym „Archiwum” pod
- * wyjazdami przed nami (najnowsze na górze).
+ * wyjazdami przed nami (najnowsze na górze). Szkice AI — w zwiniętych „Szkicach” na samym dole.
  */
 
 const ROLE: Record<string, string> = { owner: 'właściciel', editor: 'edytor', viewer: 'widz' };
@@ -40,6 +40,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const [plan, setPlan] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [postponedOpen, setPostponedOpen] = useState(false);
+  const [draftsOpen, setDraftsOpen] = useState(false);
 
   const load = useCallback(async () => {
     const result = await loadMyTrips(signedIn);
@@ -108,7 +109,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
     );
   };
 
-  const { ahead, postponed, archive } = tripSections(trips ?? [], localToday());
+  const { ahead, postponed, archive, drafts } = tripSections(trips ?? [], localToday());
 
   const tripCard = (trip: Trip) => (
     <ThemedView key={trip.id} type="backgroundElement" style={[styles.trip, { borderColor: open === trip.id ? theme.accent : theme.backgroundSelected }]}>
@@ -207,6 +208,15 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
         </Pressable>
       )}
       {archiveOpen && archive.map(tripCard)}
+      {drafts.length > 0 && (
+        <Pressable onPress={() => setDraftsOpen(!draftsOpen)} hitSlop={8} style={styles.archiveHead}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            Szkice ({drafts.length})
+          </ThemedText>
+          <ThemedText themeColor="accent">{draftsOpen ? '▾' : '▸'}</ThemedText>
+        </Pressable>
+      )}
+      {draftsOpen && drafts.map(tripCard)}
       <PlanScreen
         tripId={plan}
         signedIn={signedIn}

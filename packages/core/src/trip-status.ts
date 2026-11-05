@@ -11,15 +11,22 @@ export const PLANNING = 'planning';
 
 export const isPostponed = (trip: { status?: string | null }) => trip.status === POSTPONED;
 
-type Listed = { status?: string | null; start_date: string | null; end_date: string | null };
+/** Szkic z „Zaplanuj z AI” to osobny wyjazd rozpoznawany po początku tytułu. */
+export const DRAFT_PREFIX = 'Szkic AI: ';
 
-/** Sekcje listy wyjazdów: przed nami (w kolejności listy), odłożone (wg terminu), archiwum (najnowsze na górze). */
-export function tripSections<T extends Listed>(trips: T[], today: string): { ahead: T[]; postponed: T[]; archive: T[] } {
-  const planned = trips.filter((trip) => !isPostponed(trip));
+export const isDraft = (trip: { title?: string | null }) => trip.title?.startsWith(DRAFT_PREFIX) === true;
+
+type Listed = { title?: string | null; status?: string | null; start_date: string | null; end_date: string | null };
+
+/** Sekcje listy wyjazdów: przed nami (w kolejności listy), odłożone (wg terminu), archiwum (najnowsze na górze), szkice AI (wg terminu, bez względu na datę i status). */
+export function tripSections<T extends Listed>(trips: T[], today: string): { ahead: T[]; postponed: T[]; archive: T[]; drafts: T[] } {
+  const real = trips.filter((trip) => !isDraft(trip));
+  const planned = real.filter((trip) => !isPostponed(trip));
   const byStart = (a: T, b: T) => (a.start_date ?? '').localeCompare(b.start_date ?? '');
   return {
     ahead: planned.filter((trip) => (trip.end_date ?? '') >= today),
-    postponed: trips.filter(isPostponed).sort(byStart),
+    postponed: real.filter(isPostponed).sort(byStart),
     archive: planned.filter((trip) => (trip.end_date ?? '') < today).sort((a, b) => byStart(b, a)),
+    drafts: trips.filter(isDraft).sort(byStart),
   };
 }

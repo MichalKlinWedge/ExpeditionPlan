@@ -1,4 +1,4 @@
-import { tripSections } from "@expeditionplan/core";
+import { DRAFT_PREFIX, isDraft, tripSections } from "@expeditionplan/core";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -12,6 +12,7 @@ import { ROLE, tripDates } from "@/lib/labels";
  * które mogą zakładać wyjazdy; konto bez zaproszenia dostaje informację, jak wejść do planu.
  * Odłożone (termin niepewny, nie wypaliły) — w osobnej sekcji, bez względu na datę. Wyjazdy po dacie
  * końca — w zwiniętym „Archiwum” pod wyjazdami przed nami (najnowsze na górze), z pamiątką.
+ * Szkice AI — w zwiniętych „Szkicach” na samym dole, bez względu na datę.
  */
 export default function Home() {
   return (
@@ -28,7 +29,7 @@ async function TripList() {
   const { data, error } = await supabase.from("my_trips").select("*").order("start_date");
   if (error) return <p className="text-sm text-red-600">{error.message}</p>;
   const today = new Date().toISOString().slice(0, 10);
-  const { ahead, postponed, archive } = tripSections(data, today);
+  const { ahead, postponed, archive, drafts } = tripSections(data, today);
   return (
     <>
       <div className="flex items-center justify-between">
@@ -73,13 +74,19 @@ async function TripList() {
               </div>
             </details>
           )}
+          {drafts.length > 0 && (
+            <details className="flex flex-col gap-3" data-remember="szkice">
+              <summary className="cursor-pointer font-semibold text-zinc-600 dark:text-zinc-400">Szkice ({drafts.length})</summary>
+              <div className="mt-3">
+                <TripGrid trips={drafts} />
+              </div>
+            </details>
+          )}
         </>
       )}
     </>
   );
 }
-
-const DRAFT = "Szkic AI: ";
 
 type TripRow = { id: string | null; title: string | null; start_date: string | null; end_date: string | null; role: string | null };
 
@@ -87,14 +94,14 @@ function TripGrid({ trips, memories = false, postponed = false }: { trips: TripR
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
       {trips.map((trip) => {
-        const draft = trip.title!.startsWith(DRAFT);
+        const draft = isDraft(trip);
         return (
           <li key={trip.id} className="flex flex-col gap-1">
             <Link
               href={`/trips/${trip.id}`}
               className={`card group flex h-full flex-col gap-2 p-4 transition hover:-translate-y-0.5 hover:border-sea ${draft ? "border-dashed" : ""}`}>
               <span className="flex items-start justify-between gap-3">
-                <span className="font-display text-lg leading-snug font-semibold group-hover:text-sea">{draft ? trip.title!.slice(DRAFT.length) : trip.title}</span>
+                <span className="font-display text-lg leading-snug font-semibold group-hover:text-sea">{draft ? trip.title!.slice(DRAFT_PREFIX.length) : trip.title}</span>
                 {draft ? <span className="chip shrink-0">szkic AI</span> : postponed ? <span className="chip shrink-0">odłożony</span> : <Countdown start={trip.start_date!} end={trip.end_date!} />}
               </span>
               <span className="mt-auto text-sm text-zinc-500">
@@ -102,7 +109,7 @@ function TripGrid({ trips, memories = false, postponed = false }: { trips: TripR
                 {tripDates(trip.start_date!, trip.end_date!)} · {ROLE[trip.role!]}
               </span>
             </Link>
-            {memories && !draft && (
+            {memories && (
               <Link href={`/trips/${trip.id}/memories`} className="self-start text-xs text-sea underline">
                 Pamiątka z wyjazdu →
               </Link>

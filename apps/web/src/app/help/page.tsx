@@ -81,7 +81,7 @@ export default function HelpPage() {
           <p>Strona wyjazdu to kafelki — każdy prowadzi do jednej części planu. U góry „Co nowego” pokazuje, co zmienili inni od Twojej ostatniej wizyty.</p>
           <ul>
             <Step name="Brief i „Zaplanuj z AI”">
-              kto jedzie, dokąd, w jakim tempie. Z briefu AI robi <em>szkic</em> jako osobny wyjazd „Szkic AI: …”; w <em>Porównaniu ze szkicem</em> przenosisz do prawdziwego planu tylko
+              kto jedzie, dokąd, w jakim tempie. Z briefu AI robi <em>szkic</em> jako osobny wyjazd „Szkic AI: …” (na liście w sekcji „Szkice” na samym dole); w <em>Porównaniu ze szkicem</em> przenosisz do prawdziwego planu tylko
               to, co Ci pasuje. AI nigdy niczego nie nadpisuje po cichu.
             </Step>
             <Step name="Plan dzień po dniu">
