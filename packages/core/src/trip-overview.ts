@@ -14,9 +14,11 @@ type Doc = TripDocument;
 type Item = Doc['items'][number];
 
 export type OverviewOptions = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
-  /** Punkty z opisem z przewodnika: pierwsze na liście najważniejszych. */
-  guided?: readonly string[];
+  /** Punkty z opisem z przewodnika i klucz opisu: dwa punkty z tym samym kluczem to ten sam opis. */
+  guided?: ReadonlyMap<string, string>;
   hide?: { costs?: boolean; names?: boolean };
+  /** Ile osób się waha: publiczny link zna tylko liczbę, nie to, kto. */
+  tentative?: number;
 };
 
 export type OverviewHighlight = { ref: string; title: string; dayRef: string; dayNo: number };
@@ -31,7 +33,9 @@ export type TripOverview = {
   route: string[];
   /** Imiona; puste przy ukrytych imionach (liczba osób jest w `people`). */
   names: string[];
+  /** Osoby pewne; te, które się wahają, są osobno w `tentative`. */
   people: number;
+  tentative: number;
   nights: number;
   stats: TripMemories;
   highlights: OverviewHighlight[];
@@ -63,7 +67,8 @@ export function withoutAmounts(text: string, currencies: readonly string[] = [])
 }
 
 const TRANSPORT = new Set(['flight', 'train', 'bus', 'ferry', 'car_rental', 'transfer', 'driver_hire']);
-const HIGHLIGHTS = 8;
+const HIGHLIGHTS = 12;
+const HIGHLIGHTS_PER_DAY = 2;
 
 /** To, po co się jedzie: zwiedzanie, atrakcja albo trekking, bez dojazdów, posiłków i spraw do załatwienia. */
 const isSight = (item: Item) => item.kind === 'visit' || item.kind === 'activity' || (item.kind === 'transport' && item.leg?.mode === 'hike');
@@ -80,7 +85,7 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
     return kept === '' ? undefined : kept;
   };
 
-  const guided = new Set(options.guided ?? []);
+  const guided = options.guided ?? new Map<string, string>();
   const active = activeVariants(doc, options.activeVariants);
   const placeName = (ref: string | undefined) => doc.places.find((place) => place.ref === ref)?.name;
   const dates = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
@@ -89,15 +94,19 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
   const stays: OverviewStay[] = [];
   const route: string[] = [];
   const sights: (OverviewHighlight & { score: number; dayRank: number; order: number })[] = [];
+  const seen = new Set<string>();
   let nights = 0;
   dates.forEach((day, index) => {
     const no = index + 1;
     const sightsOfDay = itemsForDay(doc, day.ref, schedule)
       .filter((item) => item.parentRef === undefined || isRouteStop(doc, item))
       .filter(isSight);
-    for (const [dayRank, item] of sightsOfDay.entries()) {
-      const score = (item.priority === 'must' ? 2 : item.priority === 'optional' ? -1 : 0) + (guided.has(item.ref) ? 1 : 0);
-      sights.push({ ref: item.ref, title: item.title, dayRef: day.ref, dayNo: no, score, dayRank, order: sights.length });
+    let dayRank = 0;
+    for (const item of sightsOfDay) {
+      const guide = guided.get(item.ref);
+      if (guide === undefined || seen.has(guide)) continue;
+      seen.add(guide);
+      sights.push({ ref: item.ref, title: item.title, dayRef: day.ref, dayNo: no, score: item.priority === 'must' ? 1 : item.priority === 'optional' ? -1 : 0, dayRank: dayRank++, order: sights.length });
     }
 
     const lodging = dayLodging(doc, day.ref);
@@ -126,16 +135,21 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
     });
   });
 
-  const seen = new Set<string>();
-  const unique = sights.filter((sight) => !seen.has(sight.title) && seen.add(sight.title));
-  const highlights = unique
-    .filter((sight) => sight.score >= 0)
-    // Przy równych ocenach po kolei z każdego dnia, żeby pierwsze dni nie zajęły całej listy.
+  // Najważniejsze mają opis, najwyżej dwa na dzień. Przy równych ocenach po kolei z każdego dnia, żeby pierwsze dni nie zajęły całej listy.
+  const perDay = new Map<string, number>();
+  const highlights = [...sights]
     .sort((a, b) => b.score - a.score || a.dayRank - b.dayRank || a.order - b.order)
+    .filter((sight) => {
+      const taken = perDay.get(sight.dayRef) ?? 0;
+      if (taken >= HIGHLIGHTS_PER_DAY) return false;
+      perDay.set(sight.dayRef, taken + 1);
+      return true;
+    })
     .slice(0, HIGHLIGHTS)
     .sort((a, b) => a.order - b.order)
     .map(({ ref, title, dayRef, dayNo }) => ({ ref, title, dayRef, dayNo }));
 
+  const tentative = Math.min(options.tentative ?? 0, doc.travelers.length);
   const goal = hideNames ? undefined : clean(doc.trip.goal);
   const summary = hideNames ? undefined : clean(doc.trip.summary);
 
@@ -145,7 +159,8 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
     ...(summary !== undefined ? { summary } : {}),
     route: route.length > 1 ? route : [],
     names: hideNames ? [] : doc.travelers.map((traveler) => traveler.name),
-    people: doc.travelers.length,
+    people: doc.travelers.length - tentative,
+    tentative,
     nights,
     stats: tripMemories(doc, { done: [], skipRefs: [], ...schedule }),
     highlights,

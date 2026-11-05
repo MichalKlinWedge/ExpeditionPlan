@@ -61,7 +61,7 @@ export function GuideArticle({ guide, targets, itemBase }: { guide: GuideContent
 }
 
 /** Zdjęcie z Commons z autorem i licencją: wymaga ich licencja, więc nie ma go bez podpisu. */
-export function GuideFigure({ image }: { image: GuideImage }) {
+function GuideFigure({ image }: { image: GuideImage }) {
   return (
     <figure className="flex flex-col gap-1">
       <a href={image.sourceUrl} target="_blank" rel="noreferrer">

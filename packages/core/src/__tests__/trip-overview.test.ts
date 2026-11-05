@@ -49,14 +49,19 @@ describe('opis wyprawy', () => {
     expect(hidden.people).toBe(doc.travelers.length);
   });
 
+  it('osoby, które się wahają, są policzone osobno od pewnych', () => {
+    const doc = fixture('chatka');
+    expect(tripOverview(doc)).toMatchObject({ people: doc.travelers.length, tentative: 0 });
+    expect(tripOverview(doc, { tentative: 2 })).toMatchObject({ people: doc.travelers.length - 2, tentative: 2 });
+    expect(tripOverview(doc, { tentative: doc.travelers.length + 5 })).toMatchObject({ people: 0, tentative: doc.travelers.length });
+  });
+
   it('każdy dzień jest na liście, a noce z noclegów sumują się z pobytami', () => {
     for (const slug of ['barcelona', 'chatka', 'dinara', 'gruzja', 'maroko']) {
       const doc = fixture(slug);
       const overview = tripOverview(doc);
       expect(overview.days.map((day) => day.no)).toEqual(doc.days.map((_, index) => index + 1));
       expect(overview.stays.reduce((sum, stay) => sum + stay.nights, 0)).toBe(overview.nights);
-      expect(overview.highlights.length).toBeLessThanOrEqual(8);
-      expect(new Set(overview.highlights.map((each) => each.title)).size).toBe(overview.highlights.length);
     }
   });
 
@@ -69,23 +74,33 @@ describe('opis wyprawy', () => {
     expect(route.every((each, index) => each !== route[index - 1])).toBe(true);
   });
 
-  it('wśród najważniejszych najpierw „koniecznie” i punkty z opisem, potem w kolejności wyjazdu', () => {
+  it('najważniejsze punkty mają opis, najwyżej dwa na dzień i bez powtórzeń tego samego opisu', () => {
     const doc = fixture('gruzja');
-    const plain = tripOverview(doc).highlights;
-    const last = tripOverview(doc).days.flatMap((day) => day.points).at(-1)!;
-    const lastRef = doc.items.find((item) => item.title === last)!.ref;
-    const withGuide = tripOverview(doc, { guided: [lastRef] }).highlights;
-    expect(withGuide.map((each) => each.title)).toContain(last);
-    expect(withGuide.at(-1)!.title).toBe(last);
-    expect(plain).toHaveLength(8);
-    const orders = withGuide.map((each) => each.dayNo);
-    expect(orders).toEqual([...orders].sort((a, b) => a - b));
+    expect(tripOverview(doc).highlights).toEqual([]);
+
+    const points = tripOverview(doc).days.flatMap((day) => day.points.map((title) => ({ dayNo: day.no, ref: doc.items.find((item) => item.title === title)!.ref })));
+    const every = new Map(points.map((point) => [point.ref, `opis-${point.ref}`]));
+    const { highlights } = tripOverview(doc, { guided: every });
+    expect(highlights).toHaveLength(12);
+    for (const { dayNo } of highlights) expect(highlights.filter((each) => each.dayNo === dayNo).length).toBeLessThanOrEqual(2);
+    expect(new Set(highlights.map((each) => each.dayNo)).size).toBe(new Set(points.map((point) => point.dayNo)).size);
+    const days = highlights.map((each) => each.dayNo);
+    expect(days).toEqual([...days].sort((a, b) => a - b));
+
+    const [first, second] = points;
+    const same = tripOverview(doc, { guided: new Map([[first!.ref, 'ten sam'], [second!.ref, 'ten sam']]) }).highlights;
+    expect(same.map((each) => each.ref)).toEqual([first!.ref]);
   });
 
-  it('przy równych ocenach najważniejsze punkty pochodzą z różnych dni', () => {
-    const { highlights, days } = tripOverview(fixture('gruzja'));
-    const withSights = days.filter((day) => day.points.length > 0).length;
-    expect(new Set(highlights.map((each) => each.dayNo)).size).toBe(Math.min(withSights, highlights.length));
+  it('w ramach dnia najpierw punkt oznaczony „koniecznie”', () => {
+    const doc = fixture('gruzja');
+    const day = tripOverview(doc).days.find((each) => each.points.length >= 3)!;
+    const refs = day.points.map((title) => doc.items.find((item) => item.title === title)!.ref);
+    const last = refs.at(-1)!;
+    const marked = { ...doc, items: doc.items.map((item) => (item.ref === last ? { ...item, priority: 'must' as const } : item)) };
+    const { highlights } = tripOverview(marked, { guided: new Map(refs.map((ref) => [ref, ref])) });
+    expect(highlights.map((each) => each.ref)).toContain(last);
+    expect(highlights).toHaveLength(2);
   });
 
   it('kandydat na rezerwację bez wybranego wariantu nie wchodzi do przejazdów', () => {

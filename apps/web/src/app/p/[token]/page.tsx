@@ -4,7 +4,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { GuideFigure } from "@/components/guide-article";
 import { MemoriesMap } from "@/components/memories-map";
 import { PublicTripHeader } from "@/components/public-trip-header";
 import { Loading, Shell } from "@/components/shell";
@@ -55,13 +54,13 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
 
   const loaded = await loadPublicTrip(token);
   if (loaded === null) return <p className="card p-5 text-zinc-600 dark:text-zinc-400">{EXPIRED_LINK}</p>;
-  const { state, guideOf, hide } = loaded;
+  const { state, guideOf, hide, tentative } = loaded;
   const { doc, inputs } = state;
   const guideByRef = new Map(doc.items.flatMap((item) => {
     const guide = guideOf(item);
     return guide === null ? [] : [[item.ref, guide] as const];
   }));
-  const overview = tripOverview(doc, { activeVariants: inputs.activeVariants, pulled: inputs.pulled, guided: [...guideByRef.keys()], hide });
+  const overview = tripOverview(doc, { activeVariants: inputs.activeVariants, pulled: inputs.pulled, guided: new Map([...guideByRef].map(([ref, guide]) => [ref, guide.summary])), hide, tentative });
   const { stats } = overview;
   const map = dayMap(doc, stats.routeRefs);
   const hasVariants = doc.variantGroups.length > 0;
@@ -82,7 +81,7 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
           )}
           {overview.names.length > 0 && (
             <p className="text-sm">
-              <span className="font-semibold">Jadą:</span> {overview.names.join(", ")}
+              <span className="font-semibold">{overview.tentative > 0 ? "Osoby:" : "Jadą:"}</span> {overview.names.join(", ")}
             </p>
           )}
         </section>
@@ -91,7 +90,12 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat value={String(stats.days)} label={plural(stats.days, "dzień", "dni", "dni")} />
         {overview.nights > 0 && <Stat value={String(overview.nights)} label={plural(overview.nights, "noc", "noce", "nocy")} />}
-        {overview.people > 0 && <Stat value={String(overview.people)} label={plural(overview.people, "osoba", "osoby", "osób")} />}
+        {overview.people + overview.tentative > 0 && (
+          <Stat
+            value={String(overview.people)}
+            label={`${plural(overview.people, "osoba", "osoby", "osób")}${overview.tentative > 0 ? ` (${overview.tentative} ${plural(overview.tentative, "się waha", "się wahają", "się waha")})` : ""}`}
+          />
+        )}
         <Stat value={String(stats.planned)} label={plural(stats.planned, "punkt w planie", "punkty w planie", "punktów w planie")} />
         {stats.footKm > 0 && <Stat value={km(stats.footKm)} label={stats.ascentM > 0 ? `pieszo · ↑ ${stats.ascentM.toLocaleString("pl-PL")} m` : "pieszo"} />}
         {stats.driveKm > 0 && <Stat value={km(stats.driveKm)} label="autem" />}
@@ -110,19 +114,11 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
           <ul className="grid items-start gap-3 sm:grid-cols-2">
             {overview.highlights.map((highlight) => {
               const guide = guideByRef.get(highlight.ref);
-              const image = guide?.images[0];
               return (
                 <li key={highlight.ref} className="card flex flex-col gap-1.5 p-3 text-sm">
-                  {image !== undefined && <GuideFigure image={image} />}
-                  <span className="font-medium">
-                    {guide !== undefined ? (
-                      <Link href={`${base}/item/${encodeURIComponent(highlight.ref)}`} className="text-sea underline decoration-sea/40 underline-offset-2 hover:decoration-sea">
-                        {highlight.title}
-                      </Link>
-                    ) : (
-                      highlight.title
-                    )}
-                  </span>
+                  <Link href={`${base}/item/${encodeURIComponent(highlight.ref)}`} className="font-medium text-sea underline decoration-sea/40 underline-offset-2 hover:decoration-sea">
+                    {highlight.title}
+                  </Link>
                   <span className="text-xs text-zinc-500">Dzień {highlight.dayNo}</span>
                   {guide !== undefined && <p className="line-clamp-3 text-zinc-600 dark:text-zinc-400">{guide.summary}</p>}
                 </li>

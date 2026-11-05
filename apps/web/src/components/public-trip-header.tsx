@@ -6,7 +6,7 @@ import { tripDates } from "@/lib/labels";
 export function PublicTripHeader({ token, trip, active }: { token: string; trip: { title: string; startDate: string; endDate: string }; active: "overview" | "plan" }) {
   const base = `/p/${encodeURIComponent(token)}`;
   const tab = (name: "overview" | "plan", href: string, label: string) => (
-    <Link href={href} aria-current={active === name ? "page" : undefined} className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${active === name ? "bg-white text-zinc-900" : "text-zinc-200 hover:bg-white/10 hover:text-white"}`}>
+    <Link href={href} aria-current={active === name ? "page" : undefined} className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${active === name ? "border-white bg-white text-zinc-900" : "border-white/50 bg-white/15 text-white hover:border-white hover:bg-white/25"}`}>
       {label}
     </Link>
   );
