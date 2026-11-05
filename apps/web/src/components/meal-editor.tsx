@@ -1,6 +1,6 @@
 "use client";
 
-import { addMeal, documentProblem, ItemInUseError, mealDays, mealPoints, type PlanEdit, removeItemClosingGap, type TripDocument, updateItem } from "@expeditionplan/core";
+import { addMeal, documentProblem, ItemInUseError, mealDays, mealList, mealPoints, type PlanEdit, removeItemClosingGap, type TripDocument, updateItem } from "@expeditionplan/core";
 import { savePlanEdit, uuidv7 } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -31,7 +31,7 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
   const [pinned, setPinned] = useState<{ itemRef: string; names: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const days = mealDays(doc);
+  const days = mealDays(doc, mealList(doc, { allVariants: true }));
   const byRef = new Map(doc.items.map((item) => [item.ref, item]));
 
   const save = (edit: PlanEdit | null, done?: () => void) => {

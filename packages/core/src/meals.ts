@@ -1,4 +1,4 @@
-import { mealEateries } from './eat-out.ts';
+import { eatOutGroup, mealEateries } from './eat-out.ts';
 import { activeVariants, itemsForDay, type ScheduleOptions, scheduleDay } from './engine/schedule.ts';
 import { MINUTE, minutesOfDay, zonedToInstant } from './engine/time.ts';
 import { addItem, dayItems, heldTime, placeAfterBlock, type PlanEdit } from './plan-edits.ts';
@@ -24,7 +24,9 @@ export const SHOPPING_CATEGORY = 'zakupy';
 export const isShopping = (item: Pick<Packing, 'category'>) => item.category.trim().toLowerCase() === SHOPPING_CATEGORY;
 
 export type People = { adults: number; children: number };
-export type Meal = { dayRef: string; date: string; dayNo: number; itemRef: string; title: string; placeRef?: string; place?: string; selfCooked?: boolean; people: People; at?: MealPoint };
+export type Meal = { dayRef: string; date: string; dayNo: number; itemRef: string; title: string; placeRef?: string; place?: string; selfCooked?: boolean; people: People; at?: MealPoint; variants?: MealVariant[] };
+/** Wariant planu, w którym jest posiłek. Posiłek bez aktywnego wariantu nie liczy się do porcji. */
+export type MealVariant = { ref: string; label: string; active: boolean };
 /** Punkt planu, przy którym jest posiłek; `stop` = przejazd, posiłek to postój w trasie. */
 export type MealPoint = { ref: string; title: string; stop: boolean };
 
@@ -41,14 +43,23 @@ export const headcount = (doc: Doc): People => count(doc.travelers);
 /**
  * Posiłki dnia po dniu; osoby z `participantRefs` punktu, inaczej cała grupa. Posiłek w wariantach
  * (knajpy do wyboru, `eat-out.ts`) liczy się raz — w wariancie, który jest teraz wybrany.
+ * `allVariants` dokłada do przeglądania posiłki z pozostałych wariantów planu, z oznaczeniem wariantu.
+ * Kopie posiłku dla kolejnych knajp zostają poza listą: te knajpy stoją pod posiłkiem (`mealEateries`).
  */
-export function mealList(doc: Doc): Meal[] {
+export function mealList(doc: Doc, options: { allVariants?: boolean } = {}): Meal[] {
   const places = new Map(doc.places.map((place) => [place.ref, place.name]));
   const active = activeVariants(doc);
   const items = new Map(doc.items.map((item) => [item.ref, item]));
+  const listed = (item: Item) => {
+    if (item.kind !== 'meal') return false;
+    if (item.variantRefs.length === 0) return item.planStatus === 'scheduled';
+    return item.variantRefs.some((ref) => active.has(ref)) || (options.allVariants === true && eatOutGroup(doc, item.ref) === undefined);
+  };
+  const variantsOf = (item: Item) =>
+    doc.variants.flatMap((variant) => (item.variantRefs.includes(variant.ref) ? [{ ref: variant.ref, label: variant.label, active: active.has(variant.ref) }] : []));
   return doc.days.flatMap((day, index) =>
     dayItems(doc, day.ref)
-      .filter((item) => item.kind === 'meal' && item.planStatus === 'scheduled' && (item.variantRefs.length === 0 || item.variantRefs.some((ref) => active.has(ref))))
+      .filter(listed)
       .map((item) => ({
         dayRef: day.ref,
         date: day.date,
@@ -60,6 +71,7 @@ export function mealList(doc: Doc): Meal[] {
         selfCooked: item.selfCooked,
         ...(item.parentRef !== undefined && items.has(item.parentRef) ? { at: { ref: item.parentRef, title: items.get(item.parentRef)!.title, stop: items.get(item.parentRef)!.kind === 'transport' } } : {}),
         people: item.participantRefs === undefined ? headcount(doc) : count(doc.travelers.filter((traveler) => item.participantRefs!.includes(traveler.ref))),
+        ...(item.variantRefs.length > 0 && eatOutGroup(doc, item.ref) === undefined ? { variants: variantsOf(item) } : {}),
       })),
   );
 }
@@ -111,9 +123,9 @@ export function mealTime(doc: Doc, meal: Meal): string | null {
   return counted ? `ok. ${counted}` : null;
 }
 
-/** Ile posiłków robicie sami i ile to „posiłko-osób” (dorośli i dzieci osobno). */
+/** Ile posiłków robicie sami i ile to „posiłko-osób” (dorośli i dzieci osobno). Posiłek z niewybranego wariantu się nie liczy. */
 export function selfCookedTotals(meals: Meal[]): { meals: number } & People {
-  const own = meals.filter((meal) => meal.selfCooked === true);
+  const own = meals.filter((meal) => meal.selfCooked === true && (meal.variants === undefined || meal.variants.some((variant) => variant.active)));
   return { meals: own.length, adults: own.reduce((sum, meal) => sum + meal.people.adults, 0), children: own.reduce((sum, meal) => sum + meal.people.children, 0) };
 }
 

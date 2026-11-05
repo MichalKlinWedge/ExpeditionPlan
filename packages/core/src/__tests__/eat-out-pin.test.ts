@@ -61,6 +61,10 @@ describe('przypinanie knajp do posiłku', () => {
     expect(placeOfMeal(second.doc)).toBe(placeOfMeal(first.doc));
     expect(mealEateries(second.doc, MEAL).map((each) => each.name)).toEqual(['A', 'B']);
     expect(mealList(second.doc).filter((meal) => meal.title === second.doc.items.find((item) => item.ref === MEAL)!.title)).toHaveLength(1);
+    // Także przy wszystkich wariantach: kolejne knajpy stoją pod posiłkiem, a nie jako osobne posiłki.
+    const all = mealList(second.doc, { allVariants: true }).filter((meal) => meal.title === second.doc.items.find((item) => item.ref === MEAL)!.title);
+    expect(all).toHaveLength(1);
+    expect(all[0]!.variants).toBeUndefined();
     expect(second.writes.map((write) => write.collection)).toEqual(['places', 'variantGroups', 'variants', 'variants', 'items', 'items']);
   });
 

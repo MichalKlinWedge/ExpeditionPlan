@@ -34,6 +34,7 @@ export function MealHead({ doc, meal, selection }: { doc: TripDocument; meal: Me
   // Przypięta knajpa stoi pod posiłkiem (`MealEateries`), więc nazwa tu by się powtarzała.
   const pinned = mealEateries(doc, meal.itemRef).length > 0;
   const details = [!pinned && meal.place, meal.at && `${meal.at.stop ? "postój w trasie" : "przy punkcie"}: ${meal.at.title}`].filter(Boolean).join(" · ");
+  const variants = meal.variants ?? [];
   const name = (
     <>
       {n !== undefined && <span className="flex h-5 min-w-5 items-center justify-center self-center rounded-full bg-sea px-1 text-xs font-semibold text-white">{n}</span>}
@@ -56,6 +57,12 @@ export function MealHead({ doc, meal, selection }: { doc: TripDocument; meal: Me
         {time && <span className="text-xs text-zinc-500">{time}</span>}
       </div>
       {details && <p className="text-xs text-zinc-600 dark:text-zinc-400">{details}</p>}
+      {variants.length > 0 && (
+        <p className="text-xs text-zinc-500">
+          {variants.length === 1 ? "Wariant" : "Warianty"}: {variants.map((variant) => variant.label).join(", ")}
+          {!variants.some((variant) => variant.active) && " (niewybrany, nie liczy się do porcji)"}
+        </p>
+      )}
     </div>
   );
 }

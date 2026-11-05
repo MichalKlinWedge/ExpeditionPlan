@@ -20,7 +20,7 @@ const people = (each: { adults: number; children: number }) => `${each.adults} d
 export function MealsView({ tripId, doc, ids, mayEdit, editing }: { tripId: string; doc: TripDocument; ids: Record<string, string>; mayEdit: boolean; editing: boolean }) {
   const [selected, setSelected] = useState<string | null>(null);
   const mapBox = useRef<HTMLDivElement>(null);
-  const meals = useMemo(() => mealList(doc), [doc]);
+  const meals = useMemo(() => mealList(doc, { allVariants: true }), [doc]);
   const { numbers, map } = useMemo(() => mealMap(doc, meals), [doc, meals]);
   const days = mealDays(doc, meals);
   const { adults, children } = headcount(doc);

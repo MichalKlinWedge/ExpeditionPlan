@@ -170,6 +170,31 @@ describe('posiłek przy punkcie planu', () => {
     expect(scheduleDay(linked.doc, 'd1').items.find((item) => item.ref === 'm')!.child).toBe(true);
   });
 
+  it('wszystkie warianty: posiłki z niewybranych wariantów są na liście z oznaczeniem, a porcje liczą tylko wybrane', () => {
+    const doc = load('barcelona');
+    const ref = 'd1-gotyk-kolacja';
+    expect(mealList(doc).some((meal) => meal.itemRef === ref)).toBe(false);
+    const all = mealList(doc, { allVariants: true });
+    expect(all.length).toBe(mealList(doc).length + 1);
+    const meal = all.find((each) => each.itemRef === ref)!;
+    expect(meal.variants).toHaveLength(1);
+    expect(meal.variants![0]!.active).toBe(false);
+    expect(meal.place).toBeDefined();
+    expect(mealList(doc).every((each) => each.variants === undefined || each.variants.some((variant) => variant.active))).toBe(true);
+
+    const cooked = all.map((each) => ({ ...each, selfCooked: true }));
+    expect(selfCookedTotals(cooked).meals).toBe(all.length - 1);
+  });
+
+  it('posiłek w wybranym wariancie jest na liście także ze statusem alternatywy', () => {
+    const doc = load('barcelona');
+    const variant = doc.items.find((item) => item.ref === 'd1-gotyk-kolacja')!.variantRefs[0]!;
+    const groupRef = doc.variants.find((each) => each.ref === variant)!.groupRef;
+    const chosen = TripDocument.parse({ ...doc, variantGroups: doc.variantGroups.map((group) => (group.ref === groupRef ? { ...group, chosenRef: variant } : group)) });
+    const meal = mealList(chosen).find((each) => each.itemRef === 'd1-gotyk-kolacja')!;
+    expect(meal.variants![0]!.active).toBe(true);
+  });
+
   it('nowy posiłek od razu przy punkcie', () => {
     const edit = addMeal(base(), 'd1', '0190', { title: 'Kolacja', time: '10:30', atRef: 'a' });
     expect(edit.created!.parentRef).toBe('a');
