@@ -147,7 +147,7 @@ describe('posiłek przy punkcie planu', () => {
     expect(linkMeal(free, 'obiad', null)).toBeNull();
   });
 
-  it('lista punktów: bez posiłków, podpunktów, wariantów i punktów części grupy; posiłek z wariantu się nie spina', () => {
+  it('lista punktów: bez posiłków, podpunktów i punktów części grupy; posiłek z wariantu także przy punktach tego wariantu', () => {
     const doc = plan([
       point('a', 'a'),
       point('dziecko', 'b', { parentRef: 'a' }),
@@ -159,7 +159,15 @@ describe('posiłek przy punkcie planu', () => {
     expect(mealPointsFor(doc, 'm').map((item) => item.ref)).toEqual(['a']);
     expect(linkMeal(doc, 'm', 'inny')).toBeNull();
     const variant = TripDocument.parse({ ...doc, items: doc.items.map((item) => (item.ref === 'm' ? { ...item, variantRefs: ['v'] } : item)) });
-    expect(mealPointsFor(variant, 'm')).toEqual([]);
+    expect(mealPointsFor(variant, 'm').map((item) => item.ref)).toEqual(['a']);
+
+    const withStop = plan([point('a', 'a'), point('w', 'b', { variantRefs: ['v'] }), point('m', 'c', { kind: 'meal', variantRefs: ['v'] }), point('wspolny', 'd', { kind: 'meal' })]);
+    expect(mealPointsFor(withStop, 'm').map((item) => item.ref)).toEqual(['a', 'w']);
+    // Posiłek wspólny jest w planie także bez tego wariantu, więc punkt z wariantu nie wchodzi w grę.
+    expect(mealPointsFor(withStop, 'wspolny').map((item) => item.ref)).toEqual(['a']);
+    const linked = linkMeal(withStop, 'm', 'w')!;
+    expect(linked.doc.items.find((item) => item.ref === 'm')!.parentRef).toBe('w');
+    expect(scheduleDay(linked.doc, 'd1').items.find((item) => item.ref === 'm')!.child).toBe(true);
   });
 
   it('nowy posiłek od razu przy punkcie', () => {

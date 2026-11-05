@@ -101,7 +101,12 @@ export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocu
           );
         })}
       </ul>
-      {doc.days.length > 0 && <AddMeal doc={doc} disabled={pending} onAdd={(dayRef, meal) => save(addMeal(doc, dayRef, uuidv7(), meal))} />}
+      {doc.days.length > 0 && (
+        <section className="mt-3 flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          <h3 className="font-semibold">Nowy posiłek</h3>
+          <AddMeal doc={doc} disabled={pending} onAdd={(dayRef, meal) => save(addMeal(doc, dayRef, uuidv7(), meal))} />
+        </section>
+      )}
       {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
@@ -116,7 +121,7 @@ function AddMeal({ doc, disabled, onAdd }: { doc: TripDocument; disabled: boolea
   const [atRef, setAtRef] = useState("");
   return (
     <form
-      className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      className="flex flex-wrap items-end gap-2"
       onSubmit={(event) => {
         event.preventDefault();
         if (title.trim() === "") return;

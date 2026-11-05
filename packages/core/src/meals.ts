@@ -69,14 +69,22 @@ export function selfCookedTotals(meals: Meal[]): { meals: number } & People {
 
 /** Punkty dnia, przy których może być posiłek: główne punkty, wspólne dla grupy, poza wariantami i innymi posiłkami. */
 export function mealPoints(doc: Doc, dayRef: string, options: ScheduleOptions = {}): Item[] {
-  return itemsForDay(doc, dayRef, options).filter((item) => item.parentRef === undefined && item.kind !== 'meal' && item.variantRefs.length === 0 && (item.participantRefs ?? []).length === 0);
+  return itemsForDay(doc, dayRef, options).filter((item) => isMealPoint(item) && item.variantRefs.length === 0);
 }
 
-/** Do czego można spiąć ten posiłek. Pusto, gdy jest w wariancie (knajpy do wyboru) albo ma własne podpunkty. */
+const isMealPoint = (item: Item) => item.parentRef === undefined && item.kind !== 'meal' && (item.participantRefs ?? []).length === 0;
+
+/**
+ * Do czego można spiąć ten posiłek: punkt wspólny, a posiłek z wariantu także punkt obecny we wszystkich
+ * jego wariantach, bo punkt musi być w planie zawsze wtedy, gdy posiłek. Pusto, gdy posiłek ma własne podpunkty.
+ */
 export function mealPointsFor(doc: Doc, ref: string, options: ScheduleOptions = {}): Item[] {
   const meal = doc.items.find((item) => item.ref === ref);
-  if (meal?.dayRef === undefined || meal.variantRefs.length > 0 || doc.items.some((item) => item.parentRef === ref)) return [];
-  return mealPoints(doc, meal.dayRef, options);
+  if (meal?.dayRef === undefined || doc.items.some((item) => item.parentRef === ref)) return [];
+  const inVariant = meal.variantRefs.length > 0;
+  return itemsForDay(doc, meal.dayRef, options).filter(
+    (item) => isMealPoint(item) && (item.variantRefs.length === 0 || (inVariant && meal.variantRefs.every((variant) => item.variantRefs.includes(variant)))),
+  );
 }
 
 /** Godzina posiłku po spięciu: liczona od początku punktu, żeby szła razem z nim. Godzina trzymana (stała, bilet) zostaje. */
