@@ -2,7 +2,7 @@
 
 import { GuideContent, GUIDE_LICENSE, type GuideRow, guideFor, guideText, type TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { describePlace } from "@expeditionplan/planner";
+import { describePlace, type GuideLibrary } from "@expeditionplan/planner";
 import { refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -41,6 +41,26 @@ async function load(tripId: string) {
   return { supabase, client: setup.deps.client, doc: stateFromPayload(payload).doc, ids: refIndex(payload.tables), guides } as const;
 }
 
+/** Wspólna biblioteka opisów. Błąd bazy to brak gotowego opisu, a brak prawa zapisu nie przeszkadza w opisie dla wyjazdu. */
+function guideLibrary(supabase: Supabase): GuideLibrary {
+  return {
+    find: async ({ site, lang, title }) => {
+      const { data } = await supabase.from("guide_library").select("content").eq("site", site).eq("lang", lang).eq("article_title", title).maybeSingle();
+      const parsed = GuideContent.safeParse(data?.content);
+      return parsed.success ? parsed.data : null;
+    },
+    save: async (content) => {
+      await supabase.from("guide_library").upsert({
+        site: content.article.site,
+        lang: content.article.lang,
+        article_title: content.article.title,
+        content: content as unknown as NonNullable<Json>,
+        updated_at: new Date().toISOString(),
+      });
+    },
+  };
+}
+
 const placeOf = (doc: Doc, item: Item) => {
   const ref = item.leg?.toPlaceRef ?? item.placeRef;
   return { ref, place: ref === undefined ? undefined : doc.places.find((each) => each.ref === ref) };
@@ -63,7 +83,7 @@ function areaCenter(doc: Doc, area: string | undefined): { lat: number; lng: num
  * zapis tylko z `item_id`, więc nie zasłania opisu miejsca w innych punktach. `which` mówi, które to miejsce,
  * gdy wiele nosi tę nazwę: opis dalej należy do miejsca.
  */
-async function describeOne(supabase: Supabase, client: Parameters<typeof describePlace>[1]["client"], tripId: string, doc: Doc, ids: Record<string, string>, item: Item, hint?: string, which?: string): Promise<{ ok: string } | { error: string }> {
+async function describeOne(supabase: Supabase, client: Parameters<typeof describePlace>[1]["client"], tripId: string, doc: Doc, ids: Record<string, string>, item: Item, hint?: string, which?: string, fresh = false): Promise<{ ok: string } | { error: string }> {
   const { ref: found, place } = placeOf(doc, item);
   const placeRef = hint ? undefined : found;
   const name = hint ? item.title : (place?.name ?? item.title);
@@ -84,7 +104,7 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
         context: { itemTitle: item.title, description: item.description, area: base?.name ?? item.area, trip: doc.trip.title },
         ...(hint ? { hint } : which ? { which } : {}),
       },
-      { client, timeoutMs: 60_000 },
+      { client, timeoutMs: 60_000, library: guideLibrary(supabase), fresh },
     );
   } catch (e) {
     return { error: `Nie udało się przygotować opisu „${name}”: ${e instanceof Error ? e.message : String(e)}` };
@@ -139,7 +159,9 @@ export async function describeItem(tripId: string, itemRef: string, hint = ""): 
   const clean = hint.trim().slice(0, 300);
   const placeRef = placeOf(loaded.doc, item).ref;
   const which = clean === "" && placeRef !== undefined ? savedWhich(loaded.guides, loaded.ids[placeRef]) : undefined;
-  const result = await describeOne(loaded.supabase, loaded.client, tripId, loaded.doc, loaded.ids, item, clean || undefined, which);
+  // Punkt z opisem to „Odśwież”: nowa wersja z AI, nie ta sama z biblioteki.
+  const fresh = guideFor(loaded.guides, loaded.ids[item.ref], placeRef === undefined ? undefined : loaded.ids[placeRef]) !== null;
+  const result = await describeOne(loaded.supabase, loaded.client, tripId, loaded.doc, loaded.ids, item, clean || undefined, which, fresh);
   // Opis miejsca bez wskazówki: własny opis punktu (dawniej ze wskazówką) by go zasłaniał — znika (miękko).
   const itemId = loaded.ids[item.ref];
   const own = loaded.guides.find((row) => !row.deleted_at && row.item_id === itemId && row.place_id === null);
@@ -162,12 +184,14 @@ export async function describePlaceGuide(tripId: string, placeRef: string, which
   if (place === undefined) return { error: "Tego miejsca już nie ma — odśwież stronę." };
   const item = doc.items.find((each) => placeOf(doc, each).ref === placeRef && each.kind !== "lodging");
   const clean = which.trim().slice(0, 200);
+  // Miejsce z własnym opisem to „Odśwież”: nowa wersja z AI, nie ta sama z biblioteki.
+  const fresh = loaded.guides.some((row) => !row.deleted_at && row.place_id === ids[placeRef]);
   let result: FormState;
   if (item !== undefined) {
-    result = await describeOne(supabase, client, tripId, doc, ids, item, undefined, clean || undefined);
+    result = await describeOne(supabase, client, tripId, doc, ids, item, undefined, clean || undefined, fresh);
   } else {
     try {
-      const content = await describePlace({ name: place.name, kind: "visit", lat: place.lat, lng: place.lng, context: { itemTitle: place.name, trip: doc.trip.title }, ...(clean ? { which: clean } : {}) }, { client, timeoutMs: 60_000 });
+      const content = await describePlace({ name: place.name, kind: "visit", lat: place.lat, lng: place.lng, context: { itemTitle: place.name, trip: doc.trip.title }, ...(clean ? { which: clean } : {}) }, { client, timeoutMs: 60_000, library: guideLibrary(supabase), fresh });
       result = content === null
         ? clean
           ? notFoundWhich(place.name, clean)

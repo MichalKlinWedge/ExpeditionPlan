@@ -232,7 +232,24 @@ export async function checkSuggestion(
   return { title: page.title, url: page.fullurl };
 }
 
-export type GuideDeps = { client: AiClient; timeoutMs?: number; onUsage?: (usage: AiUsage) => void; fetchImpl?: Fetch };
+/** Wspólna biblioteka opisów: gotowy przewodnik po artykule, żeby ten sam artykuł nie szedł do AI w każdym wyjeździe. */
+export type GuideLibrary = {
+  find: (article: { site: WikiSite; lang: string; title: string }) => Promise<GuideContent | null>;
+  save: (content: GuideContent) => Promise<void>;
+};
+
+/** Od tej zgodności nazwy z tytułem artykuł opisuje to miejsce, a nie obiekt, którego jest częścią. */
+const LIBRARY_MATCH = 0.75;
+
+export type GuideDeps = {
+  client: AiClient;
+  timeoutMs?: number;
+  onUsage?: (usage: AiUsage) => void;
+  fetchImpl?: Fetch;
+  library?: GuideLibrary;
+  /** Odświeżenie: nowy opis z AI zamiast gotowego z biblioteki. */
+  fresh?: boolean;
+};
 
 /**
  * Przewodnik po miejscu: artykuł w polskiej Wikipedii, potem w angielskiej; gdy żaden nie pasuje —
@@ -240,6 +257,8 @@ export type GuideDeps = { client: AiClient; timeoutMs?: number; onUsage?: (usage
  * Ze wskazówką organizatora (`hint`) od razu podpowiedzi AI — nazwa miejsca może prowadzić gdzie indziej.
  * Ze wskazaniem miejsca (`which`) wyszukiwanie po nazwie i tym tekście, bez pinezki; zostaje ono w `hint` opisu do odświeżenia.
  * Opis zawsze po polsku. `null` = brak artykułu, którego dopasowanie jest pewne.
+ * Biblioteka (`deps.library`) działa tylko bez wskazówek i tylko gdy artykuł nosi nazwę miejsca: opis pisany pod
+ * „suk w medynie” z artykułu o medynie nie pasowałby innemu miejscu z tym artykułem. Jej błąd nie psuje opisu.
  */
 export async function describePlace(place: PlaceQuery, deps: GuideDeps): Promise<GuideContent | null> {
   const fetchImpl = deps.fetchImpl ?? fetch;
@@ -267,7 +286,14 @@ export async function describePlace(place: PlaceQuery, deps: GuideDeps): Promise
     }
   }
   if (article === null) return null;
+  const library = !place.hint && !place.which && titleMatch(place.name, article.title) >= LIBRARY_MATCH ? deps.library : undefined;
+  if (library !== undefined && !deps.fresh) {
+    const ready = await library.find({ site: article.site, lang: article.lang, title: article.title }).catch(() => null);
+    if (ready !== null) return ready;
+  }
   const answer = await askStructured(deps.client, GuideDraft, guidePrompt(place, article), { ...ai, maxTokens: 3000, label: `przewodnik ${place.name}` });
   const images = await articleImages(article.title, article.lang, 4, fetchImpl, article.site).catch(() => []);
-  return { ...answer.data, images, article: { title: article.title, url: article.url, lang: article.lang, site: article.site }, ...(place.hint || place.which ? { hint: place.hint ?? place.which } : {}) };
+  const content: GuideContent = { ...answer.data, images, article: { title: article.title, url: article.url, lang: article.lang, site: article.site }, ...(place.hint || place.which ? { hint: place.hint ?? place.which } : {}) };
+  await library?.save(content).catch(() => undefined);
+  return content;
 }

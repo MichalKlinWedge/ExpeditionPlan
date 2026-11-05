@@ -2,7 +2,7 @@ import type { AiClient } from '@expeditionplan/ai';
 import { GuideContent } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
-import { checkSuggestion, describePlace, findArticle, titleMatch } from '../wiki.ts';
+import { checkSuggestion, describePlace, findArticle, type GuideLibrary, titleMatch } from '../wiki.ts';
 
 /** Wikipedia w pamięci: odpowiedzi wg parametrów zapytania. */
 function fakeWiki(answers: { search?: unknown[]; geo?: unknown[]; extract?: string; images?: unknown[]; pages?: Record<string, unknown> }) {
@@ -163,6 +163,30 @@ describe('przewodnik z Wikipedii', () => {
     expect(guide).toMatchObject({ hint, article: { title: 'A7 motorway (Morocco)', site: 'wikipedia', lang: 'en' } });
   });
 
+  it('artykuł o innej nazwie niż miejsce omija bibliotekę: opis pisany pod to miejsce nie pasowałby innym', async () => {
+    const { fetchImpl } = fakeWiki({
+      search: [],
+      geo: [],
+      extract: 'Sagrada Família — bazylika w Barcelonie, wieża Narodzenia. '.repeat(10),
+      pages: { 'pl.wikipedia.org:Sagrada Família': { title: 'Sagrada Família', fullurl: 'https://pl.wikipedia.org/wiki/Sagrada_Fam%C3%ADlia', coordinates: [{ lat: 41.4036, lon: 2.1744 }] } },
+    });
+    let asked = 0;
+    const client: AiClient = {
+      defaultProvider: 'GEMINI',
+      ask: async () => {
+        asked++;
+        const text = asked === 1 ? { candidates: [{ site: 'wikipedia', lang: 'pl', title: 'Sagrada Família' }] } : { summary: 'Wieża bazyliki.', facts: [], tips: [] };
+        return { text: JSON.stringify(text), provider: 'GEMINI', model: 'test' };
+      },
+      listModels: async () => [],
+    };
+    const used: string[] = [];
+    const library: GuideLibrary = { find: async () => (used.push('find'), null), save: async () => void used.push('save') };
+    const guide = await describePlace({ name: 'Wieża Narodzenia', kind: 'visit', lat: 41.4036, lng: 2.1744 }, { client, fetchImpl, library });
+    expect(guide?.article.title).toBe('Sagrada Família');
+    expect(used).toEqual([]);
+  });
+
   it('opis AI + zdjęcia z licencją; pliki bez licencji, mapy i ikony odpadają', async () => {
     const { fetchImpl } = fakeWiki({
       search: [{ index: 1, title: 'Sagrada Família', fullurl: 'https://pl.wikipedia.org/wiki/Sagrada_Fam%C3%ADlia', coordinates: [{ lat: 41.4036, lon: 2.1744 }] }],
@@ -186,6 +210,40 @@ describe('przewodnik z Wikipedii', () => {
     expect(GuideContent.parse(guide)).toBeTruthy();
     expect(prompt).toContain('WYŁĄCZNIE z tekstu artykułu');
     expect(guide!.article).toEqual({ title: 'Sagrada Família', url: 'https://pl.wikipedia.org/wiki/Sagrada_Fam%C3%ADlia', lang: 'pl', site: 'wikipedia' });
+
+    // Biblioteka: gotowy opis bez AI, nowy zapisany, a odświeżenie i wskazówka idą własną drogą.
+    let aiCalls = 0;
+    const counting: AiClient = { ...client, ask: async (request) => (aiCalls++, client.ask(request)) };
+    const saved: GuideContent[] = [];
+    const looked: string[] = [];
+    const library = (ready: GuideContent | null): GuideLibrary => ({
+      find: async (article) => (looked.push(`${article.site}:${article.lang}:${article.title}`), ready),
+      save: async (content) => void saved.push(content),
+    });
+    const sagrada = { name: 'Sagrada Família', kind: 'visit', ...at };
+
+    expect(await describePlace(sagrada, { client: counting, fetchImpl, library: library(guide) })).toBe(guide);
+    expect(aiCalls).toBe(0);
+    expect(looked).toEqual(['wikipedia:pl:Sagrada Família']);
+    expect(saved).toEqual([]);
+
+    await describePlace(sagrada, { client: counting, fetchImpl, library: library(null) });
+    expect(aiCalls).toBe(1);
+    expect(saved).toHaveLength(1);
+
+    looked.length = 0;
+    await describePlace(sagrada, { client: counting, fetchImpl, library: library(guide), fresh: true });
+    expect(aiCalls).toBe(2);
+    expect(looked).toEqual([]);
+    expect(saved).toHaveLength(2);
+
+    await describePlace({ ...sagrada, which: 'kościół w Barcelonie' }, { client: counting, fetchImpl, library: library(guide) });
+    expect(looked).toEqual([]);
+    expect(saved).toHaveLength(2);
+
+    // Awaria biblioteki: opis powstaje zwykłą drogą.
+    await describePlace(sagrada, { client: counting, fetchImpl, library: { find: async () => { throw new Error('brak tabeli'); }, save: async () => { throw new Error('brak tabeli'); } } });
+    expect(aiCalls).toBe(4);
     expect(guide!.images).toEqual([
       {
         url: 'https://upload.wikimedia.org/a.jpg',
