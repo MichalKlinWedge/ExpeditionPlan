@@ -1,3 +1,4 @@
+import { mealEateries } from './eat-out.ts';
 import { activeVariants, itemsForDay, type ScheduleOptions, scheduleDay } from './engine/schedule.ts';
 import { MINUTE, minutesOfDay, zonedToInstant } from './engine/time.ts';
 import { addItem, dayItems, heldTime, placeAfterBlock, type PlanEdit } from './plan-edits.ts';
@@ -70,26 +71,33 @@ export function mealDays(doc: Doc, meals: Meal[] = mealList(doc)): MealDay[] {
   return doc.days.map((day, index) => ({ dayRef: day.ref, date: day.date, dayNo: index + 1, meals: meals.filter((meal) => meal.dayRef === day.ref) }));
 }
 
+/** Miejsca posiłku: jego własne i przypięte knajpy, także te jeszcze niewybrane. */
+export function mealPlaceRefs(doc: Doc, meal: Pick<Meal, 'itemRef' | 'placeRef'>): string[] {
+  return [...new Set([...(meal.placeRef === undefined ? [] : [meal.placeRef]), ...mealEateries(doc, meal.itemRef).map((each) => each.placeRef)])];
+}
+
 /**
  * Mapa posiłków: numer na miejsce ze współrzędnymi, po kolei od pierwszego użycia. Posiłki w tym samym
- * lokalu mają ten sam numer, bo mapa i opis pod nią dotyczą miejsca, nie posiłku.
+ * lokalu mają ten sam numer, bo mapa i opis pod nią dotyczą miejsca, nie posiłku. Knajpy do wyboru też mają pinezki.
  */
 export function mealMap(doc: Doc, meals: Meal[] = mealList(doc)): { numbers: Record<string, number>; map: DayMap } {
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const numbers: Record<string, number> = {};
   const pins: DayMap['pins'] = [];
   for (const meal of meals) {
-    const place = meal.placeRef === undefined ? undefined : places.get(meal.placeRef);
-    if (place?.lat === undefined || place.lng === undefined) continue;
-    const line = `Dzień ${meal.dayNo}: ${meal.title}`;
-    const pin = pins.find((each) => each.placeRef === place.ref);
-    if (pin !== undefined) {
-      pin.stops[0]!.title += `, ${line}`;
-      continue;
+    for (const ref of mealPlaceRefs(doc, meal)) {
+      const place = places.get(ref);
+      if (place?.lat === undefined || place.lng === undefined) continue;
+      const line = `Dzień ${meal.dayNo}: ${meal.title}`;
+      const pin = pins.find((each) => each.placeRef === place.ref);
+      if (pin !== undefined) {
+        if (!pin.stops[0]!.title.split(', ').includes(line)) pin.stops[0]!.title += `, ${line}`;
+        continue;
+      }
+      const n = pins.length + 1;
+      numbers[place.ref] = n;
+      pins.push({ placeRef: place.ref, name: place.name, lat: place.lat, lng: place.lng, stops: [{ ref: place.ref, n, title: line }] });
     }
-    const n = pins.length + 1;
-    numbers[place.ref] = n;
-    pins.push({ placeRef: place.ref, name: place.name, lat: place.lat, lng: place.lng, stops: [{ ref: place.ref, n, title: line }] });
   }
   return { numbers, map: { pins, lines: [], numbers: {} } };
 }

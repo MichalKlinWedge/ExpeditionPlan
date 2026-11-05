@@ -69,7 +69,7 @@ export function removeUnusedPlace(doc: Doc, ref: string): { doc: Doc; writes: Pl
   return { doc: { ...doc, places: doc.places.filter((each) => each.ref !== ref), sources }, writes };
 }
 
-const plainName = (name: string) =>
+export const plainName = (name: string) =>
   name
     .toLowerCase()
     .replaceAll('ł', 'l')

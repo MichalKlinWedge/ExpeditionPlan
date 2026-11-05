@@ -5,7 +5,7 @@ import { savePlanEdit, uuidv7 } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { EatOutOptions, EatOutSearch } from "@/components/eat-out";
+import { EatOutSearch, MealEateries } from "@/components/eat-out";
 import { ItemEditor } from "@/components/item-editor";
 import { SelfCookedToggle } from "@/components/logistics-editors";
 import { MealLink, PointOptions } from "@/components/meal-link";
@@ -28,6 +28,7 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [searching, setSearching] = useState<string | null>(null);
+  const [pinned, setPinned] = useState<{ itemRef: string; names: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const days = mealDays(doc);
@@ -57,7 +58,7 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
           {day.meals.map((meal) => {
             const item = byRef.get(meal.itemRef);
             return (
-              <li key={meal.itemRef} id={mealRowId(meal)} className={mealRowClass(meal, selection.selected)}>
+              <li key={meal.itemRef} id={mealRowId(meal)} className={mealRowClass(doc, meal, selection.selected)}>
                 <MealHead doc={doc} meal={meal} selection={selection} />
                 <div>
                   <SelfCookedToggle tripId={tripId} itemRef={meal.itemRef} value={meal.selfCooked === true} />
@@ -86,8 +87,21 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
                     </button>
                   </span>
                 </div>
-                <EatOutOptions tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} canEdit />
-                {searching === meal.itemRef && <EatOutSearch tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} onClose={() => setSearching(null)} />}
+                <MealEateries tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} canEdit selection={selection} />
+                {pinned?.itemRef === meal.itemRef && <p className="text-xs text-emerald-700 dark:text-emerald-400">Przypięto i zapisano: {pinned.names.join(", ")}.</p>}
+                {searching === meal.itemRef && (
+                  <EatOutSearch
+                    tripId={tripId}
+                    doc={doc}
+                    ids={ids}
+                    itemRef={meal.itemRef}
+                    onClose={() => setSearching(null)}
+                    onPinned={(placeRef, names) => {
+                      setPinned({ itemRef: meal.itemRef, names });
+                      selection.onSelect(placeRef);
+                    }}
+                  />
+                )}
                 {editing === meal.itemRef && item && (
                   <ItemEditor item={item} onCancel={() => setEditing(null)} onSave={(patch) => save(updateItem(doc, meal.itemRef, patch), () => setEditing(null))} />
                 )}

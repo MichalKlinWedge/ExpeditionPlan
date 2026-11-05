@@ -1,28 +1,40 @@
 "use client";
 
-import { type PlaceGuide, type TripDocument, type VenueDraft, type VenueDraftRow, venuePriceLabel, venueRatingLabel } from "@expeditionplan/core";
+import { eateryKindLabel, type TripDocument, type VenueDraft, type VenueDraftRow, venuePriceLabel, venueRatingLabel } from "@expeditionplan/core";
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { clearVenue, readVenue, saveVenue } from "@/app/venue-actions";
-import { GuideArticle } from "@/components/guide-article";
 import { SparkIcon } from "@/components/icons";
 
 /**
- * Opis lokalu pod mapą „Posiłków”: opis, ocena i przykładowe ceny z wklejonego tekstu, a obok dane miejsca.
- * Jeśli miejsce ma opis z Wikipedii (strona „Miejsca”), jest pod spodem. Organizator i edytor wklejają tekst i wybierają, co zapisać.
+ * Dane knajpy pod mapą „Posiłków”: to, co dała wyszukiwarka (rodzaj, adres, godziny, strona, kuchnia), oraz opis, ocena i przykładowe
+ * ceny z wklejonego tekstu. Organizator i edytor wklejają tekst i wybierają, co zapisać. Opisu samego miejsca tu nie ma: jest w „Miejscach”.
  */
 
 type Place = TripDocument["places"][number];
 
 const shortDate = (date: string) => new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
-export function VenueCard({ tripId, place, guide, canEdit, showEditor }: { tripId: string; place: Place; guide: PlaceGuide | null; canEdit: boolean; showEditor: boolean }) {
+export function VenueCard({ tripId, place, isEatery, canEdit, editing }: { tripId: string; place: Place; isEatery: boolean; canEdit: boolean; editing: boolean }) {
   const { venue } = place;
   const facts = place.address || place.openingHours || place.website;
+  const read = venue?.description || venue?.rating || (venue?.prices.length ?? 0) > 0;
+  const kind = eateryKindLabel(place);
+  if (!isEatery) {
+    return (
+      <section className="flex flex-col gap-2 text-sm">
+        <h2 className="text-lg font-semibold">{place.name}</h2>
+        <p className="text-zinc-500">{canEdit ? (editing ? "To miejsce nie jest wskazaną knajpą. Jeśli tu jecie na mieście, użyj „knajpy w pobliżu” przy posiłku." : "To miejsce nie jest wskazaną knajpą. Knajpę przypniesz po „Edytuj” przez „knajpy w pobliżu”.") : "To miejsce nie jest wskazaną knajpą."}</p>
+      </section>
+    );
+  }
   return (
     <section className="flex flex-col gap-2 text-sm">
-      <h2 className="text-lg font-semibold">{place.name}</h2>
+      <h2 className="text-lg font-semibold">
+        {place.name}
+        {kind && <span className="ml-2 text-sm font-normal text-zinc-500">{kind}</span>}
+      </h2>
       {venue?.rating && (
         <p>
           <span aria-hidden="true">★ </span>
@@ -53,15 +65,15 @@ export function VenueCard({ tripId, place, guide, canEdit, showEditor }: { tripI
           )}
         </p>
       )}
-      {venue && <p className="text-xs text-zinc-500">Z tekstu wklejonego {shortDate(venue.readOn)}. Ceny i ocena mogły się od tego czasu zmienić.</p>}
-      {!venue && guide === null && <p className="text-sm text-zinc-500">Brak opisu lokalu.{canEdit ? "" : " Organizator może go dodać."}</p>}
-      {guide && <GuideArticle guide={guide.content} targets={[]} itemBase={`/trips/${tripId}/item/`} />}
-      {canEdit && showEditor && <VenueEditor key={place.ref} tripId={tripId} place={place} />}
+      {place.notes && <p className="text-xs text-zinc-600 dark:text-zinc-400">{place.notes}</p>}
+      {venue?.readOn && <p className="text-xs text-zinc-500">Z tekstu wklejonego {shortDate(venue.readOn)}. Ceny i ocena mogły się od tego czasu zmienić.</p>}
+      {!read && <p className="text-sm text-zinc-500">Brak opisu, cen i oceny.{canEdit ? "" : " Organizator może je dodać."}</p>}
+      {canEdit && <VenueEditor key={place.ref} tripId={tripId} place={place} read={Boolean(read)} />}
     </section>
   );
 }
 
-function VenueEditor({ tripId, place }: { tripId: string; place: Place }) {
+function VenueEditor({ tripId, place, read: hasRead }: { tripId: string; place: Place; read: boolean }) {
   const [text, setText] = useState("");
   const [state, setState] = useState<FormState>({});
   const [draft, setDraft] = useState<{ draft: VenueDraft; rows: VenueDraftRow[] } | null>(null);
@@ -107,7 +119,7 @@ function VenueEditor({ tripId, place }: { tripId: string; place: Place }) {
           <SparkIcon className="size-4" />
           {pending ? "Czytam…" : "Odczytaj dane lokalu (AI)"}
         </button>
-        {place.venue && (
+        {hasRead && (
           <button
             type="button"
             disabled={pending}

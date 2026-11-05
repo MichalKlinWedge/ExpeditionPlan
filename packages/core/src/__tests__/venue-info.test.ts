@@ -73,13 +73,13 @@ describe('lokal z wklejonego tekstu', () => {
     expect(venueDraftRows({ ...saved, venue: undefined }, { ...draft, prices: [], rating: null }).map((row) => row.key)).toEqual(['description']);
   });
 
-  it('usunięcie zostawia dane miejsca, a scalenie przenosi opis lokalu', () => {
+  it('usunięcie czyści opis, ceny i ocenę, ale miejsce zostaje knajpą; scalenie przenosi opis lokalu', () => {
     const doc = load('maroko');
     const [first, second] = [doc.places[0]!.ref, doc.places[1]!.ref];
     const read = applyVenueDraft(doc, second, draft, ['description', 'address'], '2026-11-05')!.doc;
     expect(mergePlaces(read, first, second)!.doc.places.find((place) => place.ref === first)?.venue?.description).toBe(draft.description);
     const gone = removeVenue(read, second)!.doc.places.find((place) => place.ref === second)!;
-    expect(gone.venue).toBeUndefined();
+    expect(gone.venue).toEqual({ prices: [] });
     expect(gone.address).toBe('Rynek 1, Wrocław');
     expect(removeVenue(doc, second)).toBeNull();
   });

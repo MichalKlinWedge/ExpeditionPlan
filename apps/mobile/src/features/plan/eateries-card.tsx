@@ -16,7 +16,7 @@ import { type EateryAnswer, type EateryDiet, type EateryKind, findEateriesNearby
  * Geoapify na kluczu serwera) wokół miejsca posiłku z planu albo — po „Wokół mnie” — wokół
  * telefonu. Pozycja idzie na serwer tylko wtedy, zaokrąglona do ~100 m, i nie jest zapisywana
  * (SPECYFIKACJA §8). Wybrane knajpy zapisuje plan (`addEatOutChoices` → `saveElements`): jedna =
- * miejsce posiłku, kilka = „gdzie jemy?” do wyboru chipami nad dniem, także offline.
+ * miejsce posiłku, kilka = „gdzie jemy?” do wyboru chipami nad dniem, także offline. Kolejna knajpa dołącza do wyboru.
  */
 
 const RADII = [500, 1000, 2000, 5000];
@@ -90,7 +90,7 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
     try {
       await onSave(edit);
       setPicked(new Set());
-      setSaved(picks.length === 1 ? `Zapisano: ${picks[0]!.name} — miejsce posiłku.` : `Zapisano ${picks.length} knajpy do wyboru — chipy „gdzie jemy?” nad dniem.`);
+      setSaved(`Przypięto i zapisano: ${picks.map((each) => each.name).join(', ')}.`);
     } catch (e) {
       setProblem(`Nie zapisano: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -197,7 +197,7 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
           {onSave !== undefined && picked.size > 0 && (
             <Button
               variant="primary"
-              label={busy === 'save' ? 'Zapisuję…' : picked.size === 1 ? 'Ustaw jako miejsce posiłku' : `Dodaj ${picked.size} do wyboru „gdzie jemy?”`}
+              label={busy === 'save' ? 'Zapisuję…' : 'Przypnij i zapisz'}
               disabled={busy !== null}
               onPress={() => void save()}
             />

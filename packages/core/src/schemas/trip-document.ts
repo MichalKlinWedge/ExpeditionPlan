@@ -95,15 +95,16 @@ export const VenueRating = z
 export type VenueRating = z.infer<typeof VenueRating>;
 
 /**
- * Lokal (restauracja, kawiarnia): dane odczytane z tekstu wklejonego przez użytkownika (`venue-info.ts`).
- * Sami niczego nie pobieramy, a warunki Google zakazują zapisywania ocen z Places i z Grounding (docs/USLUGI.md §3, §11).
+ * Lokal (restauracja, kawiarnia): sama obecność znaczy, że miejsce wskazano jako knajpę („knajpy w pobliżu”, `eat-out.ts`).
+ * Opis, ceny i ocena to dane odczytane z tekstu wklejonego przez użytkownika (`venue-info.ts`). Sami niczego nie pobieramy,
+ * a warunki Google zakazują zapisywania ocen z Places i z Grounding (docs/USLUGI.md §3, §11).
  */
 export const Venue = z.object({
   description: z.string().optional(),
   prices: z.array(VenuePrice).default([]),
   rating: VenueRating.optional(),
   /** Kiedy wklejono tekst: ceny i oceny się starzeją. */
-  readOn: IsoDate,
+  readOn: IsoDate.optional(),
 });
 export type Venue = z.infer<typeof Venue>;
 

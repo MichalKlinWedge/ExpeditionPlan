@@ -1,4 +1,4 @@
-import { type Meal, type MealDay, mealTime, type TripDocument } from "@expeditionplan/core";
+import { type Meal, type MealDay, mealEateries, mealPlaceRefs, mealTime, type TripDocument } from "@expeditionplan/core";
 import type { ReactNode } from "react";
 
 /** Wspólne dla podglądu i edycji „Posiłków”: nagłówek dnia oraz numer i nazwa posiłku, które wybierają jego miejsce. */
@@ -23,15 +23,17 @@ export function MealDaySection({ day, children }: { day: MealDay; children: Reac
   );
 }
 
-/** Klasy wiersza posiłku: wszystkie posiłki w wybranym miejscu mają obwódkę, a pinezka przewija do pierwszego z nich. */
-export const mealRowClass = (meal: Meal, selected: string | null) => `card flex scroll-mt-4 flex-col gap-1 p-3 text-sm ${meal.placeRef !== undefined && meal.placeRef === selected ? "ring-2 ring-sea" : ""}`;
+/** Klasy wiersza posiłku: wszystkie posiłki w wybranym miejscu i z wybraną knajpą mają obwódkę, a pinezka przewija do pierwszego z nich. */
+export const mealRowClass = (doc: TripDocument, meal: Meal, selected: string | null) => `card flex scroll-mt-4 flex-col gap-2 p-3 text-sm ${selected !== null && mealPlaceRefs(doc, meal).includes(selected) ? "ring-2 ring-sea" : ""}`;
 
 export const mealRowId = (meal: Meal) => `posilek-${meal.itemRef}`;
 
 export function MealHead({ doc, meal, selection }: { doc: TripDocument; meal: Meal; selection: MealSelection }) {
   const time = mealTime(doc, meal);
   const n = meal.placeRef === undefined ? undefined : selection.numbers[meal.placeRef];
-  const details = [meal.place, meal.at && `${meal.at.stop ? "postój w trasie" : "przy punkcie"}: ${meal.at.title}`].filter(Boolean).join(" · ");
+  // Przypięta knajpa stoi pod posiłkiem (`MealEateries`), więc nazwa tu by się powtarzała.
+  const pinned = mealEateries(doc, meal.itemRef).length > 0;
+  const details = [!pinned && meal.place, meal.at && `${meal.at.stop ? "postój w trasie" : "przy punkcie"}: ${meal.at.title}`].filter(Boolean).join(" · ");
   const name = (
     <>
       {n !== undefined && <span className="flex h-5 min-w-5 items-center justify-center self-center rounded-full bg-sea px-1 text-xs font-semibold text-white">{n}</span>}
@@ -47,7 +49,7 @@ export function MealHead({ doc, meal, selection }: { doc: TripDocument; meal: Me
         {meal.placeRef === undefined ? (
           <span className="flex items-baseline gap-x-2">{name}</span>
         ) : (
-          <button type="button" onClick={() => selection.onSelect(meal.placeRef!)} aria-pressed={selection.selected === meal.placeRef} title={n === undefined ? "Pokaż opis miejsca" : "Pokaż na mapie i opis miejsca"} className="flex items-baseline gap-x-2 text-left hover:text-sea">
+          <button type="button" onClick={() => selection.onSelect(meal.placeRef!)} aria-pressed={selection.selected === meal.placeRef} title={n === undefined ? "Pokaż miejsce posiłku" : "Pokaż na mapie"} className="flex items-baseline gap-x-2 text-left hover:text-sea">
             {name}
           </button>
         )}

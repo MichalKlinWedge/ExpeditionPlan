@@ -1,17 +1,19 @@
 "use client";
 
-import { addEatOutChoices, documentProblem, EATERY_KINDS, type EateryKind, eatOutGroup, eatOutOptions, formatDistance, type TripDocument } from "@expeditionplan/core";
+import { addEatOutChoices, documentProblem, EATERY_KINDS, type EateryKind, eatOutGroup, formatDistance, isPinnedEatery, mealEateries, type TripDocument } from "@expeditionplan/core";
 import { saveElements, uuidv7 } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { type EateryAnswer, findRestaurants } from "@/app/eat-out-actions";
+import type { MealSelection } from "@/components/meal-row";
 import { createClient } from "@/lib/supabase/client";
 
 /**
  * „Knajpy w pobliżu” posiłku na mieście: wyszukiwanie wokół miejsca posiłku albo punktu dnia
- * (akcja serwera, Geoapify Places), zaznaczenie jednej lub kilku i zapis. Jedna = miejsce
+ * (akcja serwera, Geoapify Places), zaznaczenie jednej lub kilku i przypięcie. Jedna = miejsce
  * posiłku; kilka = „gdzie jemy?” do wyboru (warianty) — także na telefonie, offline.
+ * Przypięte stoją pod posiłkiem, a kliknięcie pokazuje knajpę na mapie i jej dane.
  */
 
 const RADII = [500, 1000, 2000, 5000];
@@ -31,7 +33,7 @@ const OPEN = {
 
 const input = "field min-w-0 px-2 py-1 text-sm";
 
-export function EatOutSearch({ tripId, doc, ids, itemRef, onClose }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string; onClose: () => void }) {
+export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string; onClose: () => void; onPinned: (placeRef: string, names: string[]) => void }) {
   const router = useRouter();
   const [kinds, setKinds] = useState<EateryKind[]>(["restaurant", "fast_food", "hut"]);
   const [radiusM, setRadiusM] = useState(1000);
@@ -41,7 +43,6 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose }: { tripId: s
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const grouped = eatOutGroup(doc, itemRef) !== undefined;
 
   const search = () =>
     start(async () => {
@@ -59,7 +60,8 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose }: { tripId: s
     if (invalid !== null) return setError(`Nie zapisano: ${invalid}`);
     start(async () => {
       try {
-        await saveElements(createClient(), tripId, edit.doc, edit.writes, ids);
+        if (edit.writes.length > 0) await saveElements(createClient(), tripId, edit.doc, edit.writes, ids);
+        onPinned(edit.pinned[0]!, picks.map(({ eatery }) => eatery.name));
         onClose();
         router.refresh();
       } catch (e) {
@@ -134,7 +136,11 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose }: { tripId: s
           <ul className="flex flex-col gap-1.5">
             {answer.results.map((result, index) => (
               <li key={`${result.name}-${result.lat}-${result.lng}`} className="flex items-start gap-2">
-                <input type="checkbox" checked={picked.has(index)} onChange={() => toggle(index)} className="mt-1" aria-label={`Wybierz ${result.name}`} />
+                {isPinnedEatery(doc, itemRef, result) ? (
+                  <span className="mt-0.5 text-xs font-semibold text-sea">przypięta</span>
+                ) : (
+                  <input type="checkbox" checked={picked.has(index)} onChange={() => toggle(index)} className="mt-1" aria-label={`Wybierz ${result.name}`} />
+                )}
                 <div className="flex flex-col">
                   <span>
                     <strong>{result.name}</strong> <span className="text-zinc-500">· {result.summary}</span>
@@ -161,9 +167,9 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose }: { tripId: s
           {answer.results.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <button disabled={pending || picked.size === 0} onClick={save} className="btn-primary btn-sm">
-                {picked.size <= 1 && !grouped ? "Ustaw jako miejsce posiłku" : `Dodaj do wyboru (${picked.size})`}
+                Przypnij i zapisz
               </button>
-              <span className="text-xs text-zinc-500">Kilka knajp = „gdzie jemy?” do wyboru w planie i na telefonie (offline).</span>
+              <span className="text-xs text-zinc-500">Przypięta knajpa stanie pod posiłkiem. Kilka knajp = „gdzie jemy?” do wyboru w planie i na telefonie (offline).</span>
             </div>
           )}
           <p className="text-[11px] text-zinc-400">© OpenStreetMap · Powered by Geoapify</p>
@@ -174,16 +180,17 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose }: { tripId: s
   );
 }
 
-/** Knajpy do wyboru przy posiłku; w edycji „wybierz” ustawia wybór grupy (`chosenRef`). */
-export function EatOutOptions({ tripId, doc, ids, itemRef, canEdit }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string; canEdit: boolean }) {
+/** Knajpy przypięte do posiłku: kliknięcie pokazuje knajpę na mapie i jej dane; w edycji „wybierz” ustawia wybór grupy (`chosenRef`). */
+export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string; canEdit: boolean; selection: MealSelection }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const options = eatOutOptions(doc, itemRef);
+  const eateries = mealEateries(doc, itemRef);
   const group = eatOutGroup(doc, itemRef);
-  if (options.length === 0 || group === undefined) return null;
+  if (eateries.length === 0) return null;
 
   const choose = (variantRef: string) => {
+    if (group === undefined) return;
     const element = { ...group, chosenRef: variantRef };
     start(async () => {
       try {
@@ -197,20 +204,35 @@ export function EatOutOptions({ tripId, doc, ids, itemRef, canEdit }: { tripId: 
   };
 
   return (
-    <div className="ml-4 text-xs text-zinc-600 dark:text-zinc-400">
-      Gdzie jemy:{" "}
-      {options.map((option, index) => (
-        <span key={option.variantRef}>
-          {index > 0 && " · "}
-          {option.active ? <strong>✓ {option.label}</strong> : option.label}
-          {option.summary && <span className="text-zinc-500"> ({option.summary})</span>}
-          {canEdit && !option.active && (
-            <button disabled={pending} onClick={() => choose(option.variantRef)} className="px-1 underline">
-              wybierz
-            </button>
-          )}
-        </span>
-      ))}
+    <div className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+      <p className="font-semibold">{group === undefined ? "Knajpa" : "Gdzie jemy"}</p>
+      <ul className="flex flex-col gap-1">
+        {eateries.map((eatery) => {
+          const n = selection.numbers[eatery.placeRef];
+          return (
+            <li key={eatery.placeRef} className="flex flex-wrap items-baseline gap-x-2">
+              <button
+                type="button"
+                onClick={() => selection.onSelect(eatery.placeRef)}
+                aria-pressed={selection.selected === eatery.placeRef}
+                title="Pokaż knajpę na mapie i jej dane"
+                className={`flex items-baseline gap-x-1.5 text-left underline-offset-2 hover:text-sea hover:underline ${selection.selected === eatery.placeRef ? "font-semibold text-sea" : ""}`}>
+                {n !== undefined && <span className="flex h-4 min-w-4 items-center justify-center self-center rounded-full bg-sea px-1 text-[10px] font-semibold text-white">{n}</span>}
+                <span>
+                  {group !== undefined && eatery.active && "✓ "}
+                  {eatery.name}
+                </span>
+              </button>
+              {eatery.summary && <span className="text-zinc-500">{eatery.summary}</span>}
+              {canEdit && eatery.variantRef !== undefined && !eatery.active && (
+                <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="underline">
+                  wybierz
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
       {error && <span className="text-red-600"> {error}</span>}
     </div>
   );

@@ -86,8 +86,9 @@ export function applyVenueDraft(doc: Doc, placeRef: string, draft: VenueDraft, f
   const rating = picked.has('rating') && draft.rating ? { value: draft.rating.value, scale: draft.rating.scale, ...(draft.rating.count ? { count: draft.rating.count } : {}), ...(draft.rating.source ? { source: draft.rating.source } : {}) } : old?.rating;
   const prices = picked.has('prices') ? draft.prices : (old?.prices ?? []);
   const fresh = picked.has('description') || picked.has('rating') || picked.has('prices');
-  const venue: Venue = { ...(description ? { description } : {}), prices, ...(rating ? { rating } : {}), readOn: IsoDate.parse(fresh ? today : (old?.readOn ?? today)) };
-  const hasVenue = description !== undefined || rating !== undefined || prices.length > 0;
+  const readOn = fresh ? IsoDate.parse(today) : old?.readOn;
+  const venue: Venue = { ...(description ? { description } : {}), prices, ...(rating ? { rating } : {}), ...(readOn ? { readOn } : {}) };
+  const hasVenue = old !== undefined || description !== undefined || rating !== undefined || prices.length > 0;
   const { venue: _dropped, ...rest } = place;
   return withPlace(doc, {
     ...rest,
@@ -98,10 +99,9 @@ export function applyVenueDraft(doc: Doc, placeRef: string, draft: VenueDraft, f
   });
 }
 
-/** Usuwa opis, ceny i ocenę; adres, godziny i strona należą do miejsca i zostają. */
+/** Usuwa opis, ceny i ocenę. Miejsce zostaje knajpą, a jego adres, godziny i strona się nie zmieniają. */
 export function removeVenue(doc: Doc, placeRef: string): VenueEdit | null {
   const place = doc.places.find((each) => each.ref === placeRef);
   if (place?.venue === undefined) return null;
-  const { venue: _dropped, ...rest } = place;
-  return withPlace(doc, rest);
+  return withPlace(doc, { ...place, venue: { prices: [] } });
 }

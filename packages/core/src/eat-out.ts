@@ -2,6 +2,7 @@ import { minutesOutside, openingOn, parseOpeningHours, formatInterval } from './
 import { activeVariants, scheduleDay } from './engine/schedule.ts';
 import { minutesOfDay } from './engine/time.ts';
 import { distanceKm } from './offline-areas.ts';
+import { plainName } from './place-list.ts';
 import { dayItems } from './plan-edits.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { keyBetween } from './sort-key.ts';
@@ -9,9 +10,10 @@ import { keyBetween } from './sort-key.ts';
 /**
  * Jedzenie na mieście: knajpy w pobliżu posiłku z planu (Geoapify Places, dane OSM — wyniki wolno
  * przechowywać, docs/USLUGI.md). Szukamy wokół miejsca posiłku, a bez niego wokół najbliższego
- * punktu dnia ze współrzędnymi albo bazy dnia. Jedna wybrana knajpa = miejsce posiłku; kilka =
+ * punktu dnia ze współrzędnymi albo bazy dnia. Jedna przypięta knajpa = miejsce posiłku; kilka =
  * grupa wariantów „gdzie jemy” — każda knajpa to kopia posiłku w swoim wariancie, a wybiera się
- * ją na telefonie (chipy nad dniem, offline) albo w planie.
+ * ją na telefonie (chipy nad dniem, offline) albo w planie. Knajpa, która już jest w planie jako
+ * miejsce, nie tworzy duplikatu: to samo miejsce dostaje znacznik `venue` i brakujące dane.
  */
 
 type Doc = TripDocument;
@@ -157,13 +159,52 @@ const validUrl = (url: string | undefined) => {
   }
 };
 
+const osmUrl = (osm: NonNullable<Eatery['osm']>) => `https://www.openstreetmap.org/${osm.type}/${osm.id}`;
+
+const eateryNotes = (eatery: Eatery) => {
+  const cuisine = cuisineLabel(eatery.cuisine);
+  return [cuisine ? `Kuchnia: ${cuisine}` : '', eatery.phone ? `Tel. ${eatery.phone}` : ''].filter(Boolean).join('. ');
+};
+
+const EATERY_CATEGORIES = new Set<string>(Object.keys(EATERY_KINDS));
+
+/** Czy miejsce wskazano jako knajpę: ma `venue`, a starsze przypięte po tym, że pochodzą z wyszukiwania knajp. */
+export const isEateryPlace = (place: Place) => place.venue !== undefined || (place.provider === 'geoapify' && EATERY_CATEGORIES.has(place.category ?? ''));
+
+/** „restauracja”, „schronisko”; `undefined`, gdy kategoria miejsca nie mówi, co to za lokal. */
+export const eateryKindLabel = (place: Place) => (EATERY_CATEGORIES.has(place.category ?? '') ? EATERY_KINDS[place.category as EateryKind] : undefined);
+
+/** Ta sama knajpa co miejsce w planie: ten sam obiekt OSM albo ta sama nazwa najwyżej 150 m dalej (bez współrzędnych: sama nazwa). */
+function sameEatery(place: Place, eatery: Eatery): boolean {
+  if (eatery.osm !== undefined && place.links.some((link) => link.url === osmUrl(eatery.osm!))) return true;
+  if (plainName(place.name) !== plainName(eatery.name)) return false;
+  return !located(place) || metersBetween(place, eatery) <= 150;
+}
+
+/** Miejsce z planu jako knajpa: nazwa i to, co już w nim jest, zostają, a dochodzi tylko to, czego brakowało. */
+function pinnedPlace(place: Place, eatery: Eatery): Place {
+  const fresh = eateryPlace(eatery, place.ref);
+  const link = fresh.links.find((each) => !place.links.some((own) => own.url === each.url));
+  return {
+    ...place,
+    ...(located(place) ? {} : { lat: fresh.lat!, lng: fresh.lng! }),
+    ...(place.address === undefined && fresh.address !== undefined ? { address: fresh.address } : {}),
+    ...(place.openingHours === undefined && fresh.openingHours !== undefined ? { openingHours: fresh.openingHours } : {}),
+    ...(place.website === undefined && fresh.website !== undefined ? { website: fresh.website } : {}),
+    ...(link === undefined ? {} : { links: [...place.links, link] }),
+    ...(place.notes === undefined && fresh.notes !== undefined ? { notes: fresh.notes } : {}),
+    venue: place.venue ?? { prices: [] },
+  };
+}
+
 /** Knajpa jako miejsce planu (`provider: geoapify`), z linkiem do OSM. */
 export function eateryPlace(eatery: Eatery, ref: string): Place {
   const website = validUrl(eatery.website);
-  const cuisine = cuisineLabel(eatery.cuisine);
+  const notes = eateryNotes(eatery);
   return {
     ref,
     name: eatery.name,
+    venue: { prices: [] },
     category: eatery.kind === 'restaurant' ? 'restaurant' : eatery.kind,
     lat: Math.round(eatery.lat * 1e5) / 1e5,
     lng: Math.round(eatery.lng * 1e5) / 1e5,
@@ -171,8 +212,8 @@ export function eateryPlace(eatery: Eatery, ref: string): Place {
     ...(eatery.address ? { address: eatery.address } : {}),
     ...(eatery.openingHours ? { openingHours: eatery.openingHours } : {}),
     ...(website ? { website } : {}),
-    links: eatery.osm ? [{ label: 'OpenStreetMap', url: `https://www.openstreetmap.org/${eatery.osm.type}/${eatery.osm.id}` }] : [],
-    ...(cuisine || eatery.phone ? { notes: [cuisine ? `Kuchnia: ${cuisine}` : '', eatery.phone ? `Tel. ${eatery.phone}` : ''].filter(Boolean).join('. ') } : {}),
+    links: eatery.osm ? [{ label: 'OpenStreetMap', url: osmUrl(eatery.osm) }] : [],
+    ...(notes ? { notes } : {}),
   };
 }
 
@@ -184,7 +225,7 @@ export function eatOutGroup(doc: Doc, itemRef: string): Group | undefined {
   return group?.scope === 'item' && group.conditionKind === 'choice' ? group : undefined;
 }
 
-export type EatOutOption = { variantRef: string; itemRef: string; label: string; summary?: string; place?: string; active: boolean };
+export type EatOutOption = { variantRef: string; itemRef: string; label: string; summary?: string; placeRef?: string; place?: string; active: boolean };
 
 /** Knajpy do wyboru przy posiłku (z grupy „gdzie jemy”), z zaznaczeniem tej, która jest teraz w planie. */
 export function eatOutOptions(doc: Doc, itemRef: string): EatOutOption[] {
@@ -196,42 +237,92 @@ export function eatOutOptions(doc: Doc, itemRef: string): EatOutOption[] {
     .map((variant) => {
       const item = doc.items.find((each) => each.variantRefs.includes(variant.ref));
       const place = item?.placeRef === undefined ? undefined : doc.places.find((each) => each.ref === item.placeRef)?.name;
-      return { variantRef: variant.ref, itemRef: item?.ref ?? '', label: variant.label, ...(variant.summary ? { summary: variant.summary } : {}), ...(place ? { place } : {}), active: active.has(variant.ref) };
+      return { variantRef: variant.ref, itemRef: item?.ref ?? '', label: variant.label, ...(variant.summary ? { summary: variant.summary } : {}), ...(item?.placeRef ? { placeRef: item.placeRef } : {}), ...(place ? { place } : {}), active: active.has(variant.ref) };
     });
+}
+
+/** Knajpa przypięta do posiłku; `variantRef` — jest jedną z kilku do wyboru. */
+export type MealEatery = { placeRef: string; name: string; summary?: string; variantRef?: string; active: boolean };
+
+/** Knajpy przypięte do posiłku: opcje „gdzie jemy”, a bez nich jego miejsce, jeśli wskazano je jako knajpę. */
+export function mealEateries(doc: Doc, itemRef: string): MealEatery[] {
+  const options = eatOutOptions(doc, itemRef);
+  if (options.length > 0) {
+    return options.flatMap((option) =>
+      option.placeRef === undefined ? [] : [{ placeRef: option.placeRef, name: option.place ?? option.label, ...(option.summary ? { summary: option.summary } : {}), variantRef: option.variantRef, active: option.active }],
+    );
+  }
+  const placeRef = doc.items.find((each) => each.ref === itemRef)?.placeRef;
+  const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
+  return place !== undefined && isEateryPlace(place) ? [{ placeRef: place.ref, name: place.name, active: true }] : [];
+}
+
+/** Czy ta knajpa z wyszukiwania jest już przypięta do posiłku. */
+export function isPinnedEatery(doc: Doc, itemRef: string, eatery: Eatery): boolean {
+  const pinned = new Set(mealEateries(doc, itemRef).map((each) => each.placeRef));
+  return doc.places.some((place) => pinned.has(place.ref) && sameEatery(place, eatery));
 }
 
 /** Elementy do zapisu, w kolejności kluczy obcych: miejsca → grupa → warianty → punkty. */
 export type EatOutWrite =
-  | { collection: 'places'; element: Place; op: 'insert' }
+  | { collection: 'places'; element: Place; op: 'insert' | 'update' }
   | { collection: 'variantGroups'; element: Group; op: 'insert' | 'update' }
   | { collection: 'variants'; element: Variant; op: 'insert' }
   | { collection: 'items'; element: Item; op: 'insert' | 'update' };
 
-export type EatOutEdit = { doc: Doc; writes: EatOutWrite[] };
+/** `pinned` — miejsca wybranych knajp, także tych, które już były przypięte. */
+export type EatOutEdit = { doc: Doc; writes: EatOutWrite[]; pinned: string[] };
 
 /**
- * Zapis wybranych knajp przy posiłku. Jedna (a posiłek nie ma jeszcze wyboru) → nowe miejsce
+ * Przypięcie wybranych knajp do posiłku. Jedna (a posiłek nie ma jeszcze knajpy) → miejsce
  * posiłku. Kilka → grupa „<posiłek> — gdzie jemy?”: posiłek dostaje pierwszą knajpę i jej wariant
  * (polecany), każda kolejna to kopia posiłku w swoim wariancie, zaraz za nim w kolejności dnia.
- * Gdy grupa już jest, nowe knajpy dochodzą do niej. `newRef` daje klucze `id-<uuid>`.
+ * Knajpa przypięta wcześniej nie znika: z następną tworzy taką grupę, a gdy grupa już jest, nowe
+ * knajpy do niej dochodzą. Knajpa już przypięta nie dubluje się. `newRef` daje klucze `id-<uuid>`.
  */
 export function addEatOutChoices(doc: Doc, itemRef: string, picks: { eatery: Eatery; summary?: string }[], newRef: () => string): EatOutEdit | null {
   const meal = doc.items.find((each) => each.ref === itemRef);
   if (meal === undefined || meal.dayRef === undefined || picks.length === 0) return null;
-  const places = picks.map(({ eatery }) => eateryPlace(eatery, newRef()));
-  const writes: EatOutWrite[] = places.map((place) => ({ collection: 'places', element: place, op: 'insert' }));
+  const before = mealEateries(doc, itemRef);
+  const known = new Set(before.map((each) => each.placeRef));
+  const writes: EatOutWrite[] = [];
+  const added: Place[] = [];
+  const updated = new Map<string, Place>();
+  const chosen: { place: Place; summary: string | undefined }[] = [];
+  for (const { eatery, summary } of picks) {
+    const existing = [...doc.places, ...added].find((place) => sameEatery(place, eatery));
+    if (existing === undefined) {
+      const place = eateryPlace(eatery, newRef());
+      added.push(place);
+      writes.push({ collection: 'places', element: place, op: 'insert' });
+      chosen.push({ place, summary });
+    } else if (!chosen.some((each) => each.place.ref === existing.ref)) {
+      const place = pinnedPlace(existing, eatery);
+      if (JSON.stringify(place) !== JSON.stringify(existing)) {
+        updated.set(place.ref, place);
+        writes.push({ collection: 'places', element: place, op: 'update' });
+      }
+      chosen.push({ place, summary });
+    }
+  }
+  const pinned = chosen.map(({ place }) => place.ref);
+  const placesAfter = [...doc.places.map((place) => updated.get(place.ref) ?? place), ...added];
+  const fresh = chosen.filter(({ place }) => !known.has(place.ref));
+  if (fresh.length === 0) return { doc: { ...doc, places: placesAfter }, writes, pinned };
   let group = eatOutGroup(doc, itemRef);
 
-  if (group === undefined && picks.length === 1) {
-    const updated: Item = { ...meal, placeRef: places[0]!.ref };
-    writes.push({ collection: 'items', element: updated, op: 'update' });
-    return { doc: { ...doc, places: [...doc.places, ...places], items: doc.items.map((each) => (each.ref === itemRef ? updated : each)) }, writes };
+  if (group === undefined && before.length === 0 && fresh.length === 1) {
+    const changed: Item = { ...meal, placeRef: fresh[0]!.place.ref };
+    if (meal.placeRef !== changed.placeRef) writes.push({ collection: 'items', element: changed, op: 'update' });
+    return { doc: { ...doc, places: placesAfter, items: doc.items.map((each) => (each.ref === itemRef ? changed : each)) }, writes, pinned };
   }
 
   const variants: Variant[] = [];
   const items: Item[] = [];
   const updates: Item[] = [];
-  let pending = places.map((place, index) => ({ place, summary: picks[index]!.summary }));
+  // Knajpa przypięta wcześniej staje się pierwszą opcją: posiłek zostaje przy niej.
+  const earlier = group === undefined ? before.flatMap((each) => placesAfter.filter((place) => place.ref === each.placeRef)) : [];
+  let pending: { place: Place; summary?: string | undefined }[] = [...earlier.map((place) => ({ place })), ...fresh];
   if (group === undefined) {
     group = { ref: newRef(), scope: 'item', dayRef: meal.dayRef, title: `${meal.title} — gdzie jemy?`, conditionKind: 'choice' };
     writes.push({ collection: 'variantGroups', element: group, op: 'insert' });
@@ -263,11 +354,12 @@ export function addEatOutChoices(doc: Doc, itemRef: string, picks: { eatery: Eat
   return {
     doc: {
       ...doc,
-      places: [...doc.places, ...places],
+      places: placesAfter,
       variantGroups: doc.variantGroups.some((each) => each.ref === groupRef) ? doc.variantGroups : [...doc.variantGroups, group],
       variants: [...doc.variants, ...variants],
       items: [...doc.items.map((each) => changed.get(each.ref) ?? each), ...items],
     },
     writes,
+    pinned,
   };
 }
