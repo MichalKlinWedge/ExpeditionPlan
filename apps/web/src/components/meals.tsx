@@ -53,6 +53,7 @@ export function Meals({ tripId, doc, canEdit }: { tripId: string; doc: TripDocum
               {meal.selfCooked && <span aria-hidden="true">🍳 </span>}
               {meal.title}
               {meal.place && <span className="text-zinc-500"> · {meal.place}</span>}
+              {meal.at && <span className="text-zinc-500"> · {meal.at.stop ? "postój w trasie" : "przy punkcie"}: {meal.at.title}</span>}
               {meal.selfCooked && <span className="text-zinc-500"> · porcje: {people(meal.people)}</span>}
               {canEdit && (
                 <>

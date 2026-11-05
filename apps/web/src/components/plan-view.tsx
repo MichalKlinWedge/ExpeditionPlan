@@ -60,6 +60,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DayConstraints, DayEndField, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
+import { MealLink } from "@/components/meal-link";
 import { ItemPlaceEditor } from "@/components/item-place";
 import { highlightRoute, type LatLng, PlanMap } from "@/components/plan-map";
 import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
@@ -1081,6 +1082,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                         </button>
                       )
                     )}
+                    {source.kind === "meal" && <MealLink doc={doc} itemRef={item.ref} options={options} onEdit={actions.edit} />}
                     {onRules && <ItemVariants doc={doc} dayRef={dayRef} itemRef={item.ref} onRules={onRules} />}
                   </div>
                 )}

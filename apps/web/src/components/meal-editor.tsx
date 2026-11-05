@@ -1,6 +1,6 @@
 "use client";
 
-import { addMeal, documentProblem, ItemInUseError, mealList, type PlanEdit, removeItemClosingGap, type TripDocument, updateItem } from "@expeditionplan/core";
+import { addMeal, documentProblem, ItemInUseError, mealList, mealPoints, type PlanEdit, removeItemClosingGap, scheduleDay, type TripDocument, updateItem } from "@expeditionplan/core";
 import { savePlanEdit, uuidv7 } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -8,12 +8,13 @@ import { useState, useTransition } from "react";
 import { EatOutOptions, EatOutSearch } from "@/components/eat-out";
 import { ItemEditor } from "@/components/item-editor";
 import { SelfCookedToggle } from "@/components/logistics-editors";
+import { MealLink, PointOptions } from "@/components/meal-link";
 import { createClient } from "@/lib/supabase/client";
 
 /**
  * Posiłki w trybie edycji: nowy posiłek w wybranym dniu (śniadanie, obiad, kolacja…) z godziną
  * „ok.” — wchodzi do planu dnia na swoje miejsce (\`addMeal\` w core), zmiana nazwy, godziny i czasu
- * (formularz jak w planie), usunięcie i — przy jedzeniu na mieście — knajpy w pobliżu (`EatOutSearch`). Zapis tą samą drogą co edytor planu (\`savePlanEdit\`).
+ * (formularz jak w planie), spięcie z punktem planu (`MealLink`), usunięcie i — przy jedzeniu na mieście — knajpy w pobliżu (`EatOutSearch`). Zapis tą samą drogą co edytor planu (\`savePlanEdit\`).
  */
 
 const SUGGESTIONS = ["Śniadanie", "Drugie śniadanie", "Lunch", "Obiad", "Podwieczorek", "Kolacja", "Przekąska"];
@@ -53,7 +54,9 @@ export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocu
       <ul className="flex flex-col gap-1">
         {meals.map((meal) => {
           const item = byRef.get(meal.itemRef);
-          const time = item?.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}` : null;
+          // Spięty posiłek nie ma własnej godziny: liczy ją od punktu.
+          const counted = meal.at && !meal.at.stop ? scheduleDay(doc, meal.dayRef).items.find((each) => each.ref === meal.itemRef)?.startLocal : undefined;
+          const time = item?.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}` : counted ? `ok. ${counted}` : null;
           return (
             <li key={meal.itemRef} className="flex flex-col">
               <div>
@@ -64,6 +67,7 @@ export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocu
                 {meal.selfCooked && <span aria-hidden="true">🍳 </span>}
                 {meal.title}
                 {meal.place && <span className="text-zinc-500"> · {meal.place}</span>} <SelfCookedToggle tripId={tripId} itemRef={meal.itemRef} value={meal.selfCooked === true} />
+                <MealLink doc={doc} itemRef={meal.itemRef} disabled={pending} onEdit={(edit) => save(edit)} />
                 <span className="ml-1 text-xs text-zinc-500">
                   <button disabled={pending} onClick={() => setEditing(editing === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
                     {editing === meal.itemRef ? "zamknij" : "zmień"}
@@ -104,24 +108,32 @@ export function MealEditor({ tripId, doc, ids }: { tripId: string; doc: TripDocu
   );
 }
 
-function AddMeal({ doc, disabled, onAdd }: { doc: TripDocument; disabled: boolean; onAdd: (dayRef: string, meal: { title: string; time?: string; selfCooked?: boolean }) => void }) {
+function AddMeal({ doc, disabled, onAdd }: { doc: TripDocument; disabled: boolean; onAdd: (dayRef: string, meal: { title: string; time?: string; selfCooked?: boolean; atRef?: string }) => void }) {
   const [dayRef, setDayRef] = useState(doc.days[0]!.ref);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
   const [selfCooked, setSelfCooked] = useState(false);
+  const [atRef, setAtRef] = useState("");
   return (
     <form
       className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
       onSubmit={(event) => {
         event.preventDefault();
         if (title.trim() === "") return;
-        onAdd(dayRef, { title: title.trim(), ...(time ? { time } : {}), ...(selfCooked ? { selfCooked } : {}) });
+        onAdd(dayRef, { title: title.trim(), ...(time ? { time } : {}), ...(selfCooked ? { selfCooked } : {}), ...(atRef ? { atRef } : {}) });
         setTitle("");
         setTime("");
+        setAtRef("");
       }}>
       <label className="flex flex-col gap-1 text-xs text-zinc-500">
         Dzień
-        <select value={dayRef} onChange={(event) => setDayRef(event.target.value)} className={input}>
+        <select
+          value={dayRef}
+          onChange={(event) => {
+            setDayRef(event.target.value);
+            setAtRef("");
+          }}
+          className={input}>
           {doc.days.map((day, index) => (
             <option key={day.ref} value={day.ref}>
               {index + 1}. {shortDay(day.date)}
@@ -142,6 +154,15 @@ function AddMeal({ doc, disabled, onAdd }: { doc: TripDocument; disabled: boolea
         Godzina (ok.)
         <input type="time" value={time} onChange={(event) => setTime(event.target.value)} className={input} />
       </label>
+      {mealPoints(doc, dayRef).length > 0 && (
+        <label className="flex min-w-40 flex-col gap-1 text-xs text-zinc-500">
+          Przy punkcie (opcjonalnie)
+          <select value={atRef} onChange={(event) => setAtRef(event.target.value)} className={input}>
+            <option value="">osobny punkt</option>
+            <PointOptions doc={doc} dayRef={dayRef} />
+          </select>
+        </label>
+      )}
       <label className="flex items-center gap-1 pb-1 text-xs">
         <input type="checkbox" checked={selfCooked} onChange={(event) => setSelfCooked(event.target.checked)} />
         gotujemy sami

@@ -37,6 +37,11 @@ function replace(doc: Doc, items: Item[]): Doc {
   return { ...doc, items: doc.items.map((item) => next.get(item.ref) ?? item) };
 }
 
+/** Czy punkt jest podpunktem innego z tej samej listy (blok, postój w trasie, posiłek przy punkcie). */
+const inBlock = (list: Item[], item: Item) => item.parentRef !== undefined && list.some((each) => each.ref === item.parentRef);
+/** Ostatni element bloku: sam punkt albo jego najpóźniejszy podpunkt. */
+const blockEnd = (list: Item[], item: Item) => [item, ...list.filter((each) => each.parentRef === item.ref)].sort(byKey).at(-1)!;
+
 /** Klucz dla `item` między sąsiadami; bez miejsca — przenumerowanie całego dnia. */
 function place(doc: Doc, dayRef: string, item: Item, beforeRef: string | undefined, afterRef: string | undefined): Item[] {
   const others = dayItems(doc, dayRef).filter((each) => each.ref !== item.ref);
@@ -85,7 +90,7 @@ function timeClashes(doc: Doc, item: Item, dayRef: string): boolean {
  * dokładna godzina rezerwacji (bilet) i godzina względna, która sama liczy się od poprzedniego punktu.
  */
 /** Godzina, której nie zmieniamy po przesunięciu czegoś innego: oznaczona jako stała albo dokładna z rezerwacją (bilet). */
-const heldTime = (item: Item) => item.isFixed === true || (item.time?.precision === 'exact' && item.bookingRef !== undefined);
+export const heldTime = (item: Item) => item.isFixed === true || (item.time?.precision === 'exact' && item.bookingRef !== undefined);
 
 function settleMovedTime(edit: PlanEdit, ref: string, dayRef: string): PlanEdit {
   const item = edit.doc.items.find((each) => each.ref === ref);
@@ -97,18 +102,58 @@ function settleMovedTime(edit: PlanEdit, ref: string, dayRef: string): PlanEdit 
   return { ...edit, doc: replace(edit.doc, [cleared]), changed: edit.changed.map((each) => (each.ref === ref ? cleared : each)) };
 }
 
-/** W górę / w dół w kolejności dnia. */
+/**
+ * Podpunkty idą za swoim punktem: ten sam dzień i miejsce zaraz po nim. Silnik liczy podpunkt od początku
+ * rodzica, więc nie może stać przed nim. Postojów przejazdu to nie dotyczy przy zmianie dnia (`detachRouteStops`).
+ */
+function carryChildren(edit: PlanEdit, ref: string): PlanEdit {
+  const parent = edit.doc.items.find((each) => each.ref === ref);
+  if (parent?.dayRef === undefined) return edit;
+  const dayRef = parent.dayRef;
+  const children = edit.doc.items.filter((each) => each.parentRef === ref && (parent.kind !== 'transport' || each.dayRef === dayRef)).sort(byKey);
+  let result = edit;
+  let beforeRef = ref;
+  for (const child of children) {
+    const doc = result.doc;
+    const list = dayItems(doc, dayRef);
+    const before = list.find((each) => each.ref === beforeRef)!;
+    const afterRef = list.find((each) => each.ref !== ref && each.parentRef !== ref && (each.sortKey ?? '') > (before.sortKey ?? ''))?.ref;
+    const placed = place(doc, dayRef, doc.items.find((each) => each.ref === child.ref)!, beforeRef, afterRef);
+    const placedRefs = new Set(placed.map((each) => each.ref));
+    result = { ...result, doc: replace(doc, placed), changed: [...result.changed.filter((each) => !placedRefs.has(each.ref)), ...placed] };
+    if (child.dayRef !== dayRef) result = settleMovedTime(result, child.ref, dayRef);
+    beforeRef = child.ref;
+  }
+  return result;
+}
+
+/** Punkt (z już ustawionymi polami) zaraz po bloku `blockRef`: po punkcie i wszystkich jego podpunktach. */
+export function placeAfterBlock(doc: Doc, item: Item, blockRef: string): PlanEdit {
+  const list = dayItems(doc, item.dayRef!).filter((each) => each.ref !== item.ref);
+  const end = blockEnd(list, list.find((each) => each.ref === blockRef)!);
+  const next = list.find((each) => (each.sortKey ?? '') > (end.sortKey ?? '') && each.parentRef !== blockRef);
+  const changed = place(doc, item.dayRef!, item, end.ref, next?.ref);
+  return { doc: replace(doc, changed), changed };
+}
+
+/**
+ * W górę / w dół w kolejności dnia. Punkt przeskakuje sąsiada razem z jego podpunktami i zabiera swoje;
+ * podpunkt zmienia miejsce tylko wśród podpunktów tego samego punktu.
+ */
 export function moveWithinDay(doc: Doc, ref: string, direction: -1 | 1): PlanEdit | null {
   const item = doc.items.find((each) => each.ref === ref);
   if (item?.dayRef === undefined) return null;
   const list = dayItems(doc, item.dayRef);
-  const index = list.findIndex((each) => each.ref === ref);
-  const target = index + direction;
-  if (target < 0 || target >= list.length) return null;
-  const rest = list.filter((each) => each.ref !== ref);
-  const insertAt = direction === -1 ? target : target;
-  const changed = place(doc, item.dayRef, item, rest[insertAt - 1]?.ref, rest[insertAt]?.ref);
-  return settleMovedTime({ doc: replace(doc, changed), changed }, ref, item.dayRef);
+  const child = inBlock(list, item);
+  const steps = child ? list.filter((each) => each.parentRef === item.parentRef) : list.filter((each) => !inBlock(list, each));
+  const target = steps.findIndex((each) => each.ref === ref) + direction;
+  if (target < 0 || target >= steps.length) return null;
+  const rest = steps.filter((each) => each.ref !== ref);
+  const previous = rest[target - 1];
+  const before = previous === undefined ? (child ? list.find((each) => each.ref === item.parentRef) : undefined) : child ? previous : blockEnd(list, previous);
+  const after = rest[target] ?? list.find((each) => (each.sortKey ?? '') > (before?.sortKey ?? '') && each.ref !== ref && !(child && each.parentRef === item.parentRef));
+  const changed = place(doc, item.dayRef, item, before?.ref, after?.ref);
+  return carryChildren(settleMovedTime({ doc: replace(doc, changed), changed }, ref, item.dayRef), ref);
 }
 
 /** Do innego dnia (na koniec) albo do puli (`null`). */
@@ -125,44 +170,51 @@ export function moveToDay(doc: Doc, ref: string, dayRef: string | null): PlanEdi
       planStatus: item.planStatus === 'scheduled' ? 'candidate' : item.planStatus,
       time: item.time?.precision === 'relative' ? undefined : item.time,
     };
-    return { doc: replace(doc, [pooled]), changed: [pooled] };
+    // Podpunkty zostają w dniu, już jako zwykłe punkty.
+    const freed = doc.items.filter((each) => each.parentRef === ref).map(({ parentRef: _parent, ...rest }) => rest as Item);
+    return { doc: replace(doc, [pooled, ...freed]), changed: [pooled, ...freed] };
   }
   const last = dayItems(doc, dayRef).at(-1);
   const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined }, last?.ref, undefined);
-  return detachRouteStops(settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef), ref);
+  return detachRouteStops(carryChildren(settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef), ref), ref);
 }
 
 /** Do dnia `dayRef`, zaraz po `afterRef` (`null` = na początek dnia) — dla łatek AI („przenieś za X”). */
 export function moveAfter(doc: Doc, ref: string, dayRef: string, afterRef: string | null): PlanEdit | null {
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined) return null;
-  const others = dayItems(doc, dayRef).filter((each) => each.ref !== ref);
-  const index = afterRef === null ? -1 : others.findIndex((each) => each.ref === afterRef);
+  const others = dayItems(doc, dayRef).filter((each) => each.ref !== ref && each.parentRef !== ref);
+  let index = afterRef === null ? -1 : others.findIndex((each) => each.ref === afterRef);
   if (afterRef !== null && index === -1) return null;
+  // Zaraz po bloku `afterRef`, nie w jego środku.
+  while (index >= 0 && others[index + 1]?.parentRef === afterRef) index++;
   const changed = place(doc, dayRef, { ...item, planStatus: 'scheduled', parentRef: undefined }, others[index]?.ref, others[index + 1]?.ref);
-  return detachRouteStops({ doc: replace(doc, changed), changed }, ref);
+  return detachRouteStops(carryChildren({ doc: replace(doc, changed), changed }, ref), ref);
 }
 
 /**
  * Przeciągnięcie w edytorze: do dnia `dayRef` przed punkt `nextRef` (brak = na koniec dnia) albo
- * do puli (`dayRef: null`). W obrębie dnia punkt zostaje w swoim bloku; do innego dnia idzie bez
- * bloku, jak przy „przenieś do…”. `null` = upuszczenie niczego nie zmienia.
+ * do puli (`dayRef: null`). Podpunkt upuszczony w swoim bloku zostaje podpunktem, a poza nim albo w innym
+ * dniu idzie bez bloku, jak przy „przenieś do…”. Punkt zabiera swoje podpunkty i nie ląduje w środku cudzego
+ * bloku. `null` = upuszczenie niczego nie zmienia.
  */
 export function dropItem(doc: Doc, ref: string, dayRef: string | null, nextRef?: string): PlanEdit | null {
   if (dayRef === null) return moveToDay(doc, ref, null);
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined || ref === nextRef) return null;
-  const others = dayItems(doc, dayRef).filter((each) => each.ref !== ref);
-  const index = nextRef === undefined ? others.length : others.findIndex((each) => each.ref === nextRef);
+  const own = dayItems(doc, dayRef).filter((each) => each.parentRef !== ref);
+  const others = own.filter((each) => each.ref !== ref);
+  let index = nextRef === undefined ? others.length : others.findIndex((each) => each.ref === nextRef);
   if (index === -1) return null;
   const sameDay = item.dayRef === dayRef;
-  if (sameDay) {
-    const current = dayItems(doc, dayRef).findIndex((each) => each.ref === ref);
-    if (current === index) return null;
-  }
-  const moved: Item = { ...item, planStatus: 'scheduled', parentRef: sameDay ? item.parentRef : undefined };
-  const changed = place(doc, dayRef, moved, others[index - 1]?.ref, others[index]?.ref);
-  return detachRouteStops(settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef), ref);
+  if (sameDay && own.findIndex((each) => each.ref === ref) === index) return null;
+  const sibling = (each: Item | undefined) => each !== undefined && each.parentRef !== undefined && each.parentRef === item.parentRef;
+  while (others[index] !== undefined && inBlock(others, others[index]!) && !sibling(others[index])) index++;
+  const previous = others[index - 1];
+  const staysInBlock = sameDay && item.parentRef !== undefined && (previous?.ref === item.parentRef || sibling(previous));
+  const moved: Item = { ...item, planStatus: 'scheduled', parentRef: staysInBlock ? item.parentRef : undefined };
+  const changed = place(doc, dayRef, moved, previous?.ref, others[index]?.ref);
+  return detachRouteStops(carryChildren(settleMovedTime({ doc: replace(doc, changed), changed }, ref, dayRef), ref), ref);
 }
 
 export function updateItem(doc: Doc, ref: string, patch: Partial<Item>): PlanEdit | null {

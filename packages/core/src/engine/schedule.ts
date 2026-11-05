@@ -320,8 +320,10 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
 
     if (time !== undefined && time.precision !== 'day') {
       if (time.precision === 'relative') {
-        if (time.from === 'previous' && previous !== undefined) {
-          stated = previous.start + time.offsetMin * MINUTE;
+        // Podpunkt bloku liczy się od początku swojego punktu, choćby przed nim były inne podpunkty.
+        const base = parentStart ?? previous?.start;
+        if (time.from === 'previous' && base !== undefined) {
+          stated = base + time.offsetMin * MINUTE;
         } else {
           if (anchor === undefined) {
             anchor = cursor;
@@ -455,7 +457,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     }
 
     // Kursor: koniec punktu + bufor + przejście niejawne do następnego punktu.
-    const next = items[index + 1];
+    const next = items.slice(index + 1).find((each) => parentOf(each) === undefined);
     const leg = next === undefined ? undefined : legsFrom.get(`${item.ref}>${next.ref}`);
     const legMin =
       leg === undefined ? 0 : (scenario === 'pessimistic' ? (leg.durationMaxMin ?? leg.durationMin) : leg.durationMin) ?? 0;
@@ -463,7 +465,9 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     blockStart.set(item.ref, start);
     if (lane === undefined) cursor = after;
     else if (parent === undefined) lanes.set(lane, after);
-    // Podpunkt bloku nie przesuwa dnia — blok trwa tyle, ile mówi plan.
+    // Podpunkt bloku nie przesuwa dnia — blok trwa tyle, ile mówi plan. Wyjątek to posiłek przy punkcie:
+    // jedzą wszyscy, więc następny punkt czeka, aż skończą.
+    else if (item.kind === 'meal') cursor = Math.max(cursor, after);
     previous = scheduled;
   });
 
