@@ -1035,21 +1035,33 @@ isOneToOne: false
                   ]
                 },"travelers": {
                   Row: {
-                    "age": number | null,"created_at": string,"deleted_at": string | null,"diet": string | null,"from_date": string | null,"guardian_id": string | null,"height_cm": number | null,"household": string | null,"id": string,"is_driver": boolean | null,"name": string,"nickname": string | null,"notes": string | null,"ref": string | null,"row_version": number,"sort_key": string | null,"tentative": boolean | null,"to_date": string | null,"trip_id": string,"updated_at": string,"updated_by": string | null,"user_id": string | null
+                    "age": number | null,"created_at": string,"deleted_at": string | null,"diet": string | null,"end_place_id": string | null,"from_date": string | null,"guardian_id": string | null,"height_cm": number | null,"household": string | null,"id": string,"is_driver": boolean | null,"name": string,"nickname": string | null,"notes": string | null,"ref": string | null,"row_version": number,"sort_key": string | null,"start_place_id": string | null,"tentative": boolean | null,"to_date": string | null,"trip_id": string,"updated_at": string,"updated_by": string | null,"user_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "age"?: number | null,"created_at"?: string,"deleted_at"?: string | null,"diet"?: string | null,"from_date"?: string | null,"guardian_id"?: string | null,"height_cm"?: number | null,"household"?: string | null,"id": string,"is_driver"?: boolean | null,"name": string,"nickname"?: string | null,"notes"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"tentative"?: boolean | null,"to_date"?: string | null,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string | null
+                    "age"?: number | null,"created_at"?: string,"deleted_at"?: string | null,"diet"?: string | null,"end_place_id"?: string | null,"from_date"?: string | null,"guardian_id"?: string | null,"height_cm"?: number | null,"household"?: string | null,"id": string,"is_driver"?: boolean | null,"name": string,"nickname"?: string | null,"notes"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"start_place_id"?: string | null,"tentative"?: boolean | null,"to_date"?: string | null,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string | null
                   }
                   Update: {
-                    "age"?: number | null,"created_at"?: string,"deleted_at"?: string | null,"diet"?: string | null,"from_date"?: string | null,"guardian_id"?: string | null,"height_cm"?: number | null,"household"?: string | null,"id"?: string,"is_driver"?: boolean | null,"name"?: string,"nickname"?: string | null,"notes"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"tentative"?: boolean | null,"to_date"?: string | null,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string | null
+                    "age"?: number | null,"created_at"?: string,"deleted_at"?: string | null,"diet"?: string | null,"end_place_id"?: string | null,"from_date"?: string | null,"guardian_id"?: string | null,"height_cm"?: number | null,"household"?: string | null,"id"?: string,"is_driver"?: boolean | null,"name"?: string,"nickname"?: string | null,"notes"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"start_place_id"?: string | null,"tentative"?: boolean | null,"to_date"?: string | null,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"user_id"?: string | null
                   }
                   Relationships: [
                     {
+      foreignKeyName: "travelers_end_place_id_fkey"
+      columns: ["end_place_id"]
+isOneToOne: false
+      referencedRelation: "places"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "travelers_guardian_id_fkey"
       columns: ["guardian_id"]
 isOneToOne: false
       referencedRelation: "travelers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "travelers_start_place_id_fkey"
+      columns: ["start_place_id"]
+isOneToOne: false
+      referencedRelation: "places"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "travelers_trip_id_fkey"

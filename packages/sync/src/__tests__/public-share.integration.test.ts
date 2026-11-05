@@ -40,6 +40,7 @@ describe('publiczny link do planu', () => {
       expect(shared.bookings.every((booking) => booking.confirmationCode === undefined && booking.price === undefined && booking.paid === undefined)).toBe(true);
       expect(shared.travelers.every((traveler, i) => traveler.name === `Osoba ${i + 1}` && traveler.notes === undefined)).toBe(true);
       expect(JSON.stringify(payload)).not.toMatch(/"(tentative|from_date|to_date)"/);
+      expect(JSON.stringify((payload as { tables: { travelers: unknown } }).tables.travelers)).not.toMatch(/"(start_place_id|end_place_id)"/);
       // Imiona znikają z listy osób; w opisach punktów zostaje tekst taki, jak go napisano.
       const raw = JSON.stringify(payload);
       for (const secret of [...doc.contacts.filter((contact) => contact.role !== 'emergency').flatMap((contact) => [contact.phone, contact.email]), ...doc.bookings.map((booking) => booking.confirmationCode), ...doc.travelers.map((traveler) => traveler.notes)]) {

@@ -128,7 +128,7 @@ const legExtras: Pick<Spec, 'toRow' | 'fromRow'> = {
 export const SPECS: Record<Collection, Spec> = {
   travelers: {
     table: 'travelers',
-    fields: ['name', 'nickname', 'age', 'household', ['guardianRef', 'guardian_id'], 'isDriver', 'heightCm', 'notes', 'tentative', 'fromDate', 'toDate'],
+    fields: ['name', 'nickname', 'age', 'household', ['guardianRef', 'guardian_id'], 'isDriver', 'heightCm', 'notes', 'tentative', 'fromDate', 'toDate', ['startPlaceRef', 'start_place_id'], ['endPlaceRef', 'end_place_id']],
   },
   places: {
     table: 'places',

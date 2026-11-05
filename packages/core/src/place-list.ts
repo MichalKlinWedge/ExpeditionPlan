@@ -16,7 +16,9 @@ export type PlaceUsage = {
   days: number;
   /** Przejazdy spoza punktów (`doc.legs`). */
   legs: number;
-  /** Punkty, rezerwacje, dni i przejazdy; źródła nie blokują usunięcia. */
+  /** Uczestnicy, którzy tu zaczynają albo kończą. */
+  travelers: number;
+  /** Punkty, rezerwacje, dni, przejazdy i uczestnicy; źródła nie blokują usunięcia. */
   total: number;
 };
 
@@ -25,7 +27,8 @@ export function placeUsage(doc: Doc, ref: string): PlaceUsage {
   const bookings = doc.bookings.filter((booking) => booking.startPlaceRef === ref || booking.endPlaceRef === ref).map((booking) => ({ ref: booking.ref, title: booking.title }));
   const days = doc.days.filter((day) => day.baseRef === ref).length;
   const legs = doc.legs.filter((leg) => leg.fromRef === ref || leg.toRef === ref).length;
-  return { items, bookings, days, legs, total: items.length + bookings.length + days + legs };
+  const travelers = doc.travelers.filter((traveler) => traveler.startPlaceRef === ref || traveler.endPlaceRef === ref).length;
+  return { items, bookings, days, legs, travelers, total: items.length + bookings.length + days + legs + travelers };
 }
 
 export type PlaceEntry = {
@@ -98,7 +101,7 @@ export function similarPlaces(doc: Doc): Record<string, string[]> {
 }
 
 export type PlaceMergeWrite = {
-  collection: 'items' | 'days' | 'bookings' | 'legs' | 'sources' | 'places';
+  collection: 'travelers' | 'items' | 'days' | 'bookings' | 'legs' | 'sources' | 'places';
   element: { ref: string } & Record<string, unknown>;
   op: 'update' | 'remove';
 };
@@ -137,6 +140,16 @@ export function mergePlaces(doc: Doc, keepRef: string, dropRef: string): { doc: 
       return next;
     });
 
+  const travelers = swap(
+    'travelers',
+    doc.travelers,
+    (traveler) => ({
+      ...traveler,
+      ...(traveler.startPlaceRef === dropRef ? { startPlaceRef: keepRef } : {}),
+      ...(traveler.endPlaceRef === dropRef ? { endPlaceRef: keepRef } : {}),
+    }),
+    (traveler) => traveler.startPlaceRef === dropRef || traveler.endPlaceRef === dropRef,
+  );
   const items = swap(
     'items',
     doc.items,
@@ -169,5 +182,5 @@ export function mergePlaces(doc: Doc, keepRef: string, dropRef: string): { doc: 
   const merged = mergedPlace(keep, drop);
   writes.push({ collection: 'places', element: merged as { ref: string } & Record<string, unknown>, op: 'update' });
   writes.push({ collection: 'places', element: drop as { ref: string } & Record<string, unknown>, op: 'remove' });
-  return { doc: { ...doc, items, days, bookings, legs, sources, places: doc.places.filter((each) => each.ref !== dropRef).map((each) => (each.ref === keepRef ? merged : each)) }, writes };
+  return { doc: { ...doc, travelers, items, days, bookings, legs, sources, places: doc.places.filter((each) => each.ref !== dropRef).map((each) => (each.ref === keepRef ? merged : each)) }, writes };
 }

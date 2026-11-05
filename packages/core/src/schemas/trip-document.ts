@@ -77,6 +77,9 @@ export const DocTraveler = z.object({
   fromDate: IsoDate.optional(),
   /** Wyjeżdża wcześniej niż reszta; brak = do końca wyjazdu. */
   toDate: IsoDate.optional(),
+  /** Skąd rusza i gdzie kończy: do planowania wspólnego transportu. */
+  startPlaceRef: Ref.optional(),
+  endPlaceRef: Ref.optional(),
 });
 
 export const DocPlace = z.object({
@@ -748,7 +751,11 @@ export function checkReferences(doc: Shape): { path: (string | number)[]; messag
     }
   };
 
-  doc.travelers.forEach((t, i) => expect(['travelers', i, 'guardianRef'], t.guardianRef, 'travelers'));
+  doc.travelers.forEach((t, i) => {
+    expect(['travelers', i, 'guardianRef'], t.guardianRef, 'travelers');
+    expect(['travelers', i, 'startPlaceRef'], t.startPlaceRef, 'places');
+    expect(['travelers', i, 'endPlaceRef'], t.endPlaceRef, 'places');
+  });
   doc.days.forEach((d, i) => {
     expect(['days', i, 'baseRef'], d.baseRef, 'places');
     expectBookingOrGroup(['days', i, 'lodgingRef'], d.lodgingRef);

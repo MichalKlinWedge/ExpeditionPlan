@@ -33,11 +33,12 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
   const { id } = await params;
   const wantsEdit = await editMode(searchParams);
   const { supabase } = await requireUser(`/trips/${id}/people`);
-  const [trip, members, travelers, share] = await Promise.all([
+  const [trip, members, travelers, share, places] = await Promise.all([
     supabase.from("my_trips").select("title, role, start_date, end_date").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, can_add_expenses, profiles(display_name)").eq("trip_id", id).order("created_at"),
-    supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver, tentative, from_date, to_date, notes").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
+    supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver, tentative, from_date, to_date, notes, start_place_id, end_place_id").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
     supabase.from("public_shares").select("enabled, hide").eq("trip_id", id).maybeSingle(),
+    supabase.from("places").select("id, name").eq("trip_id", id).is("deleted_at", null).order("name"),
   ]);
   if (trip.data === null) notFound();
   const role = trip.data.role!;
@@ -68,13 +69,13 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
 
       <section className={section}>
         <h2 className={heading}>Uczestnicy</h2>
-        {travelers.error ? (
+        {travelers.error || places.error ? (
           // Bez formularza dodawania: pusta lista wyglądałaby jak utrata danych i zachęcała do wpisywania osób od nowa.
           <p role="alert" className="text-sm text-red-600">
-            Nie udało się wczytać uczestników. To błąd odczytu, nie usunięcie danych: nie dodawaj ich od nowa, odśwież stronę za chwilę. ({travelers.error.message})
+            Nie udało się wczytać uczestników. To błąd odczytu, nie usunięcie danych: nie dodawaj ich od nowa, odśwież stronę za chwilę. ({(travelers.error ?? places.error)!.message})
           </p>
         ) : (
-          <TravelerList tripId={id} trip={{ start: trip.data.start_date!, end: trip.data.end_date! }} people={travelers.data} canEdit={editing} />
+          <TravelerList tripId={id} trip={{ start: trip.data.start_date!, end: trip.data.end_date! }} people={travelers.data} places={places.data} canEdit={editing} />
         )}
       </section>
 

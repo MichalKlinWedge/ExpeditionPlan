@@ -81,7 +81,36 @@ const NewTraveler = z.object({
   fromDate: IsoDate.or(z.literal("")).optional(),
   toDate: IsoDate.or(z.literal("")).optional(),
   notes: z.string().trim().max(2000, "Uwagi są za długie.").optional(),
+  startPlace: z.string().trim().max(200, "Nazwa miejsca jest za długa.").optional(),
+  endPlace: z.string().trim().max(200, "Nazwa miejsca jest za długa.").optional(),
 });
+
+/**
+ * Start i koniec uczestnika: nazwa z listy miejsc wyjazdu albo nowa. Nowe miejsce nie ma współrzędnych,
+ * uzupełnia się je na stronie „Miejsca”. Puste pole czyści wybór.
+ */
+async function transportFields(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], tripId: string, data: z.infer<typeof NewTraveler>) {
+  const wanted = [data.startPlace ?? "", data.endPlace ?? ""];
+  if (wanted.every((name) => name === "")) return { row: { start_place_id: null, end_place_id: null } };
+  const { data: places, error } = await supabase.from("places").select("id, name").eq("trip_id", tripId).is("deleted_at", null).order("name");
+  if (error) return { error: message(error) };
+  const known = new Map(places.map((place) => [place.name.toLowerCase(), place.id]));
+  const idFor = async (name: string): Promise<string | null | { error: string }> => {
+    if (name === "") return null;
+    const found = known.get(name.toLowerCase());
+    if (found !== undefined) return found;
+    const id = uuidv7();
+    const { error: failed } = await supabase.from("places").insert({ id, trip_id: tripId, name, provider: "unknown", sort_key: `z${Date.now().toString(36)}` });
+    if (failed) return { error: message(failed) };
+    known.set(name.toLowerCase(), id);
+    return id;
+  };
+  const start = await idFor(wanted[0]!);
+  if (start !== null && typeof start !== "string") return { error: start.error };
+  const end = await idFor(wanted[1]!);
+  if (end !== null && typeof end !== "string") return { error: end.error };
+  return { row: { start_place_id: start, end_place_id: end } };
+}
 
 /** Pola „waha się”, zakres dat i uwagi; zakres sprawdzony względem terminu wyjazdu. */
 async function presenceFields(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], tripId: string, data: z.infer<typeof NewTraveler>) {
@@ -99,6 +128,8 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
   const { supabase } = await requireUser(`/trips/${tripId}`);
   const presence = await presenceFields(supabase, tripId, parsed.data);
   if (presence.error !== undefined) return { error: presence.error };
+  const transport = await transportFields(supabase, tripId, parsed.data);
+  if (transport.error !== undefined) return { error: transport.error };
   const { count } = await supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", tripId);
   const { error } = await supabase.from("travelers").insert({
     id: uuidv7(),
@@ -110,6 +141,7 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
     guardian_id: parsed.data.guardianId || null,
     is_driver: parsed.data.isDriver === "on",
     ...presence.row,
+    ...transport.row,
     // Na koniec listy; klucz porównywany jak tekst, tak jak w imporcie dokumentu.
     sort_key: String(count ?? 0).padStart(5, "0"),
   });
@@ -118,7 +150,7 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
   return { ok: `Dodano: ${parsed.data.name}` };
 }
 
-/** Zmiana danych uczestnika (imię, wiek, rodzina, opiekun, kierowca, wahanie, daty, uwagi). O prawie decyduje RLS. */
+/** Zmiana danych uczestnika (imię, wiek, rodzina, opiekun, kierowca, wahanie, daty, uwagi, start i koniec). O prawie decyduje RLS. */
 export async function updateTraveler(tripId: string, travelerId: string, _prev: FormState, form: FormData): Promise<FormState> {
   const parsed = NewTraveler.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
@@ -126,6 +158,8 @@ export async function updateTraveler(tripId: string, travelerId: string, _prev: 
   const { supabase } = await requireUser(`/trips/${tripId}`);
   const presence = await presenceFields(supabase, tripId, parsed.data);
   if (presence.error !== undefined) return { error: presence.error };
+  const transport = await transportFields(supabase, tripId, parsed.data);
+  if (transport.error !== undefined) return { error: transport.error };
   const { data, error } = await supabase
     .from("travelers")
     .update({
@@ -136,6 +170,7 @@ export async function updateTraveler(tripId: string, travelerId: string, _prev: 
       guardian_id: parsed.data.guardianId || null,
       is_driver: parsed.data.isDriver === "on",
       ...presence.row,
+      ...transport.row,
     })
     .eq("id", travelerId)
     .eq("trip_id", tripId)

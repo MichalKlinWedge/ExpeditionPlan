@@ -256,12 +256,13 @@ export function movePlace(doc: Doc, ref: string, at: { lat: number; lng: number 
   return { doc: { ...doc, places: doc.places.map((each) => (each.ref === ref ? place : each)) }, changed: [], places: [{ place }] };
 }
 
-/** Ile elementów planu wskazuje miejsce: punkty (też ich przejazdy), dni (baza) i rezerwacje. */
+/** Ile elementów planu wskazuje miejsce: punkty (też ich przejazdy), dni (baza), rezerwacje i uczestnicy (start, koniec). */
 export function placeUses(doc: Doc, ref: string): number {
   return (
     doc.items.filter((item) => item.placeRef === ref || item.leg?.fromPlaceRef === ref || item.leg?.toPlaceRef === ref).length +
     doc.days.filter((day) => day.baseRef === ref).length +
-    doc.bookings.filter((booking) => booking.startPlaceRef === ref || booking.endPlaceRef === ref).length
+    doc.bookings.filter((booking) => booking.startPlaceRef === ref || booking.endPlaceRef === ref).length +
+    doc.travelers.filter((traveler) => traveler.startPlaceRef === ref || traveler.endPlaceRef === ref).length
   );
 }
 

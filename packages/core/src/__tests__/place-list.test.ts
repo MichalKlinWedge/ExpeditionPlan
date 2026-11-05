@@ -102,13 +102,17 @@ describe('scalanie miejsc', () => {
       items: base.items.map((item, index) => (index === 0 ? { ...item, kind: 'transport', placeRef: 'dup', leg: { mode: 'car', links: [], fromPlaceRef: 'dup', toPlaceRef: 'dup' } } : item)),
       days: base.days.map((day, index) => (index === 0 ? { ...day, baseRef: 'dup' } : day)),
       bookings: [...base.bookings, { ref: 'r-x', kind: 'lodging', status: 'booked', title: 'Nocleg', startPlaceRef: 'dup', endPlaceRef: 'dup' }],
+      travelers: base.travelers.map((traveler, index) => (index === 0 ? { ...traveler, startPlaceRef: 'dup', endPlaceRef: 'dup' } : traveler)),
     });
+    expect(placeUsage(doc, 'dup').travelers).toBe(1);
     const edit = mergePlaces(doc, place.ref, 'dup')!;
     const item = edit.doc.items[0]!;
     expect([item.placeRef, item.leg?.fromPlaceRef, item.leg?.toPlaceRef]).toEqual([place.ref, place.ref, place.ref]);
     expect(edit.doc.days[0]!.baseRef).toBe(place.ref);
     expect(edit.doc.bookings.find((each) => each.ref === 'r-x')).toMatchObject({ startPlaceRef: place.ref, endPlaceRef: place.ref });
-    expect(edit.writes.map((write) => write.collection).slice(0, 3)).toEqual(['items', 'days', 'bookings']);
+    expect(edit.doc.travelers[0]).toMatchObject({ startPlaceRef: place.ref, endPlaceRef: place.ref });
+    expect(JSON.stringify(edit.doc)).not.toContain('"dup"');
+    expect(edit.writes.map((write) => write.collection).slice(0, 4)).toEqual(['travelers', 'items', 'days', 'bookings']);
   });
 
   it('zostające miejsce bierze z drugiego tylko to, czego nie ma, a współrzędne razem ze źródłem', () => {
@@ -123,6 +127,16 @@ describe('scalanie miejsc', () => {
     expect(merged.links.map((link) => link.url)).toEqual(['https://a.example/', 'https://b.example/']);
     const kept = mergePlaces(doc, 'c', 'b')!.doc.places.find((each) => each.ref === 'c')!;
     expect(kept).toMatchObject({ lat: 51, lng: 16, provider: 'user', address: 'Własny', name: 'Inna' });
+  });
+
+  it('miejsce startu uczestnika nie jest „nieużywane” i nie da się go usunąć', () => {
+    const base = fixture('dinara');
+    const place = base.places[0]!;
+    const doc = TripDocument.parse({ ...base, travelers: base.travelers.map((traveler, index) => (index === 0 ? { ...traveler, endPlaceRef: place.ref } : traveler)) });
+    expect(placeUsage(doc, place.ref).total).toBeGreaterThan(placeUsage(base, place.ref).total);
+    const spare = TripDocument.parse({ ...doc, places: [...doc.places, { ref: 'wolne', name: 'Wolne', provider: 'unknown', links: [] }], travelers: doc.travelers.map((traveler, index) => (index === 0 ? { ...traveler, startPlaceRef: 'wolne' } : traveler)) });
+    expect(removeUnusedPlace(spare, 'wolne')).toBeNull();
+    expect(() => TripDocument.parse({ ...doc, travelers: doc.travelers.map((traveler, index) => (index === 0 ? { ...traveler, startPlaceRef: 'nie-ma' } : traveler)) })).toThrow();
   });
 
   it('nie scala miejsca samego ze sobą ani nieistniejącego', () => {

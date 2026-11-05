@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { transportPlan } from "@expeditionplan/core";
+import { useActionState, useId, useState, useTransition } from "react";
 
 import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTraveler, removeTrip, updateTraveler } from "@/app/actions";
 import { travelerPresence } from "@/lib/labels";
@@ -94,12 +95,17 @@ export type Traveler = {
   from_date: string | null;
   to_date: string | null;
   notes: string | null;
+  start_place_id: string | null;
+  end_place_id: string | null;
 };
 
 type TripRange = { start: string; end: string };
+type TripPlace = { id: string; name: string };
 
 /** Nowy uczestnik albo edycja istniejącego (`traveler`) — te same pola, inna akcja. */
-export function TravelerForm({ tripId, trip, guardians, traveler, onDone }: { tripId: string; trip: TripRange; guardians: { id: string; name: string }[]; traveler?: Traveler; onDone?: () => void }) {
+export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone }: { tripId: string; trip: TripRange; guardians: { id: string; name: string }[]; places: TripPlace[]; traveler?: Traveler; onDone?: () => void }) {
+  const placeList = useId();
+  const placeName = (id: string | null | undefined) => places.find((place) => place.id === id)?.name ?? "";
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = traveler ? await updateTraveler(tripId, traveler.id, prev, form) : await addTraveler(tripId, prev, form);
     if (result.ok && onDone) onDone();
@@ -154,7 +160,20 @@ export function TravelerForm({ tripId, trip, guardians, traveler, onDone }: { tr
         Uwagi
         <input name="notes" maxLength={2000} className={input} placeholder="np. dojedzie po pracy" defaultValue={traveler?.notes ?? ""} />
       </label>
-      <p className="col-span-2 text-xs text-zinc-500 sm:col-span-6">Puste daty oznaczają cały wyjazd.</p>
+      <label className={`${label} col-span-2 sm:col-span-3`}>
+        Start
+        <input name="startPlace" list={placeList} maxLength={200} className={input} placeholder="np. Wrocław" defaultValue={placeName(traveler?.start_place_id)} />
+      </label>
+      <label className={`${label} col-span-2 sm:col-span-3`}>
+        Koniec
+        <input name="endPlace" list={placeList} maxLength={200} className={input} placeholder="np. Jakuszyce" defaultValue={placeName(traveler?.end_place_id)} />
+      </label>
+      <datalist id={placeList}>
+        {places.map((place) => (
+          <option key={place.id} value={place.name} />
+        ))}
+      </datalist>
+      <p className="col-span-2 text-xs text-zinc-500 sm:col-span-6">Puste daty oznaczają cały wyjazd. Start i koniec wybierz z listy miejsc albo wpisz nowe: pojawi się na stronie „Miejsca”.</p>
       <div className="col-span-2 flex gap-2 sm:col-span-5">
         <button disabled={pending} className={button}>
           {pending ? "Zapisuję…" : traveler ? "Zapisz" : "Dodaj"}
@@ -173,7 +192,37 @@ export function TravelerForm({ tripId, trip, guardians, traveler, onDone }: { tr
 }
 
 /** Lista uczestników; organizator i edytor zmieniają dane albo usuwają (gdy nic na nich nie wskazuje). */
-export function TravelerList({ tripId, trip, people, canEdit }: { tripId: string; trip: TripRange; people: Traveler[]; canEdit: boolean }) {
+/** Kto może jechać razem: grupy po miejscu i dniu, osobno na początek i koniec wyjazdu. */
+function SharedTransport({ people, places }: { people: Traveler[]; places: TripPlace[] }) {
+  const plan = transportPlan(people.map((person) => ({ ...person, isDriver: person.is_driver, startPlaceId: person.start_place_id, endPlaceId: person.end_place_id, fromDate: person.from_date, toDate: person.to_date })));
+  if (plan.starts.length === 0 && plan.ends.length === 0) return null;
+  const placeName = (id: string) => places.find((place) => place.id === id)?.name ?? "?";
+  const day = (date: string) => `${date.slice(8)}.${date.slice(5, 7)}`;
+  const part = (title: string, prefix: string, groups: typeof plan.starts, missing: typeof plan.noStart) => (
+    <div className="flex flex-col gap-1">
+      <h3 className="font-medium">{title}</h3>
+      {groups.length === 0 && <p className="text-zinc-500">Nikt jeszcze nie ma tego wpisanego.</p>}
+      <ul className="flex flex-col gap-0.5">
+        {groups.map((group) => (
+          <li key={`${group.placeId}|${group.date ?? ""}`}>
+            <span className="font-medium">{placeName(group.placeId)}</span>
+            {group.date ? ` (${prefix} ${day(group.date)})` : ""}: {group.people.map((person) => `${person.name}${person.isDriver ? " (kierowca)" : ""}${person.tentative ? " (waha się)" : ""}`).join(", ")}
+          </li>
+        ))}
+      </ul>
+      {groups.length > 0 && missing.length > 0 && <p className="text-xs text-zinc-500">Bez wpisu: {missing.map((person) => person.name).join(", ")}</p>}
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
+      <h3 className="text-base font-semibold">Wspólny transport</h3>
+      {part("Na początek", "od", plan.starts, plan.noStart)}
+      {part("Na koniec", "do", plan.ends, plan.noEnd)}
+    </div>
+  );
+}
+
+export function TravelerList({ tripId, trip, people, places, canEdit }: { tripId: string; trip: TripRange; people: Traveler[]; places: TripPlace[]; canEdit: boolean }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [result, setResult] = useState<FormState>({});
   const [pending, start] = useTransition();
@@ -192,7 +241,7 @@ export function TravelerList({ tripId, trip, people, canEdit }: { tripId: string
           {people.map((person) =>
             editing === person.id ? (
               <li key={person.id} className="card p-3">
-                <TravelerForm tripId={tripId} trip={trip} guardians={guardians} traveler={person} onDone={() => setEditing(null)} />
+                <TravelerForm tripId={tripId} trip={trip} guardians={guardians} places={places} traveler={person} onDone={() => setEditing(null)} />
               </li>
             ) : (
               <li key={person.id} className="flex flex-wrap items-baseline gap-x-2">
@@ -218,6 +267,11 @@ export function TravelerList({ tripId, trip, people, canEdit }: { tripId: string
                     </button>
                   </span>
                 )}
+                {(person.start_place_id || person.end_place_id) && (
+                  <p className="w-full text-xs text-zinc-600 dark:text-zinc-400">
+                    {[person.start_place_id && `start: ${places.find((place) => place.id === person.start_place_id)?.name ?? "?"}`, person.end_place_id && `koniec: ${places.find((place) => place.id === person.end_place_id)?.name ?? "?"}`].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 {person.notes && <p className="w-full whitespace-pre-line text-xs text-zinc-600 dark:text-zinc-400">{person.notes}</p>}
               </li>
             ),
@@ -225,7 +279,8 @@ export function TravelerList({ tripId, trip, people, canEdit }: { tripId: string
         </ul>
       )}
       <Status state={result} />
-      {canEdit && <TravelerForm tripId={tripId} trip={trip} guardians={guardians} />}
+      <SharedTransport people={people} places={places} />
+      {canEdit && <TravelerForm tripId={tripId} trip={trip} guardians={guardians} places={places} />}
     </div>
   );
 }

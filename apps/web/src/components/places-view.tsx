@@ -41,8 +41,8 @@ const button = "btn-secondary btn-sm";
 const FAR_M = 1000;
 const MOVED_M = 100;
 
-const usageLabel = ({ items, bookings, days, legs }: PlaceUsage) =>
-  [items.length > 0 && `punkty: ${items.length}`, bookings.length > 0 && `rezerwacje: ${bookings.length}`, days > 0 && `baza dni: ${days}`, legs > 0 && `przejazdy: ${legs}`].filter(Boolean).join(", ");
+const usageLabel = ({ items, bookings, days, legs, travelers }: PlaceUsage) =>
+  [items.length > 0 && `punkty: ${items.length}`, bookings.length > 0 && `rezerwacje: ${bookings.length}`, days > 0 && `baza dni: ${days}`, legs > 0 && `przejazdy: ${legs}`, travelers > 0 && `uczestnicy: ${travelers}`].filter(Boolean).join(", ");
 
 export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: string; places: PlaceRowData[]; canEdit: boolean; hasRouted: boolean }) {
   const [filter, setFilter] = useState<Filter>("all");
