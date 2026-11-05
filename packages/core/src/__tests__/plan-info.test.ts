@@ -49,6 +49,12 @@ describe('nocleg dnia', () => {
     // Obóz to pakiet z noclegiem; miejsce bez współrzędnych.
     expect(dayLodging(maroko, 'd2')).toMatchObject({ placeRef: 'p-agafay', booking: { ref: 'nocleg-agafay', checkInFrom: '15:00' }, onMap: false });
     expect(dayLodging(maroko, 'd5')).toBeNull();
+    // Ostatni dzień z bazą to nie nocleg, chyba że jest rezerwacja na tę noc.
+    const last = maroko.days.find((day) => day.date === maroko.trip.endDate)!;
+    const withBase = TripDocument.parse({ ...maroko, days: maroko.days.map((day) => (day.ref === last.ref ? { ...day, baseRef: 'p-riad' } : day)) });
+    expect(dayLodging(withBase, last.ref)).toBeNull();
+    const extended = TripDocument.parse({ ...withBase, bookings: [...withBase.bookings, { ref: 'nocleg-dluzej', kind: 'lodging', status: 'booked', title: 'Riad, noc dłużej', startPlaceRef: 'p-riad', start: { date: last.date, tz: 'Africa/Casablanca' }, end: { date: '2099-01-01', tz: 'Africa/Casablanca' } }] });
+    expect(dayLodging(extended, last.ref)).toMatchObject({ placeRef: 'p-riad', booking: { ref: 'nocleg-dluzej' } });
   });
 
   it('bez bazy dnia — miejsce z rezerwacji; odwołana rezerwacja się nie liczy', () => {

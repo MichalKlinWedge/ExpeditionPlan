@@ -80,7 +80,7 @@ export const LIVE_BOOKING = new Set(['to_book', 'booked', 'paid', 'unknown', 'no
 
 /**
  * Nocleg dnia: baza dnia (`day.baseRef`) i rezerwacja noclegu na tę noc (start ≤ data < koniec).
- * Bez bazy — miejsce z rezerwacji. `null` = tej nocy nie ma noclegu (zwykle dzień powrotu).
+ * Bez bazy — miejsce z rezerwacji. `null` = tej nocy nie ma noclegu (dzień powrotu bez rezerwacji).
  */
 export function dayLodging(doc: Doc, dayRef: string): DayLodging | null {
   const day = doc.days.find((each) => each.ref === dayRef);
@@ -94,6 +94,8 @@ export function dayLodging(doc: Doc, dayRef: string): DayLodging | null {
       day.date < (booking.end?.date ?? booking.start.date),
   );
   const booking = nights.find((each) => day.baseRef !== undefined && (each.startPlaceRef === day.baseRef || each.endPlaceRef === day.baseRef)) ?? nights[0];
+  // Ostatniego dnia baza to skąd się rusza, nie gdzie się śpi: nocleg tylko z rezerwacji na tę noc.
+  if (booking === undefined && day.date >= doc.trip.endDate) return null;
   // Rezerwacja mówi dokładniej niż baza dnia, gdzie śpimy.
   const placeRef = booking?.startPlaceRef ?? day.baseRef;
   if (placeRef === undefined && booking === undefined) return null;

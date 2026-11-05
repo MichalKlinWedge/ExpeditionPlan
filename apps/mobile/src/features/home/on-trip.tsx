@@ -1,4 +1,4 @@
-import { instantToZoned, nowAndNext, type PlanItem, scheduleDay, type TripDocument, weatherIcon, weatherLine } from '@expeditionplan/core';
+import { dayLodging, instantToZoned, nowAndNext, type PlanItem, scheduleDay, type TripDocument, weatherIcon, weatherLine } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip } from '@expeditionplan/sync';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -66,7 +66,8 @@ export function OnTrip({ tripId }: { tripId: string }) {
   const sky = weather?.days[day.ref];
   const target = view?.next ?? view?.current ?? null;
   const goTo = target === null ? null : placeOf(doc, target.ref);
-  const base = day.baseRef === undefined ? undefined : doc.places.find((place) => place.ref === day.baseRef);
+  const lodgingRef = dayLodging(doc, day.ref)?.placeRef;
+  const base = lodgingRef === undefined ? undefined : doc.places.find((place) => place.ref === lodgingRef);
   const lodging = base?.lat !== undefined && base.lng !== undefined ? { lat: base.lat, lng: base.lng } : null;
   // Przewodnik: najpierw następny punkt (tam idziecie), potem bieżący.
   const readable = [view?.next, view?.current].flatMap((each) => {
