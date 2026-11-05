@@ -1,0 +1,75 @@
+import { guideFor, guideLinkTargets, type GuideRow, itemIcon, itemKindLabel } from "@expeditionplan/core";
+import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+
+import { GuideArticle } from "@/components/guide-article";
+import { Loading, Shell } from "@/components/shell";
+import { ITEM_KIND } from "@/lib/labels";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Opis punktu z publicznego linku (`public_trip`), bez logowania. Tylko nazwa, miejsce i przewodnik:
+ * notatki, linki i rezerwacje zostają na karcie punktu dla uczestników.
+ */
+
+// Link prywatny — nie do wyszukiwarek.
+export const metadata: Metadata = { title: "Opis punktu — Expedition Planner", robots: { index: false, follow: false } };
+
+export default function PublicItemPage(props: PageProps<"/p/[token]/item/[ref]">) {
+  return (
+    <Shell>
+      <Suspense fallback={<Loading />}>
+        <PublicItem params={props.params} />
+      </Suspense>
+    </Shell>
+  );
+}
+
+const weekday = (date: string) =>
+  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)).replace(/^./, (first) => first.toUpperCase());
+
+async function PublicItem({ params }: { params: Promise<{ token: string; ref: string }> }) {
+  const { token, ref: rawRef } = await params;
+  const ref = decodeURIComponent(rawRef);
+  const { data, error } = await (await createClient()).rpc("public_trip", { p_token: token });
+  if (error || data === null) {
+    return <p className="card p-5 text-zinc-600 dark:text-zinc-400">Ten link do planu wygasł albo właściciel go wyłączył.</p>;
+  }
+  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const doc = stateFromPayload(payload).doc;
+  const item = doc.items.find((each) => each.ref === ref);
+  if (item === undefined) notFound();
+  const ids = refIndex(payload.tables);
+  const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
+  const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
+  const guide = item.kind === "lodging" ? null : guideFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
+  const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
+  const dayIndex = doc.days.findIndex((day) => day.ref === item.dayRef);
+  const day = doc.days[dayIndex];
+  return (
+    <>
+      <div className="flex flex-col gap-1">
+        <Link href={`/p/${encodeURIComponent(token)}?day=${encodeURIComponent(item.dayRef ?? "pool")}`} className="back-link self-start">
+          ← Plan: {doc.trip.title}
+        </Link>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+          <span aria-hidden="true">{itemIcon(doc, item)}</span>
+          {item.title}
+        </h1>
+        <p className="text-sm text-zinc-500">
+          {itemKindLabel(item, ITEM_KIND)}
+          {day ? ` · Dzień ${dayIndex + 1}, ${weekday(day.date)}` : " · w puli (poza dniami)"}
+          {place ? ` · ${place.name}` : ""}
+        </p>
+      </div>
+      {guide === null ? (
+        <p className="text-sm text-zinc-500">Ten punkt nie ma opisu.</p>
+      ) : (
+        <GuideArticle guide={guide} targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/p/${encodeURIComponent(token)}/item/`} />
+      )}
+    </>
+  );
+}

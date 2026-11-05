@@ -1,10 +1,11 @@
-import { bookingContacts, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, flightLine, flightOf, isFootRouteItem, routeLinkLabel, GUIDE_SITE, guideLinkTargets, type GuideRow, guideFor, guideRowFor, type GuideSegment, itemIcon, linkGuideText, itemKindLabel, legLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, flightLine, flightOf, isFootRouteItem, routeLinkLabel, guideLinkTargets, type GuideRow, guideFor, guideRowFor, itemIcon, itemKindLabel, legLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EditToggle, editMode } from "@/components/edit-toggle";
+import { GuideArticle } from "@/components/guide-article";
 import { GuideButtons } from "@/components/guide-button";
 import { ItemHeaderEditor } from "@/components/item-header";
 import { LodgingEditor } from "@/components/lodging-editor";
@@ -65,10 +66,6 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const route = legRouteLink(doc, item);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const guide = guideFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
-  // Nazwy innych opisanych miejsc w treści — odnośniki do ich kart (raz na miejsce w całym opisie).
-  const targets = guide === null ? [] : guideLinkTargets(doc, rows, ids, item.ref);
-  const used = new Set<string>();
-  const linked = (text: string) => <Linked tripId={id} segments={linkGuideText(text, targets, used)} />;
   const guideRow = guide === null ? undefined : guideRowFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
   const time = item.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}` : null;
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
@@ -241,87 +238,11 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
             {canEdit ? " Opis powstaje z artykułu w Wikipedii albo Wikivoyage o tym miejscu (ciekawostki, historia, zdjęcia)." : " Organizator może go przygotować na webie."}
           </p>
         ) : (
-          <article className="card flex flex-col gap-3 p-4 text-sm">
-            <p className="text-base">{linked(guide.summary)}</p>
-            {guide.images.length > 0 && (
-              <div className="grid grid-cols-2 gap-2">
-                {guide.images.map((image) => (
-                  <figure key={image.url} className="flex flex-col gap-1">
-                    <a href={image.sourceUrl} target="_blank" rel="noreferrer">
-                      {/* Zdjęcia z Commons (upload.wikimedia.org) — zwykły <img>, miniatura 960 px. */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image.thumbUrl} alt={image.title} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />
-                    </a>
-                    <figcaption className="text-[11px] leading-tight text-zinc-500">
-                      {image.author ? `${image.author}, ` : ""}
-                      {image.licenseUrl ? (
-                        <a href={image.licenseUrl} target="_blank" rel="noreferrer" className="underline">
-                          {image.license}
-                        </a>
-                      ) : (
-                        image.license
-                      )}
-                      , Wikimedia Commons
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            )}
-            {guide.facts.length > 0 && (
-              <div>
-                <h3 className="font-semibold">Ciekawostki</h3>
-                <ul className="ml-5 list-disc">
-                  {guide.facts.map((fact) => (
-                    <li key={fact}>{linked(fact)}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {guide.history && (
-              <div>
-                <h3 className="font-semibold">Historia</h3>
-                <p>{linked(guide.history)}</p>
-              </div>
-            )}
-            {guide.tips.length > 0 && (
-              <div>
-                <h3 className="font-semibold">Na miejscu</h3>
-                <ul className="ml-5 list-disc">
-                  {guide.tips.map((tip) => (
-                    <li key={tip}>{linked(tip)}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <p className="text-xs text-zinc-500">
-              Na podstawie artykułu{" "}
-              <a href={guide.article.url} target="_blank" rel="noreferrer" className="underline">
-                „{guide.article.title}”
-              </a>{" "}
-              z {GUIDE_SITE[guide.article.site]} ({guide.article.lang}), licencja{" "}
-              <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" rel="noreferrer" className="underline">
-                CC BY-SA 4.0
-              </a>
-              ; streszczenie: AI.
-            </p>
-          </article>
+          <GuideArticle guide={guide} targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/trips/${id}/item/`} />
         )}
         {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guide?.hint} />}
       </section>
       )}
     </>
-  );
-}
-
-/** Tekst przewodnika z odnośnikami do kart innych opisanych miejsc. */
-function Linked({ tripId, segments }: { tripId: string; segments: GuideSegment[] }) {
-  return segments.map((segment, i) =>
-    segment.ref ? (
-      <Link key={i} href={`/trips/${tripId}/item/${encodeURIComponent(segment.ref)}`} className="font-medium text-sea underline decoration-sea/40 underline-offset-2 hover:decoration-sea">
-        {segment.text}
-      </Link>
-    ) : (
-      <span key={i}>{segment.text}</span>
-    ),
   );
 }

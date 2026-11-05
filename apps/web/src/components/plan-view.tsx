@@ -118,11 +118,13 @@ type Props = {
   itemBase?: string;
   /** Punkty (`ref`) z gotowym opisem przewodnika. */
   guided?: string[];
+  /** Link publiczny: karta punktu jest tylko przy punktach z opisem. */
+  guidedOnly?: boolean;
   /** Dzień (`ref`) albo `"pool"` z adresu (`?day=`) — powrót z karty punktu na ten sam dzień. */
   initialDay?: string;
 };
 
-export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, initialDay }: Props) {
+export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
@@ -432,6 +434,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
               weather={weather[mapDay.ref]}
               itemBase={itemBase}
               guided={guided}
+              guidedOnly={guidedOnly}
               field={fieldLog(doc, mapDay.ref, inputs)}
               fieldVariants={inputs.activeVariants}
             />
@@ -459,7 +462,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                       <li key={item.ref} id={`item-${item.ref}`} className={`flex items-center gap-1 rounded ${selected === item.ref ? "bg-signal/10" : ""}`}>
                         {dnd ? <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} /> : <span aria-hidden="true">•</span>}
                         <span>
-                          {itemBase ? (
+                          {itemBase && (!guidedOnly || guided?.includes(item.ref)) ? (
                             <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" {...routeHover(item.ref)} className="hover:text-sea hover:underline">
                               {item.title}
                             </Link>
@@ -842,6 +845,7 @@ type DayProps = {
   onSelect: (ref: string) => void;
   itemBase?: string;
   guided?: string[];
+  guidedOnly: boolean;
   /** Przebieg dnia z telefonu (`schedule_events`): opóźnienia, pominięcia, „zrobione”, pula, warianty. */
   field: FieldLog;
   /** Warianty wybrane na telefonie (groupRef → variantRef). */
@@ -861,7 +865,7 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided, field, fieldVariants }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided, guidedOnly, field, fieldVariants }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -990,7 +994,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                         {itemIcon(doc, source)}
                       </span>
                     )}
-                    {itemBase ? (
+                    {itemBase && (!guidedOnly || guided?.includes(item.ref)) ? (
                       <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" {...routeHover(item.ref)} className="font-medium hover:text-sea hover:underline">
                         {item.title}
                       </Link>

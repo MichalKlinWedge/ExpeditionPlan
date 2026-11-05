@@ -54,6 +54,25 @@ describe('publiczny link do planu', () => {
     });
   }
 
+  it('opis miejsca jest w linku, ale bez wskazówki organizatora dla AI', async () => {
+    const owner = await createDevice(env, await createTestUser(env, 'share'));
+    devices.push(owner);
+    const { tripId } = await importTrip(owner.client, loadFixture('barcelona'));
+    const { data: place } = await owner.client.from('places').select('id').eq('trip_id', tripId).limit(1).single();
+    const content = { summary: 'Opis miejsca', facts: [], tips: [], images: [], article: { title: 'A', url: 'https://pl.wikipedia.org/wiki/A', lang: 'pl', site: 'wikipedia' }, hint: 'tajna wskazówka' };
+    const { error: guideError } = await owner.client.from('audio_guides').insert({ id: crypto.randomUUID(), trip_id: tripId, place_id: place!.id, title: 'A', text: 'tekst do czytania', content });
+    expect(guideError).toBeNull();
+    const { data: token } = await owner.client.rpc('create_public_share', { p_trip: tripId, p_hide: {} });
+
+    const { data: payload } = await anon().rpc('public_trip', { p_token: token });
+    const rows = (payload as { tables: { audio_guides: { place_id: string; content: { summary: string } }[] } }).tables.audio_guides;
+    expect(rows.map((row) => [row.place_id, row.content.summary])).toEqual([[place!.id, 'Opis miejsca']]);
+    const raw = JSON.stringify(rows);
+    expect(raw).not.toContain('tajna wskazówka');
+    expect(raw).not.toContain('tekst do czytania');
+    expect(stateFromPayload(payload).doc.days.length).toBeGreaterThan(0);
+  });
+
   it('link tworzy tylko właściciel; zły token nic nie zwraca', async () => {
     const owner = await createDevice(env, await createTestUser(env, 'share-owner'));
     const viewer = await createDevice(env, await createTestUser(env, 'share-viewer', { creator: false }));
