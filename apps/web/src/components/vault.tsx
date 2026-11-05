@@ -430,7 +430,7 @@ function CodeScreen({ title, payload, format, plain, onClose }: { title: string;
         <p className="text-sm">{problem ? `Nie da się narysować kodu: ${problem}` : "Rysuję kod…"}</p>
       )}
       {!plain && <p className="max-w-full font-mono text-xs break-all text-zinc-600">{payload}</p>}
-      <button onClick={onClose} className="rounded-full border border-zinc-300 px-4 py-1 text-sm">
+      <button onClick={onClose} className="btn-secondary btn-sm">
         Zamknij
       </button>
     </div>

@@ -13,7 +13,7 @@ export function EditToggle({ href, editing }: { href: string; editing: boolean }
       href={editing ? href : `${href}?edit=1`}
       scroll={false}
       replace
-      className={`inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border px-3 py-1 text-sm transition ${editing ? "border-signal bg-signal text-white hover:bg-signal-dark" : "border-zinc-300 hover:border-sea hover:text-sea dark:border-zinc-700"}`}>
+      className={editing ? "inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border border-signal bg-signal px-3 py-1 text-sm text-white transition hover:bg-signal-dark" : "btn-secondary shrink-0 self-start rounded-full px-3 py-1"}>
       {!editing && <PencilIcon className="size-4" />}
       {editing ? "Zakończ edycję" : "Edytuj"}
     </Link>
