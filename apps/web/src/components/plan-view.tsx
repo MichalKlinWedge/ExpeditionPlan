@@ -125,6 +125,26 @@ type Props = {
   initialDay?: string;
 };
 
+const variantsKey = (tripId: string) => `plan-variants:${tripId}`;
+
+/** Warianty wybrane w tej karcie przeglądarki; pomija te, których plan już nie ma. Bez dostępu do pamięci — domyślne. */
+function readChosenVariants(tripId: string, doc: TripDocument): Record<string, string> {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(variantsKey(tripId)) ?? "{}") as Record<string, string>;
+    return Object.fromEntries(Object.entries(saved).filter(([group, ref]) => doc.variants.some((variant) => variant.ref === ref && variant.groupRef === group)));
+  } catch {
+    return {};
+  }
+}
+
+function saveChosenVariants(tripId: string, chosen: Record<string, string>) {
+  try {
+    sessionStorage.setItem(variantsKey(tripId), JSON.stringify(chosen));
+  } catch {
+    // Bez pamięci wybór działa do odświeżenia widoku.
+  }
+}
+
 export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
@@ -132,12 +152,19 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
   const [ids, setIds] = useState(initialIds);
   const [saving, setSaving] = useState<{ pending: number; error?: string; ok?: boolean; note?: string }>({ pending: 0 });
   const [scenario, setScenario] = useState<Scenario>("optimistic");
-  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const hydrated = useHydrated();
+  // Wybrany wariant zostaje na czas tej karty przeglądarki: powrót z karty punktu i zapis odświeżają widok od nowa.
+  const [chosen, setChosen] = useState<Record<string, string> | null>(null);
+  const overrides = useMemo(() => chosen ?? (hydrated ? readChosenVariants(tripId, doc) : {}), [chosen, hydrated, tripId, doc]);
+  const chooseVariant = (groupRef: string, variantRef: string) => {
+    const next = { ...overrides, [groupRef]: variantRef };
+    setChosen(next);
+    saveChosenVariants(tripId, next);
+  };
   const variants = useMemo(() => ({ ...inputs.activeVariants, ...overrides }), [inputs.activeVariants, overrides]);
   const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done, pulled: inputs.pulled };
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const pool = doc.items.filter((item) => item.dayRef === undefined);
-  const hydrated = useHydrated();
   // Prognoza Open-Meteo z przeglądarki (limit per IP); dni poza horyzontem 16 dni jej nie mają.
   const [weather, setWeather] = useState<Record<string, DayWeather>>({});
   const weatherKey = weatherPoints(doc)
@@ -345,7 +372,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
           <aside className="flex flex-col gap-2 lg:sticky lg:top-24 lg:order-last">
             <PlanMap
               map={stableMap}
-              fitKey={mapDay?.ref ?? POOL}
+              // Inny wariant to inne pinezki: mapa dopasowuje się do nich od nowa, tak jak przy zmianie dnia.
+              fitKey={`${mapDay?.ref ?? POOL}:${[...resolveVariants(doc, variants)].sort().join()}`}
               selected={selected}
               onSelect={(ref) => select(ref, "map")}
               editing={
@@ -423,7 +451,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
               dayRef={mapDay.ref}
               options={options}
               active={resolveVariants(doc, variants)}
-              onChoose={(groupRef, variantRef) => setOverrides((current) => ({ ...current, [groupRef]: variantRef }))}
+              onChoose={chooseVariant}
               places={places}
               actions={actions}
               onPin={canEdit ? pinPlace : null}

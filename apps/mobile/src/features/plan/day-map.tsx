@@ -36,12 +36,14 @@ type Props = {
   onSelect: (placeRef: string | null) => void;
   /** Punkt wybrany na liście: mapa przesuwa się do niego. Nowy obiekt przy każdym dotknięciu. */
   focus: { lng: number; lat: number } | null;
+  /** Wybrane warianty: inny wariant to inne pinezki, więc nowy widok dopasowany do nich. */
+  variantsKey: string;
   /** Miejsca z przewodnikiem: `placeRef` → punkt (`guidedPlaces`). */
   guides?: Map<string, PlanItem>;
   onGuide?: (item: PlanItem, play: boolean) => void;
 };
 
-export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, guides, onGuide }: Props) {
+export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, variantsKey, guides, onGuide }: Props) {
   const theme = useTheme();
   const mapStyle = useMapStyle();
   const camera = useRef<CameraRef>(null);
@@ -79,7 +81,7 @@ export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, guid
       <View style={[styles.square, { borderColor: theme.backgroundSelected }]}>
         {/* Nowy dzień albo przełączony dojazd = nowa mapa z widokiem dopasowanym do pinezek. */}
         {/* Jawne `dragPan`: tylko wtedy mapa na Androidzie zabiera dotyk przewijaniu strony. Bez tego strona łapie ruch w pionie. */}
-        <MapView key={`${dayRef}:${shown}`} mapStyle={mapStyle} androidView="surface" dragPan onPress={() => onSelect(null)}>
+        <MapView key={`${dayRef}:${variantsKey}:${shown}`} mapStyle={mapStyle} androidView="surface" dragPan onPress={() => onSelect(null)}>
           <Camera ref={camera} initialViewState={start} />
           <UserLocation accuracy />
           <DayLines lines={view.lines} id="plan-day" />

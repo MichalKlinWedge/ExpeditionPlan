@@ -902,7 +902,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
 
       {schedule && (
         <View onLayout={(event) => (mapTop.current = event.nativeEvent.layout.y)}>
-          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={setMapPlace} focus={mapFocus} guides={guides} onGuide={onGuide} />
+          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={setMapPlace} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} />
         </View>
       )}
 
