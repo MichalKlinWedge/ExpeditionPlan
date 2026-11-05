@@ -3,8 +3,34 @@
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { describeItem, removeGuide } from "@/app/guide-actions";
+import { describeItem, describePlaceGuide, removeGuide } from "@/app/guide-actions";
 import { SparkIcon } from "@/components/icons";
+
+/** Opis miejsca na stronie „Miejsca”: nowy albo odświeżony; `guideId` to własny opis miejsca, nie opis punktu. */
+export function PlaceGuideButtons({ tripId, placeRef, guideId, label }: { tripId: string; placeRef: string; guideId: string | null; label: string }) {
+  const [state, setState] = useState<FormState>({});
+  const [pending, start] = useTransition();
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-3">
+        <button disabled={pending} onClick={() => start(async () => setState(await describePlaceGuide(tripId, placeRef)))} className={guideId ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
+          <SparkIcon className="size-4" />
+          {pending ? "Szukam artykułu i piszę… (ok. 10–30 s)" : label}
+        </button>
+        {guideId && (
+          <button
+            disabled={pending}
+            onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))}
+            className="text-xs underline disabled:opacity-50">
+            usuń opis
+          </button>
+        )}
+      </div>
+      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state.ok && <p className="text-xs text-green-700 dark:text-green-400">{state.ok}</p>}
+    </div>
+  );
+}
 
 /**
  * „Przygotuj opis z Wikipedii” / „Odśwież” i „Usuń opis” — akcje serwera z wynikiem pod spodem.

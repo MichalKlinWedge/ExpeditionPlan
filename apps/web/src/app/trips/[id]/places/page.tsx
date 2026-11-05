@@ -1,4 +1,4 @@
-import { placeList, similarPlaces, type TripDocument } from "@expeditionplan/core";
+import { type GuideRow, placeGuide, placeList, similarPlaces, type TripDocument } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -42,9 +42,10 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const ids = refIndex(payload.tables);
   const similar = similarPlaces(doc);
+  const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const places = placeList(doc).flatMap(({ place, usage, n }) => {
     const rowId = ids[place.ref];
-    return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, similar: similar[place.ref] ?? [] }];
+    return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, similar: similar[place.ref] ?? [], guide: placeGuide(doc.items, rows, ids, place.ref) }];
   });
 
   return (

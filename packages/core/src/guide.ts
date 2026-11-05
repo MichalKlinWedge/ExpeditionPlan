@@ -65,6 +65,35 @@ export function guideFor(rows: readonly GuideRow[], itemId: string | undefined, 
   return parsed.success ? { ...parsed.data, title: row.title } : null;
 }
 
+export type PlaceGuide = { content: GuideContent; rowId: string; title: string; fromItem?: { ref: string; title: string } };
+
+/**
+ * Opis do pokazania przy miejscu: opis tego miejsca, a bez niego własny opis punktu, który do niego prowadzi
+ * (np. ze wskazówką dla AI). Punkt liczy się tylko po celu: przejazd stąd opisuje inne miejsce.
+ */
+export function placeGuide(
+  items: readonly { ref: string; title: string; kind: string; placeRef?: string | undefined; leg?: { toPlaceRef?: string | undefined } | undefined }[],
+  rows: readonly GuideRow[],
+  ids: Record<string, string>,
+  placeRef: string,
+  audience = 'adult',
+): PlaceGuide | null {
+  const alive = rows.filter((row) => !row.deleted_at && row.audience === audience);
+  const parse = (row: GuideRow, fromItem?: PlaceGuide['fromItem']): PlaceGuide | null => {
+    const parsed = GuideContent.safeParse(row.content);
+    return parsed.success ? { content: parsed.data, rowId: row.id, title: row.title, ...(fromItem ? { fromItem } : {}) } : null;
+  };
+  const own = alive.find((row) => row.place_id === ids[placeRef]);
+  if (own !== undefined) return parse(own);
+  for (const item of items) {
+    if ((item.leg?.toPlaceRef ?? item.placeRef) !== placeRef || item.kind === 'lodging') continue;
+    const row = alive.find((each) => each.item_id === ids[item.ref] && each.place_id === null);
+    const found = row === undefined ? null : parse(row, { ref: item.ref, title: item.title });
+    if (found !== null) return found;
+  }
+  return null;
+}
+
 /** Tekst do czytania na głos (etap audio) i do kolumny `text`. */
 export function guideText(content: GuideDraft): string {
   return [content.summary, ...content.facts, content.history ?? '', ...content.tips].filter((part) => part.trim() !== '').join('\n\n');

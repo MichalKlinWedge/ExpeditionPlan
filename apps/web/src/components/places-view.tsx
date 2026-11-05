@@ -1,11 +1,13 @@
 "use client";
 
-import { type DayMap, distanceM, type PlaceUsage } from "@expeditionplan/core";
+import { type DayMap, distanceM, type PlaceGuide, type PlaceUsage } from "@expeditionplan/core";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { type FormState, pinPlace, searchPlace } from "@/app/actions";
 import { mergePlace, removePlace, savePlaceDetails } from "@/app/place-actions";
+import { GuideArticle } from "@/components/guide-article";
+import { PlaceGuideButtons } from "@/components/guide-button";
 import { type LatLng, PlanMap } from "@/components/plan-map";
 
 /**
@@ -14,6 +16,7 @@ import { type LatLng, PlanMap } from "@/components/plan-map";
  * Numer albo nazwa na liście wyróżnia pinezkę, tak jak numer punktu w planie; pinezka wyróżnia wiersz.
  * Duplikaty (podpowiedź z `similarPlaces` albo wybrane z listy) scala się do miejsca, przy którym się klika.
  * Pozycję zmienia się kliknięciem i osobnym zapisem, bez przeciągania: miejsce jest wspólne dla wielu punktów.
+ * Pod kwadratową mapą jest opis wybranego miejsca (`placeGuide`) i przygotowanie nowego z AI.
  */
 
 export type PlaceRowData = {
@@ -29,6 +32,7 @@ export type PlaceRowData = {
   n?: number | undefined;
   /** Refy możliwych duplikatów. */
   similar: string[];
+  guide: PlaceGuide | null;
 };
 
 type Filter = "all" | "missing" | "unused";
@@ -52,6 +56,10 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
   const [picking, setPicking] = useState<string | null>(null);
   const [picked, setPicked] = useState<LatLng | null>(null);
   const mapBox = useRef<HTMLDivElement>(null);
+  // Nowe miejsce: kolumna wraca na górę, żeby mapa z pinezką była widoczna po czytaniu długiego opisu.
+  useEffect(() => {
+    if (selected !== null) mapBox.current?.scrollTo({ top: 0 });
+  }, [selected]);
 
   const map = useMemo<DayMap>(
     () => ({
@@ -65,6 +73,8 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
   const counts: Record<Filter, number> = { all: places.length, missing: places.filter((place) => place.lat === undefined).length, unused: places.filter((place) => place.usage.total === 0).length };
   const needle = query.trim().toLowerCase();
   const shown = places.filter((place) => (filter === "all" || (filter === "missing" ? place.lat === undefined : place.usage.total === 0)) && (needle === "" || `${place.name} ${place.address ?? ""}`.toLowerCase().includes(needle)));
+
+  const chosen = places.find((place) => place.ref === selected);
 
   const stopPicking = () => {
     setPicking(null);
@@ -93,16 +103,19 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <aside ref={mapBox} className="flex scroll-mt-4 flex-col gap-2 lg:sticky lg:top-6 lg:order-last lg:self-start">
+      {/* Długi opis przewija się w tej kolumnie, więc mapa i lista zostają obok siebie. */}
+      <aside ref={mapBox} className="flex scroll-mt-4 flex-col gap-2 lg:sticky lg:top-6 lg:order-last lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:[overflow-anchor:none]">
         <PlanMap
           map={map}
           fitKey="miejsca"
+          square
           selected={selected}
           onSelect={select}
           emptyText="Żadne miejsce nie ma jeszcze współrzędnych."
           editing={canEdit ? { picking: picking !== null, picked, onPick: setPicked, onMovePlace: () => {}, hints: ["Kliknij mapę w nowym położeniu tego miejsca.", "Zapisz pozycję przy miejscu na liście albo kliknij mapę jeszcze raz."] } : null}
         />
-        <p className="text-xs text-zinc-500">Numery na mapie odpowiadają numerom na liście. Kliknięcie numeru albo nazwy na liście pokazuje miejsce na mapie, a kliknięcie pinezki otwiera je na liście.</p>
+        <p className="text-xs text-zinc-500">Numery na mapie odpowiadają numerom na liście. Kliknięcie numeru albo nazwy na liście pokazuje miejsce na mapie i jego opis, a kliknięcie pinezki otwiera je na liście.</p>
+        {chosen && <PlaceDescription key={chosen.ref} tripId={tripId} place={chosen} canEdit={canEdit} />}
       </aside>
 
       <section className="flex min-w-0 flex-col gap-3">
@@ -148,6 +161,36 @@ export function PlacesView({ tripId, places, canEdit, hasRouted }: { tripId: str
         </ul>
       </section>
     </div>
+  );
+}
+
+/** Opis wybranego miejsca: własny albo z punktu, który tam prowadzi; organizator i edytor przygotowują nowy. */
+function PlaceDescription({ tripId, place, canEdit }: { tripId: string; place: PlaceRowData; canEdit: boolean }) {
+  const { guide } = place;
+  const own = guide !== null && guide.fromItem === undefined;
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-lg font-semibold">{place.name}</h2>
+      {guide === null ? (
+        <p className="text-sm text-zinc-500">
+          Brak opisu.
+          {canEdit ? " Powstaje z artykułu w Wikipedii albo Wikivoyage o tym miejscu." : " Organizator może go przygotować."}
+        </p>
+      ) : (
+        <>
+          {guide.fromItem && (
+            <p className="text-xs text-zinc-500">
+              Opis z punktu{" "}
+              <Link href={`/trips/${tripId}/item/${encodeURIComponent(guide.fromItem.ref)}`} className="underline">
+                {guide.fromItem.title}
+              </Link>
+            </p>
+          )}
+          <GuideArticle guide={guide.content} targets={[]} itemBase={`/trips/${tripId}/item/`} />
+        </>
+      )}
+      {canEdit && <PlaceGuideButtons tripId={tripId} placeRef={place.ref} guideId={own ? guide.rowId : null} label={own ? "Odśwież opis" : "Przygotuj opis miejsca (AI)"} />}
+    </section>
   );
 }
 

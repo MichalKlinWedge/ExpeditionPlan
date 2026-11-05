@@ -1,6 +1,6 @@
 "use server";
 
-import { GUIDE_LICENSE, type GuideRow, guideFor, guideText, type TripDocument } from "@expeditionplan/core";
+import { type GuideContent, GUIDE_LICENSE, type GuideRow, guideFor, guideText, type TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { describePlace } from "@expeditionplan/planner";
 import { refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
@@ -95,10 +95,13 @@ async function describeOne(supabase: Supabase, client: Parameters<typeof describ
         : `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${name}”. Opis bez źródła byłby zgadywaniem — pomijam. Możesz podpowiedzieć AI, o czym ma być opis.`,
     };
   }
-  const itemId = ids[item.ref];
-  const placeId = placeRef === undefined ? undefined : ids[placeRef];
+  return storeGuide(supabase, tripId, name, content, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef], item.ref);
+}
+
+/** Zapis opisu: jeden na miejsce, a bez miejsca na punkt. */
+async function storeGuide(supabase: Supabase, tripId: string, name: string, content: GuideContent, itemId: string | undefined, placeId: string | undefined, fallbackKey: string): Promise<{ ok: string } | { error: string }> {
   const { error } = await supabase.from("audio_guides").upsert({
-    id: stableUuid("guide", tripId, placeId ?? itemId ?? item.ref, "adult", "pl"),
+    id: stableUuid("guide", tripId, placeId ?? itemId ?? fallbackKey, "adult", "pl"),
     trip_id: tripId,
     item_id: itemId ?? null,
     place_id: placeId ?? null,
@@ -129,6 +132,31 @@ export async function describeItem(tripId: string, itemRef: string, hint = ""): 
   const own = loaded.guides.find((row) => !row.deleted_at && row.item_id === itemId && row.place_id === null);
   if ("ok" in result && clean === "" && own !== undefined && placeOf(loaded.doc, item).ref !== undefined) {
     await loaded.supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", own.id).eq("trip_id", tripId);
+  }
+  if ("ok" in result) refresh();
+  return result;
+}
+
+/** Opis miejsca ze strony „Miejsca”: z punktu, który tam prowadzi, a miejsce bez punktów (baza, rezerwacja) opisuje samo siebie. */
+export async function describePlaceGuide(tripId: string, placeRef: string): Promise<FormState> {
+  const loaded = await load(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { doc, ids, supabase, client } = loaded;
+  const place = doc.places.find((each) => each.ref === placeRef);
+  if (place === undefined) return { error: "Tego miejsca już nie ma — odśwież stronę." };
+  const item = doc.items.find((each) => placeOf(doc, each).ref === placeRef && each.kind !== "lodging");
+  let result: FormState;
+  if (item !== undefined) {
+    result = await describeOne(supabase, client, tripId, doc, ids, item);
+  } else {
+    try {
+      const content = await describePlace({ name: place.name, kind: "visit", lat: place.lat, lng: place.lng, context: { itemTitle: place.name, trip: doc.trip.title } }, { client, timeoutMs: 60_000 });
+      result = content === null
+        ? { error: `Nie znalazłem w Wikipedii ani Wikivoyage artykułu, który na pewno dotyczy „${place.name}”. Opis bez źródła byłby zgadywaniem — pomijam.` }
+        : await storeGuide(supabase, tripId, place.name, content, undefined, ids[placeRef], placeRef);
+    } catch (e) {
+      result = { error: `Nie udało się przygotować opisu „${place.name}”: ${e instanceof Error ? e.message : String(e)}` };
+    }
   }
   if ("ok" in result) refresh();
   return result;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { guideRowFor } from '../guide.ts';
+import { type GuideRow, guideRowFor, placeGuide } from '../guide.ts';
 import { linkGuideText } from '../guide-links.ts';
 
 const targets = [
@@ -10,6 +10,36 @@ const targets = [
 ];
 
 const linked = (segments: ReturnType<typeof linkGuideText>) => segments.filter((each) => each.ref).map((each) => `${each.ref}:${each.text}`);
+
+describe('opis przy miejscu', () => {
+  const content = (summary: string) => ({ summary, facts: [], tips: [], images: [], article: { title: 'A', url: 'https://pl.wikipedia.org/wiki/A', lang: 'pl', site: 'wikipedia' } });
+  const row = (id: string, item_id: string | null, place_id: string | null, summary: string, extra: Partial<GuideRow> = {}) =>
+    ({ id, item_id, place_id, audience: 'adult', lang: 'pl', title: summary, content: content(summary), ...extra }) as GuideRow;
+  const ids = { mestia: 'p1', kutaisi: 'p2', 'punkt-1': 'i1', dojazd: 'i2', nocleg: 'i3' };
+  const items = [
+    { ref: 'punkt-1', title: 'Wieże', kind: 'visit', placeRef: 'mestia' },
+    { ref: 'dojazd', title: 'Dojazd', kind: 'transport', leg: { toPlaceRef: 'kutaisi' } },
+    { ref: 'nocleg', title: 'Hotel', kind: 'lodging', placeRef: 'kutaisi' },
+  ];
+
+  it('własny opis miejsca wygrywa z opisem punktu', () => {
+    const rows = [row('a', 'i1', null, 'punkt'), row('b', 'i1', 'p1', 'miejsce')];
+    expect(placeGuide(items, rows, ids, 'mestia')).toMatchObject({ rowId: 'b', content: { summary: 'miejsce' } });
+    expect(placeGuide(items, rows, ids, 'mestia')?.fromItem).toBeUndefined();
+  });
+
+  it('bez niego opis punktu z tym miejscem, z informacją skąd', () => {
+    expect(placeGuide(items, [row('a', 'i1', null, 'punkt')], ids, 'mestia')).toMatchObject({ rowId: 'a', fromItem: { ref: 'punkt-1', title: 'Wieże' } });
+    expect(placeGuide(items, [row('a', 'i2', null, 'droga')], ids, 'kutaisi')?.fromItem?.ref).toBe('dojazd');
+  });
+
+  it('nie bierze noclegu, usuniętych, opisu innego miejsca ani zepsutej treści', () => {
+    expect(placeGuide(items, [row('a', 'i3', null, 'hotel')], ids, 'kutaisi')).toBeNull();
+    expect(placeGuide(items, [row('a', null, 'p1', 'x', { deleted_at: '2026-01-01' })], ids, 'mestia')).toBeNull();
+    expect(placeGuide(items, [row('a', 'i1', 'p2', 'inne')], ids, 'mestia')).toBeNull();
+    expect(placeGuide(items, [row('a', null, 'p1', 'x', { content: { summary: 'bez reszty' } })], ids, 'mestia')).toBeNull();
+  });
+});
 
 describe('odnośniki w przewodniku', () => {
   it('nazwy w odmianie, pierwsze wystąpienie, tekst bez zmian po złożeniu', () => {
