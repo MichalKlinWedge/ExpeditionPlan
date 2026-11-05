@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { GuideFigure } from "@/components/guide-article";
 import { MemoriesMap } from "@/components/memories-map";
 import { PublicTripHeader } from "@/components/public-trip-header";
 import { Loading, Shell } from "@/components/shell";
@@ -60,7 +61,12 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
     const guide = guideOf(item);
     return guide === null ? [] : [[item.ref, guide] as const];
   }));
-  const overview = tripOverview(doc, { activeVariants: inputs.activeVariants, pulled: inputs.pulled, guided: new Map([...guideByRef].map(([ref, guide]) => [ref, guide.summary])), hide, tentative });
+  // Najważniejsze punkty mają opis i zdjęcie; ten sam artykuł albo to samo zdjęcie to powtórka.
+  const guided = new Map([...guideByRef].flatMap(([ref, guide]) => {
+    const image = guide.images[0];
+    return image === undefined ? [] : [[ref, [guide.article.url, image.url]] as const];
+  }));
+  const overview = tripOverview(doc, { activeVariants: inputs.activeVariants, pulled: inputs.pulled, guided, hide, tentative });
   const { stats } = overview;
   const map = dayMap(doc, stats.routeRefs);
   const foot = overview.footMax ?? { km: stats.footKm, ascentM: stats.ascentM };
@@ -112,16 +118,24 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
 
       {overview.highlights.length > 0 && (
         <Section title="Najważniejsze punkty">
-          <ul className="grid items-start gap-3 sm:grid-cols-2">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {overview.highlights.map((highlight) => {
               const guide = guideByRef.get(highlight.ref);
+              const image = guide?.images[0];
               return (
-                <li key={highlight.ref} className="card flex flex-col gap-1.5 p-3 text-sm">
-                  <Link href={`${base}/item/${encodeURIComponent(highlight.ref)}`} className="font-medium text-sea underline decoration-sea/40 underline-offset-2 hover:decoration-sea">
-                    {highlight.title}
-                  </Link>
-                  <span className="text-xs text-zinc-500">Dzień {highlight.dayNo}</span>
-                  {guide !== undefined && <p className="line-clamp-3 text-zinc-600 dark:text-zinc-400">{guide.summary}</p>}
+                <li key={highlight.ref} className="card flex gap-3 p-3 text-sm">
+                  {image !== undefined && (
+                    <div className="w-2/5 shrink-0">
+                      <GuideFigure image={image} />
+                    </div>
+                  )}
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <Link href={`${base}/item/${encodeURIComponent(highlight.ref)}`} className="font-medium text-sea underline decoration-sea/40 underline-offset-2 hover:decoration-sea">
+                      {highlight.title}
+                    </Link>
+                    <span className="text-xs text-zinc-500">Dzień {highlight.dayNo}</span>
+                    {guide !== undefined && <p className="line-clamp-5 text-zinc-600 dark:text-zinc-400">{guide.summary}</p>}
+                  </div>
                 </li>
               );
             })}

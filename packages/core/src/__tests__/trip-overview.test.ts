@@ -74,12 +74,12 @@ describe('opis wyprawy', () => {
     expect(route.every((each, index) => each !== route[index - 1])).toBe(true);
   });
 
-  it('najważniejsze punkty mają opis, najwyżej dwa na dzień i bez powtórzeń tego samego opisu', () => {
+  it('najważniejsze punkty pochodzą z listy, najwyżej dwa na dzień, bez powtórek i w parzystej liczbie', () => {
     const doc = fixture('gruzja');
     expect(tripOverview(doc).highlights).toEqual([]);
 
     const points = tripOverview(doc).days.flatMap((day) => day.points.map((title) => ({ dayNo: day.no, ref: doc.items.find((item) => item.title === title)!.ref })));
-    const every = new Map(points.map((point) => [point.ref, `opis-${point.ref}`]));
+    const every = new Map(points.map((point) => [point.ref, [`opis-${point.ref}`]]));
     const { highlights } = tripOverview(doc, { guided: every });
     expect(highlights).toHaveLength(12);
     for (const { dayNo } of highlights) expect(highlights.filter((each) => each.dayNo === dayNo).length).toBeLessThanOrEqual(2);
@@ -87,9 +87,31 @@ describe('opis wyprawy', () => {
     const days = highlights.map((each) => each.dayNo);
     expect(days).toEqual([...days].sort((a, b) => a - b));
 
-    const [first, second] = points;
-    const same = tripOverview(doc, { guided: new Map([[first!.ref, 'ten sam'], [second!.ref, 'ten sam']]) }).highlights;
-    expect(same.map((each) => each.ref)).toEqual([first!.ref]);
+    const [first, second, third, fourth] = points;
+    // Wspólny którykolwiek klucz (artykuł, zdjęcie) to powtórka.
+    const same = tripOverview(doc, { guided: new Map([[first!.ref, ['artykuł', 'zdjęcie 1']], [second!.ref, ['artykuł 2', 'zdjęcie 1']], [third!.ref, ['artykuł', 'zdjęcie 3']], [fourth!.ref, ['artykuł 4', 'zdjęcie 4']]]) }).highlights;
+    expect(same.map((each) => each.ref)).toEqual([first!.ref, fourth!.ref]);
+  });
+
+  it('ten sam tytuł punktu nie powtarza się, nawet z innym opisem', () => {
+    const doc = fixture('gruzja');
+    const refs = tripOverview(doc).days.flatMap((day) => day.points.map((title) => doc.items.find((item) => item.title === title)!.ref));
+    const [first, second, third] = refs;
+    const title = doc.items.find((item) => item.ref === first)!.title;
+    const renamed = { ...doc, items: doc.items.map((item) => (item.ref === second ? { ...item, title: ` ${title.toUpperCase()} ` } : item)) };
+    const { highlights } = tripOverview(renamed, { guided: new Map([first!, second!, third!].map((ref) => [ref, [ref]])) });
+    expect(highlights.map((each) => each.ref)).toEqual([first!, third!]);
+  });
+
+  it('nieparzysta liczba punktów traci ten z najniższą oceną', () => {
+    const doc = fixture('gruzja');
+    const perDay = tripOverview(doc).days.filter((day) => day.points.length > 0).map((day) => doc.items.find((item) => item.title === day.points[0])!.ref);
+    const [first, second, third] = perDay;
+    const guided = (refs: string[]) => new Map(refs.map((ref) => [ref, [ref]]));
+    expect(tripOverview(doc, { guided: guided([first!]) }).highlights).toEqual([]);
+    expect(tripOverview(doc, { guided: guided([first!, second!, third!]) }).highlights.map((each) => each.ref)).toEqual([first!, second!]);
+    const marked = { ...doc, items: doc.items.map((item) => (item.ref === third ? { ...item, priority: 'must' as const } : item.ref === first ? { ...item, priority: 'optional' as const } : item)) };
+    expect(tripOverview(marked, { guided: guided([first!, second!, third!]) }).highlights.map((each) => each.ref)).toEqual([second!, third!]);
   });
 
   it('w ramach dnia najpierw punkt oznaczony „koniecznie”', () => {
@@ -98,7 +120,7 @@ describe('opis wyprawy', () => {
     const refs = day.points.map((title) => doc.items.find((item) => item.title === title)!.ref);
     const last = refs.at(-1)!;
     const marked = { ...doc, items: doc.items.map((item) => (item.ref === last ? { ...item, priority: 'must' as const } : item)) };
-    const { highlights } = tripOverview(marked, { guided: new Map(refs.map((ref) => [ref, ref])) });
+    const { highlights } = tripOverview(marked, { guided: new Map(refs.map((ref) => [ref, [ref]])) });
     expect(highlights.map((each) => each.ref)).toContain(last);
     expect(highlights).toHaveLength(2);
   });

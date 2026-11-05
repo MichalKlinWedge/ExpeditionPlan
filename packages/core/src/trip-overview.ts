@@ -14,8 +14,8 @@ type Doc = TripDocument;
 type Item = Doc['items'][number];
 
 export type OverviewOptions = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
-  /** Punkty z opisem z przewodnika i klucz opisu: dwa punkty z tym samym kluczem to ten sam opis. */
-  guided?: ReadonlyMap<string, string>;
+  /** Punkty, które mogą być wśród najważniejszych, z kluczami ich opisu i zdjęcia: wspólny klucz oznacza powtórkę. */
+  guided?: ReadonlyMap<string, readonly string[]>;
   hide?: { costs?: boolean; names?: boolean };
   /** Ile osób się waha: publiczny link zna tylko liczbę, nie to, kto. */
   tentative?: number;
@@ -106,7 +106,7 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
     return kept === '' ? undefined : kept;
   };
 
-  const guided = options.guided ?? new Map<string, string>();
+  const guided = options.guided ?? new Map<string, readonly string[]>();
   const active = activeVariants(doc, options.activeVariants);
   const placeName = (ref: string | undefined) => doc.places.find((place) => place.ref === ref)?.name;
   const dates = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
@@ -125,8 +125,10 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
     let dayRank = 0;
     for (const item of sightsOfDay) {
       const guide = guided.get(item.ref);
-      if (guide === undefined || seen.has(guide)) continue;
-      seen.add(guide);
+      if (guide === undefined) continue;
+      const keys = [`tytuł:${item.title.trim().toLowerCase()}`, ...guide];
+      if (keys.some((key) => seen.has(key))) continue;
+      for (const key of keys) seen.add(key);
       sights.push({ ref: item.ref, title: item.title, dayRef: day.ref, dayNo: no, score: item.priority === 'must' ? 1 : item.priority === 'optional' ? -1 : 0, dayRank: dayRank++, order: sights.length });
     }
 
@@ -156,9 +158,10 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
     });
   });
 
-  // Najważniejsze mają opis, najwyżej dwa na dzień. Przy równych ocenach po kolei z każdego dnia, żeby pierwsze dni nie zajęły całej listy.
+  // Najważniejsze: najwyżej dwa na dzień i parzysta liczba, bo stoją parami; nieparzysty traci najsłabszy punkt.
+  // Przy równych ocenach po kolei z każdego dnia, żeby pierwsze dni nie zajęły całej listy.
   const perDay = new Map<string, number>();
-  const highlights = [...sights]
+  const ranked = [...sights]
     .sort((a, b) => b.score - a.score || a.dayRank - b.dayRank || a.order - b.order)
     .filter((sight) => {
       const taken = perDay.get(sight.dayRef) ?? 0;
@@ -166,7 +169,9 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
       perDay.set(sight.dayRef, taken + 1);
       return true;
     })
-    .slice(0, HIGHLIGHTS)
+    .slice(0, HIGHLIGHTS);
+  const highlights = ranked
+    .slice(0, ranked.length - (ranked.length % 2))
     .sort((a, b) => a.order - b.order)
     .map(({ ref, title, dayRef, dayNo }) => ({ ref, title, dayRef, dayNo }));
 
