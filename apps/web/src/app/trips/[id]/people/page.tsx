@@ -68,7 +68,14 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
 
       <section className={section}>
         <h2 className={heading}>Uczestnicy</h2>
-        <TravelerList tripId={id} trip={{ start: trip.data.start_date!, end: trip.data.end_date! }} people={travelers.data ?? []} canEdit={editing} />
+        {travelers.error ? (
+          // Bez formularza dodawania: pusta lista wyglądałaby jak utrata danych i zachęcała do wpisywania osób od nowa.
+          <p role="alert" className="text-sm text-red-600">
+            Nie udało się wczytać uczestników. To błąd odczytu, nie usunięcie danych: nie dodawaj ich od nowa, odśwież stronę za chwilę. ({travelers.error.message})
+          </p>
+        ) : (
+          <TravelerList tripId={id} trip={{ start: trip.data.start_date!, end: trip.data.end_date! }} people={travelers.data} canEdit={editing} />
+        )}
       </section>
 
       <section className={section}>

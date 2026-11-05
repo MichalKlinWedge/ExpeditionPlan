@@ -171,7 +171,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <Tile href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
         <Tile href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />}
-        <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.data?.length ?? 0} os. jedzie${wavering > 0 ? ` (waha się: ${wavering})` : ""} · ${members.count ?? 0} z dostępem`} />
+        <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.error ? "Błąd odczytu uczestników" : `${travelers.data.length} os. jedzie${wavering > 0 ? ` (waha się: ${wavering})` : ""}`} · ${members.count ?? 0} z dostępem`} />
         {canEdit && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />}
         <Tile href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />
         {compareHref !== null && (
