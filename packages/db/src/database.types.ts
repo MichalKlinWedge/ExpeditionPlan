@@ -661,6 +661,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"packing_carriers": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"id": string,"packing_item_id": string,"quantity": number,"row_version": number,"traveler_id": string,"trip_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id": string,"packing_item_id": string,"quantity": number,"row_version"?: number,"traveler_id": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: string,"packing_item_id"?: string,"quantity"?: number,"row_version"?: number,"traveler_id"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "packing_carriers_packing_item_id_fkey"
+      columns: ["packing_item_id"]
+isOneToOne: false
+      referencedRelation: "packing_items"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "packing_carriers_traveler_id_fkey"
+      columns: ["traveler_id"]
+isOneToOne: false
+      referencedRelation: "travelers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "packing_carriers_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "packing_carriers_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "trips"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"packing_checks": {
                   Row: {
                     "checked_at": string,"created_at": string,"deleted_at": string | null,"id": string,"packed": boolean,"packing_item_id": string,"row_version": number,"traveler_id": string,"trip_id": string,"updated_at": string,"updated_by": string | null
@@ -701,14 +739,14 @@ isOneToOne: false
                   ]
                 },"packing_items": {
                   Row: {
-                    "assignee_traveler_id": string | null,"category": string,"created_at": string,"deleted_at": string | null,"id": string,"note": string | null,"quantity": number | null,"ref": string | null,"row_version": number,"scope": string,"sort_key": string | null,"title": string,"trip_id": string,"unit": string | null,"updated_at": string,"updated_by": string | null
+                    "assignee_traveler_id": string | null,"category": string,"created_at": string,"deleted_at": string | null,"id": string,"note": string | null,"quantity": number | null,"ref": string | null,"row_version": number,"scope": string,"sort_key": string | null,"title": string,"trip_id": string,"unit": string | null,"updated_at": string,"updated_by": string | null,"weight_g": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "assignee_traveler_id"?: string | null,"category": string,"created_at"?: string,"deleted_at"?: string | null,"id": string,"note"?: string | null,"quantity"?: number | null,"ref"?: string | null,"row_version"?: number,"scope": string,"sort_key"?: string | null,"title": string,"trip_id": string,"unit"?: string | null,"updated_at"?: string,"updated_by"?: string | null
+                    "assignee_traveler_id"?: string | null,"category": string,"created_at"?: string,"deleted_at"?: string | null,"id": string,"note"?: string | null,"quantity"?: number | null,"ref"?: string | null,"row_version"?: number,"scope": string,"sort_key"?: string | null,"title": string,"trip_id": string,"unit"?: string | null,"updated_at"?: string,"updated_by"?: string | null,"weight_g"?: number | null
                   }
                   Update: {
-                    "assignee_traveler_id"?: string | null,"category"?: string,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"note"?: string | null,"quantity"?: number | null,"ref"?: string | null,"row_version"?: number,"scope"?: string,"sort_key"?: string | null,"title"?: string,"trip_id"?: string,"unit"?: string | null,"updated_at"?: string,"updated_by"?: string | null
+                    "assignee_traveler_id"?: string | null,"category"?: string,"created_at"?: string,"deleted_at"?: string | null,"id"?: string,"note"?: string | null,"quantity"?: number | null,"ref"?: string | null,"row_version"?: number,"scope"?: string,"sort_key"?: string | null,"title"?: string,"trip_id"?: string,"unit"?: string | null,"updated_at"?: string,"updated_by"?: string | null,"weight_g"?: number | null
                   }
                   Relationships: [
                     {

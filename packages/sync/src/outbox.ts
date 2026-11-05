@@ -186,6 +186,25 @@ export function setPacked(db: LocalDb, tripId: string, packingItemId: string, tr
 }
 
 /**
+ * Wiersz „kto bierze” rzecz wspólną. Id stałe dla pary rzecz + uczestnik, jak przy odhaczaniu:
+ * web i telefony poprawiają ten sam wiersz. `quantity = 0` to „nie biorę”.
+ */
+export const carrierRow = (tripId: string, packingItemId: string, travelerId: string, quantity: number) => ({
+  id: stableUuid('carrier', packingItemId, travelerId),
+  trip_id: tripId,
+  packing_item_id: packingItemId,
+  traveler_id: travelerId,
+  quantity,
+});
+
+/** „Biorę” / „nie biorę” na telefonie, także offline. Prawo: RLS `packing_carriers`, jak przy odhaczaniu. */
+export function setCarrying(db: LocalDb, tripId: string, packingItemId: string, travelerId: string, quantity: number): string {
+  const row = carrierRow(tripId, packingItemId, travelerId, quantity);
+  enqueue(db, 'packing_carriers', row);
+  return row.id;
+}
+
+/**
  * Odhaczenie zadania z planu (albo cofnięcie) — offline. Zadanie jest wierszem planu, więc na serwer
  * idzie sama zmiana statusu (`supabaseRemote`: update, nie upsert całego wiersza) — nie nadpisze
  * zmian z webu, a widz i tak może zmienić tylko status (trigger `guard_viewer_task`). Wiersz

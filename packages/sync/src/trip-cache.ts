@@ -21,7 +21,7 @@ export type CachedTrip = {
   syncedAt: string;
   ids: Record<string, string>;
   pending: number;
-  live: { expenses: ServerRow[]; packingChecks: ServerRow[]; travelers: ServerRow[]; documents: ServerRow[]; journal: ServerRow[]; guides: ServerRow[] };
+  live: { expenses: ServerRow[]; packingChecks: ServerRow[]; packingCarriers: ServerRow[]; travelers: ServerRow[]; documents: ServerRow[]; journal: ServerRow[]; guides: ServerRow[] };
 };
 
 /** Stan z SQLite albo `null`, gdy wyjazd nie był jeszcze pobrany na telefon. */
@@ -39,7 +39,7 @@ export function cachedTrip(db: LocalDb, tripId: string): CachedTrip | null {
     syncedAt: synced.synced_at,
     ids: refIndex(tables),
     pending: pendingCount(db),
-    live: { expenses: alive('expenses'), packingChecks: alive('packing_checks'), travelers: alive('travelers'), documents: alive('documents'), journal: alive('journal_entries'), guides: alive('audio_guides') },
+    live: { expenses: alive('expenses'), packingChecks: alive('packing_checks'), packingCarriers: alive('packing_carriers'), travelers: alive('travelers'), documents: alive('documents'), journal: alive('journal_entries'), guides: alive('audio_guides') },
   };
 }
 

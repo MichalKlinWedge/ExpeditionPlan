@@ -1,17 +1,18 @@
 import { addDays } from './engine/time.ts';
+import { type GearCarry, gearGaps } from './gear.ts';
 import { dayLodging, missingOnMap } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
  * Gotowość przed wyjazdem: jedna lista braków z planu — rezerwacje do zrobienia i do zapłaty,
  * rezerwacje bez dokumentu w sejfie, noce bez noclegu, nierozstrzygnięte warianty, otwarte zadania
- * (z terminem przed końcem wyjazdu), punkty bez miejsca na mapie. Każdy brak z `ref` do linku.
+ * (z terminem przed końcem wyjazdu), wspólny sprzęt bez osoby, punkty bez miejsca na mapie. Każdy brak z `ref` do linku.
  * Ludzie (kto bez konta / bez telefonu) dochodzą osobno — to dane spoza dokumentu.
  */
 
 type Doc = TripDocument;
 
-export type ReadinessGroup = 'book' | 'pay' | 'vault' | 'lodging' | 'decide' | 'task' | 'map';
+export type ReadinessGroup = 'book' | 'pay' | 'vault' | 'lodging' | 'decide' | 'task' | 'gear' | 'map';
 
 export type ReadinessIssue = {
   group: ReadinessGroup;
@@ -31,11 +32,12 @@ export const READINESS_GROUP: Record<ReadinessGroup, string> = {
   lodging: 'Noce bez noclegu',
   decide: 'Do decyzji',
   task: 'Otwarte zadania',
+  gear: 'Wspólny sprzęt: nie wiadomo, kto bierze',
   map: 'Punkty bez miejsca na mapie',
 };
 
 /** Kolejność grup na liście: najpierw to, co może przepaść (rezerwacje), na końcu kosmetyka. */
-export const READINESS_ORDER: ReadinessGroup[] = ['book', 'decide', 'lodging', 'pay', 'task', 'vault', 'map'];
+export const READINESS_ORDER: ReadinessGroup[] = ['book', 'decide', 'lodging', 'pay', 'task', 'gear', 'vault', 'map'];
 
 const OPEN_BOOKING = new Set(['idea', 'candidate', 'to_book', 'unknown']);
 const DONE_BOOKING = new Set(['booked', 'paid']);
@@ -64,9 +66,10 @@ function taskDate(doc: Doc, task: Doc['tasks'][number]): string | undefined {
 
 /**
  * Braki planu na dzień `today` (data lokalna). `vaultBookingRefs` — rezerwacje z dokumentem w sejfie;
- * bez niej (np. brak dostępu do sejfu) grupa „vault” jest pomijana.
+ * bez niej (np. brak dostępu do sejfu) grupa „vault” jest pomijana. `carries` — kto co bierze
+ * (`packing_carriers`); bez niego grupa „gear” jest pomijana.
  */
-export function tripReadiness(doc: Doc, today: string, vaultBookingRefs?: ReadonlySet<string>): ReadinessIssue[] {
+export function tripReadiness(doc: Doc, today: string, vaultBookingRefs?: ReadonlySet<string>, carries?: readonly GearCarry[]): ReadinessIssue[] {
   const out: ReadinessIssue[] = [];
   const groups = new Map(doc.variantGroups.map((group) => [group.ref, group]));
   /** Rezerwacja-kandydat w porównaniu liczy się dopiero, gdy wybrano właśnie ją (wcześniej — „Do decyzji”). */
@@ -112,6 +115,8 @@ export function tripReadiness(doc: Doc, today: string, vaultBookingRefs?: Readon
     if (date !== undefined && date > doc.trip.endDate) continue;
     out.push({ group: 'task', ref: task.ref, title: task.title, ...(date ? { date } : {}), ...(date !== undefined && date < today ? { overdue: true as const } : {}) });
   }
+
+  if (carries !== undefined) for (const item of gearGaps(doc, carries)) out.push({ group: 'gear', ref: item.ref, title: item.title });
 
   for (const item of doc.items) {
     if (item.dayRef === undefined || item.planStatus !== 'scheduled' || !missingOnMap(doc, item)) continue;

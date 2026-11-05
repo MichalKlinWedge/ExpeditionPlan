@@ -160,6 +160,14 @@ export const CartIcon = (props: Props) => (
   </Svg>
 );
 
+export const BackpackIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M6 10a6 6 0 0 1 12 0v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2Z" />
+    <path d="M9 4.8V4a3 3 0 0 1 6 0v.8" />
+    <path d="M9 17v-3h6v3" />
+  </Svg>
+);
+
 export const PinIcon = (props: Props) => (
   <Svg {...props}>
     <path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Z" />

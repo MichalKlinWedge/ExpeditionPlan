@@ -23,6 +23,8 @@ function hrefOf(tripId: string, group: ReadinessGroup, ref: string): string {
       return `${base}/documents`;
     case "task":
       return `${base}/tasks`;
+    case "gear":
+      return `${base}/gear`;
     case "map":
       return `${base}/item/${encodeURIComponent(ref)}`;
     case "decide":

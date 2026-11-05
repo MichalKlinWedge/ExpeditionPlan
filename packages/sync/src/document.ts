@@ -207,7 +207,7 @@ export const SPECS: Record<Collection, Spec> = {
   },
   packing: {
     table: 'packing_items',
-    fields: ['category', 'title', 'note', 'scope', 'quantity', 'unit', ['assigneeRef', 'assignee_traveler_id']],
+    fields: ['category', 'title', 'note', 'scope', 'quantity', 'unit', ['assigneeRef', 'assignee_traveler_id'], 'weightG'],
   },
   notes: {
     table: 'notes',

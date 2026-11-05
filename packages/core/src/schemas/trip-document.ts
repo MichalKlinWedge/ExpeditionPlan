@@ -588,7 +588,10 @@ export const DocPackingItem = z.object({
   scope: z.enum(['personal', 'shared']),
   quantity: z.number().positive().optional(),
   unit: z.string().optional(),
+  /** Osobista: tylko ta osoba. Wspólna: ta osoba bierze całość, póki nie ustalono inaczej (`gearCarriers`). */
   assigneeRef: Ref.optional(),
+  /** Waga jednej sztuki (dla „Woda 28 l” — litra), do podziału obciążenia. */
+  weightG: z.number().int().positive().optional(),
 });
 
 export const DocNote = z.object({

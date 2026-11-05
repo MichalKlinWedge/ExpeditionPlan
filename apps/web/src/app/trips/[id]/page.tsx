@@ -1,4 +1,4 @@
-import { instantToZoned, isPostponed, tripReadiness } from "@expeditionplan/core";
+import { carriesFromRows, instantToZoned, isPostponed, tripReadiness } from "@expeditionplan/core";
 import { fetchTripNews, newsRows, type NewsSummary, refIndex, stateFromPayload, summarizeNews } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { BackpackIcon, BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
 import { TripRescheduleButton } from "@/components/trip-reschedule";
@@ -80,7 +80,8 @@ async function loadReadiness(client: SupabaseClient, tripId: string) {
     const { doc } = stateFromPayload(payload);
     const today = instantToZoned(new Date().getTime(), doc.trip.primaryTz).date;
     if (today > doc.trip.endDate) return null;
-    const refById = new Map(Object.entries(refIndex(payload.tables)).map(([ref, id]) => [id, ref]));
+    const ids = refIndex(payload.tables);
+    const refById = new Map(Object.entries(ids).map(([ref, id]) => [id, ref]));
     const vault = new Set(
       (payload.tables.documents ?? []).filter((row) => row.deleted_at === null && typeof row.booking_id === "string").map((row) => refById.get(row.booking_id as string) ?? ""),
     );
@@ -91,7 +92,7 @@ async function loadReadiness(client: SupabaseClient, tripId: string) {
       withoutPhone: members.filter((member) => member.last_seen_phone_at === null).map((member) => member.display_name ?? member.email ?? "?"),
     };
     const daysLeft = Math.round((Date.parse(doc.trip.startDate) - Date.parse(today)) / 86_400_000);
-    return { issues: tripReadiness(doc, today, vault), daysLeft, people };
+    return { issues: tripReadiness(doc, today, vault, carriesFromRows(payload.tables.packing_carriers ?? [], ids)), daysLeft, people };
   } catch {
     return null;
   }
@@ -165,6 +166,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <Tile href={`/trips/${id}/places`} icon={<PinIcon />} title="Miejsca" hint="nazwy i współrzędne, co z nich korzysta" />
         <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, wydatki" />
         <Tile href={`/trips/${id}/tasks`} icon={<ListIcon />} title="Zadania" hint={(tasks.count ?? 0) > 0 ? `do zrobienia: ${tasks.count}` : "przed wyjazdem i w trakcie"} />
+        <Tile href={`/trips/${id}/gear`} icon={<BackpackIcon />} title="Sprzęt" hint="co zabrać, kto bierze rzeczy wspólne" />
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/meals`} icon={<MealIcon />} title="Posiłki" hint="dzień po dniu, ile osób, porcje" />}
         <Tile href={`/trips/${id}/shopping`} icon={<CartIcon />} title="Lista zakupów" hint="wspólne zakupy na wyjazd" />
         <Tile href={`/trips/${id}/contacts`} icon={<PhoneIcon />} title="Kontakty" hint="gospodarze, wypożyczalnie, numery alarmowe" />

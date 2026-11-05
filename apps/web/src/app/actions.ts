@@ -159,6 +159,7 @@ export async function removeTraveler(tripId: string, travelerId: string): Promis
     eq(column: string, value: unknown): Counted;
     contains(column: string, value: unknown[]): Counted;
     or(filters: string): Counted;
+    gt(column: string, value: number): Counted;
   };
   const count = async (table: string, filter: (query: Counted) => Counted) => {
     const query = db.from(table).select("id", { count: "exact", head: true }).eq("trip_id", tripId).is("deleted_at", null) as unknown as Counted;
@@ -181,6 +182,7 @@ export async function removeTraveler(tripId: string, travelerId: string): Promis
       ["zadania", await count("tasks", (q) => q.contains("assignee_ids", [travelerId]))],
       ["lista pakowania", await count("packing_items", (q) => q.eq("assignee_traveler_id", travelerId))],
       ["odhaczenia pakowania", await count("packing_checks", (q) => q.eq("traveler_id", travelerId).eq("packed", true))],
+      ["wspólny sprzęt, który bierze", await count("packing_carriers", (q) => q.eq("traveler_id", travelerId).gt("quantity", 0))],
       ["rezerwacje (płacący)", await count("bookings", (q) => q.eq("paid_by_traveler_id", travelerId))],
       ["auto (kierowca)", await count("vehicles", (q) => q.eq("driver_traveler_id", travelerId))],
     ];

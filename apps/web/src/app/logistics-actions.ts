@@ -1,7 +1,7 @@
 "use server";
 
-import { BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, PriceBasis, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
-import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, parseWeightKg, PriceBasis, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
+import { carrierRow, type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
@@ -428,6 +428,62 @@ export async function saveShoppingItem(tripId: string, ref: string | null, _prev
 
 export async function removeShoppingItem(tripId: string, ref: string): Promise<FormState> {
   return change(tripId, "packing", ref, () => null);
+}
+
+// --- Sprzęt ---------------------------------------------------------------------------------
+
+/**
+ * Rzecz do zabrania: osobista (każdy albo jedna osoba) lub wspólna. Wskazanie osoby przy wspólnej
+ * (plan, import) zostaje, ale o tym, kto bierze, decyduje `setGearCarrier`. Rzecz, która stała się
+ * osobista, traci nosicieli: inaczej ich obciążenie i blokada usunięcia uczestnika zostałyby po niej.
+ */
+export async function saveGearItem(tripId: string, ref: string | null, itemId: string | null, _prev: FormState, form: FormData): Promise<FormState> {
+  const title = text(form, "title");
+  if (title === "") return { error: "Podaj nazwę rzeczy." };
+  const category = text(form, "category");
+  if (category === "") return { error: "Podaj kategorię, np. biwak, ubrania." };
+  if (category.toLowerCase() === SHOPPING_CATEGORY) return { error: "Zakupy dodaj na liście zakupów." };
+  const scope = text(form, "scope") === "personal" ? "personal" : "shared";
+  const quantityText = text(form, "quantity").replace(",", ".");
+  const quantity = quantityText === "" ? undefined : Number(quantityText);
+  if (quantity !== undefined && !(Number.isFinite(quantity) && quantity > 0)) return { error: "Ilość: liczba większa od zera." };
+  const weightG = parseWeightKg(text(form, "weight"));
+  if (weightG === null) return { error: "Waga: liczba kilogramów, np. 1,5." };
+
+  const result = await change(tripId, "packing", ref, (_doc, current) => ({
+    ...(current ?? { ref: `id-${uuidv7()}` }),
+    category,
+    scope,
+    title,
+    quantity,
+    unit: optional(text(form, "unit")),
+    note: optional(text(form, "note")),
+    weightG,
+    assigneeRef: scope === "personal" ? optional(text(form, "assignee")) : current?.scope === "shared" ? current.assigneeRef : undefined,
+  }));
+  if (result.error || scope === "shared" || itemId === null) return result;
+  const { supabase } = await requireUser(`/trips/${tripId}/gear`);
+  const { error } = await supabase.from("packing_carriers").update({ quantity: 0 }).eq("packing_item_id", itemId).gt("quantity", 0);
+  return error ? { error: message(error) } : result;
+}
+
+/** Usunięcie rzeczy (miękkie) razem z tym, kto ją brał. */
+export async function removeGearItem(tripId: string, ref: string, itemId: string): Promise<FormState> {
+  const result = await change(tripId, "packing", ref, () => null);
+  if (result.error) return result;
+  const { supabase } = await requireUser(`/trips/${tripId}/gear`);
+  const { error } = await supabase.from("packing_carriers").update({ deleted_at: new Date().toISOString() }).eq("packing_item_id", itemId);
+  return error ? { error: message(error) } : result;
+}
+
+/** „Biorę” (`quantity` > 0) albo „nie biorę” (0). Prawo: RLS — za siebie i swoje dzieci, organizator i edytor za każdego. */
+export async function setGearCarrier(tripId: string, itemId: string, travelerId: string, quantity: number): Promise<FormState> {
+  if (!Number.isFinite(quantity) || quantity < 0) return { error: "Ilość: liczba większa od zera." };
+  const { supabase } = await requireUser(`/trips/${tripId}/gear`);
+  const { error } = await supabase.from("packing_carriers").upsert(carrierRow(tripId, itemId, travelerId, quantity));
+  if (error) return { error: message(error) };
+  refresh();
+  return { ok: "Zapisano." };
 }
 
 /** Posiłek „gotujemy sami” (albo nie) — tylko ta jedna flaga punktu planu. */

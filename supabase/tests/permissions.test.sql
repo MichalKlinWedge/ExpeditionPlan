@@ -2,7 +2,7 @@
 -- Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(57);
+select plan(61);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000001', 'owner@test.local'),
@@ -122,11 +122,28 @@ select throws_ok($$insert into public.packing_checks (id, trip_id, packing_item_
           '90000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000003')$$,
   '42501', null, 'widz nie odhacza pakowania innych');
 
+select lives_ok($$insert into public.packing_carriers (id, trip_id, packing_item_id, traveler_id, quantity)
+  values ('92000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001',
+          '90000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 1)$$,
+  'widz mówi „biorę” za siebie');
+select lives_ok($$insert into public.packing_carriers (id, trip_id, packing_item_id, traveler_id, quantity)
+  values ('92000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001',
+          '90000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000002', 1)$$,
+  'widz mówi „biorę” za swoje dziecko');
+select throws_ok($$insert into public.packing_carriers (id, trip_id, packing_item_id, traveler_id, quantity)
+  values ('92000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001',
+          '90000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000003', 1)$$,
+  '42501', null, 'widz nie przypisuje rzeczy innym');
+
 -- ── Edytor ───────────────────────────────────────────────────────────────────────────────────
 select pg_temp.login('00000000-0000-4000-8000-000000000002');
 
 update public.items set title = 'Pałac Bahia' where ref = 'i1';
 select is((select title from public.items), 'Pałac Bahia', 'edytor zmienia plan');
+select lives_ok($$insert into public.packing_carriers (id, trip_id, packing_item_id, traveler_id, quantity)
+  values ('92000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001',
+          '90000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000003', 1)$$,
+  'edytor przypisuje rzecz każdemu');
 select is((select count(*) from public.ai_runs), 1::bigint, 'edytor widzi przebiegi AI');
 select is((select count(*) from public.documents), 1::bigint,
   'edytor nie widzi dokumentu właściciela ani dokumentu, na którym go nie ma');

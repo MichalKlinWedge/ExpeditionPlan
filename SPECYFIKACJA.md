@@ -402,6 +402,7 @@ Operacje łatki (Etap 3):
 | `tasks` | `trip_id`, `kind` (todo/question/decision), `title`, `body`, `answer`, `status` (open/done/dropped), `due_kind` (absolute/before_trip/before_item/before_booking/on_trip), `due_at_local`, `due_offset_min`, `anchor_item_id`, `anchor_booking_id`, `variant_group_id`, `assignees uuid[]` (travelers), `priority`, `source` (user/ai/check), `sort_key` | |
 | `packing_items` | `trip_id`, `category`, `title`, `note`, `scope` (personal/shared), `quantity`, `unit`, `assignee_traveler_id` (dla wspólnych), `sort_key` | S |
 | `packing_checks` | `packing_item_id`, `traveler_id`, `packed`, `checked_at` | S, odhaczanie per osoba |
+| `packing_carriers` | `packing_item_id`, `traveler_id`, `quantity` (0 = „nie biorę”) | kto bierze rzecz wspólną, także po kawałku; `packing_items.weight_g` = waga sztuki do podziału obciążenia |
 | `notes` | `trip_id`, `scope` (trip/day/item/booking/variant_group), `entity_id`, `kind` (info/tip/warning/safety/rationale/slack_audit/practical), `topic` (weather/documents/money/health/safety/culture/transport/rules/packing/other), `title`, `body` (markdown), `sort_key` | |
 | `sources` | `trip_id`, `url`, `title`, `checked_at`, `note` | |
 | `source_links` | `source_id`, `entity`, `entity_id`, `field` | do czego odnosi się źródło |

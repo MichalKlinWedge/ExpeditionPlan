@@ -26,7 +26,7 @@ function hrefOf(tripId: string, line: NewsLine): string {
     case "tasks":
       return `${base}/tasks`;
     case "packing_items":
-      return `${base}/shopping`;
+      return line.kind === "zakup" ? `${base}/shopping` : `${base}/gear`;
     case "contacts":
       return `${base}/contacts`;
     case "documents":

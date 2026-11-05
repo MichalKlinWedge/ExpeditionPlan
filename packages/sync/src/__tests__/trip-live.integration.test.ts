@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, inject, it } from 'vitest';
 
-import { saveExpense, setPacked } from '../outbox.ts';
+import { saveExpense, setCarrying, setPacked } from '../outbox.ts';
 import { cachedTrip, refreshTrip, setTaskDone } from '../trip-cache.ts';
 import { uuidv7 } from '../uuid.ts';
 import { createDevice, createTestUser, loadFixture, seedTrip } from './helpers/harness.ts';
@@ -67,6 +67,34 @@ describe('portfel i pakowanie z telefonu', () => {
     expect(after.rejected.map((each) => each.id)).toEqual([otherCheck]);
     expect(after.pending).toBe(0);
     expect(after.live.packingChecks.map((row) => row.traveler_id)).toEqual([mine!.id]);
+  });
+
+  it('sprzęt: widz bierze rzecz wspólną offline za siebie, cudzej osoby nie przypisze, organizator widzi podział', async () => {
+    const owner = await device('gear-owner');
+    const viewer = await device('gear-viewer');
+    const { tripId, rows } = await seedTrip(owner.client, loadFixture('dinara'));
+    const [mine, other] = rows.travelers!;
+    await owner.client.from('travelers').update({ user_id: viewer.user.id }).eq('id', mine!.id);
+    const itemId = uuidv7();
+    expect((await owner.client.from('packing_items').insert({ id: itemId, trip_id: tripId, title: 'Namiot', category: 'biwak', scope: 'shared', quantity: 3, weight_g: 2500 })).error).toBeNull();
+    const invite = await owner.client.rpc('create_invite', { p_trip: tripId, p_role: 'viewer' });
+    await viewer.client.rpc('accept_invite', { p_token: invite.data });
+
+    await refreshTrip(viewer.db, viewer.remote, tripId);
+    setCarrying(viewer.db, tripId, itemId, mine!.id, 2);
+    const rejected = setCarrying(viewer.db, tripId, itemId, other!.id, 1);
+    const after = await refreshTrip(viewer.db, viewer.remote, tripId);
+    expect(after.rejected.map((each) => each.id)).toEqual([rejected]);
+    expect(after.live.packingCarriers.map((row) => row.traveler_id)).toEqual([mine!.id]);
+
+    const ownerView = await refreshTrip(owner.db, owner.remote, tripId);
+    expect(ownerView.live.packingCarriers).toEqual([expect.objectContaining({ packing_item_id: itemId, traveler_id: mine!.id, quantity: 2 })]);
+    expect(ownerView.state.doc.packing.find((item) => item.title === 'Namiot')).toMatchObject({ quantity: 3, weightG: 2500 });
+
+    // Rezygnacja to ten sam wiersz z zerem: rzecz wraca do ustalenia.
+    setCarrying(viewer.db, tripId, itemId, mine!.id, 0);
+    await refreshTrip(viewer.db, viewer.remote, tripId);
+    expect((await refreshTrip(owner.db, owner.remote, tripId)).live.packingCarriers).toEqual([expect.objectContaining({ traveler_id: mine!.id, quantity: 0 })]);
   });
 
   it('zadania: widz odhacza przypisane do siebie offline, cudzego nie (RLS), organizator widzi status', async () => {

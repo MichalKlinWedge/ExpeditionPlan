@@ -439,7 +439,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           options={[
             { value: 'plan', label: 'Plan' },
             { value: 'wallet', label: 'Wydatki' },
-            { value: 'packing', label: 'Pakowanie' },
+            { value: 'packing', label: 'Sprzęt' },
             { value: 'tasks', label: 'Zadania' },
             { value: 'journal', label: 'Dziennik' },
             { value: 'info', label: 'Info' },
