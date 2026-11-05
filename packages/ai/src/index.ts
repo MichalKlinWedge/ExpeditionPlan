@@ -9,7 +9,7 @@ export {
   NoModelError,
 } from './client.ts';
 export { askGemini, contentParts, geminiModels, parseModelList } from './gemini.ts';
-export { type AiModel, isModelName, normalizeModel, sortModels } from './models.ts';
+export { type AiModel, fallbackModels, isModelName, normalizeModel, sortModels } from './models.ts';
 export { askOpenAi, openAiModels, parseOpenAiModels } from './openai.ts';
 export {
   type AiImage,

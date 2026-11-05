@@ -3,6 +3,7 @@
  *
  *   npm run plan-ai -- [--plans maroko,chatka] [--models claude-sonnet-5-5,claude-haiku-5-5] [--backend claude-code|api]
  *   npm run plan-ai -- --rescore tools/plan-ai/out/<znacznik>   (miary od nowa, bez AI)
+ *   npm run plan-ai -- --brief plik.json [--models claude-sonnet-5-5]   (brief pobrany ze strony wyjazdu → szkic do „Importuj z pliku”)
  *
  * `claude-code` (domyślnie): przez `claude -p` na abonamencie Claude Code (wymaga `claude auth login`
  * w terminalu); koszt w raporcie to równowartość według cennika API. `api`: ANTHROPIC_API_KEY.
@@ -13,11 +14,11 @@
  * harmonogramu → miary i raport. Wyniki: tools/plan-ai/out/<znacznik>/ (poza git).
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { type AiUsage, createAiClient } from '@expeditionplan/ai';
-import { TripBrief, TripDocument } from '@expeditionplan/core';
+import { BriefFile, TripBrief, TripDocument } from '@expeditionplan/core';
 import { cachedLookup, searchPhoton } from '@expeditionplan/geocode';
 import { applyPins, orsRoute, planTrip } from '@expeditionplan/planner';
 
@@ -60,6 +61,39 @@ const clientFor = (model: string) => {
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
+const depsFor = (model: string, onUsage: (each: AiUsage) => void) => ({
+  client: clientFor(model),
+  lookup,
+  fallback,
+  holidays: (country: string, year: number) => holidays(country, year, join(here, '.cache/holidays.json')),
+  chunkDays,
+  timeoutMs: 300_000,
+  onUsage,
+  ...(route ? { route } : {}),
+});
+
+/** Brief z pliku → gotowy do importu szkic. Ten sam łańcuch i ten sam tytuł, co „Zaplanuj z AI” na serwerze. */
+async function planFromFile(path: string, model: string) {
+  const file = BriefFile.parse(JSON.parse(readFileSync(resolve(process.env.INIT_CWD ?? process.cwd(), path), 'utf8')));
+  const usage: AiUsage = { inputTokens: 0, outputTokens: 0 };
+  console.log(`Planuję „${file.title}” modelem ${model} (${backend}). Zwykle kilka minut.`);
+  const result = await planTrip(file.brief, {
+    ...depsFor(model, (each) => {
+      usage.inputTokens += each.inputTokens;
+      usage.outputTokens += each.outputTokens;
+    }),
+    ...(file.primaryTz ? { primaryTz: file.primaryTz } : {}),
+  });
+  const doc = TripDocument.parse({ ...result.doc, trip: { ...result.doc.trip, title: `Szkic AI: ${file.title}` } });
+  const dir = join(here, 'out', stamp);
+  mkdirSync(dir, { recursive: true });
+  const target = join(dir, 'szkic.json');
+  writeFileSync(target, JSON.stringify(doc, null, 2) + '\n');
+  console.log(`Szkic: ${doc.days.length} dni, ${doc.items.length} punktów, tokeny ${usage.inputTokens} + ${usage.outputTokens}.`);
+  console.log(`Plik: ${target}`);
+  console.log('Teraz na stronie „Nowy wyjazd” wybierz „Importuj z pliku”.');
+}
+
 type Row = {
   slug: string;
   model: string;
@@ -89,16 +123,7 @@ async function run(slug: string, model: string, outDir: string): Promise<Row> {
 
   try {
     const brief = TripBrief.parse(JSON.parse(readFileSync(join(root, 'fixtures/plans', slug, 'brief.json'), 'utf8')));
-    const result = await planTrip(brief, {
-      client: clientFor(model),
-      lookup,
-      fallback,
-      holidays: (country, year) => holidays(country, year, join(here, '.cache/holidays.json')),
-      chunkDays,
-      timeoutMs: 300_000,
-      onUsage,
-      ...(route ? { route } : {}),
-    });
+    const result = await planTrip(brief, depsFor(model, onUsage));
     save('stage1.json', result.skeleton);
     save('facts.json', result.facts);
     save('stage2.json', result.stagePlans);
@@ -178,7 +203,12 @@ function rescore(dir: string) {
 }
 
 const again = arg('rescore')?.[0];
-if (again !== undefined) {
+const briefAt = process.argv.indexOf('--brief');
+if (briefAt !== -1) {
+  const path = process.argv[briefAt + 1];
+  if (path === undefined) throw new Error('Po --brief podaj plik pobrany ze strony briefu.');
+  await planFromFile(path, arg('models')?.[0] ?? DEFAULT_RUN_MODELS[0]!);
+} else if (again !== undefined) {
   rescore(again);
 } else {
   const outDir = join(here, 'out', stamp);

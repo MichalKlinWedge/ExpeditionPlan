@@ -40,7 +40,7 @@ export function plannerDeps(): { deps: Omit<PlannerDeps, "primaryTz" | "onUsage"
   return {
     model,
     deps: {
-      client: createAiClient({ keys: { GEMINI: gemini }, models: { GEMINI: model }, defaultProvider: "GEMINI" }),
+      client: createAiClient({ keys: { GEMINI: gemini }, models: { GEMINI: model }, defaultProvider: "GEMINI", failover: {} }),
       lookup: geoapifyLookup(geoapify),
       holidays: (country, year) => fetchHolidays(country, year),
       timeoutMs: 120_000,
@@ -54,7 +54,7 @@ export function geminiClient() {
   const gemini = process.env.GEMINI_API_KEY ?? "";
   if (gemini === "") return null;
   const model = process.env.AI_MODEL_GEMINI || DEFAULT_GEMINI_MODEL;
-  return { model, client: createAiClient({ keys: { GEMINI: gemini }, models: { GEMINI: model }, defaultProvider: "GEMINI" }) };
+  return { model, client: createAiClient({ keys: { GEMINI: gemini }, models: { GEMINI: model }, defaultProvider: "GEMINI", failover: {} }) };
 }
 
 /** Trasy OpenRouteService; `null` bez klucza (wtedy zostają czasy szacowane przez AI). */

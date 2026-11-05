@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useState, useTransition } from "react";
 
 import { planWithAi } from "@/app/actions";
 
@@ -9,7 +9,7 @@ import { planWithAi } from "@/app/actions";
  * „Zaplanuj z AI”: uruchamia łańcuch na serwerze i po sukcesie otwiera plan nowego szkicu.
  * Licznik sekund, bo planowanie trwa zwykle 30–90 s.
  */
-export function AiPlanButton({ tripId }: { tripId: string }) {
+export function AiPlanButton({ tripId, children }: { tripId: string; children?: ReactNode }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [seconds, setSeconds] = useState(0);
@@ -47,6 +47,7 @@ export function AiPlanButton({ tripId }: { tripId: string }) {
       </div>
       {result?.error && <p className="text-sm text-red-600">{result.error}</p>}
       {result?.ok && <p className="text-sm text-green-700 dark:text-green-400">{result.ok} Otwieram plan…</p>}
+      {children}
       <p className="text-xs text-zinc-400">Miejsca: © OpenStreetMap, Geoapify.</p>
     </div>
   );

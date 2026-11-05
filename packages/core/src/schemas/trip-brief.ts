@@ -135,4 +135,15 @@ export const TripBrief = z
   });
 
 export type TripBrief = z.infer<typeof TripBrief>;
+
+/**
+ * Brief pobrany ze strony wyjazdu do planowania poza serwerem (`npm run plan-ai -- --brief`):
+ * sam brief plus to, czego łańcuch nie wyczyta z briefu, a co ma zgadzać się z wyjazdem.
+ */
+export const BriefFile = z.object({
+  title: z.string().min(1),
+  primaryTz: TimeZone.optional(),
+  brief: TripBrief,
+});
+export type BriefFile = z.infer<typeof BriefFile>;
 export type TripBriefInput = z.input<typeof TripBrief>;

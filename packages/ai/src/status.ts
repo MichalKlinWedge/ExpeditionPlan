@@ -62,6 +62,11 @@ function suggested(message: string | undefined, model: string): string | null {
   return null;
 }
 
+/** Odmowa, po której warto spróbować ponownie albo innym modelem: przeciążenie lub wyczerpany limit tego modelu. */
+export function isBusy(status: number, message: string | undefined): boolean {
+  return status === 429 || overloaded(status, message);
+}
+
 /** Tak dostawcy mówią „za dużo chętnych na ten model”, każdy swoimi słowami. */
 const OVERLOAD = /overload|high demand|capacity|busy|unavailable/i;
 

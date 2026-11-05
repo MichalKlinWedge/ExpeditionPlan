@@ -1,6 +1,6 @@
 import { type AiModel, isModelName, normalizeModel, OTHER_WORK, sortModels } from './models.ts';
 import type { AiImage, AskOptions } from './providers.ts';
-import { describeStatus } from './status.ts';
+import { describeStatus, isBusy } from './status.ts';
 import { AiError, logFailure, send } from './transport.ts';
 
 /** Gemini (Google Generative Language API). */
@@ -82,6 +82,7 @@ export async function askGemini(
     throw new AiError(describeStatus('GEMINI', response.status, body?.error?.message, model), {
       retryable: response.status >= 500,
       modelGone: response.status === 404,
+      busy: isBusy(response.status, body?.error?.message),
     });
   }
 

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAiClient, NoApiKeyError, NoModelError } from '../client.ts';
 import { contentParts } from '../gemini.ts';
+import { fallbackModels } from '../models.ts';
 import { memoryRejectedStore } from '../rejected.ts';
 import { AiError } from '../transport.ts';
 
@@ -84,6 +85,85 @@ describe('createAiClient', () => {
     const models = await client.listModels('CLAUDE');
 
     expect(models.map((model) => model.id)).toEqual(['claude-haiku-5-5']);
+  });
+});
+
+describe('failover: przeciążony model', () => {
+  const OK = { candidates: [{ content: { parts: [{ text: '{}' }] } }] };
+  const LIST = {
+    models: [
+      { name: 'models/gemini-2.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.1-flash-lite', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-pro-latest', supportedGenerationMethods: ['generateContent'] },
+    ],
+  };
+  /** Odpowiedź według modelu z adresu: każdy model odmawia, dopóki nie wskaże się go w `working`. */
+  const serve = (working: string[], status = 503) => {
+    globalThis.fetch = ((url: string) => {
+      urls.push(url);
+      const answer = (code: number, body: unknown) => Promise.resolve({ ok: code === 200, status: code, json: () => Promise.resolve(body) } as unknown as Response);
+      if (!url.includes(':generateContent')) return answer(200, LIST);
+      return working.some((name) => url.includes(`/${name}:`)) ? answer(200, OK) : answer(status, { error: { message: 'The model is overloaded.' } });
+    }) as typeof globalThis.fetch;
+  };
+  const client = () => createAiClient({ keys: { GEMINI: 'g-test' }, models: { GEMINI: 'gemini-3.5-flash-lite' }, defaultProvider: 'GEMINI', failover: { retryDelayMs: 0 } });
+  const asked = () => urls.filter((url) => url.includes(':generateContent')).map((url) => /models\/([^:]+):/.exec(url)?.[1]);
+
+  it('ponawia raz ten sam model, a gdy minie, nie szuka zastępcy', async () => {
+    let calls = 0;
+    globalThis.fetch = ((url: string) => {
+      urls.push(url);
+      calls += 1;
+      const code = calls === 1 ? 503 : 200;
+      return Promise.resolve({ ok: code === 200, status: code, json: () => Promise.resolve(code === 200 ? OK : { error: { message: 'overloaded' } }) } as unknown as Response);
+    }) as typeof globalThis.fetch;
+    await expect(client().ask('Zaplanuj')).resolves.toMatchObject({ model: 'gemini-3.5-flash-lite' });
+    expect(urls).toHaveLength(2);
+  });
+
+  it('po drugiej odmowie bierze tani model z listy i zostaje przy nim', async () => {
+    serve(['gemini-3.1-flash-lite']);
+    const each = client();
+    await expect(each.ask('Zaplanuj')).resolves.toMatchObject({ model: 'gemini-3.1-flash-lite' });
+    expect(asked()).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']);
+    urls = [];
+    await expect(each.ask('Dalej')).resolves.toMatchObject({ model: 'gemini-3.1-flash-lite' });
+    expect(asked()).toEqual(['gemini-3.1-flash-lite']);
+  });
+
+  it('wyczerpany limit też przełącza, a gdy nikt nie odpowie, zostaje pierwsza odmowa', async () => {
+    serve(['gemini-3.8-flash'], 429);
+    await expect(client().ask('Zaplanuj')).resolves.toMatchObject({ model: 'gemini-3.8-flash' });
+    urls = [];
+    serve([]);
+    await expect(client().ask('Zaplanuj')).rejects.toThrow('„gemini-3.5-flash-lite” jest w tej chwili przeciążony');
+    expect(asked()).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.8-flash']);
+  });
+
+  it('błędny klucz nie przełącza, a bez `failover` nie ma żadnego powtórzenia', async () => {
+    serve([], 403);
+    await expect(client().ask('Zaplanuj')).rejects.toThrow('nieważny');
+    expect(asked()).toHaveLength(1);
+    urls = [];
+    serve([]);
+    await expect(createAiClient({ keys: { GEMINI: 'g-test' }, models: { GEMINI: 'gemini-3.5-flash-lite' }, defaultProvider: 'GEMINI' }).ask('Zaplanuj')).rejects.toBeInstanceOf(AiError);
+    expect(asked()).toHaveLength(1);
+  });
+});
+
+describe('fallbackModels', () => {
+  const names = (...ids: string[]) => ids.map((id) => ({ id, label: id }));
+
+  it('najnowszy Flash-Lite, potem najnowszy Flash; bez Pro, zapowiedzi, `-latest` i modeli od mowy', () => {
+    const all = names('gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemini-3.1-flash-lite-preview', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.8-flash-tts', 'gemini-flash-latest', 'gemini-pro-latest');
+    expect(fallbackModels(all, 'gemini-3.5-flash-lite')).toEqual(['gemini-3.1-flash-lite', 'gemini-3.8-flash']);
+    expect(fallbackModels(all, 'gemini-3.8-flash')).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash']);
+  });
+
+  it('dla innych dostawców nie ma zastępców', () => {
+    expect(fallbackModels(names('claude-sonnet-5-5', 'claude-haiku-5-5'), 'claude-sonnet-5-5')).toEqual([]);
   });
 });
 

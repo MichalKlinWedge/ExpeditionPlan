@@ -42,3 +42,18 @@ export const sortModels = (models: AiModel[]): AiModel[] =>
     if (unstable(a.id) !== unstable(b.id)) return unstable(a.id) ? 1 : -1;
     return a.id.localeCompare(b.id);
   });
+
+const FAST = /^gemini-(\d+(?:\.\d+)?)-flash(-lite)?$/;
+
+/**
+ * Modele na zastępstwo za przeciążony: z listy dostawcy, bo nazw nie zgadujemy, i tylko tanie, stabilne
+ * warianty Flash (`-latest`, zapowiedzi i modele od obrazu czy mowy odpadają, Pro nigdy). Najnowszy
+ * Flash-Lite, potem najnowszy Flash. Dla innych dostawców lista jest pusta.
+ */
+export function fallbackModels(models: AiModel[], current: string): string[] {
+  const version = (id: string) => Number(FAST.exec(id)?.[1] ?? 0);
+  const fast = models.map((model) => model.id).filter((id) => id !== current && FAST.test(id)).sort((a, b) => version(b) - version(a));
+  const lite = fast.find((id) => id.endsWith('-lite'));
+  const flash = fast.find((id) => !id.endsWith('-lite'));
+  return [lite, flash].filter((id) => id !== undefined);
+}

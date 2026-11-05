@@ -16,17 +16,21 @@ export type ErrorOptions = {
    * teraz, ani później. Taki model zapamiętujemy i znika z listy do wyboru.
    */
   modelGone?: boolean;
+  /** Czy model ma w tej chwili za dużo chętnych albo wyczerpany limit: inny model tego dostawcy może odpowiedzieć. */
+  busy?: boolean;
 };
 
 export class AiError extends Error {
   readonly retryable: boolean;
   readonly modelGone: boolean;
+  readonly busy: boolean;
 
   constructor(message: string, options: ErrorOptions = {}) {
     super(message);
     this.name = 'AiError';
     this.retryable = options.retryable ?? false;
     this.modelGone = options.modelGone ?? false;
+    this.busy = options.busy ?? false;
   }
 }
 

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AiPlanButton } from "@/components/ai-plan-button";
 import { BriefForm, type BriefDraft } from "@/components/brief-form";
 import { Loading, Shell } from "@/components/shell";
+import { aiAccessError } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 
 /** Kreator briefu wyjazdu (MVP-2) i „Zaplanuj z AI” — gdy brief jest zapisany. */
@@ -25,10 +26,11 @@ export default function BriefPage(props: PageProps<"/trips/[id]/brief">) {
 async function Brief({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}/brief`);
-  const [trip, brief, travelers] = await Promise.all([
+  const [trip, brief, travelers, aiDenied] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_brief").select("brief").eq("trip_id", id).maybeSingle(),
     supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", id).is("deleted_at", null),
+    aiAccessError(),
   ]);
   if (trip.data === null) notFound();
   const canEdit = trip.data.role === "owner" || trip.data.role === "editor";
@@ -65,7 +67,19 @@ async function Brief({ params }: { params: Promise<{ id: string }> }) {
           Założenia dla AI. Daty ({trip.data.start_date} – {trip.data.end_date}) i uczestnicy pochodzą z wyjazdu.
         </p>
       </div>
-      {canEdit && brief.data !== null && <AiPlanButton tripId={id} />}
+      {canEdit && brief.data !== null && (
+        <AiPlanButton tripId={id}>
+          {aiDenied === null && (
+            <p className="text-xs text-zinc-500">
+              Na swoim komputerze przez Claude Code:{" "}
+              <a href={`/trips/${id}/brief/download`} className="underline hover:text-sea">
+                pobierz brief (JSON)
+              </a>
+              , uruchom <code>npm run plan-ai -- --brief plik.json</code>, a wynik wczytaj przez „Importuj z pliku” na stronie nowego wyjazdu.
+            </p>
+          )}
+        </AiPlanButton>
+      )}
       {canEdit ? (
         <BriefForm tripId={id} tripTz={trip.data.primary_tz!} initial={initial} travelers={travelers.count ?? 0} />
       ) : (
