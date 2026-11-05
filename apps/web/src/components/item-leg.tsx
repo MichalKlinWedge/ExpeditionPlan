@@ -1,6 +1,6 @@
 "use client";
 
-import { isFootRouteItem, type PlanEdit, type PlanItem as Item, setLegRoute, type TripDocument } from "@expeditionplan/core";
+import { isFootRouteItem, isTransit, type PlanEdit, type PlanItem as Item, setLegRoute, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import { useId, useState, useTransition } from "react";
 
@@ -17,6 +17,7 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
   const [to, setTo] = useState(name(item.leg?.toPlaceRef ?? item.placeRef));
   const [url, setUrl] = useState(item.leg?.routeUrl ?? "");
   const [both, setBoth] = useState(item.leg?.roundTrip === true);
+  const [transit, setTransit] = useState(isTransit(doc, item));
   const [state, setState] = useState<FormState>({});
   const [routing, startRouting] = useTransition();
   const listId = useId();
@@ -27,7 +28,7 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
   const save = () => {
     const link = url.trim();
     if (link !== "" && !/^https?:\/\/\S+$/i.test(link)) return setState({ error: "Link musi zaczynać się od https://." });
-    const edit = setLegRoute(doc, item.ref, { fromId: uuidv7(), toId: uuidv7() }, { from, to, routeUrl: link, roundTrip: both });
+    const edit = setLegRoute(doc, item.ref, { fromId: uuidv7(), toId: uuidv7() }, { from, to, routeUrl: link, roundTrip: both, transit });
     if (edit === null) return setState({ ok: "Bez zmian." });
     setState({});
     onEdit(edit, () => {
@@ -63,6 +64,10 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
       <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400" title="Czas drogi liczy się dwa razy. Czas wpisany ręcznie w „Trwa” jest już całością.">
         <input type="checkbox" checked={both} onChange={(event) => setBoth(event.target.checked)} disabled={busy} />
         Tam i z powrotem: bez osobnego punktu na powrót, czas drogi liczy się dwa razy
+      </label>
+      <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400" title="Mapa dnia skupia się wtedy na miejscu. Lot i przejazd od 250 km są zaznaczone same; można to zmienić.">
+        <input type="checkbox" checked={transit} onChange={(event) => setTransit(event.target.checked)} disabled={busy} />
+        Dojazd lub powrót: na mapie chowa go przycisk „✈ Dojazd i powrót”
       </label>
       {item.leg === undefined && (
         <p className="text-xs text-amber-700 dark:text-amber-400">

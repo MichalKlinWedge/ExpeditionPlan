@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
 import { addItem, addItemAtPin, addPoolItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, placeUses, removeItem, setLegRoute, removeItemClosingGap, renamePlace, replacePlace, setItemPlace, updateItem } from '../plan-edits.ts';
+import { isTransit } from '../plan-info.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(
@@ -213,6 +214,23 @@ describe('skąd i dokąd przejazdu', () => {
     expect(leg(off.doc).routed).toBe(leg(routedDoc).routed);
     expect(setLegRoute(off.doc, ref, ids, { from: start, to: end, routeUrl: '' })).toBeNull();
     expect(leg(setLegRoute(off.doc, ref, ids, { from: start, to: end, routeUrl: '', roundTrip: false })!.doc).roundTrip).toBeUndefined();
+  });
+
+  it('dojazd lub powrót: zapisuje tylko wybór inny niż automat, a nieprzekazany zostawia stan', () => {
+    const short = TripDocument.parse({ ...routedDoc, items: routedDoc.items.map((item) => (item.ref === ref ? { ...item, leg: { ...item.leg, distanceKm: 160 } } : item)) });
+    const item = (doc: TripDocument) => doc.items.find((each) => each.ref === ref)!;
+    expect(isTransit(short, item(short))).toBe(false);
+    const marked = setLegRoute(short, ref, ids, { from: start, to: end, routeUrl: '', transit: true })!;
+    expect(leg(marked.doc).transit).toBe(true);
+    expect(isTransit(marked.doc, item(marked.doc))).toBe(true);
+    expect(marked.placesChanged).toBe(false);
+    expect(setLegRoute(marked.doc, ref, ids, { from: start, to: end, routeUrl: '' })).toBeNull();
+    expect(leg(setLegRoute(marked.doc, ref, ids, { from: start, to: end, routeUrl: '', transit: false })!.doc).transit).toBeUndefined();
+    // Długa droga jest dojazdem sama; ręczne „nie” ją wyłącza.
+    const long = TripDocument.parse({ ...routedDoc, items: routedDoc.items.map((each) => (each.ref === ref ? { ...each, leg: { ...each.leg, distanceKm: 400 } } : each)) });
+    expect(setLegRoute(long, ref, ids, { from: start, to: end, routeUrl: '', transit: true })).toBeNull();
+    const notTransit = setLegRoute(long, ref, ids, { from: start, to: end, routeUrl: '', transit: false })!;
+    expect(isTransit(notTransit.doc, item(notTransit.doc))).toBe(false);
   });
 
   it('bez zmian nic nie zapisuje, a link spoza http(s) nie przechodzi walidacji', () => {

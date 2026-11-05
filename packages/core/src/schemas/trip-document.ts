@@ -227,6 +227,8 @@ const legDetails = {
     .optional(),
   /** Tam i z powrotem („2–2,5 h w jedną stronę” liczy się dwa razy). */
   roundTrip: z.boolean().optional(),
+  /** Ręcznie: to dojazd lub powrót (`true`) albo nie (`false`). Brak = sam lot i długa droga (`isTransit`). */
+  transit: z.boolean().optional(),
   links: z.array(Link).default([]),
 };
 

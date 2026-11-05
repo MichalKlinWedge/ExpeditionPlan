@@ -168,10 +168,11 @@ const TRANSIT_KM = 250;
 
 /**
  * Dojazd albo powrót: lot (rezerwacja lotu albo przejazd samolotem, także odprawa i przylot
- * z tą rezerwacją) albo przejazd dłuższy niż 250 km. Na mapie dnia można go ukryć — inaczej
- * skala całego kraju gubi szczegóły na miejscu.
+ * z tą rezerwacją) albo przejazd dłuższy niż 250 km; ręczne `leg.transit` ma pierwszeństwo.
+ * Na mapie dnia można go ukryć — inaczej skala całego kraju gubi szczegóły na miejscu.
  */
 export function isTransit(doc: Doc, item: Item): boolean {
+  if (item.leg?.transit !== undefined) return item.leg.transit;
   if (item.bookingRef !== undefined && doc.bookings.find((booking) => booking.ref === item.bookingRef)?.kind === 'flight') return true;
   if (item.kind !== 'transport' || item.leg === undefined) return false;
   return item.leg.mode === 'flight' || (item.leg.distanceKm ?? 0) >= TRANSIT_KM;
