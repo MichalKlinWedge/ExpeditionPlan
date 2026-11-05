@@ -304,7 +304,9 @@ ${fresh.rejected[0]!.error}`);
           addToPool: (fields, placeName, at) => apply(addPoolItem(trip.state.doc, { itemId: uuidv7(), placeId: uuidv7() }, fields, placeName, at)),
           remove: (ref) => {
             try {
-              apply(removeItemClosingGap(trip.state.doc, ref));
+              const edit = removeItemClosingGap(trip.state.doc, ref, { activeVariants: variants });
+              apply(edit);
+              if (edit?.shiftedMin) Alert.alert('Godziny przesunięte', `Kolejne punkty dnia zaczynają się teraz o ${edit.shiftedMin} min wcześniej.`);
             } catch (e) {
               Alert.alert('Nie można usunąć', e instanceof ItemInUseError ? e.message : message(e));
             }

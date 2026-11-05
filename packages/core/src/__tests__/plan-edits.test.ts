@@ -265,12 +265,13 @@ describe('godzina przenoszonego punktu', () => {
 });
 
 describe('usunięcie z zamknięciem luki', () => {
-  const doc = (times: Record<string, [precision: 'exact' | 'approx', start: string, duration: number]>) =>
+  const doc = (times: Record<string, [precision: 'exact' | 'approx', start: string, duration: number, extra?: object]>) =>
     TripDocument.parse({
       schemaVersion: 1,
       trip: { title: 'Test', startDate: '2027-06-22', endDate: '2027-06-22', primaryTz: 'Europe/Rome', baseCurrency: 'EUR' },
       days: [{ ref: 'd1', date: '2027-06-22', tz: 'Europe/Rome' }],
-      items: Object.entries(times).map(([ref, [precision, start, durationMin]], i) => ({
+      bookings: [{ ref: 'bilet', kind: 'ticket', status: 'paid', title: 'Bilet' }],
+      items: Object.entries(times).map(([ref, [precision, start, durationMin, extra]], i) => ({
         ref,
         dayRef: 'd1',
         sortKey: String((i + 1) * 10).padStart(4, '0'),
@@ -278,13 +279,14 @@ describe('usunięcie z zamknięciem luki', () => {
         title: ref,
         time: { precision, start },
         durationMin,
+        ...extra,
       })),
     });
   const starts = (edit: ReturnType<typeof removeItemClosingGap>) =>
     Object.fromEntries(scheduleDay(edit!.doc, 'd1').items.map((item) => [item.ref, item.startLocal]));
 
-  it('kolejne punkty z godziną przybliżoną idą wcześniej, do pierwszej stałej godziny', () => {
-    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['approx', '09:00', 60], c: ['approx', '10:00', 30], d: ['approx', '11:00', 60], e: ['exact', '13:00', 60], f: ['approx', '14:00', 60] }), 'b')!;
+  it('kolejne punkty z godziną idą wcześniej, do pierwszej stałej godziny', () => {
+    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['approx', '09:00', 60], c: ['approx', '10:00', 30], d: ['exact', '11:00', 60], e: ['exact', '13:00', 60, { isFixed: true }], f: ['approx', '14:00', 60] }), 'b')!;
     expect(edit.shiftedMin).toBe(60);
     expect(starts(edit)).toEqual({ a: '08:00', c: '09:00', d: '10:00', e: '13:00', f: '14:00' });
     expect(edit.changed.map((item) => item.ref)).toEqual(['c', 'd']);
@@ -299,9 +301,69 @@ describe('usunięcie z zamknięciem luki', () => {
   });
 
   it('stała godzina zaraz po usuniętym — nic się nie przesuwa', () => {
-    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['approx', '09:00', 60], c: ['exact', '10:00', 30] }), 'b')!;
+    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['approx', '09:00', 60], c: ['exact', '10:00', 30, { isFixed: true }] }), 'b')!;
     expect(edit.shiftedMin).toBeUndefined();
     expect(edit.changed).toEqual([]);
+  });
+
+  it('punkt spóźniony wobec swojej godziny: reszta dnia zyskuje tyle, ile on faktycznie', () => {
+    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['exact', '09:00', 60], c: ['exact', '09:30', 30], d: ['exact', '12:00', 30] }), 'b')!;
+    expect(edit.shiftedMin).toBe(60);
+    expect(starts(edit)).toEqual({ a: '08:00', c: '09:00', d: '11:00' });
+    const small = removeItemClosingGap(doc({ a: ['exact', '08:00', 90], b: ['exact', '09:30', 10], c: ['exact', '09:00', 30], d: ['exact', '12:00', 30] }), 'b')!;
+    expect(small.shiftedMin).toBe(10);
+    expect(small.doc.items.find((item) => item.ref === 'c')?.time).toMatchObject({ start: '09:00' });
+    expect(starts(small)).toEqual({ a: '08:00', c: '09:30', d: '11:50' });
+  });
+
+  it('godzina dokładna z rezerwacją jest trzymana, bez rezerwacji się przesuwa', () => {
+    const booked = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['exact', '09:00', 60], c: ['exact', '10:00', 30, { bookingRef: 'bilet' }] }), 'b')!;
+    expect(booked.shiftedMin).toBeUndefined();
+    const free = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['exact', '09:00', 60], c: ['exact', '10:00', 30], d: ['exact', '10:30', 30, { bookingRef: 'bilet' }] }), 'b')!;
+    expect(free.shiftedMin).toBe(60);
+    expect(starts(free)).toEqual({ a: '08:00', c: '09:00', d: '10:30' });
+  });
+
+  it('przejazd z czasem z trasy zwalnia ten czas, także liczony tam i z powrotem', () => {
+    const leg = { kind: 'transport', durationMin: undefined, leg: { mode: 'car', links: [], durationMin: 30, durationMaxMin: 40 } };
+    const edit = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['exact', '09:00', 0, leg], c: ['exact', '09:30', 30] }), 'b')!;
+    expect(edit.shiftedMin).toBe(30);
+    expect(starts(edit)).toEqual({ a: '08:00', c: '09:00' });
+    const both = { ...leg, leg: { ...leg.leg, roundTrip: true } };
+    expect(removeItemClosingGap(doc({ a: ['exact', '08:00', 60], b: ['exact', '09:00', 0, both], c: ['exact', '10:00', 30] }), 'b')!.shiftedMin).toBe(60);
+  });
+
+  it('usunięty postój skraca przejazd i dalsze godziny, a usunięty przejazd zwalnia tylko jazdę', () => {
+    const drive = { kind: 'transport', durationMin: undefined, leg: { mode: 'car', links: [], durationMin: 60 } };
+    const day = doc({ a: ['exact', '08:00', 0, drive], s: ['exact', '08:30', 30, { parentRef: 'a' }], c: ['exact', '09:30', 30] });
+    const stop = removeItemClosingGap(day, 's')!;
+    expect(stop.shiftedMin).toBe(30);
+    expect(starts(stop)).toEqual({ a: '08:00', c: '09:00' });
+    const ride = removeItemClosingGap(doc({ z: ['exact', '07:00', 60], a: ['exact', '08:00', 0, drive], s: ['exact', '09:00', 30, { parentRef: 'a' }], c: ['exact', '09:30', 30] }), 'a')!;
+    expect(ride.doc.items.find((item) => item.ref === 's')?.parentRef).toBeUndefined();
+    expect(ride.shiftedMin).toBe(60);
+    expect(starts(ride)).toEqual({ z: '07:00', s: '08:00', c: '08:30' });
+  });
+
+  it('punkt bloku nie przesuwa reszty, a pozostałe postoje przejazdu nie dostają nowych godzin', () => {
+    const block = removeItemClosingGap(doc({ a: ['exact', '08:00', 60], s: ['exact', '08:00', 30, { parentRef: 'a' }], c: ['exact', '09:30', 30] }), 's')!;
+    expect(block.shiftedMin).toBeUndefined();
+    const drive = { kind: 'transport', durationMin: undefined, leg: { mode: 'car', links: [], durationMin: 60 } };
+    const stops = removeItemClosingGap(doc({ a: ['exact', '08:00', 0, drive], s: ['exact', '08:30', 30, { parentRef: 'a' }], t: ['exact', '08:40', 30, { parentRef: 'a' }], c: ['exact', '10:00', 30] }), 's')!;
+    expect(stops.shiftedMin).toBe(30);
+    const time = (ref: string) => stops.doc.items.find((item) => item.ref === ref)?.time;
+    expect(time('t')).toMatchObject({ start: '08:40' });
+    expect(time('c')).toMatchObject({ start: '09:30' });
+  });
+
+  it('liczy dzień w oglądanym wariancie: punkt z innego wariantu ani nie blokuje, ani się nie przesuwa', () => {
+    const edit = removeItemClosingGap(maroko, 'd4-kozy')!;
+    const time = (ref: string) => edit.doc.items.find((item) => item.ref === ref)?.time;
+    expect(edit.shiftedMin).toBe(20);
+    expect(time('d4-imsouane')).toMatchObject({ start: '13:10' });
+    expect(time('d4-paradise')).toEqual(maroko.items.find((item) => item.ref === 'd4-paradise')?.time);
+    const inB = removeItemClosingGap(maroko, 'd4-kozy', { activeVariants: { 'd4-wariant': 'd4-v-b' } })!;
+    expect(inB.doc.items.find((item) => item.ref === 'd4-imsouane')?.time).toEqual(maroko.items.find((item) => item.ref === 'd4-imsouane')?.time);
   });
 });
 

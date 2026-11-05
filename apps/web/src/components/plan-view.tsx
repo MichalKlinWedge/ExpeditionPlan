@@ -126,7 +126,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
   const [ids, setIds] = useState(initialIds);
-  const [saving, setSaving] = useState<{ pending: number; error?: string; ok?: boolean }>({ pending: 0 });
+  const [saving, setSaving] = useState<{ pending: number; error?: string; ok?: boolean; note?: string }>({ pending: 0 });
   const [scenario, setScenario] = useState<Scenario>("optimistic");
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const variants = useMemo(() => ({ ...inputs.activeVariants, ...overrides }), [inputs.activeVariants, overrides]);
@@ -211,7 +211,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
     setDoc(edit.doc);
     setSaving((current) => ({ pending: current.pending + 1 }));
     void persist(edit).then(
-      () => setSaving((current) => ({ pending: current.pending - 1, ok: true })),
+      () => setSaving((current) => ({ pending: current.pending - 1, ok: true, ...(edit.shiftedMin ? { note: `Kolejne punkty dnia zaczynają się teraz o ${edit.shiftedMin} min wcześniej.` } : {}) })),
       (error: unknown) => {
         setDoc(before);
         setSaving((current) => ({ pending: current.pending - 1, error: error instanceof Error ? error.message : String(error) }));
@@ -262,7 +262,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
         addToPool: (fields, placeName) => apply(addPoolItem(doc, { itemId: uuidv7(), placeId: uuidv7() }, fields, placeName)),
         remove: (ref) => {
           try {
-            apply(removeItemClosingGap(doc, ref));
+            apply(removeItemClosingGap(doc, ref, { activeVariants: variants }));
           } catch (error) {
             setSaving({ pending: 0, error: error instanceof Error ? error.message : String(error) });
           }
@@ -303,7 +303,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
     <div className="flex flex-col gap-6">
       {canEdit && (
         <p className="sticky top-0 z-10 -mx-4 bg-[var(--background)] px-4 py-1 text-xs text-zinc-500">
-          {saving.pending > 0 ? "Zapisuję…" : saving.error ? <span className="text-red-600">{saving.error}</span> : saving.ok ? "Zapisano." : "Zmiany zapisują się od razu."}
+          {saving.pending > 0 ? "Zapisuję…" : saving.error ? <span className="text-red-600">{saving.error}</span> : saving.ok ? `Zapisano.${saving.note ? ` ${saving.note}` : ""}` : "Zmiany zapisują się od razu."}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3 text-sm">

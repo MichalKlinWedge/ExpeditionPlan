@@ -1,5 +1,5 @@
 import { detachRouteStops } from './route-stops.ts';
-import { scheduleDay } from './engine/schedule.ts';
+import { itemsForDay, type ScheduleOptions, scheduleDay } from './engine/schedule.ts';
 import { MINUTE, minutesOfDay, zonedToInstant } from './engine/time.ts';
 import { TripDocument } from './schemas/trip-document.ts';
 import { keyBetween, NoRoomError, renumber } from './sort-key.ts';
@@ -83,11 +83,14 @@ function timeClashes(doc: Doc, item: Item, dayRef: string): boolean {
  * „po poprzednim”. Bez tego godzina z innej pory dnia przesuwa cały dzień. Zostają: stała godzina,
  * dokładna godzina rezerwacji (bilet) i godzina względna, która sama liczy się od poprzedniego punktu.
  */
+/** Godzina, której nie zmieniamy po przesunięciu czegoś innego: oznaczona jako stała albo dokładna z rezerwacją (bilet). */
+const heldTime = (item: Item) => item.isFixed === true || (item.time?.precision === 'exact' && item.bookingRef !== undefined);
+
 function settleMovedTime(edit: PlanEdit, ref: string, dayRef: string): PlanEdit {
   const item = edit.doc.items.find((each) => each.ref === ref);
   const time = item?.time;
   if (item === undefined || time === undefined || time.precision === 'relative' || time.precision === 'day') return edit;
-  if (item.isFixed || (time.precision === 'exact' && item.bookingRef !== undefined)) return edit;
+  if (heldTime(item)) return edit;
   if (!timeClashes(edit.doc, item, dayRef)) return edit;
   const cleared: Item = { ...item, time: undefined };
   return { ...edit, doc: replace(edit.doc, [cleared]), changed: edit.changed.map((each) => (each.ref === ref ? cleared : each)) };
@@ -409,47 +412,74 @@ const hhmm = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2
 
 /**
  * Usunięcie, po którym dzień „zamyka lukę”. Godziny w planie znaczą „nie wcześniej niż”, więc
- * bez tego punkty z godziną przybliżoną (szkic AI daje ją prawie każdemu) zostają na swoich
- * miejscach i w dniu zostaje dziura. Kolejne punkty z godziną przybliżoną albo przedziałem idą
- * wcześniej o zwolniony czas (trwanie + zapas usuniętego), ale najwyżej do końca poprzedniego
- * punktu — tyle, ile silnik pozwala. Przesuwanie kończy się na pierwszej stałej godzinie
- * (`exact`, `isFixed`: lot, mecz), punkty bez godziny i liczone od poprzedniego idą same.
- * Podpunkty bloku i punkty części grupy (osobne ścieżki) nie przesuwają reszty — tu też nie.
+ * bez tego punkty z podaną godziną zostają na swoich miejscach i w dniu zostaje dziura. Kolejne
+ * punkty z godziną idą wcześniej o zwolniony czas (czas punktu z silnika, także czas drogi z trasy,
+ * + zapas usuniętego), ale najwyżej do końca poprzedniego punktu — tyle, ile silnik pozwala.
+ * Przesuwanie kończy się na pierwszej godzinie trzymanej (`heldTime`: lot, mecz, bilet), punkty bez
+ * godziny i liczone od poprzedniego idą same. Postój w trasie skraca przejazd, więc też zwalnia
+ * czas; przy usuwaniu przejazdu jego postoje zostają w dniu, więc zwalnia się tylko jazda. Podpunkty
+ * bloku i punkty części grupy (osobne ścieżki) nie przesuwają reszty — tu też nie. Liczy się dzień
+ * w oglądanym wariancie (`options`).
  */
-export function removeItemClosingGap(doc: Doc, ref: string): PlanEdit | null {
+export function removeItemClosingGap(doc: Doc, ref: string, options: Pick<ScheduleOptions, 'activeVariants'> = {}): PlanEdit | null {
   const target = doc.items.find((each) => each.ref === ref);
   const edit = removeItem(doc, ref);
-  if (edit === null || target?.dayRef === undefined || target.parentRef !== undefined || (target.participantRefs ?? []).length > 0) return edit;
-  const freed = (target.durationMin ?? 0) + (target.stopsMin ?? 0) + (target.bufferAfterMin ?? 0);
-  if (freed === 0) return edit;
+  if (edit === null || target?.dayRef === undefined || (target.participantRefs ?? []).length > 0) return edit;
   const day = doc.days.find((each) => each.ref === target.dayRef)!;
-  const original = dayItems(doc, day.ref);
-  const following = original.slice(original.findIndex((each) => each.ref === ref) + 1).map((each) => edit.doc.items.find((item) => item.ref === each.ref) ?? each);
-
-  // Pierwszy punkt z godziną po usuniętym wyznacza, ile da się przesunąć; stała godzina — nic.
-  const first = following.find((item) => item.time !== undefined && 'start' in item.time);
-  if (first?.time === undefined || !('start' in first.time) || first.time.precision === 'exact' || first.isFixed) return edit;
-  // Kiedy punkt by się zaczął bez swojej godziny = koniec tego, co przed nim.
-  const probe: Doc = { ...edit.doc, items: edit.doc.items.map((item) => (item.ref === first.ref ? { ...item, time: undefined } : item)) };
-  let arrival: number | undefined;
+  let scheduledAfter: ReturnType<typeof scheduleDay>['items'];
+  let freed: number;
   try {
-    arrival = scheduleDay(probe, day.ref).items.find((item) => item.ref === first.ref)?.start;
+    const entry = scheduleDay(doc, day.ref, options).items.find((each) => each.ref === ref);
+    if (entry === undefined || (entry.child && !entry.routeStop)) return edit;
+    freed = entry.durationMin - (entry.routeStopsMin ?? 0) + (target.bufferAfterMin ?? 0);
+    scheduledAfter = scheduleDay(edit.doc, day.ref, options).items;
   } catch {
     return edit;
   }
-  if (arrival === undefined) return edit;
+  if (freed <= 0) return edit;
+  const original = itemsForDay(doc, day.ref, options);
+  // Postój nie ma własnej chwili w dniu: jego godziny silnik nie używa, więc nie ma czego przesuwać.
+  const stops = new Set(scheduledAfter.filter((each) => each.routeStop).map((each) => each.ref));
+  const children = new Set(scheduledAfter.filter((each) => each.child).map((each) => each.ref));
+  const following = original
+    .slice(original.findIndex((each) => each.ref === ref) + 1)
+    .map((each) => edit.doc.items.find((item) => item.ref === each.ref) ?? each)
+    .filter((each) => !stops.has(each.ref));
+
+  // Pierwszy punkt z godziną po usuniętym wyznacza, ile da się przesunąć; godzina trzymana — nic.
+  const first = following.find((item) => !children.has(item.ref) && item.time !== undefined && 'start' in item.time);
+  if (first?.time === undefined || !('start' in first.time) || heldTime(first)) return edit;
+  // Kiedy punkt by się zaczął bez swojej godziny = koniec tego, co przed nim.
+  const probe: Doc = { ...edit.doc, items: edit.doc.items.map((item) => (item.ref === first.ref ? { ...item, time: undefined } : item)) };
+  let arrival: number | undefined;
+  let previously: ReturnType<typeof scheduleDay>['items'][number] | undefined;
+  try {
+    arrival = scheduleDay(probe, day.ref, options).items.find((item) => item.ref === first.ref)?.start;
+    previously = scheduleDay(doc, day.ref, options).items.find((item) => item.ref === first.ref);
+  } catch {
+    return edit;
+  }
+  if (arrival === undefined || previously === undefined) return edit;
   const stated = zonedToInstant(day.date, first.time.start, first.time.tz ?? day.tz);
-  const shift = Math.min(freed, Math.floor((stated - arrival) / MINUTE));
+  // Były postój usuniętego przejazdu nie miał własnej chwili w dniu, liczy się jego godzina.
+  const started = previously.routeStop ? stated : previously.start;
+  const landing = Math.max(arrival, stated - freed * MINUTE);
+  // Godzina pierwszego punktu idzie do chwili dotarcia. Reszta dnia zyskuje tyle, ile ten punkt faktycznie:
+  // gdy był spóźniony wobec swojej godziny, to więcej niż zmiana samej godziny.
+  const firstShift = Math.max(0, Math.floor((stated - landing) / MINUTE));
+  const shift = Math.min(freed, Math.floor((started - landing) / MINUTE));
   if (shift <= 0) return edit;
 
   const shifted: Item[] = [];
   for (const item of following.slice(following.indexOf(first))) {
     const time = item.time;
-    if (time?.precision === 'exact' || item.isFixed) break;
+    if (heldTime(item)) break;
     if (time === undefined || !('start' in time)) continue;
-    const start = minutesOfDay(time.start) - shift;
+    const by = item === first ? firstShift : shift;
+    if (by === 0) continue;
+    const start = minutesOfDay(time.start) - by;
     if (start < 0) break;
-    const end = time.end === undefined ? undefined : minutesOfDay(time.end) - shift;
+    const end = time.end === undefined ? undefined : minutesOfDay(time.end) - by;
     shifted.push({ ...item, time: { ...time, start: hhmm(start), ...(end !== undefined && end >= 0 ? { end: hhmm(end) } : {}) } as Item['time'] });
   }
   if (shifted.length === 0) return edit;
