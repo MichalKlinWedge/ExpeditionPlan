@@ -23,6 +23,7 @@ import {
   setBookingItems,
   setExpenseSplits,
   setTaskStatus,
+  setTripCurrency,
 } from "@/app/logistics-actions";
 
 /**
@@ -1034,6 +1035,53 @@ export function BudgetSuggestions({ tripId, suggestions }: { tripId: string; sug
 }
 
 /** Kursy walut wyjazdu: ile waluty bazowej za jednostkę i z kiedy — z nich sumy budżetu i portfela. */
+/** Waluta wyjazdu: w niej są sumy i rozliczenie. Podpowiedzi to waluty z kursów i te najczęstsze. */
+export function TripCurrency({ tripId, base, known, canEdit }: { tripId: string; base: string; known: string[]; canEdit: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
+    const result = await setTripCurrency(tripId, prev, form);
+    if (result.ok) setOpen(false);
+    return result;
+  }, {});
+  if (!open)
+    return (
+      <p className="text-xs text-zinc-500">
+        Waluta wyjazdu (sumy i rozliczenie): <span className="font-medium">{base}</span>
+        {canEdit && (
+          <>
+            {" "}
+            <button onClick={() => setOpen(true)} className={small}>
+              zmień
+            </button>
+          </>
+        )}
+        {state.ok && <span className="text-green-700 dark:text-green-400"> {state.ok}</span>}
+      </p>
+    );
+  return (
+    <form action={action} className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+      <p className="text-xs text-zinc-500">Przeliczą się sumy, plan dzień po dniu, rozliczenie i kursy. Kwoty pozycji i wydatków zostają w swoich walutach.</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input name="currency" required defaultValue={base} list="trip-currencies" maxLength={3} className={`${input} w-20 uppercase`} aria-label="Waluta wyjazdu" />
+        <datalist id="trip-currencies">
+          {[...new Set([...known, "PLN", "EUR", "USD", "GBP", "CZK"])]
+            .filter((currency) => currency !== base)
+            .map((currency) => (
+              <option key={currency} value={currency} />
+            ))}
+        </datalist>
+        <button disabled={pending} className={primary}>
+          {pending ? "Zapisuję…" : "Zmień walutę"}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="text-sm underline">
+          Anuluj
+        </button>
+      </div>
+      <Status state={state} />
+    </form>
+  );
+}
+
 export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: string; fx: Doc["trip"]["fx"]; base: string; missing: string[]; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
   // Stały klucz wiersza — pola są niekontrolowane, usunięcie środkowego nie może przesunąć wartości.

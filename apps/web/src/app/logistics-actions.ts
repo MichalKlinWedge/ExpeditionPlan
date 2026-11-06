@@ -1,6 +1,6 @@
 "use server";
 
-import { BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, parseWeightKg, PriceBasis, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
+import { BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, type FxRate, mergeRates, parseMoney, parseWeightKg, PriceBasis, rebaseRates, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
 import { carrierRow, type ElementWrite, expenseSplitRows, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -548,6 +548,36 @@ export async function saveFx(tripId: string, _prev: FormState, form: FormData): 
   if ((data ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: "Zapisano kursy." };
+}
+
+/**
+ * Waluta wyjazdu, czyli ta, w której są sumy i rozliczenie. Kwoty pozycji i wydatków się nie zmieniają,
+ * tylko kursy przechodzą na nową walutę; brakujący kurs nowej waluty przychodzi z Frankfurtera.
+ */
+export async function setTripCurrency(tripId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const to = text(form, "currency").toUpperCase();
+  if (!/^[A-Z]{3}$/.test(to)) return { error: "Waluta: trzy litery, np. PLN, EUR, MAD." };
+  const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
+  const { data: trip, error: readError } = await supabase.from("trips").select("base_currency, fx").eq("id", tripId).maybeSingle();
+  if (readError) return { error: message(readError) };
+  if (trip === null) return { error: "Nie ma takiego wyjazdu." };
+  const from = trip.base_currency as string;
+  if (from === to) return { ok: `Wyjazd jest już w ${to}.` };
+  let rates = (trip.fx ?? []) as FxRate[];
+  if (!rates.some((rate) => rate.currency === to)) {
+    try {
+      rates = mergeRates(rates, await fetchRates(from, [to]));
+    } catch {
+      // Komunikat niżej: brak kursu wygląda tak samo, czy źródło nie odpowiedziało, czy go nie zna.
+    }
+  }
+  const fx = rebaseRates(rates, from, to);
+  if (fx === null) return { error: `Nie ma kursu ${to} i nie udało się go pobrać. Dodaj go w kursach (1 ${to} = ile ${from}) i spróbuj ponownie.` };
+  const { data, error } = await supabase.from("trips").update({ base_currency: to, fx }).eq("id", tripId).select("id");
+  if (error) return { error: message(error) };
+  if ((data ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  refresh();
+  return { ok: `Sumy są teraz w ${to}.` };
 }
 
 /**

@@ -39,6 +39,25 @@ export function mergeRates(current: readonly FxRate[], fresh: readonly FxRate[])
   return [...byCurrency.values()].sort((a, b) => a.currency.localeCompare(b.currency));
 }
 
+/**
+ * Kursy po zmianie waluty wyjazdu z `from` na `to`: przeliczone przez kurs `to`, bez pobierania, więc
+ * kursy wpisane ręcznie zostają. Dawna waluta dostaje własny kurs, bo kwoty w niej nadal są w planie.
+ * Data: starsza z dwóch użytych, a gdy którejś brak — bez daty. `null`, gdy nie ma kursu `to`.
+ */
+export function rebaseRates(fx: readonly FxRate[], from: string, to: string): FxRate[] | null {
+  if (from === to) return [...fx];
+  const pivot = fx.find((rate) => rate.currency === to);
+  if (pivot === undefined) return null;
+  const others = fx
+    .filter((rate) => rate.currency !== to && rate.currency !== from)
+    .map((rate) => {
+      const date = rate.date !== undefined && pivot.date !== undefined ? (rate.date < pivot.date ? rate.date : pivot.date) : undefined;
+      return { currency: rate.currency, rateToBase: Number((rate.rateToBase / pivot.rateToBase).toPrecision(6)), ...(date ? { date } : {}) };
+    });
+  const old = { currency: from, rateToBase: Number((1 / pivot.rateToBase).toPrecision(6)), ...(pivot.date ? { date: pivot.date } : {}) };
+  return mergeRates(others, [old]);
+}
+
 /** Waluty bez kursu albo z kursem starszym niż `maxAgeDays` (względem `today`, RRRR-MM-DD). */
 export function staleCurrencies(fx: readonly FxRate[], currencies: readonly string[], today: string, maxAgeDays = 7): string[] {
   const limit = new Date(Date.parse(`${today}T00:00:00Z`) - maxAgeDays * 86_400_000).toISOString().slice(0, 10);

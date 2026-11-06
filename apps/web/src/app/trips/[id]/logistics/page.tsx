@@ -1,4 +1,4 @@
-import { bookingRemovalNote, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, flightLine, formatMoney, instantToZoned, LogisticsCandidates, removeBooking, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { bookingRemovalNote, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, flightLine, formatMoney, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
-import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking } from "@/components/logistics-editors";
+import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -269,7 +269,9 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           </details>
         )}
         {canEdit && <BudgetSuggestions tripId={id} suggestions={suggestions} />}
-        <FxEditor tripId={id} fx={doc.trip.fx} base={doc.trip.baseCurrency} missing={missingFx} canEdit={canEdit} />
+        <TripCurrency tripId={id} base={doc.trip.baseCurrency} known={tripCurrencies(doc)} canEdit={canEdit} />
+        {/* Klucz: wiersze edytora biorą kursy tylko przy montowaniu, a zmiana waluty podaje nowe. */}
+        <FxEditor key={doc.trip.baseCurrency} tripId={id} fx={doc.trip.fx} base={doc.trip.baseCurrency} missing={missingFx} canEdit={canEdit} />
         <p className="text-sm">
           Portfel — wydane na miejscu: <span className="font-medium">{money(wallet.spentMinor)}</span>
           <span className="text-zinc-500"> ({wallet.count} wydatków z telefonu)</span>
