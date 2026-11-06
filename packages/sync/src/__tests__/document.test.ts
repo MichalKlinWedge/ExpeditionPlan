@@ -99,6 +99,20 @@ describe('dokument ↔ wiersze tabel (MVP-1)', () => {
     expect(row).toHaveProperty('booking_group_id');
   });
 
+  it('osoby pozycji budżetu: wracają z wierszy jako klucze, a „wszyscy” to NULL', () => {
+    const base = load('dinara');
+    const who = [base.travelers[0]!.ref, base.travelers[1]!.ref];
+    const doc = { ...base, budgetLines: base.budgetLines.map((line, i) => (i === 0 ? { ...line, participantRefs: who } : line)) };
+    const rows = rowsFromDocument(doc, uuidv7(), uuidv7);
+    const server = asServer(rows);
+    const back = documentFromRows(server.trip, server.tables);
+    expect(back.budgetLines.find((line) => line.ref === doc.budgetLines[0]!.ref)!.participantRefs).toEqual(who);
+    expect(back.budgetLines.find((line) => line.ref === doc.budgetLines[1]!.ref)!.participantRefs).toBeUndefined();
+    const ids = refIndex(rows.tables);
+    const row = rowForUpdate('budgetLines', { ...doc.budgetLines[1]! }, { idOf: (ref) => ids[ref]!, collectionOf: () => undefined });
+    expect(row.participant_ids).toBeNull();
+  });
+
   it('usunięty wiersz znika z dokumentu', () => {
     const doc = load('chatka');
     const server = asServer(rowsFromDocument(doc, uuidv7(), uuidv7));

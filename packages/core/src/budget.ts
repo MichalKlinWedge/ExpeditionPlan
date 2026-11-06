@@ -12,6 +12,8 @@ export type MoneyByCurrency = Record<string, number>;
 
 export type CategoryTotal = { category: string; paidMinor: number; lowMinor: number; highMinor: number };
 
+export type TravelerShare = { ref: string; name: string; lowMinor: number; highMinor: number };
+
 export type BudgetSummary = {
   currency: string;
   paidMinor: number;
@@ -20,9 +22,11 @@ export type BudgetSummary = {
   toSpendHighMinor: number;
   totalLowMinor: number;
   totalHighMinor: number;
-  /** Całość na osobę (uczestnicy z planu), oszczędnie … wygodnie. */
+  /** Całość na osobę, oszczędnie … wygodnie; `null`, gdy nie ma osób albo każdemu wypada co innego (wtedy `perTraveler`). */
   perPersonLowMinor: number | null;
   perPersonHighMinor: number | null;
+  /** Ile wypada na każdego uczestnika; pozycja bez wyboru osób dzieli się na wszystkich. */
+  perTraveler: TravelerShare[];
   byCategory: CategoryTotal[];
   /** Kwoty w walutach bez kursu w `trip.fx` — pokazane osobno. */
   unconverted: MoneyByCurrency;
@@ -33,6 +37,18 @@ export function toBase(doc: Doc, amountMinor: number, currency: string): number 
   if (currency === doc.trip.baseCurrency) return amountMinor;
   const rate = doc.trip.fx.find((each) => each.currency === currency)?.rateToBase;
   return rate === undefined ? null : Math.round(amountMinor * rate);
+}
+
+/** Kogo dotyczy pozycja budżetu: wybrane osoby, a bez wyboru wszyscy uczestnicy (kolejność z planu). */
+export function lineTravelers(doc: Doc, line: Doc['budgetLines'][number]): string[] {
+  const chosen = line.participantRefs ?? [];
+  return doc.travelers.filter((traveler) => chosen.length === 0 || chosen.includes(traveler.ref)).map((traveler) => traveler.ref);
+}
+
+/** Imiona osób pozycji; `null`, gdy dotyczy wszystkich. */
+export function lineTravelerNames(travelers: readonly { ref: string; name: string }[], line: { participantRefs?: string[] | undefined }): string[] | null {
+  const chosen = travelers.filter((traveler) => line.participantRefs?.includes(traveler.ref));
+  return chosen.length === 0 || chosen.length === travelers.length ? null : chosen.map((traveler) => traveler.name);
 }
 
 export function budgetSummary(doc: Doc): BudgetSummary {
@@ -46,12 +62,15 @@ export function budgetSummary(doc: Doc): BudgetSummary {
     totalHighMinor: 0,
     perPersonLowMinor: null,
     perPersonHighMinor: null,
+    perTraveler: [],
     byCategory: [],
     unconverted: {},
   };
   const categories = new Map<string, CategoryTotal>();
+  const shares = new Map(doc.travelers.map((traveler) => [traveler.ref, { low: 0, high: 0 }]));
   for (const line of doc.budgetLines) {
-    const times = line.perPerson ? Math.max(people, 1) : 1;
+    const refs = lineTravelers(doc, line);
+    const times = line.perPerson ? Math.max(refs.length, 1) : 1;
     const low = toBase(doc, line.lowMinor * times, line.currency);
     const high = toBase(doc, line.highMinor * times, line.currency);
     if (low === null || high === null) {
@@ -69,10 +88,22 @@ export function budgetSummary(doc: Doc): BudgetSummary {
     }
     category.lowMinor += low;
     category.highMinor += high;
+    // Zapłacona pozycja ma jedną kwotę: tę, którą doliczają też sumy wyżej.
+    for (const ref of refs) {
+      const share = shares.get(ref)!;
+      share.low += low / refs.length;
+      share.high += (line.status === 'paid' ? low : high) / refs.length;
+    }
   }
   summary.totalLowMinor = summary.paidMinor + summary.toSpendLowMinor;
   summary.totalHighMinor = summary.paidMinor + summary.toSpendHighMinor;
-  if (people > 0) {
+  summary.perTraveler = doc.travelers.map((traveler) => {
+    const share = shares.get(traveler.ref)!;
+    return { ref: traveler.ref, name: traveler.name, lowMinor: Math.round(share.low), highMinor: Math.round(share.high) };
+  });
+  // Grosze z zaokrągleń nie robią różnicy między osobami.
+  const even = (values: number[]) => Math.max(...values) - Math.min(...values) <= 1;
+  if (people > 0 && even(summary.perTraveler.map((each) => each.lowMinor)) && even(summary.perTraveler.map((each) => each.highMinor))) {
     summary.perPersonLowMinor = Math.round(summary.totalLowMinor / people);
     summary.perPersonHighMinor = Math.round(summary.totalHighMinor / people);
   }

@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
-import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, FxEditor, NewBooking, RemoveCancelledBooking } from "@/components/logistics-editors";
+import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -128,7 +128,8 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
   const range = (low: number, high: number) => (low === high ? money(low) : `${money(low)} – ${money(high)}`);
   // Plan a wydatki dzień po dniu: punkt wydatku (id → ref) i „dziś” w strefie wyjazdu.
   const tripToday = instantToZoned(new Date().getTime(), doc.trip.primaryTz).date;
-  const refOf = new Map(Object.entries(refIndex(payload.tables)).map(([ref, rowId]) => [rowId, ref]));
+  const idOf = refIndex(payload.tables);
+  const refOf = new Map(Object.entries(idOf).map(([ref, rowId]) => [rowId, ref]));
   const pace = budgetPace(
     doc,
     expenses.map((row) => ({
@@ -210,7 +211,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
         {doc.budgetLines.length === 0 ? (
           <>
             <p className="text-sm text-zinc-500">Plan nie ma pozycji budżetu.</p>
-            <BudgetLines tripId={id} lines={[]} currency={doc.trip.baseCurrency} canEdit={canEdit} />
+            <BudgetLines tripId={id} lines={[]} currency={doc.trip.baseCurrency} people={choices.travelers} canEdit={canEdit} />
           </>
         ) : (
           <>
@@ -220,7 +221,20 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
               <Stat label="Razem" value={range(budget.totalLowMinor, budget.totalHighMinor)} />
               {budget.perPersonLowMinor !== null && <Stat label="Na osobę" value={range(budget.perPersonLowMinor, budget.perPersonHighMinor!)} />}
             </dl>
-            <BudgetLines tripId={id} lines={doc.budgetLines} currency={budget.currency} canEdit={canEdit} />
+            {/* Pozycje dla części osób: średnia nic nie mówi, więc kwota każdej osoby. */}
+            {budget.perPersonLowMinor === null && budget.perTraveler.length > 0 && (
+              <div className="text-sm">
+                <p className="text-xs text-zinc-500">Na osobę</p>
+                <ul className="flex flex-wrap gap-x-6 gap-y-1">
+                  {budget.perTraveler.map((each) => (
+                    <li key={each.ref}>
+                      {each.name}: <span className="font-medium">{range(each.lowMinor, each.highMinor)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <BudgetLines tripId={id} lines={doc.budgetLines} currency={budget.currency} people={choices.travelers} canEdit={canEdit} />
             {Object.keys(budget.unconverted).length > 0 && (
               <p className="text-xs text-amber-700">
                 Bez kursu w planie (poza sumą):{" "}
@@ -261,7 +275,18 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           <span className="text-zinc-500"> ({wallet.count} wydatków z telefonu)</span>
         </p>
         {pace.plannedHighMinor > 0 && <PaceTable pace={pace} today={tripToday} money={money} range={range} />}
-        {expenses.length > 0 && <ExpenseList expenses={expenses} receipts={receipts} names={new Map(doc.travelers.map((each) => [each.ref, each.name]))} refOf={refOf} />}
+        {expenses.length > 0 && (
+          <ExpenseList
+            tripId={id}
+            canEdit={canEdit}
+            expenses={expenses}
+            receipts={receipts}
+            names={new Map(doc.travelers.map((each) => [each.ref, each.name]))}
+            refOf={refOf}
+            people={doc.travelers.map((each) => ({ ref: idOf[each.ref]!, name: each.name }))}
+            splits={(payload.tables.expense_splits ?? []).filter((row) => row.deleted_at === null)}
+          />
+        )}
         <Settlement doc={doc} tables={payload.tables as unknown as Parameters<typeof Settlement>[0]["tables"]} />
       </section>
 
@@ -421,7 +446,25 @@ function PaceTable({ pace, today, money, range }: { pace: ReturnType<typeof budg
 type ExpenseRow = { id: string } & Record<string, unknown>;
 
 /** Wydatki z telefonu: kwota, kategoria, kto płacił, notatka i miniatura paragonu (pełne zdjęcie w nowej karcie). */
-function ExpenseList({ expenses, receipts, names, refOf }: { expenses: ExpenseRow[]; receipts: Map<string, string>; names: Map<string, string>; refOf: Map<string, string> }) {
+function ExpenseList({
+  tripId,
+  canEdit,
+  expenses,
+  receipts,
+  names,
+  refOf,
+  people,
+  splits,
+}: {
+  tripId: string;
+  canEdit: boolean;
+  expenses: ExpenseRow[];
+  receipts: Map<string, string>;
+  names: Map<string, string>;
+  refOf: Map<string, string>;
+  people: { ref: string; name: string }[];
+  splits: Record<string, unknown>[];
+}) {
   const sorted = [...expenses].sort((a, b) => String(b.paid_at).localeCompare(String(a.paid_at)));
   const withReceipt = sorted.filter((row) => row.receipt_path).length;
   return (
@@ -443,11 +486,12 @@ function ExpenseList({ expenses, receipts, names, refOf }: { expenses: ExpenseRo
               ) : (
                 <span className="size-12 shrink-0" />
               )}
-              <span className="flex-1">
+              <div className="flex-1">
                 <strong>{formatMoney(Number(row.amount_minor), String(row.currency))}</strong> · {BUDGET_CATEGORY[String(row.category)] ?? String(row.category)}
                 {payer ? ` · płacił(a): ${payer}` : ""}
                 {row.note ? <span className="text-zinc-500"> · {String(row.note)}</span> : null}
-              </span>
+                {people.length > 1 && <ExpenseSplitEditor tripId={tripId} expenseId={row.id} people={people} chosen={splits.filter((split) => split.expense_id === row.id).map((split) => String(split.traveler_id))} canEdit={canEdit} />}
+              </div>
               <span className="text-xs text-zinc-500">{new Date(String(row.paid_at)).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</span>
             </li>
           );

@@ -1,7 +1,7 @@
 "use server";
 
 import { BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, mergeRates, parseMoney, parseWeightKg, PriceBasis, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
-import { carrierRow, type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { carrierRow, type ElementWrite, expenseSplitRows, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
@@ -108,7 +108,8 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
   const currency = text(form, "currency").toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return { error: "Waluta: trzy litery, np. PLN, EUR, MAD." };
   const status = ["estimate", "committed", "paid"].includes(text(form, "status")) ? text(form, "status") : "estimate";
-  return change(tripId, "budgetLines", ref, (_doc, current) => ({
+  const chosen = form.getAll("for").map(String);
+  return change(tripId, "budgetLines", ref, (doc, current) => ({
     ...(current ?? { ref: `id-${uuidv7()}` }),
     title,
     category: category.data,
@@ -117,8 +118,26 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
     highMinor: high,
     currency,
     perPerson: form.get("perPerson") === "on",
+    // Wszyscy zaznaczeni to to samo co brak wyboru: osoba dodana później też się liczy.
+    participantRefs: chosen.length === 0 || doc.travelers.every((traveler) => chosen.includes(traveler.ref)) ? undefined : chosen,
     note: optional(text(form, "note")),
   }));
+}
+
+/** Na kogo dzieli się wydatek; pusto = na wszystkich. Prawo: RLS `expense_splits`, jak na telefonie. */
+export async function setExpenseSplits(tripId: string, expenseId: string, chosen: string[]): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
+  const [people, existing] = await Promise.all([supabase.from("travelers").select("id").eq("trip_id", tripId).is("deleted_at", null), supabase.from("expense_splits").select("id").eq("expense_id", expenseId)]);
+  if (people.error) return { error: message(people.error) };
+  if (existing.error) return { error: message(existing.error) };
+  const known = new Set(existing.data.map((row) => row.id));
+  const rows = expenseSplitRows(tripId, expenseId, chosen, people.data.map((row) => row.id), (id) => known.has(id));
+  if (rows.length > 0) {
+    const { error } = await supabase.from("expense_splits").upsert(rows);
+    if (error) return { error: message(error) };
+  }
+  refresh();
+  return { ok: "Zapisano." };
 }
 
 /** Usunięcie pozycji budżetu (miękkie). Nic na pozycje budżetu nie wskazuje. */

@@ -113,6 +113,8 @@ export function budgetSuggestions(doc: Doc): BudgetSuggestion[] {
         highMinor: price.from ? group.minMinor : group.maxMinor,
         currency: group.currency,
         perPerson: false,
+        // Cena policzona dla uczestników punktu, więc pozycja dotyczy tylko ich.
+        ...(item.participantRefs && item.participantRefs.length > 0 ? { participantRefs: item.participantRefs } : {}),
       },
     });
   }

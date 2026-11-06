@@ -1,6 +1,6 @@
 "use client";
 
-import { BUDGET_CATEGORY, type BudgetSuggestion, formatMoney, type TripDocument } from "@expeditionplan/core";
+import { BUDGET_CATEGORY, type BudgetSuggestion, formatMoney, lineTravelerNames, type TripDocument } from "@expeditionplan/core";
 import { startTransition, useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
@@ -21,6 +21,7 @@ import {
   saveShoppingItem,
   saveTask,
   setBookingItems,
+  setExpenseSplits,
   setTaskStatus,
 } from "@/app/logistics-actions";
 
@@ -62,7 +63,85 @@ function useAction() {
 
 const LINE_STATUS: Record<string, string> = { estimate: "szacunek", committed: "zobowiązanie", paid: "zapłacone" };
 
-function BudgetForm({ tripId, line, currency, onDone }: { tripId: string; line?: Line; currency: string; onDone?: () => void }) {
+type Person = { ref: string; name: string };
+
+/** „Wszyscy” albo wybrane osoby; pusta lista = wszyscy, a komplet wybranych wraca do „wszyscy”. */
+function ForWhomPicker({ people, chosen, onChange }: { people: Person[]; chosen: string[]; onChange: (chosen: string[]) => void }) {
+  const toggle = (ref: string) => {
+    const next = chosen.includes(ref) ? chosen.filter((each) => each !== ref) : [...chosen, ref];
+    onChange(next.length === people.length ? [] : next);
+  };
+  return (
+    <fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+      <legend className="sr-only">Kogo dotyczy</legend>
+      kogo dotyczy:
+      <label className="flex items-center gap-1">
+        <input type="checkbox" checked={chosen.length === 0} onChange={() => onChange([])} /> wszyscy
+      </label>
+      {people.map((person) => (
+        <label key={person.ref} className="flex items-center gap-1">
+          <input type="checkbox" name="for" value={person.ref} checked={chosen.includes(person.ref)} onChange={() => toggle(person.ref)} /> {person.name}
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+/** Na kogo dzieli się wydatek: wiersz przy wydatku, po „zmień” wybór osób. `people` i `chosen` po id z bazy. */
+export function ExpenseSplitEditor({ tripId, expenseId, people, chosen, canEdit }: { tripId: string; expenseId: string; people: Person[]; chosen: string[]; canEdit: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(chosen);
+  const save = useAction();
+  const names = people.filter((person) => chosen.includes(person.ref)).map((person) => person.name);
+  if (names.length === 0 && !canEdit) return null;
+  if (!editing)
+    return (
+      <span className="block text-xs text-zinc-500">
+        na: {names.length === 0 ? "wszystkich" : names.join(", ")}
+        {canEdit && (
+          <>
+            {" "}
+            <button
+              onClick={() => {
+                setValue(chosen);
+                setEditing(true);
+              }}
+              className={small}
+            >
+              zmień
+            </button>
+          </>
+        )}
+      </span>
+    );
+  return (
+    <div className="flex flex-col gap-1">
+      <ForWhomPicker people={people} chosen={value} onChange={setValue} />
+      <div className="flex items-center gap-2">
+        <button
+          disabled={save.pending}
+          onClick={() =>
+            save.run(async () => {
+              const result = await setExpenseSplits(tripId, expenseId, value);
+              if (result.ok) setEditing(false);
+              return result;
+            })
+          }
+          className={primary}
+        >
+          {save.pending ? "Zapisuję…" : "Zapisz"}
+        </button>
+        <button onClick={() => setEditing(false)} className="text-sm underline">
+          Anuluj
+        </button>
+      </div>
+      <Status state={save.state} />
+    </div>
+  );
+}
+
+function BudgetForm({ tripId, line, currency, people, onDone }: { tripId: string; line?: Line; currency: string; people: Person[]; onDone?: () => void }) {
+  const [chosen, setChosen] = useState(line?.participantRefs ?? []);
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = await saveBudgetLine(tripId, line?.ref ?? null, prev, form);
     if (result.ok && onDone) onDone();
@@ -97,6 +176,7 @@ function BudgetForm({ tripId, line, currency, onDone }: { tripId: string; line?:
         </label>
         <input name="note" defaultValue={line?.note} placeholder="notatka" className={`${input} min-w-32 flex-1`} aria-label="Notatka" />
       </div>
+      {people.length > 1 && <ForWhomPicker people={people} chosen={chosen} onChange={setChosen} />}
       <div className="flex gap-2">
         <button disabled={pending} className={primary}>
           {pending ? "Zapisuję…" : line ? "Zapisz" : "Dodaj pozycję"}
@@ -112,7 +192,7 @@ function BudgetForm({ tripId, line, currency, onDone }: { tripId: string; line?:
   );
 }
 
-export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: string; lines: Line[]; currency: string; canEdit: boolean }) {
+export function BudgetLines({ tripId, lines, currency, people, canEdit }: { tripId: string; lines: Line[]; currency: string; people: Person[]; canEdit: boolean }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const remove = useAction();
@@ -134,7 +214,7 @@ export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: stri
               editing === line.ref ? (
                 <tr key={line.ref} className="border-t border-zinc-100 dark:border-zinc-900">
                   <td colSpan={5} className="py-2">
-                    <BudgetForm tripId={tripId} line={line} currency={currency} onDone={() => setEditing(null)} />
+                    <BudgetForm tripId={tripId} line={line} currency={currency} people={people} onDone={() => setEditing(null)} />
                   </td>
                 </tr>
               ) : (
@@ -146,6 +226,7 @@ export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: stri
                     <span className="block text-xs text-zinc-500 sm:hidden">
                       {BUDGET_CATEGORY[line.category] ?? line.category} · {LINE_STATUS[line.status]}
                     </span>
+                    {lineTravelerNames(people, line) !== null && <span className="block text-xs text-zinc-500">dotyczy: {lineTravelerNames(people, line)!.join(", ")}</span>}
                     {line.note ? <span className="block text-xs text-zinc-500">{line.note}</span> : null}
                   </td>
                   <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{BUDGET_CATEGORY[line.category] ?? line.category}</td>
@@ -173,7 +254,7 @@ export function BudgetLines({ tripId, lines, currency, canEdit }: { tripId: stri
       <Status state={remove.state} />
       {canEdit &&
         (adding ? (
-          <BudgetForm tripId={tripId} currency={currency} onDone={() => setAdding(false)} />
+          <BudgetForm tripId={tripId} currency={currency} people={people} onDone={() => setAdding(false)} />
         ) : (
           <button onClick={() => setAdding(true)} className="self-start text-sm underline">
             + Dodaj pozycję budżetu

@@ -1,4 +1,4 @@
-import { BUDGET_CATEGORY, budgetSummary, formatMoney, parseMoney, walletSummary } from '@expeditionplan/core';
+import { BUDGET_CATEGORY, budgetSummary, formatMoney, lineTravelerNames, lineTravelers, parseMoney, walletSummary } from '@expeditionplan/core';
 import { type CachedTrip, type NewExpense, removeExpense, saveExpense, saveExpenseSplits, uuidv7 } from '@expeditionplan/sync';
 import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
@@ -61,6 +61,13 @@ const asExpense = (tripId: string, row: ExpenseRow): NewExpense & { id: string }
   receiptPath: row.receipt_path ?? null,
 });
 
+/** Podziały wydatków z bazy telefonu (aktywne wiersze `expense_splits`); wydatek bez wierszy dzieli się na wszystkich. */
+const activeSplits = () =>
+  localDb
+    .all<{ data: string }>("select data from rows where tbl = 'expense_splits'")
+    .map((row) => JSON.parse(row.data) as { expense_id: string; traveler_id: string; deleted_at: string | null })
+    .filter((row) => row.deleted_at === null);
+
 const when = (iso: string) => new Date(iso).toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged }: Props) {
@@ -95,6 +102,8 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
   // Wydatek bez `created_by` dodano na tym telefonie i jeszcze nie wrócił z serwera — jest „mój”.
   const mine = (row: ExpenseRow) => row.created_by === undefined || row.created_by === null || row.created_by === userId;
   const canChange = (row: ExpenseRow) => canEditAll || (canAdd && mine(row));
+  const splits = activeSplits();
+  const splitsOf = (expenseId: string) => splits.filter((row) => row.expense_id === expenseId).map((row) => row.traveler_id);
 
   return (
     <View style={styles.stack}>
@@ -110,6 +119,7 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
             <Row label="Do wydania" value={range(money, budget.toSpendLowMinor, budget.toSpendHighMinor)} />
             <Row label="Razem" value={range(money, budget.totalLowMinor, budget.totalHighMinor)} />
             {budget.perPersonLowMinor !== null && <Row label="Na osobę" value={range(money, budget.perPersonLowMinor, budget.perPersonHighMinor!)} />}
+            {budget.perPersonLowMinor === null && budget.perTraveler.map((each) => <Row key={each.ref} label={`Na osobę: ${each.name}`} value={range(money, each.lowMinor, each.highMinor)} />)}
             <BudgetDetails doc={doc} budget={budget} spent={wallet.byCategory} money={money} />
           </>
         )}
@@ -207,6 +217,7 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
               <ThemedText type="small" themeColor="textSecondary">
                 {BUDGET_CATEGORY[expense.category] ?? expense.category}
                 {expense.payer_traveler_id ? ` · płacił(a): ${names.get(expense.payer_traveler_id) ?? '?'}` : ''}
+                {splitsOf(expense.id).length > 0 ? ` · na: ${splitsOf(expense.id).map((id) => names.get(id) ?? '?').join(', ')}` : ''}
                 {expense.note ? ` · ${expense.note}` : ''}
               </ThemedText>
               {canChange(expense) && (
@@ -278,7 +289,15 @@ function BudgetDetails({ doc, budget, spent, money }: { doc: CachedTrip['state']
                       <ThemedText type="small">{range((minor) => formatMoney(minor, line.currency), line.lowMinor, line.highMinor)}</ThemedText>
                     </View>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {[LINE_STATUS[line.status], line.perPerson ? `na osobę × ${Math.max(doc.travelers.length, 1)}` : null, line.bookingRef ? bookings.get(line.bookingRef) : null, line.note].filter(Boolean).join(' · ')}
+                      {[
+                        LINE_STATUS[line.status],
+                        line.perPerson ? `na osobę × ${Math.max(lineTravelers(doc, line).length, 1)}` : null,
+                        lineTravelerNames(doc.travelers, line) ? `dotyczy: ${lineTravelerNames(doc.travelers, line)!.join(', ')}` : null,
+                        line.bookingRef ? bookings.get(line.bookingRef) : null,
+                        line.note,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </ThemedText>
                   </View>
                 ))}
@@ -347,15 +366,7 @@ function ExpenseForm({
   const [category, setCategory] = useState(initial?.category ?? 'food');
   const [payer, setPayer] = useState<string | null>(initial?.payer_traveler_id ?? null);
   // Podział z bazy telefonu (aktywne wiersze `expense_splits` tego wydatku); brak = wszyscy.
-  const [forWhom, setForWhom] = useState<string[]>(() =>
-    initial === undefined
-      ? []
-      : localDb
-          .all<{ data: string }>("select data from rows where tbl = 'expense_splits'")
-          .map((row) => JSON.parse(row.data) as { expense_id: string; traveler_id: string; deleted_at: string | null })
-          .filter((row) => row.expense_id === initial.id && row.deleted_at === null)
-          .map((row) => row.traveler_id),
-  );
+  const [forWhom, setForWhom] = useState<string[]>(() => (initial === undefined ? [] : activeSplits().filter((row) => row.expense_id === initial.id).map((row) => row.traveler_id)));
   const toggle = (id: string) => setForWhom((current) => (current.includes(id) ? current.filter((each) => each !== id) : [...current, id]));
   const [note, setNote] = useState(initial?.note ?? '');
   const [paidAt, setPaidAt] = useState<string | undefined>(undefined);

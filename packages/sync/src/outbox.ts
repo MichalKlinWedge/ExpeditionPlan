@@ -109,15 +109,22 @@ export function removeExpense(db: LocalDb, expense: NewExpense & { id: string })
  * Wszyscy uczestnicy = brak podziału (domyślnie równo na wszystkich), wiersze usunięte.
  */
 export function saveExpenseSplits(db: LocalDb, tripId: string, expenseId: string, chosen: readonly string[], everyone: readonly string[]): void {
+  const exists = (id: string) => db.all('select 1 from rows where tbl = ? and id = ?', ['expense_splits', id]).length > 0;
+  for (const row of expenseSplitRows(tripId, expenseId, chosen, everyone, exists)) enqueue(db, 'expense_splits', row);
+}
+
+/**
+ * Wiersze podziału wydatku do zapisu, wspólne dla telefonu i weba (ten sam stały id dla pary
+ * wydatek + uczestnik): wybrani aktywni, reszta miękko usunięta. Wszyscy wybrani = brak podziału.
+ */
+export function expenseSplitRows(tripId: string, expenseId: string, chosen: readonly string[], everyone: readonly string[], exists: (id: string) => boolean) {
   const all = chosen.length === 0 || everyone.every((id) => chosen.includes(id));
   const now = new Date().toISOString();
-  for (const travelerId of everyone) {
+  return everyone.flatMap((travelerId) => {
     const id = stableUuid('split', expenseId, travelerId);
     const active = !all && chosen.includes(travelerId);
-    const exists = db.all('select 1 from rows where tbl = ? and id = ?', ['expense_splits', id]).length > 0;
-    if (!active && !exists) continue;
-    enqueue(db, 'expense_splits', { id, trip_id: tripId, expense_id: expenseId, traveler_id: travelerId, weight: 1, deleted_at: active ? null : now });
-  }
+    return !active && !exists(id) ? [] : [{ id, trip_id: tripId, expense_id: expenseId, traveler_id: travelerId, weight: 1, deleted_at: active ? null : now }];
+  });
 }
 
 export type JournalEntry = {

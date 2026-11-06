@@ -2,7 +2,7 @@ import { formatMoney, settle, toBase, type TripDocument } from "@expeditionplan/
 
 /**
  * Rozliczenie „kto komu ile” na webie (tylko odczyt — przelewy „Oddane” zaznacza się w telefonie,
- * w trasie). Te same zasady co w telefonie (`settle`): podziały wydatków, dzieci do opiekuna,
+ * w trasie; „na kogo” zmienia się przy wydatku). Te same zasady co w telefonie (`settle`): podziały wydatków, dzieci do opiekuna,
  * osobno i rodzinami, wykonane przelewy pomniejszają salda.
  */
 
@@ -59,7 +59,7 @@ export function Settlement({ doc, tables }: { doc: TripDocument; tables: Record<
           Poza rozliczeniem: {skipped.filter((each) => each.reason === "no_payer").length} bez płacącego, {skipped.filter((each) => each.reason === "no_rate").length} bez kursu waluty — uzupełnij w telefonie.
         </p>
       )}
-      <p className="text-xs text-zinc-500">Podział wydatku („na kogo”) i „Oddane” przy przelewie — w telefonie, w portfelu wyjazdu.</p>
+      <p className="text-xs text-zinc-500">„Oddane” przy przelewie — w telefonie, w portfelu wyjazdu.</p>
     </div>
   );
 }

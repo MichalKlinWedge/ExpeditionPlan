@@ -213,6 +213,7 @@ export async function removeTraveler(tripId: string, travelerId: string): Promis
       ["punkty planu (uczestnicy punktu)", await count("items", (q) => q.contains("participant_ids", [travelerId]))],
       ["wydatki (płacący)", await count("expenses", (q) => q.eq("payer_traveler_id", travelerId))],
       ["podziały wydatków", await count("expense_splits", (q) => q.eq("traveler_id", travelerId))],
+      ["pozycje budżetu dla wybranych osób", await count("budget_lines", (q) => q.contains("participant_ids", [travelerId]))],
       ["rozliczenia", await count("settlements", (q) => q.or(`from_traveler_id.eq.${travelerId},to_traveler_id.eq.${travelerId}`))],
       ["zadania", await count("tasks", (q) => q.contains("assignee_ids", [travelerId]))],
       ["lista pakowania", await count("packing_items", (q) => q.eq("assignee_traveler_id", travelerId))],

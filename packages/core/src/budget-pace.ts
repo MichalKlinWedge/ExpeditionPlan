@@ -1,4 +1,4 @@
-import { toBase, type WalletExpense } from './budget.ts';
+import { lineTravelers, toBase, type WalletExpense } from './budget.ts';
 import { instantToZoned } from './engine/time.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
@@ -45,7 +45,6 @@ export type BudgetPace = {
 };
 
 export function budgetPace(doc: Doc, expenses: readonly PaceExpense[], today: string): BudgetPace {
-  const people = Math.max(doc.travelers.length, 1);
   const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
   const dayOfItem = new Map(doc.items.map((item) => [item.ref, item.dayRef]));
   const unconverted: Record<string, number> = {};
@@ -61,7 +60,7 @@ export function budgetPace(doc: Doc, expenses: readonly PaceExpense[], today: st
 
   for (const line of doc.budgetLines) {
     if (line.status === 'paid') continue;
-    const times = line.perPerson ? people : 1;
+    const times = line.perPerson ? Math.max(lineTravelers(doc, line).length, 1) : 1;
     const low = toBase(doc, line.lowMinor * times, line.currency);
     const high = toBase(doc, line.highMinor * times, line.currency);
     if (low === null || high === null) {

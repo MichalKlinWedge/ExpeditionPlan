@@ -46,4 +46,12 @@ describe('budżet dzień po dniu', () => {
   it('waluta bez kursu osobno', () => {
     expect(budgetPace(maroko, [{ amountMinor: 1000, currency: 'GBP', paidAt: '2026-12-27T10:00:00Z' }], '2026-12-27').unconverted).toEqual({ GBP: 1000 });
   });
+
+  it('pozycja „na osobę” dla części osób liczy się razy te osoby, a nie wszyscy', () => {
+    const [a, b] = maroko.travelers.map((traveler) => traveler.ref);
+    const line = { ref: 'dla-dwoch', category: 'food', title: 'Kolacja', status: 'estimate', lowMinor: 1000, highMinor: 1000, currency: maroko.trip.baseCurrency, perPerson: true } as const;
+    const planned = (extra: { participantRefs?: string[] }) => budgetPace({ ...maroko, budgetLines: [{ ...line, ...extra }] }, [], '2026-12-27').plannedHighMinor;
+    expect(planned({})).toBe(1000 * maroko.travelers.length);
+    expect(planned({ participantRefs: [a!, b!] })).toBe(2000);
+  });
 });

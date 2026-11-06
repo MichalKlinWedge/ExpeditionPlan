@@ -25,6 +25,14 @@ describe('budżet z rezerwacji i cen punktów', () => {
     expect(medersa.line.itemRef).toBe('d2-medersa');
   });
 
+  it('punkt tylko dla części osób: propozycja dotyczy tych osób, a cały punkt nie ma wyboru', () => {
+    const who = [maroko.travelers[0]!.ref];
+    const doc = TripDocument.parse({ ...maroko, items: maroko.items.map((each) => (each.ref === 'd2-medersa' ? { ...each, participantRefs: who } : each)) });
+    const suggestions = budgetSuggestions(doc);
+    expect(suggestions.find((each) => each.ref === 'd2-medersa')!.line.participantRefs).toEqual(who);
+    expect(suggestions.find((each) => each.ref === 'd2-bahia')!.line.participantRefs).toBeUndefined();
+  });
+
   it('nocleg za noc razy noce, zapłacona kwota wygrywa z ceną; propozycja przechodzi walidację', () => {
     expect(nightsBetween('2026-12-26', '2026-12-29')).toBe(3);
     expect(nightsBetween(undefined, '2026-12-29')).toBe(1);

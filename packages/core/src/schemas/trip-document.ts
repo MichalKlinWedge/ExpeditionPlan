@@ -585,6 +585,8 @@ export const DocBudgetLine = z
     highMinor: MinorAmount,
     currency: Currency,
     perPerson: z.boolean().default(false),
+    /** Kogo dotyczy pozycja; brak albo pusto = wszystkich uczestników (także dodanych później). */
+    participantRefs: z.array(Ref).optional(),
     note: z.string().optional(),
   })
   .refine((line) => line.lowMinor <= line.highMinor, { message: 'Dolna kwota większa od górnej.', path: ['highMinor'] });
@@ -896,6 +898,7 @@ export function checkReferences(doc: Shape): { path: (string | number)[]; messag
   doc.budgetLines.forEach((b, i) => {
     expect(['budgetLines', i, 'bookingRef'], b.bookingRef, 'bookings');
     expect(['budgetLines', i, 'itemRef'], b.itemRef, 'items');
+    b.participantRefs?.forEach((p, j) => expect(['budgetLines', i, 'participantRefs', j], p, 'travelers'));
   });
   doc.tasks.forEach((t, i) => {
     t.assigneeRefs.forEach((a, j) => expect(['tasks', i, 'assigneeRefs', j], a, 'travelers'));
