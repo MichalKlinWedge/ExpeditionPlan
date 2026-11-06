@@ -121,7 +121,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
         <button disabled={pending} className="btn-secondary btn-sm">
           Szukaj
         </button>
-        <button type="button" onClick={onClose} className="px-1 text-xs underline">
+        <button type="button" onClick={onClose} className="btn-mini">
           zamknij
         </button>
       </form>
@@ -225,7 +225,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
               </button>
               {eatery.summary && <span className="text-zinc-500">{eatery.summary}</span>}
               {canEdit && eatery.variantRef !== undefined && !eatery.active && (
-                <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="underline">
+                <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="btn-mini">
                   wybierz
                 </button>
               )}

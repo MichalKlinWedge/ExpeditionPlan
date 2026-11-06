@@ -118,9 +118,7 @@ function Journal({ trip, tripId, signedIn, userId, canEditAll, onChanged }: Prop
                   {hm(row.taken_at, group.tz)} · {author(row)}
                 </ThemedText>
                 {signedIn && (canEditAll || author(row) === 'ja') && (
-                  <Pressable onPress={() => remove(row)} hitSlop={8}>
-                    <ThemedText type="linkPrimary">usuń</ThemedText>
-                  </Pressable>
+                  <Button label="Usuń" onPress={() => remove(row)} small danger />
                 )}
               </View>
             </ThemedView>

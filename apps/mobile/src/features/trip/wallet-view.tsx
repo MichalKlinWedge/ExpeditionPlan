@@ -478,7 +478,7 @@ function ExpenseForm({
       <View style={styles.actions}>
         <Button label={initial ? 'Zapisz zmiany' : 'Zapisz wydatek'} variant="primary" onPress={save} />
         <Button label="Anuluj" onPress={onCancel} />
-        {onRemove && <Button label="Usuń" onPress={onRemove} small style={styles.remove} />}
+        {onRemove && <Button label="Usuń" onPress={onRemove} small danger style={styles.remove} />}
       </View>
     </ThemedView>
   );

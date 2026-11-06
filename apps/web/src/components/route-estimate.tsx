@@ -97,7 +97,7 @@ export function RouteEstimate({ tripId, itemRef, url, current, fromFile }: { tri
         </button>
       </div>
       {showFile && (
-        <button type="button" onClick={() => fill(fromFile)} className="self-start text-xs text-sea underline">
+        <button type="button" onClick={() => fill(fromFile)} className="btn-mini self-start">
           Wstaw z pliku GPX: {text(fromFile.distanceKm)} km{fromFile.ascentM !== undefined ? ` · ↑ ${fromFile.ascentM} m` : ""}
           {fromFile.durationMin !== undefined ? ` · ok. ${minutesLabel(fromFile.durationMin)}` : ""}
         </button>

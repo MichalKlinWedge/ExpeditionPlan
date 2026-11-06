@@ -34,7 +34,7 @@ export function MemberAccess({ tripId, userId, name, role, canAddExpenses }: { t
         type="button"
         disabled={pending}
         onClick={() => window.confirm(`Odebrać dostęp do wyjazdu: ${name}?`) && run(() => removeMember(tripId, userId))}
-        className="text-xs text-red-700 underline disabled:opacity-50 dark:text-red-400">
+        className="btn-mini btn-mini-danger">
         odbierz dostęp
       </button>
       {pending && <span className="text-xs text-zinc-500">zapisuję…</span>}

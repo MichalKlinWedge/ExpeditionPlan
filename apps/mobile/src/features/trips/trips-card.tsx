@@ -158,11 +158,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
           )}
           <OfflineButton tripId={trip.id!} online={signedIn && !offline} />
           {signedIn && !offline && (
-            <Pressable onPress={() => remove(trip)} hitSlop={8}>
-              <ThemedText type="small" style={styles.danger}>
-                {trip.role === 'owner' ? 'Usuń wyjazd' : 'Opuść wyjazd'}
-              </ThemedText>
-            </Pressable>
+            <AppButton label={trip.role === 'owner' ? 'Usuń wyjazd' : 'Opuść wyjazd'} onPress={() => remove(trip)} small danger />
           )}
         </View>
       )}
@@ -237,6 +233,5 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   details: { gap: Spacing.two },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  danger: { color: '#d32f2f', paddingTop: Spacing.one },
   archiveHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Spacing.two },
 });

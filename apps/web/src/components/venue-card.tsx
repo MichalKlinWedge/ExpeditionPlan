@@ -121,7 +121,7 @@ function VenueEditor({ tripId, place, canClear }: { tripId: string; place: Place
             type="button"
             disabled={pending}
             onClick={() => window.confirm("Usunąć wszystkie punkty, ceny i ocenę tego lokalu?") && start(async () => setState(await clearVenue(tripId, place.ref)))}
-            className="text-xs underline disabled:opacity-50">
+            className="btn-mini btn-mini-danger">
             usuń wszystko
           </button>
         )}

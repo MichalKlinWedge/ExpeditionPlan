@@ -64,11 +64,11 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
                   <SelfCookedToggle tripId={tripId} itemRef={meal.itemRef} value={meal.selfCooked === true} />
                   <MealLink doc={doc} itemRef={meal.itemRef} disabled={pending} onEdit={(edit) => save(edit)} />
                   <span className="ml-1 text-xs text-zinc-500">
-                    <button disabled={pending} onClick={() => setEditing(editing === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
+                    <button disabled={pending} onClick={() => setEditing(editing === meal.itemRef ? null : meal.itemRef)} className="btn-mini">
                       {editing === meal.itemRef ? "zamknij" : "zmień"}
                     </button>
                     {!meal.selfCooked && (
-                      <button disabled={pending} onClick={() => setSearching(searching === meal.itemRef ? null : meal.itemRef)} className="px-1 underline">
+                      <button disabled={pending} onClick={() => setSearching(searching === meal.itemRef ? null : meal.itemRef)} className="btn-mini">
                         knajpy w pobliżu
                       </button>
                     )}
@@ -82,7 +82,7 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
                           setError(e instanceof ItemInUseError ? e.message : String(e));
                         }
                       }}
-                      className="px-1 underline">
+                      className="btn-mini btn-mini-danger">
                       usuń
                     </button>
                   </span>

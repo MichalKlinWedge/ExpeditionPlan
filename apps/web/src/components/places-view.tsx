@@ -303,7 +303,7 @@ function PlaceRow({
           <strong>{place.name}</strong>
         )}
         {canEdit && (
-          <button type="button" onClick={onToggle} aria-expanded={open} className="ml-auto text-xs underline">
+          <button type="button" onClick={onToggle} aria-expanded={open} className="btn-mini ml-auto">
             {open ? "zwiń" : "zmień"}
           </button>
         )}
@@ -329,7 +329,7 @@ function PlaceRow({
                 {each.name}
                 {each.usage.total > 0 ? ` (${usageLabel(each.usage)})` : " (nieużywane)"}
               </span>
-              <button type="button" disabled={pending} onClick={() => merge(each)} className="underline disabled:opacity-50">
+              <button type="button" disabled={pending} onClick={() => merge(each)} className="btn-mini">
                 scal tutaj
               </button>
             </p>
@@ -395,7 +395,7 @@ function PlaceRow({
                 <button type="button" disabled={pending || picked === null} onClick={() => savePosition(`${picked!.lat}, ${picked!.lng}`, onStopPicking)} className="btn-primary btn-sm">
                   Zapisz pozycję
                 </button>
-                <button type="button" onClick={onStopPicking} className="underline">
+                <button type="button" onClick={onStopPicking} className="btn-mini">
                   anuluj
                 </button>
               </div>
@@ -444,7 +444,7 @@ function PlaceRow({
               onClick={() => {
                 if (window.confirm(`Usunąć miejsce „${place.name}”? Nic z niego nie korzysta. W aplikacji nie da się tego cofnąć.`)) run(() => removePlace(tripId, place.ref));
               }}
-              className="self-start text-xs underline disabled:opacity-50">
+              className="btn-mini btn-mini-danger self-start">
               usuń miejsce
             </button>
           )}

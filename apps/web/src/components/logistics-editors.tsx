@@ -39,7 +39,8 @@ type Contact = Doc["contacts"][number];
 
 // `min-w-0`: lista wyboru ma szerokość najdłuższej opcji i bez tego rozpycha kartę na telefonie.
 const input = "field min-w-0 px-2 py-1 text-sm";
-const small = "text-xs underline disabled:opacity-50";
+const small = "btn-mini";
+const danger = "btn-mini btn-mini-danger";
 const primary = "btn-primary btn-sm";
 const minorText = (minor: number) => (minor / 100).toLocaleString("pl-PL", { useGrouping: false, maximumFractionDigits: 2 });
 
@@ -132,7 +133,7 @@ export function ExpenseSplitEditor({ tripId, expenseId, people, chosen, canEdit 
         >
           {save.pending ? "Zapisuję…" : "Zapisz"}
         </button>
-        <button onClick={() => setEditing(false)} className="text-sm underline">
+        <button onClick={() => setEditing(false)} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>
@@ -183,7 +184,7 @@ function BudgetForm({ tripId, line, currency, people, onDone }: { tripId: string
           {pending ? "Zapisuję…" : line ? "Zapisz" : "Dodaj pozycję"}
         </button>
         {onDone && (
-          <button type="button" onClick={onDone} className="text-sm underline">
+          <button type="button" onClick={onDone} className="btn-secondary btn-sm">
             Anuluj
           </button>
         )}
@@ -241,7 +242,7 @@ export function BudgetLines({ tripId, lines, currency, people, canEdit }: { trip
                         edytuj
                       </button>
                       <br className="sm:hidden" />{" "}
-                      <button disabled={remove.pending} onClick={() => remove.run(() => removeBudgetLine(tripId, line.ref), `Usunąć pozycję „${line.title}”?`)} className={small}>
+                      <button disabled={remove.pending} onClick={() => remove.run(() => removeBudgetLine(tripId, line.ref), `Usunąć pozycję „${line.title}”?`)} className={danger}>
                         usuń
                       </button>
                     </td>
@@ -257,7 +258,7 @@ export function BudgetLines({ tripId, lines, currency, people, canEdit }: { trip
         (adding ? (
           <BudgetForm tripId={tripId} currency={currency} people={people} onDone={() => setAdding(false)} />
         ) : (
-          <button onClick={() => setAdding(true)} className="self-start text-sm underline">
+          <button onClick={() => setAdding(true)} className="btn-secondary btn-sm self-start">
             + Dodaj pozycję budżetu
           </button>
         ))}
@@ -406,7 +407,7 @@ function TaskForm({ tripId, task, choices, onDone }: { tripId: string; task?: Ta
           {pending ? "Zapisuję…" : task ? "Zapisz" : "Dodaj zadanie"}
         </button>
         {onDone && (
-          <button type="button" onClick={onDone} className="text-sm underline">
+          <button type="button" onClick={onDone} className="btn-secondary btn-sm">
             Anuluj
           </button>
         )}
@@ -454,7 +455,7 @@ export function TaskList({ tripId, tasks, describe, choices, canEdit, checkable 
             <button onClick={() => setEditing(task.ref)} className={small}>
               edytuj
             </button>{" "}
-            <button disabled={action.pending} onClick={() => action.run(() => removeTask(tripId, task.ref), `Usunąć zadanie „${task.title}”?`)} className={small}>
+            <button disabled={action.pending} onClick={() => action.run(() => removeTask(tripId, task.ref), `Usunąć zadanie „${task.title}”?`)} className={danger}>
               usuń
             </button>
           </span>
@@ -469,12 +470,12 @@ export function TaskList({ tripId, tasks, describe, choices, canEdit, checkable 
         (adding ? (
           <TaskForm tripId={tripId} choices={choices} onDone={() => setAdding(false)} />
         ) : (
-          <button onClick={() => setAdding(true)} className="self-start underline">
+          <button onClick={() => setAdding(true)} className="btn-secondary btn-sm self-start">
             + Dodaj zadanie
           </button>
         ))}
       {closed.length > 0 && (
-        <button onClick={() => setShowClosed(!showClosed)} className="self-start text-xs text-zinc-500 underline">
+        <button onClick={() => setShowClosed(!showClosed)} className="btn-mini self-start">
           {showClosed ? "Ukryj zamknięte" : `Pokaż zamknięte (${closed.length})`}
         </button>
       )}
@@ -537,7 +538,7 @@ export function RemoveCancelledBooking({ tripId, bookingRef, title, note }: { tr
   const question = [`Usunąć anulowaną rezerwację „${title}” z listy? W aplikacji nie da się tego cofnąć.`, note, "Jej dokumenty z sejfu (jeśli są) zostaną w „Inne dokumenty”."].filter(Boolean).join("\n\n");
   return (
     <span className="inline-flex items-center gap-1">
-      <button type="button" disabled={action.pending} onClick={() => action.run(() => removeCancelledBooking(tripId, bookingRef), question)} className="text-xs underline disabled:opacity-50">
+      <button type="button" disabled={action.pending} onClick={() => action.run(() => removeCancelledBooking(tripId, bookingRef), question)} className="btn-mini btn-mini-danger">
         {action.pending ? "usuwam…" : "usuń z listy"}
       </button>
       {action.state.error && <span className="text-xs text-red-600">{action.state.error}</span>}
@@ -799,7 +800,7 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
         <button disabled={pending} className={primary}>
           {pending ? "Zapisuję…" : booking ? "Zapisz" : "Dodaj rezerwację"}
         </button>
-        <button type="button" onClick={onDone} className="text-sm underline">
+        <button type="button" onClick={onDone} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>
@@ -812,7 +813,7 @@ export function BookingEditor({ tripId, booking, statuses, zones, places }: { tr
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className={`${small} text-zinc-500`}>
+      <button onClick={() => setOpen(true)} className={small}>
         edytuj
       </button>
     );
@@ -824,7 +825,7 @@ export function NewBooking({ tripId, statuses, zones, places }: { tripId: string
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="self-start text-sm underline">
+      <button onClick={() => setOpen(true)} className="btn-secondary btn-sm self-start">
         + Dodaj rezerwację
       </button>
     );
@@ -839,7 +840,7 @@ export function BookingItems({ tripId, bookingRef, items, chosen }: { tripId: st
   const action = useAction();
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className={`${small} text-zinc-500`}>
+      <button onClick={() => setOpen(true)} className={small}>
         punkty w pakiecie{chosen.length > 0 ? ` (${chosen.length})` : ""}
       </button>
     );
@@ -874,7 +875,7 @@ export function BookingItems({ tripId, bookingRef, items, chosen }: { tripId: st
         })} className={primary}>
           {action.pending ? "Zapisuję…" : "Zapisz"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-sm underline">
+        <button type="button" onClick={() => setOpen(false)} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>
@@ -922,7 +923,7 @@ function ContactForm({ tripId, contact, bookings, onDone, defaultRole = "host" }
         <button disabled={pending} className={primary}>
           {pending ? "Zapisuję…" : contact ? "Zapisz" : "Dodaj kontakt"}
         </button>
-        <button type="button" onClick={onDone} className="text-sm underline">
+        <button type="button" onClick={onDone} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>
@@ -980,7 +981,7 @@ export function Contacts({
                   <button onClick={() => setEditing(contact.ref)} className={small}>
                     edytuj
                   </button>{" "}
-                  <button disabled={remove.pending} onClick={() => remove.run(() => removeContact(tripId, contact.ref), `Usunąć kontakt „${contact.name}”?`)} className={small}>
+                  <button disabled={remove.pending} onClick={() => remove.run(() => removeContact(tripId, contact.ref), `Usunąć kontakt „${contact.name}”?`)} className={danger}>
                     usuń
                   </button>
                 </span>
@@ -994,7 +995,7 @@ export function Contacts({
         (editing === "new" ? (
           <ContactForm tripId={tripId} bookings={bookings} onDone={() => setEditing(null)} defaultRole={defaultRole} />
         ) : (
-          <button onClick={() => setEditing("new")} className="self-start underline">
+          <button onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
             {addLabel}
           </button>
         ))}
@@ -1073,7 +1074,7 @@ export function TripCurrency({ tripId, base, known, canEdit }: { tripId: string;
         <button disabled={pending} className={primary}>
           {pending ? "Zapisuję…" : "Zmień walutę"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-sm underline">
+        <button type="button" onClick={() => setOpen(false)} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>
@@ -1126,7 +1127,7 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
           <input name="fxRate" defaultValue={row.rateToBase > 0 ? String(row.rateToBase).replace(".", ",") : ""} inputMode="decimal" placeholder="4,27" className={`${input} w-24`} aria-label="Kurs" />
           <span className="text-xs text-zinc-500">{base}</span>
           <input name="fxDate" type="date" defaultValue={row.date ?? ""} className={input} aria-label="Data kursu" />
-          <button type="button" onClick={() => setRows(rows.filter((each) => each.key !== row.key))} className={small}>
+          <button type="button" onClick={() => setRows(rows.filter((each) => each.key !== row.key))} className={danger}>
             usuń
           </button>
         </div>
@@ -1138,7 +1139,7 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
         <button disabled={pending} className={primary}>
           {pending ? "Zapisuję…" : "Zapisz kursy"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-sm underline">
+        <button type="button" onClick={() => setOpen(false)} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>
@@ -1220,7 +1221,7 @@ export function ShoppingList({ tripId, items, canEdit }: { tripId: string; items
                   <button onClick={() => setEditing(item.ref)} className={small}>
                     edytuj
                   </button>{" "}
-                  <button disabled={remove.pending} onClick={() => remove.run(() => removeShoppingItem(tripId, item.ref), `Usunąć „${item.title}” z listy?`)} className={small}>
+                  <button disabled={remove.pending} onClick={() => remove.run(() => removeShoppingItem(tripId, item.ref), `Usunąć „${item.title}” z listy?`)} className={danger}>
                     usuń
                   </button>
                 </span>
@@ -1234,7 +1235,7 @@ export function ShoppingList({ tripId, items, canEdit }: { tripId: string; items
         (editing === "new" ? (
           <ShoppingForm tripId={tripId} onDone={() => setEditing(null)} />
         ) : (
-          <button onClick={() => setEditing("new")} className="self-start underline">
+          <button onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
             + Dodaj do zakupów
           </button>
         ))}

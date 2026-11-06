@@ -102,7 +102,7 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules, field }: V
                 </button>
               ))}
               {onRules && (
-                <button onClick={() => setEditing(editing === group.ref ? null : group.ref)} className="text-xs text-zinc-500 underline">
+                <button onClick={() => setEditing(editing === group.ref ? null : group.ref)} className="btn-mini">
                   {editing === group.ref ? "zamknij" : "zmień"}
                 </button>
               )}
@@ -125,7 +125,7 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules, field }: V
             }}
           />
         ) : (
-          <button onClick={() => setAdding(true)} className="self-start text-xs text-zinc-500 underline">
+          <button onClick={() => setAdding(true)} className="btn-mini self-start">
             + wariant dnia (plan B)
           </button>
         ))}
@@ -173,7 +173,7 @@ function NewGroup({ onAdd, onCancel }: { onAdd: (fields: Pick<VariantGroup, "tit
       </div>
       <div className="flex gap-2">
         <button className="btn-secondary btn-sm">Dodaj warianty</button>
-        <button type="button" onClick={onCancel} className="text-xs text-zinc-500 underline">
+        <button type="button" onClick={onCancel} className="btn-mini">
           anuluj
         </button>
       </div>
@@ -282,7 +282,7 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
                   <button
                     type="button"
                     onClick={() => window.confirm(`Usunąć wariant „${variant.label}”? Punkty tylko z tego wariantu wrócą do puli.`) && onRules((current) => removeVariant(current, variant.ref))}
-                    className="text-xs text-zinc-500 underline">
+                    className="btn-mini btn-mini-danger">
                     usuń
                   </button>
                 )}
@@ -305,7 +305,7 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <button className="btn-secondary btn-sm">Zapisz</button>
-        <button type="button" onClick={onDone} className="text-xs text-zinc-500 underline">
+        <button type="button" onClick={onDone} className="btn-mini">
           anuluj
         </button>
         <span className="ml-auto flex items-center gap-1 text-xs text-zinc-500">
@@ -326,7 +326,7 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
                 onDone();
               }
             }}
-            className="underline">
+            className="btn-mini btn-mini-danger">
             usuń grupę
           </button>
         </span>
@@ -457,10 +457,10 @@ export function DayConstraints({ doc, dayRef, items, warnings, onRules }: Constr
                 {violation && <span className={`text-xs ${violation.severity === "hard" ? "text-red-600" : "text-amber-600"}`}>naruszone o {violation.minutes} min</span>}
                 {onRules && constraint.ref && (
                   <span className="text-xs text-zinc-500">
-                    <button onClick={() => setEditing(editing === ref ? null : ref)} className="px-1 underline">
+                    <button onClick={() => setEditing(editing === ref ? null : ref)} className="btn-mini">
                       {editing === ref ? "zamknij" : "zmień"}
                     </button>
-                    <button onClick={() => window.confirm(`Usunąć ograniczenie „${KIND[constraint.kind]}”?`) && onRules((current) => removeConstraint(current, constraint.ref!))} className="px-1 underline">
+                    <button onClick={() => window.confirm(`Usunąć ograniczenie „${KIND[constraint.kind]}”?`) && onRules((current) => removeConstraint(current, constraint.ref!))} className="btn-mini btn-mini-danger">
                       usuń
                     </button>
                   </span>
@@ -497,7 +497,7 @@ export function DayConstraints({ doc, dayRef, items, warnings, onRules }: Constr
               }}
             />
           ) : (
-            <button onClick={() => setEditing("new")} className="text-xs text-zinc-500 underline">
+            <button onClick={() => setEditing("new")} className="btn-mini">
               + ograniczenie
             </button>
           )}
@@ -610,7 +610,7 @@ function ConstraintForm({ dayRef, items, initial, submit, onSave, onCancel }: Fo
       {problem && <p className="text-xs text-red-600">{problem}</p>}
       <div className="flex gap-2">
         <button className="btn-secondary btn-sm">{submit}</button>
-        <button type="button" onClick={onCancel} className="text-xs text-zinc-500 underline">
+        <button type="button" onClick={onCancel} className="btn-mini">
           anuluj
         </button>
       </div>
@@ -654,10 +654,10 @@ export function DayNotes({ doc, dayRef, onRules }: { doc: Doc; dayRef: string; o
                   {note.body}
                   {onRules && note.ref && (
                     <span className="ml-1 text-xs text-zinc-500">
-                      <button onClick={() => setEditing(key)} className="px-1 underline">
+                      <button onClick={() => setEditing(key)} className="btn-mini">
                         zmień
                       </button>
-                      <button onClick={() => window.confirm("Usunąć tę notatkę?") && onRules((current) => removeNote(current, note.ref!))} className="px-1 underline">
+                      <button onClick={() => window.confirm("Usunąć tę notatkę?") && onRules((current) => removeNote(current, note.ref!))} className="btn-mini btn-mini-danger">
                         usuń
                       </button>
                     </span>
@@ -680,7 +680,7 @@ export function DayNotes({ doc, dayRef, onRules }: { doc: Doc; dayRef: string; o
               }}
             />
           ) : (
-            <button onClick={() => setEditing("new")} className="text-xs text-zinc-500 underline">
+            <button onClick={() => setEditing("new")} className="btn-mini">
               + notatka
             </button>
           )}
@@ -725,7 +725,7 @@ function NoteForm({ initial, submit, onSave, onCancel }: { initial?: Note; submi
       </label>
       <div className="flex gap-3">
         <button className="btn-secondary btn-sm">{submit}</button>
-        <button type="button" onClick={onCancel} className="text-xs underline">
+        <button type="button" onClick={onCancel} className="btn-mini">
           anuluj
         </button>
       </div>

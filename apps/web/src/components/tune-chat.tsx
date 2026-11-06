@@ -75,7 +75,7 @@ export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Tu
               className="btn-primary">
               {deciding ? "Zapisuję…" : "Zastosuj"}
             </button>
-            <button disabled={deciding} onClick={() => start(async () => setDecision(await rejectPatch(tripId, preview.runId)))} className="underline disabled:opacity-50">
+            <button disabled={deciding} onClick={() => start(async () => setDecision(await rejectPatch(tripId, preview.runId)))} className="btn-mini">
               Odrzuć
             </button>
           </div>

@@ -187,7 +187,7 @@ function ComparisonBody({ tripId, group, canEdit }: { tripId: string; group: Com
                   <td className="py-1 pr-3 whitespace-nowrap">{row.price ?? "—"}</td>
                   <td className="py-1 text-right">
                     {canEdit && !chosen && (
-                      <button disabled={pending} onClick={() => start(async () => setResult(await chooseCandidate(tripId, group.ref, row.variantRef)))} className="underline disabled:opacity-50">
+                      <button disabled={pending} onClick={() => start(async () => setResult(await chooseCandidate(tripId, group.ref, row.variantRef)))} className="btn-mini">
                         Wybieram
                       </button>
                     )}

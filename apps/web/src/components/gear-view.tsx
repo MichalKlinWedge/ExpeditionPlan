@@ -17,7 +17,8 @@ type Item = Doc["packing"][number];
 type Filter = "all" | "open" | { person: string };
 
 const input = "field min-w-0 px-2 py-1 text-sm";
-const small = "text-xs underline disabled:opacity-50";
+const small = "btn-mini";
+const danger = "btn-mini btn-mini-danger";
 const SUGGESTED = ["ubrania", "sprzęt", "biwak", "kuchnia", "apteczka", "elektronika", "dokumenty"];
 const number = (value: number) => value.toLocaleString("pl-PL", { maximumFractionDigits: 2 });
 const amount = (item: Pick<Item, "unit">, value: number) => `${number(value)}${item.unit ? ` ${item.unit}` : ""}`;
@@ -190,7 +191,7 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
             <GearForm tripId={tripId} doc={doc} categories={categories} onDone={() => setEditing(null)} />
           </section>
         ) : (
-          <button type="button" onClick={() => setEditing("new")} className="self-start text-sm underline">
+          <button type="button" onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
             + Dodaj rzecz
           </button>
         ))}
@@ -221,7 +222,7 @@ function ItemActions({ tripId, item, itemId, onEdit }: { tripId: string; item: I
       <button type="button" onClick={onEdit} className={small}>
         edytuj
       </button>{" "}
-      <button type="button" disabled={remove.pending} onClick={() => remove.run(() => removeGearItem(tripId, item.ref, itemId), `Usunąć „${item.title}” z listy?`)} className={small}>
+      <button type="button" disabled={remove.pending} onClick={() => remove.run(() => removeGearItem(tripId, item.ref, itemId), `Usunąć „${item.title}” z listy?`)} className={danger}>
         usuń
       </button>
       <Status state={remove.state} />

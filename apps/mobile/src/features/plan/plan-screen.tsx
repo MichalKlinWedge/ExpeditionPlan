@@ -403,9 +403,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           {state?.doc.trip.title ?? ''}
         </ThemedText>
         {signedIn && canAct && state !== null && mode === 'plan' && (
-          <Pressable onPress={() => setEditMode(!editMode)} hitSlop={12}>
-            <ThemedText type="linkPrimary">{editMode ? 'Gotowe' : 'Edytuj'}</ThemedText>
-          </Pressable>
+          <AppButton label={editMode ? 'Gotowe' : 'Edytuj'} onPress={() => setEditMode(!editMode)} small />
         )}
         {signedIn && !editMode && (
           <Pressable onPress={() => void load()} hitSlop={12}>
@@ -828,6 +826,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
                 <EditButton label="Przenieś" onPress={() => setMoving(item.ref)} />
                 <EditButton
                   label="Usuń"
+                  danger
                   onPress={() =>
                     Alert.alert('Usunąć punkt?', `„${item.title}” zniknie z planu.`, [
                       { text: 'Anuluj', style: 'cancel' },
@@ -937,8 +936,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
   );
 }
 
-function EditButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return <AppButton label={label} onPress={onPress} small />;
+function EditButton({ label, onPress, danger = false }: { label: string; onPress: () => void; danger?: boolean }) {
+  return <AppButton label={label} onPress={onPress} small danger={danger} />;
 }
 
 function Warnings({ list }: { list: ScheduleWarning[] }) {

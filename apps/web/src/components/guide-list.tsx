@@ -53,7 +53,7 @@ function GuideRowCard({ tripId, guide, canEdit }: { tripId: string; guide: TripG
         </button>
         {content.edited && <span className="rounded bg-sea-light px-1.5 text-xs text-sea">poprawiony ręcznie</span>}
         {content.imagesEdited && <span className="rounded bg-sea-light px-1.5 text-xs text-sea">zmienione zdjęcia</span>}
-        <button type="button" onClick={() => setOpen(!open)} className="ml-auto text-xs underline">
+        <button type="button" onClick={() => setOpen(!open)} className="btn-mini ml-auto">
           {open ? "zwiń" : "pokaż"}
         </button>
       </div>
@@ -111,7 +111,7 @@ function OrphanGuide({ tripId, guideId }: { tripId: string; guideId: string }) {
   return (
     <p className="flex flex-wrap items-baseline gap-2 text-xs text-zinc-500">
       Tego punktu ani miejsca już nie ma w planie.
-      <button type="button" disabled={pending} onClick={() => window.confirm("Usunąć ten opis?") && start(async () => setState(await removeGuide(tripId, guideId)))} className="underline disabled:opacity-50">
+      <button type="button" disabled={pending} onClick={() => window.confirm("Usunąć ten opis?") && start(async () => setState(await removeGuide(tripId, guideId)))} className="btn-mini btn-mini-danger">
         usuń opis
       </button>
       {state.error && <span className="text-red-600">{state.error}</span>}
@@ -128,7 +128,7 @@ function MissingRow({ tripId, item, canEdit }: { tripId: string; item: { ref: st
           {item.title}
         </Link>
         {canEdit && (
-          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="ml-auto text-xs underline">
+          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="btn-mini ml-auto">
             {open ? "zwiń" : "przygotuj"}
           </button>
         )}
@@ -167,10 +167,10 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
             <li key={image.url} className={`flex flex-col gap-1 rounded-lg ${picking?.replace === image.url ? "ring-2 ring-sea" : ""}`}>
               <GuideFigure image={image} />
               <div className="flex gap-3 text-xs">
-                <button type="button" disabled={pending} onClick={() => setPicking({ replace: image.url })} className="underline disabled:opacity-50">
+                <button type="button" disabled={pending} onClick={() => setPicking({ replace: image.url })} className="btn-mini">
                   wymień
                 </button>
-                <button type="button" disabled={pending} onClick={() => remove(image.url)} className="text-red-600 underline disabled:opacity-50">
+                <button type="button" disabled={pending} onClick={() => remove(image.url)} className="btn-mini btn-mini-danger">
                   usuń
                 </button>
               </div>
@@ -188,7 +188,7 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
               Dodaj zdjęcie
             </button>
           )}
-          <button type="button" disabled={pending} onClick={onClose} className="text-xs underline">
+          <button type="button" disabled={pending} onClick={onClose} className="btn-mini">
             gotowe
           </button>
         </div>
@@ -218,7 +218,7 @@ function ImagePicker({ tripId, guideId, title, used, saving, onPick, onCancel }:
         <button disabled={loading || query.trim() === ""} className="btn-secondary btn-sm">
           Szukaj
         </button>
-        <button type="button" onClick={onCancel} className="text-xs underline">
+        <button type="button" onClick={onCancel} className="btn-mini">
           anuluj
         </button>
       </form>
@@ -297,7 +297,7 @@ function GuideTextForm({ tripId, guide, onClose }: { tripId: string; guide: Trip
         <button disabled={pending || summary.trim() === "" || tooMany !== null} className="btn-primary btn-sm">
           {pending ? "Zapisuję…" : "Zapisz"}
         </button>
-        <button type="button" disabled={pending} onClick={onClose} className="text-xs underline">
+        <button type="button" disabled={pending} onClick={onClose} className="btn-mini">
           anuluj
         </button>
       </div>

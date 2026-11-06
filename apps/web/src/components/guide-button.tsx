@@ -62,7 +62,7 @@ export function PlaceGuideButtons({ tripId, placeRef, guideId, label, which: sav
           <button
             disabled={pending}
             onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))}
-            className="text-xs underline disabled:opacity-50">
+            className="btn-mini btn-mini-danger">
             usuń opis
           </button>
         )}
@@ -105,7 +105,7 @@ export function GuideButtons({ tripId, itemRef, guideId, hint: saved = "", label
           <button
             disabled={pending}
             onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))}
-            className="text-xs underline disabled:opacity-50">
+            className="btn-mini btn-mini-danger">
             usuń opis
           </button>
         )}

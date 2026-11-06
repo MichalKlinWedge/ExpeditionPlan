@@ -70,5 +70,6 @@ Mobile: always `npx expo install <pkg>` inside `apps/mobile` (SDK-compatible ver
 ## Conventions
 
 - New files use LF (`.gitattributes` enforces `eol=lf`); never rewrite an existing file's line endings.
+- Web actions are never underlined text: `btn-mini` (edytuj, zmień, also inside a sentence), `btn-mini btn-mini-danger` (usuń), `btn-secondary btn-sm` (Anuluj, + Dodaj…). Underline is for real links only. Phone: `Button small`, `danger` for removal.
 - Mobile is Android-only: don't add `*.web.tsx` variants.
 - Distribution follows FormaSync: EAS channels `preview` (own phone) / `friends`, OTA with `runtimeVersion: appVersion` — bump `version` only together with a new APK. Current native set = APK 0.3.0 (0.2.0 added `expo-speech`, `expo-image-picker`; 0.3.0 adds `expo-brightness`); code importing a module outside the installed APK crashes on use, so a new native module always means version bump + `eas build` for both profiles before any OTA that uses it. Friends' install/update flow: `docs/ZNAJOMI.md`.

@@ -32,7 +32,8 @@ type Props = {
 
 const input = "field min-w-0 px-2 py-1 text-sm";
 const label = "flex min-w-0 flex-col gap-1 text-xs text-zinc-500";
-const small = "text-xs underline disabled:opacity-50";
+const small = "btn-mini";
+const danger = "btn-mini btn-mini-danger";
 const BUCKET = "documents";
 
 export function Vault({ tripId, documents, bookings, items, people, userId, owner, editing }: Props) {
@@ -137,7 +138,7 @@ function DocumentRow({ tripId, document, names, editing, bookings, items, people
             <button onClick={() => setChanging(!changing)} className={small}>
               {changing ? "zamknij" : "zmień"}
             </button>
-            <button disabled={pending} onClick={remove} className={small}>
+            <button disabled={pending} onClick={remove} className={danger}>
               usuń
             </button>
           </>
@@ -323,7 +324,7 @@ function DocumentFields({ initial, bookings, items, people, userId, owner, submi
         <button disabled={pending || busy} className="btn-primary btn-sm">
           {pending ? "Zapisuję…" : submit}
         </button>
-        <button type="button" onClick={onCancel} className="text-sm underline">
+        <button type="button" onClick={onCancel} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>

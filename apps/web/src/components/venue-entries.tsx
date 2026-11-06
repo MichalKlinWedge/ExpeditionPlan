@@ -40,11 +40,11 @@ export function VenueEntries({ tripId, place, editing }: { tripId: string; place
       {editing && (
         <span className="text-xs text-zinc-500">
           {onEdit && (
-            <button type="button" disabled={pending} onClick={onEdit} className="px-1 underline">
+            <button type="button" disabled={pending} onClick={onEdit} className="btn-mini">
               zmień
             </button>
           )}
-          <button type="button" disabled={pending} onClick={onRemove} className="px-1 underline">
+          <button type="button" disabled={pending} onClick={onRemove} className="btn-mini btn-mini-danger">
             usuń
           </button>
         </span>
@@ -86,7 +86,7 @@ export function VenueEntries({ tripId, place, editing }: { tripId: string; place
             (open === "point" ? (
               <PointForm initial="" pending={pending} onCancel={() => setOpen(null)} onSave={(text) => run(() => saveVenuePoint(tripId, place.ref, null, text))} />
             ) : (
-              <button type="button" disabled={pending} onClick={() => setOpen("point")} className="self-start text-xs underline">
+              <button type="button" disabled={pending} onClick={() => setOpen("point")} className="btn-mini self-start">
                 dodaj punkt
               </button>
             ))}
@@ -112,7 +112,7 @@ export function VenueEntries({ tripId, place, editing }: { tripId: string; place
             (open === "price" ? (
               <PriceForm initial={null} pending={pending} onCancel={() => setOpen(null)} onSave={(next) => run(() => saveVenuePrice(tripId, place.ref, null, next))} />
             ) : (
-              <button type="button" disabled={pending} onClick={() => setOpen("price")} className="self-start text-xs underline">
+              <button type="button" disabled={pending} onClick={() => setOpen("price")} className="btn-mini self-start">
                 dodaj cenę
               </button>
             ))}
@@ -137,7 +137,7 @@ function PointForm({ initial, pending, onCancel, onSave }: { initial: string; pe
         <button disabled={pending || text.trim() === ""} className="btn-primary btn-sm">
           Zapisz
         </button>
-        <button type="button" disabled={pending} onClick={onCancel} className="text-xs underline">
+        <button type="button" disabled={pending} onClick={onCancel} className="btn-mini">
           anuluj
         </button>
       </div>
@@ -180,7 +180,7 @@ function PriceForm({ initial, pending, onCancel, onSave }: { initial: VenuePrice
       <button disabled={pending || !valid} className="btn-primary btn-sm">
         Zapisz
       </button>
-      <button type="button" disabled={pending} onClick={onCancel} className="pb-1 text-xs underline">
+      <button type="button" disabled={pending} onClick={onCancel} className="btn-mini">
         anuluj
       </button>
     </form>

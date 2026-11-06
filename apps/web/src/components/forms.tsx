@@ -259,10 +259,10 @@ export function TravelerList({ tripId, trip, people, places, canEdit }: { tripId
                 {person.tentative && <span className="rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">waha się</span>}
                 {canEdit && (
                   <span className="text-xs text-zinc-500">
-                    <button onClick={() => { setResult({}); setEditing(person.id); }} className="underline">
+                    <button onClick={() => { setResult({}); setEditing(person.id); }} className="btn-mini">
                       edytuj
                     </button>{" "}
-                    <button onClick={() => remove(person)} disabled={pending} className="underline disabled:opacity-50">
+                    <button onClick={() => remove(person)} disabled={pending} className="btn-mini btn-mini-danger">
                       usuń
                     </button>
                   </span>

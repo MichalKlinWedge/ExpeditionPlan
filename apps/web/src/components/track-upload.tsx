@@ -49,7 +49,7 @@ export function TrackUpload({ tripId, itemRef, hasLine }: { tripId: string; item
         <button
           disabled={pending}
           onClick={() => window.confirm("Usunąć ślad z tego punktu?") && start(async () => setState(await removeTrackLine(tripId, itemRef)))}
-          className="self-start text-xs underline disabled:opacity-50">
+          className="btn-mini btn-mini-danger self-start">
           usuń ślad
         </button>
       )}

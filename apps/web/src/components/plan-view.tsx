@@ -395,7 +395,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
             {pick?.place && (
               <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-2 text-sm">
                 <p className="text-xs text-zinc-500">Kliknij mapę tam, gdzie jest „{pick.place.name}” — potem pinezkę można przeciągnąć.</p>
-                <button onClick={() => setPick(null)} className="self-start text-xs underline">
+                <button onClick={() => setPick(null)} className="btn-mini self-start">
                   anuluj
                 </button>
               </div>
@@ -420,7 +420,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                         }}
                       />
                     )}
-                    <button onClick={() => setPick(null)} className="self-start text-xs underline">
+                    <button onClick={() => setPick(null)} className="btn-mini self-start">
                       anuluj
                     </button>
                   </div>
@@ -534,7 +534,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
 /** Przy „brak na mapie” w edycji: wskazanie miejsca kliknięciem w mapę. */
 function PinButton({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} className="ml-1.5 text-xs text-sea underline dark:text-teal-300">
+    <button onClick={onClick} className="btn-mini ml-1.5">
       postaw pinezkę
     </button>
   );
@@ -729,7 +729,7 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
   const [duration, setDuration] = useState("");
   if (!open)
     return (
-      <button onClick={() => setOpen(true)} className="self-start text-sm text-sea underline dark:text-teal-300">
+      <button onClick={() => setOpen(true)} className="btn-secondary btn-sm self-start">
         + Dodaj do puli (atrakcja, miejsce, pomysł)
       </button>
     );
@@ -779,7 +779,7 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
         <button className="btn-primary btn-sm" disabled={title.trim() === ""}>
           Dodaj do puli
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-xs underline">
+        <button type="button" onClick={() => setOpen(false)} className="btn-mini">
           zamknij
         </button>
         <span className="text-xs text-zinc-500">Miejsce bez współrzędnych: potem „Uzupełnij współrzędne miejsc” albo pinezka.</span>
@@ -846,7 +846,7 @@ function PoolToolbar({ doc, pool, guided, query, onChange }: { doc: TripDocument
       )}
       <input value={query.text} onChange={(event) => onChange({ ...query, text: event.target.value })} placeholder="Szukaj w puli…" className="w-48 field px-2 py-1 text-sm" aria-label="Szukaj w puli" />
       {narrowed && (
-        <button onClick={() => onChange({ ...EMPTY_POOL_QUERY, groupBy: query.groupBy })} className="text-xs text-sea underline dark:text-teal-300">
+        <button onClick={() => onChange({ ...EMPTY_POOL_QUERY, groupBy: query.groupBy })} className="btn-mini">
           wyczyść — pokaż całą pulę
         </button>
       )}
@@ -1096,22 +1096,22 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     <button onClick={() => actions.move(item.ref, 1)} aria-label="Niżej" className="px-1 hover:text-zinc-900 dark:hover:text-zinc-100">
                       ↓
                     </button>
-                    <button onClick={() => setEditing(editing === item.ref ? null : item.ref)} className="px-1 underline">
+                    <button onClick={() => setEditing(editing === item.ref ? null : item.ref)} className="btn-mini">
                       edytuj
                     </button>
                     <button
                       onClick={() => window.confirm(`Usunąć „${item.title}” z planu?`) && actions.remove(item.ref)}
-                      className="px-1 underline">
+                      className="btn-mini btn-mini-danger">
                       usuń
                     </button>
                     <MoveSelect doc={doc} current={dayRef} onMove={(target) => actions.moveTo(item.ref, target)} />
                     {item.routeStop ? (
-                      <button onClick={() => actions.edit(setRouteStop(doc, item.ref, false, options))} title="Punkt wraca do zwykłej kolejności dnia" className="px-1 underline">
+                      <button onClick={() => actions.edit(setRouteStop(doc, item.ref, false, options))} title="Punkt wraca do zwykłej kolejności dnia" className="btn-mini">
                         wyjmij z trasy
                       </button>
                     ) : (
                       routeStopTarget(doc, item.ref, options) && (
-                        <button onClick={() => actions.edit(setRouteStop(doc, item.ref, true, options))} title={`Atrakcja po drodze: jej czas doliczy się do przejazdu „${routeStopTarget(doc, item.ref, options)!.title}”`} className="px-1 underline">
+                        <button onClick={() => actions.edit(setRouteStop(doc, item.ref, true, options))} title={`Atrakcja po drodze: jej czas doliczy się do przejazdu „${routeStopTarget(doc, item.ref, options)!.title}”`} className="btn-mini">
                           ↳ postój w trasie
                         </button>
                       )
