@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
+import { LinkedText } from "@/components/linked-text";
 import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
@@ -326,7 +327,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
             const cost = price(booking);
             const cancelSoon = booking.freeCancellationUntil !== undefined && booking.freeCancellationUntil >= today;
             return (
-              <li key={booking.ref} className="flex flex-col gap-0.5 text-sm">
+              <li key={booking.ref} className="flex flex-col gap-0.5 text-sm break-words">
                 <div className="flex flex-wrap items-baseline gap-x-2">
                   <span className="font-medium">{booking.title}</span>
                   <span className="text-xs text-zinc-500">{BOOKING_KIND[booking.kind]}</span>
@@ -338,11 +339,13 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                   {mayEdit && booking.status === "cancelled" && <RemoveCancelledBooking tripId={id} bookingRef={booking.ref} title={booking.title} note={bookingRemovalNote(removeBooking(doc, booking.ref)!.summary)} />}
                 </div>
                 <p className="text-zinc-600 dark:text-zinc-400">
-                  {[when(booking), booking.kind === "flight" ? flightLine(booking) : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · "), cost]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  <LinkedText
+                    text={[when(booking), booking.kind === "flight" ? flightLine(booking) : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · "), cost]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  />
                 </p>
-                {facts(booking, cancelSoon).length > 0 && <p className="text-xs text-zinc-500">{facts(booking, cancelSoon).join(" · ")}</p>}
+                {facts(booking, cancelSoon).length > 0 && <p className="text-xs text-zinc-500"><LinkedText text={facts(booking, cancelSoon).join(" · ")} /></p>}
                 {booking.kind === "lodging" && booking.startPlaceRef !== undefined && (() => {
                   const place = doc.places.find((each) => each.ref === booking.startPlaceRef);
                   return place && <p className="text-xs text-zinc-500">miejsce: {place.name}{place.lat === undefined || place.lng === undefined ? " · bez współrzędnych, nie ma go na mapie" : ""}</p>;
