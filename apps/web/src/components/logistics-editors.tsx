@@ -1,7 +1,7 @@
 "use client";
 
 import { BUDGET_CATEGORY, type BudgetSuggestion, formatMoney, lineTravelerNames, type TripDocument } from "@expeditionplan/core";
-import { startTransition, useActionState, useState, useTransition } from "react";
+import { type ReactNode, startTransition, useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import {
@@ -519,7 +519,7 @@ export function BookingStatusSelect({ tripId, bookingRef, status, statuses, tone
         onChange={(event) => action.run(() => setBookingStatus(tripId, bookingRef, event.target.value))}
         aria-label="Status rezerwacji"
         title="Zmień status (np. zapłacone)"
-        className={`cursor-pointer rounded border border-transparent bg-transparent text-xs hover:border-zinc-300 dark:hover:border-zinc-700 ${tone}`}>
+        className={`cursor-pointer rounded border border-transparent bg-transparent text-xs [field-sizing:content] hover:border-zinc-300 dark:hover:border-zinc-700 ${tone}`}>
         {Object.entries(statuses).map(([key, name]) => (
           <option key={key} value={key}>
             {name}
@@ -809,16 +809,92 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
   );
 }
 
-export function BookingEditor({ tripId, booking, statuses, zones, places }: { tripId: string; booking: Booking; statuses: Record<string, string>; zones: string[]; places: PlaceOption[] }) {
-  const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} className={small}>
+/**
+ * Wiersz tabeli rezerwacji: komórki z danymi przychodzą ze strony, a tu działania i formularz w osobnym
+ * wierszu na całą szerokość. Na telefonie działania też są w osobnym wierszu, bo kolumna się nie mieści.
+ */
+export function BookingRow({
+  tripId,
+  booking,
+  statuses,
+  zones,
+  places,
+  items,
+  chosen,
+  canEdit,
+  actionsColumn,
+  removal,
+  details,
+  children,
+}: {
+  tripId: string;
+  booking: Booking;
+  statuses: Record<string, string>;
+  zones: string[];
+  places: PlaceOption[];
+  items: { ref: string; label: string }[];
+  chosen: string[];
+  canEdit: boolean;
+  actionsColumn: boolean;
+  removal: ReactNode;
+  /** Szczegóły pod wierszem, na całą szerokość tabeli, żeby nie ściskały kolumny z nazwą. */
+  details: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState<"edit" | "items" | null>(null);
+  const buttons = canEdit ? (
+    <>
+      <button onClick={() => setOpen(open === "edit" ? null : "edit")} className={small}>
         edytuj
       </button>
-    );
-  }
-  return <BookingForm tripId={tripId} booking={booking} statuses={statuses} zones={zones} places={places} onDone={() => setOpen(false)} />;
+      <button onClick={() => setOpen(open === "items" ? null : "items")} title="Punkty planu w pakiecie tej rezerwacji" className={small}>
+        pakiet{chosen.length > 0 ? ` (${chosen.length})` : ""}
+      </button>
+    </>
+  ) : null;
+  return (
+    <>
+      <tr className="border-t border-zinc-100 dark:border-zinc-900">
+        {children}
+        {actionsColumn && (
+          <td className="hidden py-1 pl-2 align-top sm:table-cell">
+            <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+              {buttons}
+              {removal}
+            </div>
+          </td>
+        )}
+      </tr>
+      {details !== null && (
+        <tr>
+          <td colSpan={6} className="pb-1.5 text-xs text-zinc-500 [overflow-wrap:anywhere]">
+            {details}
+          </td>
+        </tr>
+      )}
+      {(buttons !== null || removal !== null) && (
+        <tr className="sm:hidden">
+          <td colSpan={6} className="pb-1.5">
+            <div className="flex flex-wrap items-center gap-1">
+              {buttons}
+              {removal}
+            </div>
+          </td>
+        </tr>
+      )}
+      {open !== null && (
+        <tr>
+          <td colSpan={6} className="pb-3">
+            {open === "edit" ? (
+              <BookingForm tripId={tripId} booking={booking} statuses={statuses} zones={zones} places={places} onDone={() => setOpen(null)} />
+            ) : (
+              <BookingItemsForm tripId={tripId} bookingRef={booking.ref} items={items} chosen={chosen} onDone={() => setOpen(null)} />
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  );
 }
 
 export function NewBooking({ tripId, statuses, zones, places }: { tripId: string; statuses: Record<string, string>; zones: string[]; places: PlaceOption[] }) {
@@ -834,17 +910,9 @@ export function NewBooking({ tripId, statuses, zones, places }: { tripId: string
 }
 
 /** Punkty planu „w pakiecie” rezerwacji — zaznaczone wskazują rezerwację i mają płatność „w cenie”. */
-export function BookingItems({ tripId, bookingRef, items, chosen }: { tripId: string; bookingRef: string; items: { ref: string; label: string }[]; chosen: string[] }) {
-  const [open, setOpen] = useState(false);
+function BookingItemsForm({ tripId, bookingRef, items, chosen, onDone }: { tripId: string; bookingRef: string; items: { ref: string; label: string }[]; chosen: string[]; onDone: () => void }) {
   const [picked, setPicked] = useState<Set<string>>(() => new Set(chosen));
   const action = useAction();
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} className={small}>
-        punkty w pakiecie{chosen.length > 0 ? ` (${chosen.length})` : ""}
-      </button>
-    );
-  }
   return (
     <div className="mt-1 flex flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
       <p className="text-xs text-zinc-500">Zaznacz punkty planu, które ta rezerwacja obejmuje — dostaną płatność „w cenie” i nie trafią osobno do budżetu.</p>
@@ -870,12 +938,12 @@ export function BookingItems({ tripId, bookingRef, items, chosen }: { tripId: st
       <div className="flex gap-2">
         <button disabled={action.pending} onClick={() => action.run(async () => {
           const result = await setBookingItems(tripId, bookingRef, [...picked]);
-          if (result.ok) setOpen(false);
+          if (result.ok) onDone();
           return result;
         })} className={primary}>
           {action.pending ? "Zapisuję…" : "Zapisz"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="btn-secondary btn-sm">
+        <button type="button" onClick={onDone} className="btn-secondary btn-sm">
           Anuluj
         </button>
       </div>

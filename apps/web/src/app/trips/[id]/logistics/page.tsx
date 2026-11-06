@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
-import { BookingEditor, BookingItems, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
+import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -321,48 +321,82 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
       <section className={card}>
         <h2 className={heading}>Rezerwacje ({bookings.length})</h2>
         {candidates > 0 && <p className="text-xs text-zinc-500">Kandydaci i pomysły ({candidates}) są wyżej, w „Do porównania” — tu tylko wybrane rezerwacje.</p>}
-        <ul className="flex flex-col gap-3">
-          {bookings.map((booking) => {
-            const status = BOOKING_STATUS[booking.status]!;
-            const cost = price(booking);
-            const cancelSoon = booking.freeCancellationUntil !== undefined && booking.freeCancellationUntil >= today;
-            return (
-              <li key={booking.ref} className="flex flex-col gap-0.5 text-sm break-words">
-                <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-medium">{booking.title}</span>
-                  <span className="text-xs text-zinc-500">{BOOKING_KIND[booking.kind]}</span>
-                  {mayEdit ? (
-                    <BookingStatusSelect tripId={id} bookingRef={booking.ref} status={booking.status} statuses={statuses} tone={status.tone} />
-                  ) : (
-                    <span className={`text-xs ${status.tone}`}>{status.label}</span>
-                  )}
-                  {mayEdit && booking.status === "cancelled" && <RemoveCancelledBooking tripId={id} bookingRef={booking.ref} title={booking.title} note={bookingRemovalNote(removeBooking(doc, booking.ref)!.summary)} />}
-                </div>
-                <p className="text-zinc-600 dark:text-zinc-400">
-                  <LinkedText
-                    text={[when(booking), booking.kind === "flight" ? flightLine(booking) : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · "), cost]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  />
-                </p>
-                {facts(booking, cancelSoon).length > 0 && <p className="text-xs text-zinc-500"><LinkedText text={facts(booking, cancelSoon).join(" · ")} /></p>}
-                {booking.kind === "lodging" && booking.startPlaceRef !== undefined && (() => {
-                  const place = doc.places.find((each) => each.ref === booking.startPlaceRef);
-                  return place && <p className="text-xs text-zinc-500">miejsce: {place.name}{place.lat === undefined || place.lng === undefined ? " · bez współrzędnych, nie ma go na mapie" : ""}</p>;
-                })()}
-                {packaged.get(booking.ref) && <p className="text-xs text-zinc-500">w pakiecie: {packaged.get(booking.ref)!.map((item) => item.title).join(", ")}</p>}
-                {canEdit && (
-                  <div className="flex flex-col items-start gap-1">
-                    <span className="flex gap-3">
-                      <BookingEditor tripId={id} booking={booking} statuses={statuses} zones={zones} places={doc.places} />
-                      <BookingItems tripId={id} bookingRef={booking.ref} items={choices.items} chosen={(packaged.get(booking.ref) ?? []).map((item) => item.ref)} />
-                    </span>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        {bookings.length > 0 && (
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-zinc-500">
+              <tr>
+                <th className="py-1 font-normal">Rezerwacja</th>
+                <th className="hidden py-1 font-normal sm:table-cell">Rodzaj</th>
+                <th className="hidden py-1 font-normal sm:table-cell">Termin</th>
+                <th className="hidden py-1 font-normal sm:table-cell">Status</th>
+                <th className="py-1 text-right font-normal">Kwota</th>
+                {mayEdit && <th className="hidden py-1 sm:table-cell" />}
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.map((booking) => {
+                const status = BOOKING_STATUS[booking.status]!;
+                const cost = booking.paid ? formatMoney(booking.paid.amountMinor, booking.paid.currency) : price(booking);
+                const cancelSoon = booking.freeCancellationUntil !== undefined && booking.freeCancellationUntil >= today;
+                const line = booking.kind === "flight" ? flightLine(booking) : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · ");
+                const statusControl = mayEdit ? <BookingStatusSelect tripId={id} bookingRef={booking.ref} status={booking.status} statuses={statuses} tone={status.tone} /> : <span className={`text-xs ${status.tone}`}>{status.label}</span>;
+                const place = booking.kind === "lodging" && booking.startPlaceRef !== undefined ? doc.places.find((each) => each.ref === booking.startPlaceRef) : undefined;
+                return (
+                  <BookingRow
+                    key={booking.ref}
+                    tripId={id}
+                    booking={booking}
+                    statuses={statuses}
+                    zones={zones}
+                    places={doc.places}
+                    items={choices.items}
+                    chosen={(packaged.get(booking.ref) ?? []).map((item) => item.ref)}
+                    canEdit={canEdit}
+                    actionsColumn={mayEdit}
+                    removal={mayEdit && booking.status === "cancelled" ? <RemoveCancelledBooking tripId={id} bookingRef={booking.ref} title={booking.title} note={bookingRemovalNote(removeBooking(doc, booking.ref)!.summary)} /> : null}
+                    details={
+                      line || facts(booking, cancelSoon).length > 0 || place || packaged.get(booking.ref) ? (
+                        <>
+                          {line ? (
+                            <span className="block text-zinc-600 dark:text-zinc-400">
+                              <LinkedText text={line} />
+                            </span>
+                          ) : null}
+                          {facts(booking, cancelSoon).length > 0 && (
+                            <span className="block">
+                              <LinkedText text={facts(booking, cancelSoon).join(" · ")} />
+                            </span>
+                          )}
+                          {place && (
+                            <span className="block">
+                              miejsce: {place.name}
+                              {place.lat === undefined || place.lng === undefined ? " · bez współrzędnych, nie ma go na mapie" : ""}
+                            </span>
+                          )}
+                          {packaged.get(booking.ref) && <span className="block">w pakiecie: {packaged.get(booking.ref)!.map((item) => item.title).join(", ")}</span>}
+                        </>
+                      ) : null
+                    }
+                  >
+                    <td className="py-1 pr-3 align-top">
+                      <span className="font-medium">{booking.title}</span>
+                      {/* Na telefonie rodzaj, termin i status pod nazwą — sześć kolumn się nie mieści. */}
+                      <span className="block text-xs text-zinc-500 sm:hidden">{[BOOKING_KIND[booking.kind], when(booking)].filter(Boolean).join(" · ")}</span>
+                      <span className="block sm:hidden">{statusControl}</span>
+                    </td>
+                    <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{BOOKING_KIND[booking.kind]}</td>
+                    <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{when(booking)}</td>
+                    <td className="hidden py-1 pr-3 align-top whitespace-nowrap sm:table-cell">{statusControl}</td>
+                    <td className="py-1 text-right align-top font-mono whitespace-nowrap">
+                      {cost}
+                      {booking.paid && booking.status !== "paid" ? <span className="block font-sans text-xs text-zinc-500">zapłacono</span> : null}
+                    </td>
+                  </BookingRow>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
         {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />}
       </section>
 
