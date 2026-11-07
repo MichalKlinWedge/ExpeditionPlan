@@ -9,9 +9,9 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
- * Edycja punktu na telefonie: nazwa, rodzaj, godzina i czas trwania, a przy przejeździe „Skąd” i „Dokąd”
- * (nazwa miejsca z planu albo nowa, `setLegRoute`; pinezka pokazuje znane miejsce w Mapach Google, nic nie
- * zapisując). Pełny edytor (precyzja godziny, przedziały, bufor, priorytet, przeliczenie trasy) jest na webie —
+ * Edycja punktu na telefonie: nazwa, rodzaj, godzina i czas trwania, miejsce (`setItemPlace`, tylko ten punkt),
+ * a przy przejeździe „Skąd” i „Dokąd” (`setLegRoute`). Nazwa z planu wskazuje to miejsce, nowa tworzy nowe; pinezka
+ * pokazuje znane miejsce w Mapach Google, nic nie zapisując. Pełny edytor (precyzja godziny, przedziały, bufor, priorytet, przeliczenie trasy) jest na webie —
  * tu godzina inna niż „dokładnie” zostaje nietknięta, dopóki pole się nie zmieni.
  */
 
@@ -19,8 +19,8 @@ const HHMM = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 
 export type ItemFields = Pick<Item, 'title' | 'kind'> & Partial<Item>;
 
-/** Wpisane „Skąd” i „Dokąd” przejazdu — tylko gdy się zmieniły. */
-export type LegEnds = { from: string; to: string };
+/** Wpisane „Skąd” i „Dokąd” przejazdu albo miejsce innego punktu — tylko gdy się zmieniły. */
+export type PlaceChange = { from: string; to: string } | { place: string };
 
 const TRAVEL: KindChoice[] = ['transport', 'public', 'hike', 'walk'];
 
@@ -29,8 +29,8 @@ type EditorProps = {
   item: Item | null;
   visible: boolean;
   onCancel: () => void;
-  onSave: (fields: ItemFields, ends?: LegEnds) => void;
-  /** Plan — podpowiedzi miejsc i pinezka przy „Skąd” / „Dokąd”; bez niego pól nie ma. */
+  onSave: (fields: ItemFields, change?: PlaceChange) => void;
+  /** Plan — podpowiedzi miejsc i pinezka przy „Miejsce”, „Skąd” i „Dokąd”; bez niego tych pól nie ma. */
   doc?: TripDocument;
 };
 
@@ -60,6 +60,8 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
   const [toStart] = useState(() => placeName(item?.leg?.toPlaceRef ?? item?.placeRef));
   const [from, setFrom] = useState(fromStart);
   const [to, setTo] = useState(toStart);
+  const [placeStart] = useState(() => placeName(item?.placeRef));
+  const [place, setPlace] = useState(placeStart);
   const [title, setTitle] = useState(item?.title ?? '');
   const [kind, setKind] = useState<KindChoice>(item === null ? 'visit' : kindChoice(item));
   const [vehicle, setVehicle] = useState<PublicMode>((item === null ? undefined : publicMode(item)) ?? PUBLIC_MODES[0]![0]);
@@ -90,8 +92,11 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
       const start = time.trim().padStart(5, '0');
       fields.time = time.trim() === '' ? undefined : { precision: 'exact', start, ...(tz ? { tz } : {}) };
     }
-    const travel = TRAVEL.includes(kind) && doc !== undefined;
-    onSave(fields, travel && (from.trim() !== fromStart || to.trim() !== toStart) ? { from: from.trim(), to: to.trim() } : undefined);
+    const travel = TRAVEL.includes(kind);
+    const ends = travel && (from.trim() !== fromStart || to.trim() !== toStart) ? { from: from.trim(), to: to.trim() } : undefined;
+    // Puste „Miejsce” nie odpina miejsca (jak na webie) — zostaje dotychczasowe.
+    const spot = !travel && place.trim() !== '' && place.trim() !== placeStart ? { place: place.trim() } : undefined;
+    onSave(fields, doc === undefined ? undefined : (ends ?? spot));
   };
 
   return (
@@ -141,6 +146,7 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
             ))}
           </View>
         )}
+        {!TRAVEL.includes(kind) && doc !== undefined && <PlaceField label="Miejsce" value={place} onChange={setPlace} doc={doc} input={input} />}
         {TRAVEL.includes(kind) && doc !== undefined && (
           <>
             <PlaceField label="Skąd" value={from} onChange={setFrom} doc={doc} input={input} />
