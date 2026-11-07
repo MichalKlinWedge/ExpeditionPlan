@@ -97,7 +97,7 @@ describe('linia w przejeździe z planu', () => {
   } as unknown as Parameters<typeof applyTransitShape>[0];
 
   it('prośba o linie z końcami przejazdu; nie dla auta', () => {
-    expect(transitShapeRequest(doc, doc.items[0]!)).toEqual({ refs: ['L3'], start: [-0.002, 0.001], end: [0.031, 0.002] });
+    expect(transitShapeRequest(doc, doc.items[0]!)).toEqual({ refs: ['L3'], types: [], start: [-0.002, 0.001], end: [0.031, 0.002] });
     expect(transitShapeRequest(doc, doc.items[1]!)).toBeNull();
   });
 
@@ -106,6 +106,18 @@ describe('linia w przejeździe z planu', () => {
     expect(transitShapeRequest(lineOnly, lineOnly.items[0]!)?.refs).toEqual(['L3']);
     const drawn = applyTransitShape(lineOnly, 'm', [east])!;
     expect(drawn.shape).toMatchObject({ matched: 1, total: 1 });
+  });
+
+  it('pociąg bez numeru linii: kawałek torów między końcami, także z relacji bez przystanków', () => {
+    const rails: OsmRoute = { id: 9, ref: '', route: 'train', ways: east.ways, stops: [] };
+    const train = { ...doc, items: doc.items.map((each) => (each.ref === 'm' ? { ...each, leg: { mode: 'train', fromPlaceRef: 'a', toPlaceRef: 'b', links: [] } } : each)) } as typeof doc;
+    expect(transitShapeRequest(train, train.items[0]!)).toMatchObject({ refs: [], types: ['train', 'light_rail', 'subway', 'railway'] });
+    const drawn = applyTransitShape(train, 'm', [rails])!;
+    expect(drawn.shape).toMatchObject({ matched: 1, total: 1 });
+    expect(decodePolyline(drawn.shape!.geometry).at(-1)).toEqual([0.031, 0.002]);
+    // Autobus bez numeru: nie szukamy, w mieście są ich setki.
+    const bus = { ...doc, items: doc.items.map((each) => (each.ref === 'm' ? { ...each, leg: { mode: 'bus', fromPlaceRef: 'a', toPlaceRef: 'b', links: [] } } : each)) } as typeof doc;
+    expect(transitShapeRequest(bus, bus.items[0]!)).toBeNull();
   });
 
   it('zapis linii, a bez trafienia w OSM stara linia znika', () => {

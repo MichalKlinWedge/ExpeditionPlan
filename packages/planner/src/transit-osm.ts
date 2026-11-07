@@ -25,18 +25,19 @@ export function bboxAround(points: readonly LngLat[], marginKm = 3): Bbox {
 /** Ucieczka znaku regex wewnątrz napisu Overpass QL: w napisie odwrotny ukośnik też trzeba podwoić. */
 const regexEscape = (text: string) => text.replace(/[\\^$.*+?()[\]{}|"]/g, (char) => `\\\\${char}`);
 
-/** Zapytanie: relacje linii o tych numerach w prostokącie, z geometrią dróg, i ich przystanki z nazwami. */
-export function overpassQuery(refs: readonly string[], bbox: Bbox): string {
+/**
+ * Zapytanie: relacje linii o tych numerach w prostokącie, z geometrią dróg, i ich przystanki z nazwami.
+ * `types` — dla odcinków bez numeru wszystkie relacje tych typów (tory, tramwaje) w prostokącie.
+ */
+export function overpassQuery(refs: readonly string[], bbox: Bbox, types: readonly string[] = []): string {
   // „R2 Nord” bywa w OSM jako „R2N”: szukamy po początku numeru, dokładne dopasowanie robi `sameLine`.
   const pattern = refs.map((ref) => regexEscape(ref.split(/\s+/)[0]!)).join('|');
   const box = [bbox.south, bbox.west, bbox.north, bbox.east].map((value) => value.toFixed(5)).join(',');
-  return [
-    '[out:json][timeout:25][maxsize:67108864];',
-    `rel[type=route][route~"^(${OSM_ROUTE_TYPES.join('|')})$"][ref~"^(${pattern})",i](${box})->.lines;`,
-    '.lines out geom;',
-    'node(r.lines);',
-    'out;',
-  ].join('\n');
+  const parts = [
+    ...(refs.length > 0 ? [`rel[type=route][route~"^(${OSM_ROUTE_TYPES.join('|')})$"][ref~"^(${pattern})",i](${box});`] : []),
+    ...(types.length > 0 ? [`rel[type=route][route~"^(${types.map(regexEscape).join('|')})$"](${box});`] : []),
+  ];
+  return ['[out:json][timeout:25][maxsize:67108864];', `(${parts.join(' ')})->.lines;`, '.lines out geom;', 'node(r.lines);', 'out;'].join('\n');
 }
 
 type Element =
@@ -50,7 +51,7 @@ export function parseOverpass(json: unknown): OsmRoute[] {
   const names = new Map<number, string>();
   for (const element of elements) if (element.type === 'node' && element.tags?.name) names.set(element.id, element.tags.name);
   return elements.flatMap((element): OsmRoute[] => {
-    if (element.type !== 'relation' || !element.tags?.ref || !element.tags.route) return [];
+    if (element.type !== 'relation' || !element.tags?.route) return [];
     const members = element.members ?? [];
     const ways = members
       .filter((member) => member.type === 'way' && !member.role.startsWith('platform') && !member.role.startsWith('stop') && (member.geometry?.length ?? 0) >= 2)
@@ -63,7 +64,8 @@ export function parseOverpass(json: unknown): OsmRoute[] {
       if (name === undefined || stops.at(-1)?.name === name) continue;
       stops.push({ name, at: [member.lon, member.lat] });
     }
-    return ways.length === 0 || stops.length < 2 ? [] : [{ id: element.id, ref: element.tags.ref, route: element.tags.route, ways, stops }];
+    // Relacja bez przystanków (sam przebieg) też się przydaje: kawałek torów między końcami przejazdu.
+    return ways.length === 0 ? [] : [{ id: element.id, ref: element.tags.ref ?? '', route: element.tags.route, ways, stops }];
   });
 }
 
@@ -71,14 +73,15 @@ export function parseOverpass(json: unknown): OsmRoute[] {
 export async function fetchOsmRoutes(
   refs: readonly string[],
   bbox: Bbox,
-  options: { url?: string; fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+  options: { url?: string; fetchImpl?: typeof fetch; timeoutMs?: number; types?: readonly string[] } = {},
 ): Promise<OsmRoute[]> {
-  if (refs.length === 0) return [];
+  const types = options.types ?? [];
+  if (refs.length === 0 && types.length === 0) return [];
   const fetchImpl = options.fetchImpl ?? fetch;
   const response = await fetchImpl(options.url ?? OVERPASS_URL, {
     method: 'POST',
     headers: { 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ data: overpassQuery(refs, bbox) }).toString(),
+    body: new URLSearchParams({ data: overpassQuery(refs, bbox, types) }).toString(),
     signal: AbortSignal.timeout(options.timeoutMs ?? 40_000),
   });
   if ([429, 502, 503, 504].includes(response.status)) throw new Error('Serwer OpenStreetMap (Overpass) jest teraz zajęty. Spróbuj za minutę.');

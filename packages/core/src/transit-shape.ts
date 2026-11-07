@@ -126,8 +126,8 @@ export type SegmentMiss = 'line' | 'stops';
  * (start albo koniec poprzedniego odcinka), `nearTo` przy wysiadaniu (cel przejazdu).
  */
 export function segmentLine(routes: readonly OsmRoute[], segment: Pick<Segment, 'mode' | 'line' | 'from' | 'to'>, near?: LngLat, nearTo?: LngLat): LngLat[] | SegmentMiss {
-  if (segment.line === undefined) return 'line';
   const types = ROUTE_TYPES[segment.mode] ?? [];
+  if (segment.line === undefined) return (near && nearTo && trackBetween(routes.filter((route) => types.includes(route.route)), near, nearTo)) || 'line';
   let best: { line: LngLat[]; m: number } | null = null;
   let known = false;
   for (const route of routes) {
@@ -147,7 +147,32 @@ export function segmentLine(routes: readonly OsmRoute[], segment: Pick<Segment, 
     const m = cut.slice(1).reduce((sum, point, index) => sum + distanceM(cut[index]!, point), 0);
     if (best === null || m < best.m) best = { line: cut, m };
   }
-  return best?.line ?? (known ? 'stops' : 'line');
+  if (best !== null) return best.line;
+  // Relacja bez przystanków (w OSM bywa sam przebieg): kawałek torów między końcami przejazdu.
+  const byTrack = near && nearTo ? trackBetween(routes.filter((route) => types.includes(route.route) && sameLine(route.ref, segment.line!)), near, nearTo) : null;
+  return byTrack ?? (known ? 'stops' : 'line');
+}
+
+/** Koniec przejazdu (stacja, parking przy stacji) nie dalej niż tyle od torów. */
+const END_ON_TRACK_M = 1_500;
+
+/**
+ * Kawałek przebiegu relacji między punktami najbliższymi `a` i `b`, bez patrzenia na przystanki —
+ * dla relacji bez przystanków i dla przejazdu bez numeru linii (pociąg, metro, tramwaj, prom, kolejka).
+ * Najkrótszy z pasujących. `null` = żaden przebieg nie przechodzi blisko obu końców.
+ */
+function trackBetween(routes: readonly OsmRoute[], a: LngLat, b: LngLat): LngLat[] | null {
+  let best: { line: LngLat[]; m: number } | null = null;
+  for (const route of routes) {
+    const line = chainWays(route.ways);
+    const from = nearestIndex(line, a, END_ON_TRACK_M);
+    const to = nearestIndex(line, b, END_ON_TRACK_M);
+    if (from === null || to === null || from === to) continue;
+    const piece = from < to ? line.slice(from, to + 1) : line.slice(to, from + 1).reverse();
+    const m = piece.slice(1).reduce((sum, point, index) => sum + distanceM(piece[index]!, point), 0);
+    if (best === null || m < best.m) best = { line: piece, m };
+  }
+  return best?.line ?? null;
 }
 
 export type TransitShape = { geometry: string; matched: number; total: number };
@@ -177,23 +202,33 @@ export function transitShape(segments: readonly Segment[], start: LngLat, end: L
 /** Linie do zapytania o relacje: numery odcinków, które nie są pieszo. */
 export const transitRefs = (segments: readonly Segment[]): string[] => [...new Set(segments.filter((segment) => segment.mode !== 'walk' && segment.line).map((segment) => segment.line!))];
 
+/** Środki, które da się narysować bez numeru linii: torów w okolicy jest mało, autobusów — setki. */
+const TRACK_MODES = new Set(['train', 'metro', 'tram', 'ferry', 'cable_car']);
+/** Typy relacji OSM do pobrania, gdy odcinek nie ma numeru linii. */
+export const trackRouteTypes = (segments: readonly Segment[]): string[] => [...new Set(segments.filter((segment) => segment.mode !== 'walk' && !segment.line && TRACK_MODES.has(segment.mode)).flatMap((segment) => ROUTE_TYPES[segment.mode] ?? []))];
+
 /**
- * Odcinki do rysowania: zapisane, a bez nich jeden odcinek z samej linii przejazdu („pociąg R2 Nord”).
- * Taki odcinek nie ma nazw przystanków, więc wsiada i wysiada najbliżej startu i celu (`segmentLine`).
+ * Odcinki do rysowania: zapisane, a bez nich jeden odcinek z samego przejazdu — z linią („pociąg
+ * R2 Nord”) albo bez niej („pociąg”). Taki odcinek nie ma nazw przystanków, więc jedzie od startu do
+ * celu (`segmentLine`).
  */
 function shapeSegments(leg: NonNullable<Item['leg']>): Segment[] {
   if (leg.segments !== undefined && leg.segments.length > 0) return leg.segments;
-  return leg.line === undefined ? [] : [{ mode: leg.mode, line: leg.line }];
+  return [{ mode: leg.mode, ...(leg.line !== undefined ? { line: leg.line } : {}) }];
 }
 
-/** Co trzeba pobrać z OSM dla punktu: numery linii i końce przejazdu. `null` = brak linii (w odcinkach ani w przejeździe) albo końców na mapie. */
-export function transitShapeRequest(doc: TripDocument, item: Item): { refs: string[]; start: LngLat; end: LngLat } | null {
+/**
+ * Co trzeba pobrać z OSM dla punktu: numery linii, typy relacji dla odcinków bez numeru i końce
+ * przejazdu. `null` = nie ma czego szukać (autobus bez numeru) albo końców na mapie.
+ */
+export function transitShapeRequest(doc: TripDocument, item: Item): { refs: string[]; types: string[]; start: LngLat; end: LngLat } | null {
   const segments = item.leg === undefined ? [] : shapeSegments(item.leg);
   const refs = transitRefs(segments);
-  if (!isTransitItem(item) || refs.length === 0) return null;
+  const types = trackRouteTypes(segments);
+  if (!isTransitItem(item) || (refs.length === 0 && types.length === 0)) return null;
   const { from, to } = legEnds(doc, item);
   if (from === undefined || to === undefined) return null;
-  return { refs, start: [from.lng, from.lat], end: [to.lng, to.lat] };
+  return { refs, types, start: [from.lng, from.lat], end: [to.lng, to.lat] };
 }
 
 /** Zapisuje linię z OSM w przejeździe. `null` = nie ma czego rysować; `shape: null` = OSM nie zna żadnej linii, stara linia znika. */

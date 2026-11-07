@@ -31,7 +31,7 @@ async function osmLine(doc: TripDocument, itemRef: string): Promise<{ doc: TripD
   if (request === null) return null;
   if (!process.env.CONTACT_EMAIL) return { error: "Linii z OpenStreetMap nie pobrano: serwer nie ma ustawionego CONTACT_EMAIL (warunek serwera Overpass)." };
   try {
-    const routes = await fetchOsmRoutes(request.refs, bboxAround([request.start, request.end]), { url: process.env.OVERPASS_URL || OVERPASS_URL });
+    const routes = await fetchOsmRoutes(request.refs, bboxAround([request.start, request.end]), { url: process.env.OVERPASS_URL || OVERPASS_URL, types: request.types });
     const drawn = applyTransitShape(doc, itemRef, routes)!;
     const missed = drawn.misses.map((miss) => `${miss.line} (${miss.why === "line" ? "brak tej linii w okolicy" : "nie znalazłem przystanków wsiadania i wysiadania"})`).join(", ");
     if (drawn.shape === null) return { doc: drawn.doc, note: `Nie narysowałem linii z OpenStreetMap: ${missed}. Mapa łączy miejsca prostą.` };
