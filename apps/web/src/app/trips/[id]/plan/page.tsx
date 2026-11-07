@@ -70,7 +70,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
           <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Link href={`/trips/${id}/print`} className="text-sm text-zinc-500 underline">
+          <Link href={`/trips/${id}/print`} className="btn-secondary btn-sm">
             Wydruk / PDF
           </Link>
           {canEdit && <EditToggle href={`/trips/${id}/plan`} editing={editing} />}
@@ -82,7 +82,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
           <PlanActionButton run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
           <PlanActionButton ai run={describeTrip.bind(null, id)} label="Przygotuj brakujące opisy" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
           <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />
-          <Link href={`/trips/${id}/places`} className="self-start text-xs text-zinc-500 underline hover:text-sea">
+          <Link href={`/trips/${id}/places`} className="btn-secondary btn-sm self-start">
             Wszystkie miejsca: nazwy i współrzędne →
           </Link>
         </div>

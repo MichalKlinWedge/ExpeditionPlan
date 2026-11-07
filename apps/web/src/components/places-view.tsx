@@ -457,7 +457,7 @@ function PlaceRow({
       {moved && hasRouted && usage.total > 0 && (
         <p className="text-xs text-zinc-500">
           Czasy przejazdów nie zmieniają się same:{" "}
-          <Link href={`/trips/${tripId}/plan?edit=1`} className="underline">
+          <Link href={`/trips/${tripId}/plan?edit=1`} className="btn-mini">
             w planie użyj „Przelicz przejazdy”
           </Link>
           .

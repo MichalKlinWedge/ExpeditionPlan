@@ -439,8 +439,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                             </Link>
                           )}
                           {itemBase && canEdit && item.kind !== "lodging" && !guided?.includes(item.ref) && (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="ml-1.5 text-xs text-sea underline dark:text-teal-300">
-                              <SparkIcon className="mr-0.5 inline size-3 align-[-1px]" />
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="btn-mini ml-1.5">
+                              <SparkIcon className="size-3" />
                               opis AI
                             </Link>
                           )}

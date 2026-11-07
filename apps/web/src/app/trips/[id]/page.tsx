@@ -187,12 +187,12 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         {!title.startsWith(DRAFT) && !postponed && trip.data.start_date! <= new Date().toISOString().slice(0, 10) && <Tile href={`/trips/${id}/memories`} icon={<PeakIcon />} title="Pamiątka z wyjazdu" hint="liczby, trasa, zdjęcia dzień po dniu" />}
       </nav>
 
-      {/* Eksport to plik (route handler), nie strona — zwykły link. */}
-      <a href={`/trips/${id}/export`} className="flex items-center gap-1.5 self-start text-sm text-zinc-500 underline hover:text-sea">
+      {/* Eksport to plik (route handler), nie strona — zwykłe <a>. */}
+      <a href={`/trips/${id}/export`} className="btn-secondary btn-sm self-start">
         <DownloadIcon className="size-4" />
         Pobierz kopię całego planu (JSON)
       </a>
-      <a href={`/trips/${id}/calendar`} className="flex items-center gap-1.5 self-start text-sm text-zinc-500 underline hover:text-sea">
+      <a href={`/trips/${id}/calendar`} className="btn-secondary btn-sm self-start">
         <DownloadIcon className="size-4" />
         Dodaj plan do kalendarza (.ics — Google Calendar, telefon)
       </a>

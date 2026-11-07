@@ -63,7 +63,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
           <h1 className="text-2xl font-semibold">Miejsca</h1>
           {mayEdit && <EditToggle href={`/trips/${id}/places`} editing={canEdit} />}
         </div>
-        <Link href="/places" className="self-start text-xs text-zinc-500 underline hover:text-sea">
+        <Link href="/places" className="btn-secondary btn-sm self-start">
           Miejsca ze wszystkich wyjazdów
         </Link>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">

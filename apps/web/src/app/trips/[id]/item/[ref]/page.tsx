@@ -170,7 +170,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
             <>
               {(track.difficulty || track.waymarking) && <p className="text-zinc-600 dark:text-zinc-400">{[track.difficulty, track.waymarking].filter(Boolean).join(" · ")}</p>}
               {item.dayRef && (
-                <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef)}`} className="self-start text-sea underline">
+                <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef)}`} className="btn-secondary btn-sm self-start">
                   Pokaż na mapie dnia
                 </Link>
               )}

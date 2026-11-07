@@ -167,11 +167,11 @@ export function CompareView({ tripId, plan: initialPlan, ids: initialIds, locked
         </section>
       )}
 
-      <p className="flex gap-4 text-sm">
-        <Link href={`/trips/${tripId}/plan`} className="underline">
+      <p className="flex flex-wrap gap-2">
+        <Link href={`/trips/${tripId}/plan`} className="btn-secondary btn-sm">
           Plan dzień po dniu
         </Link>
-        <Link href={`/trips/${draftTripId}/plan`} className="underline">
+        <Link href={`/trips/${draftTripId}/plan`} className="btn-secondary btn-sm">
           Szkic dzień po dniu
         </Link>
       </p>

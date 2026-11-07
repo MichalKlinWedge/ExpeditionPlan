@@ -92,8 +92,8 @@ async function Tune({ params }: { params: Promise<{ id: string }> }) {
         </p>
       </div>
       <TuneChat tripId={id} turns={(messages.data ?? []).reverse()} preview={preview} />
-      <p className="text-sm">
-        <Link href={`/trips/${id}/plan`} className="underline">
+      <p>
+        <Link href={`/trips/${id}/plan`} className="btn-secondary btn-sm">
           Plan dzień po dniu
         </Link>
       </p>

@@ -75,7 +75,7 @@ async function Brief({ params }: { params: Promise<{ id: string }> }) {
           {aiDenied === null && (
             <p className="text-xs text-zinc-500">
               Na swoim komputerze przez Claude Code:{" "}
-              <a href={`/trips/${id}/brief/download`} className="underline hover:text-sea">
+              <a href={`/trips/${id}/brief/download`} className="btn-mini">
                 pobierz brief (JSON)
               </a>
               , uruchom <code>npm run plan-ai -- --brief plik.json</code>, a wynik wczytaj przez „Importuj z pliku” na stronie nowego wyjazdu.

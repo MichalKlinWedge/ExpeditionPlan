@@ -56,7 +56,7 @@ async function TripList() {
           <p className="max-w-md text-zinc-600 dark:text-zinc-400">
             {canCreateTrips ? "Nie masz jeszcze wyjazdów — zacznij od nowego." : "Nie masz jeszcze dostępu do żadnego wyjazdu. Poproś organizatora o link zaproszenia i otwórz go, będąc zalogowanym."}
           </p>
-          <Link href="/help" className="text-sm text-sea underline">
+          <Link href="/help" className="btn-secondary btn-sm">
             Jak korzystać z aplikacji
           </Link>
         </div>
@@ -119,7 +119,7 @@ function TripGrid({ trips, memories = false, postponed = false }: { trips: TripR
               </span>
             </Link>
             {memories && (
-              <Link href={`/trips/${trip.id}/memories`} className="self-start text-xs text-sea underline">
+              <Link href={`/trips/${trip.id}/memories`} className="btn-mini self-start">
                 Pamiątka z wyjazdu →
               </Link>
             )}

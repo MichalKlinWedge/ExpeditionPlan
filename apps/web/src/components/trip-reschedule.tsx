@@ -125,9 +125,9 @@ export function RescheduleDialog({ tripId, startDate, endDate, today, hasDrafts,
               <ul className="ml-5 mt-1 flex list-disc flex-col gap-1">
                 {review.keptBookings.length > 0 && (
                   <li>
-                    Kupione rezerwacje zostają przy swoich datach — zmień je u dostawcy, a potem w{" "}
-                    <Link className="underline" href={`/trips/${tripId}/logistics`}>
-                      logistyce
+                    Kupione rezerwacje zostają przy swoich datach — zmień je u dostawcy, a potem na stronie{" "}
+                    <Link className="btn-mini" href={`/trips/${tripId}/logistics`}>
+                      Rezerwacje i budżet
                     </Link>
                     :
                     <ul className="ml-4 list-[circle]">

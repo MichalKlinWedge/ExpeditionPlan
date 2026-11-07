@@ -82,7 +82,7 @@ export function TripReadiness({ tripId, issues, daysLeft, people }: { tripId: st
             {people.withoutAccount.length > 0 && (
               <p>
                 Bez konta: {people.withoutAccount.join(", ")} —{" "}
-                <Link href={`/trips/${tripId}/people`} className="text-sea underline">
+                <Link href={`/trips/${tripId}/people`} className="btn-mini">
                   zaproś
                 </Link>
               </p>
