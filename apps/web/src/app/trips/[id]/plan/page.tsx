@@ -10,7 +10,7 @@ import { describeTrip } from "@/app/guide-actions";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlacePinner } from "@/components/place-pinner";
 import { PlanActionButton } from "@/components/plan-action-button";
-import { PlanPageGrid, PlanView } from "@/components/plan-view";
+import { CoverageInfo, PlanPageGrid, PlanView } from "@/components/plan-view";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
@@ -70,7 +70,10 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
             <Link href={`/trips/${id}`} className="back-link self-start">
               ← {state.doc.trip.title}
             </Link>
-            <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              Plan dzień po dniu
+              <CoverageInfo doc={state.doc} />
+            </h1>
           </div>
           {editing && <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />}
         </div>

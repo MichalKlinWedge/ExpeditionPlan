@@ -6,7 +6,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
-import { SparkIcon } from "@/components/icons";
+import { InfoIcon, SparkIcon } from "@/components/icons";
 import { DayConstraints, DayEndField, DayNotes, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
@@ -271,9 +271,10 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
       }
     : null;
 
-  const status = canEdit && (
+  // Pasek zapisu tylko przy zapisie, błędzie albo po zapisie — bez stałego „zapisuje się od razu”.
+  const status = canEdit && (saving.pending > 0 || saving.error || saving.ok) && (
     <p className="sticky top-0 z-10 -mx-4 bg-[var(--background)] px-4 py-1 text-xs text-zinc-500">
-      {saving.pending > 0 ? "Zapisuję…" : saving.error ? <span className="text-red-600">{saving.error}</span> : saving.ok ? `Zapisano.${saving.note ? ` ${saving.note}` : ""}` : "Zmiany zapisują się od razu."}
+      {saving.pending > 0 ? "Zapisuję…" : saving.error ? <span className="text-red-600">{saving.error}</span> : `Zapisano.${saving.note ? ` ${saving.note}` : ""}`}
     </p>
   );
   const top = (
@@ -293,7 +294,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
       </div>
       )}
 
-      <Coverage doc={doc} />
+      {/* Na stronie planu (`beside`) to samo jest w „i” przy tytule (`CoverageInfo`). */}
+      {!beside && <Coverage doc={doc} />}
 
       {(mapDay !== undefined || showPool) && (
         <DayTabs
@@ -605,16 +607,37 @@ function DragHandle({ onStart, onEnd }: { onStart: (event: React.DragEvent<HTMLE
   );
 }
 
-/** Ile planu jest na mapie: miejsca ze współrzędnymi i przejazdy policzone trasą. */
-function Coverage({ doc }: { doc: TripDocument }) {
+/** Ile planu jest na mapie: miejsca ze współrzędnymi i przejazdy policzone trasą. `null` = nie ma czego liczyć. */
+function coverageText(doc: TripDocument): string | null {
   const { places, legs } = mapCoverage(doc);
   if (places.total === 0 && legs.routable === 0) return null;
+  return [
+    `Na mapie ${places.onMap} z ${places.total} miejsc`,
+    legs.routable > 0 ? `przejazdy z trasy: ${legs.routed} z ${legs.routable}` : null,
+    places.onMap < places.total ? "miejsca bez współrzędnych mają znaczek „brak na mapie”" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function Coverage({ doc }: { doc: TripDocument }) {
+  const text = coverageText(doc);
+  return text === null ? null : <p className="text-sm text-zinc-600 dark:text-zinc-400">{text}</p>;
+}
+
+/** „i” przy tytule planu: po najechaniu (albo fokusie klawiaturą) — ile planu jest na mapie. */
+export function CoverageInfo({ doc }: { doc: TripDocument }) {
+  const text = coverageText(doc);
+  if (text === null) return null;
   return (
-    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-      Na mapie {places.onMap} z {places.total} miejsc
-      {legs.routable > 0 && ` · przejazdy z trasy: ${legs.routed} z ${legs.routable}`}
-      {places.onMap < places.total && " · miejsca bez współrzędnych mają znaczek „brak na mapie”"}
-    </p>
+    <span className="group relative inline-flex align-middle">
+      <button type="button" aria-label={text} className="rounded-full text-zinc-400 hover:text-sea focus-visible:text-sea">
+        <InfoIcon className="size-5" />
+      </button>
+      <span role="tooltip" className="pointer-events-none absolute top-full left-0 z-30 mt-1 hidden w-72 rounded-lg border border-zinc-200 bg-[var(--background)] px-3 py-2 text-xs font-normal text-zinc-700 shadow-md group-focus-within:block group-hover:block dark:border-zinc-700 dark:text-zinc-300">
+        {text}
+      </span>
+    </span>
   );
 }
 
