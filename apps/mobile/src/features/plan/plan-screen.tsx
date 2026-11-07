@@ -288,7 +288,12 @@ ${fresh.rejected[0]!.error}`);
             if (leg === null) return apply(edit);
             apply({ ...leg, changed: [...(edit?.changed ?? []).filter((each) => !leg.changed.some((other) => other.ref === each.ref)), ...leg.changed] });
           },
-          add: (dayRef, fields) => apply(addItem(trip.state.doc, dayRef, uuidv7(), fields)),
+          add: (dayRef, fields, ends) => {
+            const edit = addItem(trip.state.doc, dayRef, uuidv7(), fields);
+            const leg = ends === undefined ? null : setLegRoute(edit.doc, edit.created!.ref, { fromId: uuidv7(), toId: uuidv7() }, { ...ends, routeUrl: '' });
+            // Nowy punkt idzie do bazy jako `created` — od razu z końcami przejazdu, a nowe miejsca przed nim.
+            apply(leg === null ? edit : { ...leg, changed: [], created: leg.changed.find((each) => each.ref === edit.created!.ref) ?? edit.created });
+          },
           addToPool: (fields, placeName, at) => apply(addPoolItem(trip.state.doc, { itemId: uuidv7(), placeId: uuidv7() }, fields, placeName, at)),
           remove: (ref) => {
             try {
@@ -666,7 +671,7 @@ type Actions = {
   move: (ref: string, direction: -1 | 1) => void;
   moveTo: (ref: string, dayRef: string | null) => void;
   update: (ref: string, fields: ItemFields, ends?: LegEnds) => void;
-  add: (dayRef: string, fields: ItemFields) => void;
+  add: (dayRef: string, fields: ItemFields, ends?: LegEnds) => void;
   /** Nowy punkt w puli; `at` — pozycja telefonu („tu, gdzie jestem”). */
   addToPool: (fields: ItemFields, placeName?: string, at?: { lat: number; lng: number }) => void;
   remove: (ref: string) => void;
@@ -935,7 +940,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
             doc={doc}
             onCancel={() => setEditing(null)}
             onSave={(fields, ends) => {
-              if (editing === 'new') actions.add(dayRef, fields);
+              if (editing === 'new') actions.add(dayRef, fields, ends);
               else if (editing !== null) actions.update(editing.ref, fields, ends);
               setEditing(null);
             }}

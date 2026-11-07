@@ -30,7 +30,7 @@ type EditorProps = {
   visible: boolean;
   onCancel: () => void;
   onSave: (fields: ItemFields, ends?: LegEnds) => void;
-  /** Plan — podpowiedzi miejsc i pinezka przy „Skąd” / „Dokąd”; bez niego (i przy nowym punkcie) pól nie ma. */
+  /** Plan — podpowiedzi miejsc i pinezka przy „Skąd” / „Dokąd”; bez niego pól nie ma. */
   doc?: TripDocument;
 };
 
@@ -90,7 +90,7 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
       const start = time.trim().padStart(5, '0');
       fields.time = time.trim() === '' ? undefined : { precision: 'exact', start, ...(tz ? { tz } : {}) };
     }
-    const travel = TRAVEL.includes(kind) && item !== null && doc !== undefined;
+    const travel = TRAVEL.includes(kind) && doc !== undefined;
     onSave(fields, travel && (from.trim() !== fromStart || to.trim() !== toStart) ? { from: from.trim(), to: to.trim() } : undefined);
   };
 
@@ -141,7 +141,7 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
             ))}
           </View>
         )}
-        {TRAVEL.includes(kind) && item !== null && doc !== undefined && (
+        {TRAVEL.includes(kind) && doc !== undefined && (
           <>
             <PlaceField label="Skąd" value={from} onChange={setFrom} doc={doc} input={input} />
             <PlaceField label="Dokąd" value={to} onChange={setTo} doc={doc} input={input} />
