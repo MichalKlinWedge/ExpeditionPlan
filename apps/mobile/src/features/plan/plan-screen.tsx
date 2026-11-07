@@ -428,6 +428,12 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               tripId={tripId}
               signedIn={signedIn}
               onBooking={setBooking}
+              onOpenItem={(ref) => {
+                const item = trip.state.doc.items.find((each) => each.ref === ref);
+                if (item === undefined) return;
+                setDetailPlay(false);
+                setDetail(item);
+              }}
               onContactsAt={
                 toContacts
                   ? (y) => {

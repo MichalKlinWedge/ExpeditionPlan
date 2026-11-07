@@ -21,6 +21,11 @@ export function itemBookingRef(doc: Doc, item: Item): string | undefined {
   return item.bookingRef ?? item.leg?.ticketBookingRef ?? (item.kind === 'lodging' ? lodgingBooking(doc, item)?.ref : undefined);
 }
 
+/** Punkty planu prowadzące do rezerwacji (w kolejności planu): z niej, z biletem na nią i noclegi tej nocy. Np. dla kontaktu rezerwacji. */
+export function itemsOfBooking(doc: Doc, bookingRef: string): Item[] {
+  return doc.items.filter((item) => itemBookingRef(doc, item) === bookingRef);
+}
+
 /** „26 gru 06:10 → 26 gru 09:55”. */
 export function bookingWhen(booking: Booking): string {
   const part = (time: Booking['start']) => (time ? `${shortDate(time.date)}${time.time ? ` ${time.precision === 'approx' ? 'ok. ' : ''}${time.time}` : ''}` : '');

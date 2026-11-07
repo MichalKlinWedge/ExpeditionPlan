@@ -1,4 +1,4 @@
-import { capitalized, CONTACT_ROLE, NOTE_TOPIC } from '@expeditionplan/core';
+import { capitalized, CONTACT_ROLE, itemsOfBooking, NOTE_TOPIC } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
@@ -22,9 +22,23 @@ function call(phone: string) {
 
 /**
  * `onContactsAt` dostaje położenie kontaktów w liście (przejście „Kontakty wyjazdu” z okna rezerwacji);
- * `onBooking` otwiera rezerwację kontaktu.
+ * `onBooking` otwiera rezerwację kontaktu, `onOpenItem` punkt planu tej rezerwacji.
  */
-export function InfoView({ trip, tripId, signedIn = false, onContactsAt, onBooking }: { trip: CachedTrip; tripId?: string; signedIn?: boolean; onContactsAt?: (y: number) => void; onBooking?: (bookingRef: string) => void }) {
+export function InfoView({
+  trip,
+  tripId,
+  signedIn = false,
+  onContactsAt,
+  onBooking,
+  onOpenItem,
+}: {
+  trip: CachedTrip;
+  tripId?: string;
+  signedIn?: boolean;
+  onContactsAt?: (y: number) => void;
+  onBooking?: (bookingRef: string) => void;
+  onOpenItem?: (itemRef: string) => void;
+}) {
   const doc = trip.state.doc;
   const emergency = doc.contacts.filter((contact) => contact.role === 'emergency');
   const others = doc.contacts.filter((contact) => contact.role !== 'emergency');
@@ -88,6 +102,17 @@ export function InfoView({ trip, tripId, signedIn = false, onContactsAt, onBooki
                       <ThemedText type="linkPrimary">🎫 {bookingTitle(contact.bookingRef)} ›</ThemedText>
                     </Pressable>
                   ) : null}
+                  {onOpenItem && contact.bookingRef ? (
+                    <View style={styles.items}>
+                      {itemsOfBooking(doc, contact.bookingRef).map((item) => (
+                        <Pressable key={item.ref} onPress={() => onOpenItem(item.ref)} hitSlop={4}>
+                          <ThemedText type="small" themeColor="accent">
+                            {item.title} ›
+                          </ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
                   {contact.notes ? (
                     <ThemedText type="small" themeColor="textSecondary">
                       {contact.notes}
@@ -145,6 +170,7 @@ export function InfoView({ trip, tripId, signedIn = false, onContactsAt, onBooki
 }
 
 const styles = StyleSheet.create({
+  items: { flexDirection: 'row', flexWrap: 'wrap', columnGap: Spacing.three, rowGap: Spacing.one },
   pad: { paddingHorizontal: Spacing.three },
   list: { gap: Spacing.two, paddingHorizontal: Spacing.three },
   card: { borderRadius: 12, padding: Spacing.three, gap: Spacing.two },

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { bookingDetails, bookingFacts, itemBookingRef } from '../booking-details.ts';
+import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking } from '../booking-details.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
@@ -33,6 +33,14 @@ describe('szczegóły rezerwacji', () => {
     const booking = { ...maroko.bookings[0]!, freeCancellationUntil: '2026-12-01' };
     expect(bookingFacts(booking, '2026-11-07')).toContain('darmowe odwołanie do 1 gru');
     expect(bookingFacts(booking, '2026-12-02').some((fact) => fact.startsWith('darmowe'))).toBe(false);
+  });
+});
+
+describe('punkty rezerwacji', () => {
+  it('pakiet i lot z punktami planu, nieznana pusta', () => {
+    expect(itemsOfBooking(maroko, 'nocleg-agafay').map((item) => item.ref)).toEqual(expect.arrayContaining(['d2-quady', 'd2-radykalny-oboz']));
+    expect(itemsOfBooking(maroko, 'lot-tam').map((item) => item.ref)).toEqual(expect.arrayContaining(['d1-lotnisko-wro', 'd1-przylot']));
+    expect(itemsOfBooking(maroko, 'nie-ma')).toEqual([]);
   });
 });
 
