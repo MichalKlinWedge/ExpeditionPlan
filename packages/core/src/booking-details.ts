@@ -1,0 +1,94 @@
+import { formatMoney, formatMoneyRange } from './budget.ts';
+import { flightLine } from './booking-info.ts';
+import { shortDate } from './format.ts';
+import { bookingContacts } from './item-facts.ts';
+import { BOOKING_KIND, BOOKING_STATUS, PAY_METHOD, PAY_WHEN } from './labels.ts';
+import { lodgingBooking } from './lodging-info.ts';
+import type { TripDocument } from './schemas/trip-document.ts';
+
+/**
+ * Szczegóły rezerwacji z samego planu: termin, kwota, warunki, punkty w pakiecie i kontakty. Web pokazuje
+ * to w tabeli „Rezerwacje”, telefon offline w oknie rezerwacji otwieranym z punktu planu.
+ */
+
+type Doc = TripDocument;
+type Booking = Doc['bookings'][number];
+type Item = Doc['items'][number];
+type Contact = Doc['contacts'][number];
+
+/** Rezerwacja, do której prowadzi punkt: własna, bilet odcinka albo (przy noclegu) nocleg tego dnia. */
+export function itemBookingRef(doc: Doc, item: Item): string | undefined {
+  return item.bookingRef ?? item.leg?.ticketBookingRef ?? (item.kind === 'lodging' ? lodgingBooking(doc, item)?.ref : undefined);
+}
+
+/** „26 gru 06:10 → 26 gru 09:55”. */
+export function bookingWhen(booking: Booking): string {
+  const part = (time: Booking['start']) => (time ? `${shortDate(time.date)}${time.time ? ` ${time.precision === 'approx' ? 'ok. ' : ''}${time.time}` : ''}` : '');
+  const start = part(booking.start);
+  const end = part(booking.end);
+  return start && end ? `${start} → ${end}` : start || end;
+}
+
+/** Zapłacona kwota, a bez niej cena z planu. */
+export function bookingPrice(booking: Booking): string | null {
+  if (booking.paid) return `zapłacono ${formatMoney(booking.paid.amountMinor, booking.paid.currency)}`;
+  const price = booking.price;
+  if (!price) return null;
+  if (price.from) return `od ${formatMoney(price.minMinor, price.currency)}`;
+  return `${price.approx ? 'ok. ' : ''}${formatMoneyRange(price.minMinor, price.maxMinor, price.currency)}`;
+}
+
+/** Warunki, które liczą się w trasie: zwrot, odwołanie (póki aktualne), płatność, skład, auto, nocleg. */
+export function bookingFacts(booking: Booking, today: string): string[] {
+  const cancelSoon = booking.freeCancellationUntil !== undefined && booking.freeCancellationUntil >= today;
+  return [
+    booking.refundable === false ? 'bezzwrotna' : null,
+    cancelSoon ? `darmowe odwołanie do ${shortDate(booking.freeCancellationUntil!)}` : null,
+    booking.payWhen ? PAY_WHEN[booking.payWhen] : null,
+    booking.paymentMethod ? PAY_METHOD[booking.paymentMethod] : null,
+    booking.party ? `zgłoszeni: ${booking.party.adults} dor.${booking.party.children > 0 ? ` + ${booking.party.children} dz.` : ''}` : null,
+    booking.checkInFrom || booking.checkOutUntil ? [booking.checkInFrom ? `zameldowanie od ${booking.checkInFrom}` : null, booking.checkOutUntil ? `wymeldowanie do ${booking.checkOutUntil}` : null].filter(Boolean).join(', ') : null,
+    booking.car?.kmLimit ? `limit ${booking.car.kmLimit} km` : null,
+    booking.car?.officeHours ? `biuro ${booking.car.officeHours}` : null,
+    booking.lodging?.breakfast ? `śniadanie: ${booking.lodging.breakfast}` : null,
+    booking.includes.length > 0 ? `w cenie: ${booking.includes.join(', ')}` : null,
+  ].filter((each): each is string => each !== null && each !== '');
+}
+
+/** Lot w jednej linijce, inaczej dostawca i kod. */
+export function bookingLine(booking: Booking): string {
+  return booking.kind === 'flight' ? (flightLine(booking) ?? '') : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(' · ');
+}
+
+export type BookingDetails = {
+  booking: Booking;
+  kind: string;
+  status: string;
+  when: string;
+  price: string | null;
+  line: string;
+  facts: string[];
+  /** Miejsce noclegu. */
+  place?: string;
+  /** Punkty planu w pakiecie tej rezerwacji. */
+  items: { ref: string; title: string }[];
+  contacts: Contact[];
+};
+
+export function bookingDetails(doc: Doc, ref: string, today: string): BookingDetails | null {
+  const booking = doc.bookings.find((each) => each.ref === ref);
+  if (booking === undefined) return null;
+  const place = booking.kind === 'lodging' && booking.startPlaceRef !== undefined ? doc.places.find((each) => each.ref === booking.startPlaceRef)?.name : undefined;
+  return {
+    booking,
+    kind: BOOKING_KIND[booking.kind] ?? booking.kind,
+    status: BOOKING_STATUS[booking.status] ?? booking.status,
+    when: bookingWhen(booking),
+    price: bookingPrice(booking),
+    line: bookingLine(booking),
+    facts: bookingFacts(booking, today),
+    ...(place !== undefined ? { place } : {}),
+    items: doc.items.filter((item) => item.bookingRef === ref).map((item) => ({ ref: item.ref, title: item.title })),
+    contacts: bookingContacts(doc, ref),
+  };
+}

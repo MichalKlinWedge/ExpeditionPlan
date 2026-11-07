@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BOOKING_KIND, bookingRemovalNote, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, flightLine, formatMoney, formatMoneyRange, instantToZoned, LogisticsCandidates, removeBooking, shortDate, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { BOOKING_KIND, BOOKING_STATUS, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -38,55 +38,18 @@ export default function LogisticsPage(props: PageProps<"/trips/[id]/logistics">)
 }
 
 type Doc = TripDocument;
-type Booking = Doc["bookings"][number];
 
-const BOOKING_STATUS: Record<string, { label: string; tone: string }> = {
-  idea: { label: "pomysł", tone: "text-zinc-500" },
-  candidate: { label: "kandydat", tone: "text-zinc-500" },
-  to_book: { label: "do rezerwacji", tone: "text-amber-700 dark:text-amber-400" },
-  booked: { label: "zarezerwowane", tone: "text-blue-700 dark:text-blue-400" },
-  paid: { label: "zapłacone", tone: "text-green-700 dark:text-green-400" },
-  cancelled: { label: "anulowane", tone: "text-zinc-400 line-through" },
-  unknown: { label: "nie wiadomo, czy kupione", tone: "text-amber-700 dark:text-amber-400" },
-  not_required: { label: "bez rezerwacji", tone: "text-zinc-500" },
+/** Kolor statusu rezerwacji; nazwy są w `BOOKING_STATUS` (core). */
+const STATUS_TONE: Record<string, string> = {
+  idea: "text-zinc-500",
+  candidate: "text-zinc-500",
+  to_book: "text-amber-700 dark:text-amber-400",
+  booked: "text-blue-700 dark:text-blue-400",
+  paid: "text-green-700 dark:text-green-400",
+  cancelled: "text-zinc-400 line-through",
+  unknown: "text-amber-700 dark:text-amber-400",
+  not_required: "text-zinc-500",
 };
-
-
-
-function when(booking: Booking): string {
-  const part = (time: Booking["start"]) => (time ? `${shortDate(time.date)}${time.time ? ` ${time.precision === "approx" ? "ok. " : ""}${time.time}` : ""}` : "");
-  const start = part(booking.start);
-  const end = part(booking.end);
-  return start && end ? `${start} → ${end}` : start || end;
-}
-
-function price(booking: Booking): string | null {
-  if (booking.paid) return `zapłacono ${formatMoney(booking.paid.amountMinor, booking.paid.currency)}`;
-  const p = booking.price;
-  if (!p) return null;
-  const low = formatMoney(p.minMinor, p.currency);
-  if (p.from) return `od ${low}`;
-  return `${p.approx ? "ok. " : ""}${formatMoneyRange(p.minMinor, p.maxMinor, p.currency)}`;
-}
-
-const PAY_WHEN: Record<string, string> = { prepaid: "płatne z góry", before_arrival: "płatne przed przyjazdem", on_site: "płatność na miejscu" };
-const PAY_METHOD: Record<string, string> = { cash: "gotówka", card: "karta", credit_card_only: "tylko karta kredytowa", online: "online" };
-
-/** Warunki rezerwacji, które liczą się w trasie: zwrot, odwołanie, płatność, skład, auto, nocleg. */
-function facts(booking: Booking, cancelSoon: boolean): string[] {
-  return [
-    booking.refundable === false ? "bezzwrotna" : null,
-    cancelSoon ? `darmowe odwołanie do ${shortDate(booking.freeCancellationUntil!)}` : null,
-    booking.payWhen ? PAY_WHEN[booking.payWhen] : null,
-    booking.paymentMethod ? PAY_METHOD[booking.paymentMethod] : null,
-    booking.party ? `zgłoszeni: ${booking.party.adults} dor.${booking.party.children > 0 ? ` + ${booking.party.children} dz.` : ""}` : null,
-    booking.checkInFrom || booking.checkOutUntil ? [booking.checkInFrom ? `zameldowanie od ${booking.checkInFrom}` : null, booking.checkOutUntil ? `wymeldowanie do ${booking.checkOutUntil}` : null].filter(Boolean).join(", ") : null,
-    booking.car?.kmLimit ? `limit ${booking.car.kmLimit} km` : null,
-    booking.car?.officeHours ? `biuro ${booking.car.officeHours}` : null,
-    booking.lodging?.breakfast ? `śniadanie: ${booking.lodging.breakfast}` : null,
-    booking.includes.length > 0 ? `w cenie: ${booking.includes.join(", ")}` : null,
-  ].filter((each): each is string => each !== null && each !== "");
-}
 
 const card = "flex flex-col gap-3 card p-4";
 const heading = "text-lg font-semibold";
@@ -176,7 +139,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
             label: variant.label,
             recommended: variant.recommended === true,
             values: group.comparison?.rows.find((row) => row.variantRef === variant.ref)?.values ?? [],
-            price: booking ? (price(booking) === null ? null : `${price(booking)}${basis}`) : null,
+            price: booking ? (bookingPrice(booking) === null ? null : `${bookingPrice(booking)}${basis}`) : null,
             status: booking?.status ?? "candidate",
             links: booking?.links ?? [],
             pros: variant.pros,
@@ -185,7 +148,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           };
         }),
     }));
-  const statuses = Object.fromEntries(Object.entries(BOOKING_STATUS).map(([key, value]) => [key, value.label]));
+  const statuses = BOOKING_STATUS;
   const today = new Date().toISOString().slice(0, 10);
   const choices: Choices = planChoices(doc);
   // Strefy do podpowiedzi przy rezerwacji: wyjazdu, domu, dni i te, które rezerwacje już mają.
@@ -336,11 +299,11 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
             </thead>
             <tbody>
               {bookings.map((booking) => {
-                const status = BOOKING_STATUS[booking.status]!;
-                const cost = booking.paid ? formatMoney(booking.paid.amountMinor, booking.paid.currency) : price(booking);
-                const cancelSoon = booking.freeCancellationUntil !== undefined && booking.freeCancellationUntil >= today;
-                const line = booking.kind === "flight" ? flightLine(booking) : [booking.provider, booking.confirmationCode ? `kod ${booking.confirmationCode}` : null].filter(Boolean).join(" · ");
-                const statusControl = mayEdit ? <BookingStatusSelect tripId={id} bookingRef={booking.ref} status={booking.status} statuses={statuses} tone={status.tone} /> : <span className={`text-xs ${status.tone}`}>{status.label}</span>;
+                const tone = STATUS_TONE[booking.status] ?? "text-zinc-500";
+                const cost = booking.paid ? formatMoney(booking.paid.amountMinor, booking.paid.currency) : bookingPrice(booking);
+                const facts = bookingFacts(booking, today);
+                const line = bookingLine(booking);
+                const statusControl = mayEdit ? <BookingStatusSelect tripId={id} bookingRef={booking.ref} status={booking.status} statuses={statuses} tone={tone} /> : <span className={`text-xs ${tone}`}>{BOOKING_STATUS[booking.status]}</span>;
                 const place = booking.kind === "lodging" && booking.startPlaceRef !== undefined ? doc.places.find((each) => each.ref === booking.startPlaceRef) : undefined;
                 return (
                   <BookingRow
@@ -356,16 +319,16 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                     actionsColumn={mayEdit}
                     removal={mayEdit && booking.status === "cancelled" ? <RemoveCancelledBooking tripId={id} bookingRef={booking.ref} title={booking.title} note={bookingRemovalNote(removeBooking(doc, booking.ref)!.summary)} /> : null}
                     details={
-                      line || facts(booking, cancelSoon).length > 0 || place || packaged.get(booking.ref) ? (
+                      line || facts.length > 0 || place || packaged.get(booking.ref) ? (
                         <>
                           {line ? (
                             <span className="block text-zinc-600 dark:text-zinc-400">
                               <LinkedText text={line} />
                             </span>
                           ) : null}
-                          {facts(booking, cancelSoon).length > 0 && (
+                          {facts.length > 0 && (
                             <span className="block">
-                              <LinkedText text={facts(booking, cancelSoon).join(" · ")} />
+                              <LinkedText text={facts.join(" · ")} />
                             </span>
                           )}
                           {place && (
@@ -382,11 +345,11 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                     <td className="py-1 pr-3 align-top">
                       <span className="font-medium">{booking.title}</span>
                       {/* Na telefonie rodzaj, termin i status pod nazwą — sześć kolumn się nie mieści. */}
-                      <span className="block text-xs text-zinc-500 sm:hidden">{[BOOKING_KIND[booking.kind], when(booking)].filter(Boolean).join(" · ")}</span>
+                      <span className="block text-xs text-zinc-500 sm:hidden">{[BOOKING_KIND[booking.kind], bookingWhen(booking)].filter(Boolean).join(" · ")}</span>
                       <span className="block sm:hidden">{statusControl}</span>
                     </td>
                     <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{BOOKING_KIND[booking.kind]}</td>
-                    <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{when(booking)}</td>
+                    <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{bookingWhen(booking)}</td>
                     <td className="hidden py-1 pr-3 align-top whitespace-nowrap sm:table-cell">{statusControl}</td>
                     <td className="py-1 text-right align-top font-mono whitespace-nowrap">
                       {cost}

@@ -1,5 +1,6 @@
 import { formatMoney } from './budget.ts';
 import { priceForGroup } from './engine/price.ts';
+import { PAY_METHOD, PAY_WHEN } from './labels.ts';
 import type { dayLodging } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
@@ -22,8 +23,6 @@ const PAYMENT: Record<NonNullable<Item['payment']>, string> = {
   included: 'w cenie',
   free: 'bezpłatne',
 };
-const PAY_METHOD: Record<NonNullable<Booking['paymentMethod']>, string> = { cash: 'gotówka', card: 'karta', credit_card_only: 'tylko karta kredytowa', online: 'online' };
-const PAY_WHEN: Record<NonNullable<Booking['payWhen']>, string> = { prepaid: 'płatne z góry', on_site: 'płatność na miejscu', before_arrival: 'płatne przed przyjazdem' };
 const BASIS: Partial<Record<Price['basis'], string>> = { per_night: 'za noc', per_day: 'za dobę', per_unit: 'za sztukę' };
 
 export type ItemFacts = {

@@ -36,6 +36,7 @@ export * from './booking-remove.ts';
 export * from './documents.ts';
 export * from './code-raster.ts';
 export * from './booking-info.ts';
+export * from './booking-details.ts';
 export * from './text-links.ts';
 export * from './offline-areas.ts';
 export * from './rates.ts';

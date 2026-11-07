@@ -53,6 +53,22 @@ export const BOOKING_KIND: Record<string, string> = {
 /** Podstawa ceny (`PriceBasis`). */
 export const PRICE_BASIS: Record<string, string> = { per_group: 'za całość', per_person: 'za osobę', per_night: 'za noc', per_day: 'za dobę', per_unit: 'za sztukę' };
 
+/** Status rezerwacji (`BookingStatus`). */
+export const BOOKING_STATUS: Record<string, string> = {
+  idea: 'pomysł',
+  candidate: 'kandydat',
+  to_book: 'do rezerwacji',
+  booked: 'zarezerwowane',
+  paid: 'zapłacone',
+  cancelled: 'anulowane',
+  unknown: 'nie wiadomo, czy kupione',
+  not_required: 'bez rezerwacji',
+};
+
+/** Kiedy płatne i czym (`DocBooking.payWhen`, `paymentMethod`). */
+export const PAY_WHEN: Record<string, string> = { prepaid: 'płatne z góry', on_site: 'płatność na miejscu', before_arrival: 'płatne przed przyjazdem' };
+export const PAY_METHOD: Record<string, string> = { cash: 'gotówka', card: 'karta', credit_card_only: 'tylko karta kredytowa', online: 'online' };
+
 /** Status pozycji budżetu. */
 export const BUDGET_LINE_STATUS: Record<string, string> = { estimate: 'szacunek', committed: 'zobowiązanie', paid: 'zapłacone' };
 

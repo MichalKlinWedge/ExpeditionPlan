@@ -30,6 +30,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { EateriesCard } from '@/features/plan/eateries-card';
+import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ItemFactsCard } from '@/features/plan/item-facts';
 import { TrackCard } from '@/features/plan/track-card';
 
@@ -140,6 +141,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
   const used = new Set<string>();
   const linked = (text: string) => <Linked segments={linkGuideText(text, targets, used)} onOpen={onOpen} />;
   const [speaking, setSpeaking] = useState(false);
+  const [booking, setBooking] = useState<string | null>(null);
   useEffect(
     () => () => {
       void Speech.stop();
@@ -220,7 +222,8 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
             <ThemedText type="linkPrimary">{link.label || link.url}</ThemedText>
           </Pressable>
         ))}
-        <ItemFactsCard trip={trip} item={item} tripId={tripId} online={online} />
+        <ItemFactsCard trip={trip} item={item} tripId={tripId} online={online} onBooking={setBooking} />
+        <BookingSheet trip={trip} bookingRef={booking} onClose={() => setBooking(null)} tripId={tripId} online={online} />
         {item.kind === 'meal' && !item.selfCooked && online && tripId !== undefined && <EateriesCard trip={trip} tripId={tripId} item={item} onSave={onSaveEatOut} />}
         <TrackCard doc={doc} item={item} />
 

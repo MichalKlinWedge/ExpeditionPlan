@@ -1,4 +1,4 @@
-import { CONTACT_ROLE, type ItemFacts, itemFacts, type PlanItem as Item, type TripDocument } from '@expeditionplan/core';
+import { CONTACT_ROLE, itemBookingRef, type ItemFacts, itemFacts, type PlanItem as Item, type TripDocument } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Alert, Linking, StyleSheet, View } from 'react-native';
 
@@ -53,17 +53,22 @@ type Props = {
   /** Bez `tripId` karta nie pokazuje dokumentów (pliki leżą w katalogu wyjazdu). */
   tripId?: string;
   online?: boolean;
+  /** Okno rezerwacji punktu (także biletu odcinka i noclegu dnia). */
+  onBooking?: (bookingRef: string) => void;
 };
 
-export function ItemFactsCard({ trip, item, tripId, online = false }: Props) {
-  const facts: ItemFacts = itemFacts(trip.state.doc, item);
+export function ItemFactsCard({ trip, item, tripId, online = false, onBooking }: Props) {
+  const doc = trip.state.doc;
+  const facts: ItemFacts = itemFacts(doc, item);
   const hasMoney = facts.price !== undefined || facts.payment !== undefined;
   const bookingId = facts.booking === undefined ? undefined : trip.ids[facts.booking.ref];
   const itemId = trip.ids[item.ref];
-  if (!hasMoney && facts.booking === undefined && facts.contacts.length === 0 && tripId === undefined) return null;
+  const bookingRef = itemBookingRef(doc, item);
+  const booking = bookingRef === undefined ? undefined : doc.bookings.find((each) => each.ref === bookingRef);
+  if (!hasMoney && booking === undefined && facts.contacts.length === 0 && tripId === undefined) return null;
   return (
     <>
-      {(hasMoney || facts.booking !== undefined || facts.contacts.length > 0) && (
+      {(hasMoney || booking !== undefined || facts.contacts.length > 0) && (
         <ThemedView type="backgroundElement" style={styles.card}>
           {facts.price && (
             <ThemedText type="smallBold">
@@ -76,11 +81,14 @@ export function ItemFactsCard({ trip, item, tripId, online = false }: Props) {
               {facts.priceNote}
             </ThemedText>
           )}
-          {facts.booking && (
-            <ThemedText type="small">
-              🎫 {facts.booking.title}
-              {facts.booking.code ? ` · kod ${facts.booking.code}` : ''}
-            </ThemedText>
+          {booking && (
+            <View style={styles.booking}>
+              <ThemedText type="small">
+                🎫 {booking.title}
+                {booking.confirmationCode ? ` · kod ${booking.confirmationCode}` : ''}
+              </ThemedText>
+              {onBooking && <Button label="Szczegóły rezerwacji" small onPress={() => onBooking(booking.ref)} style={styles.start} />}
+            </View>
           )}
           <ContactList contacts={facts.contacts} />
         </ThemedView>
@@ -93,4 +101,6 @@ export function ItemFactsCard({ trip, item, tripId, online = false }: Props) {
 const styles = StyleSheet.create({
   card: { borderRadius: 12, padding: Spacing.three, gap: Spacing.two },
   contact: { gap: Spacing.one },
+  booking: { gap: Spacing.one },
+  start: { alignSelf: 'flex-start' },
 });

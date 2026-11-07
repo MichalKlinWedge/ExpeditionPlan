@@ -1,0 +1,49 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, it } from 'vitest';
+
+import { bookingDetails, bookingFacts, itemBookingRef } from '../booking-details.ts';
+import { TripDocument } from '../schemas/trip-document.ts';
+
+const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
+
+describe('szczegóły rezerwacji', () => {
+  it('pakiet: termin, zapłacona kwota, warunki, punkty w pakiecie i kontakt', () => {
+    const details = bookingDetails(maroko, 'nocleg-agafay', '2026-11-07')!;
+    expect(details.kind).toBe('pakiet');
+    expect(details.status).toBe('zapłacone');
+    expect(details.when).toMatch(/→/);
+    expect(details.price).toMatch(/^zapłacono /);
+    expect(details.line).toBe('GetYourGuide · kod ANON-GYG-0001');
+    expect(details.facts).toEqual(expect.arrayContaining(['płatne z góry', 'online', 'zgłoszeni: 4 dor. + 1 dz.', 'wymeldowanie do 11:00']));
+    expect(details.items.map((item) => item.ref)).toContain('d2-quady');
+    expect(details.contacts.map((contact) => contact.name)).toEqual(['Organizator obozu Agafay (pakiet GetYourGuide)']);
+  });
+
+  it('lot: linia lotu zamiast dostawcy', () => {
+    expect(bookingDetails(maroko, 'lot-tam', '2026-11-07')!.line).toMatch(/^Ryanair/);
+  });
+
+  it('nieznana rezerwacja: brak', () => {
+    expect(bookingDetails(maroko, 'nie-ma', '2026-11-07')).toBeNull();
+  });
+
+  it('darmowe odwołanie tylko póki aktualne', () => {
+    const booking = { ...maroko.bookings[0]!, freeCancellationUntil: '2026-12-01' };
+    expect(bookingFacts(booking, '2026-11-07')).toContain('darmowe odwołanie do 1 gru');
+    expect(bookingFacts(booking, '2026-12-02').some((fact) => fact.startsWith('darmowe'))).toBe(false);
+  });
+});
+
+describe('rezerwacja punktu', () => {
+  it('własna, bilet odcinka albo nocleg dnia', () => {
+    const item = maroko.items.find((each) => each.ref === 'd2-quady')!;
+    expect(itemBookingRef(maroko, item)).toBe('nocleg-agafay');
+    const { bookingRef: _, ...free } = item;
+    expect(itemBookingRef(maroko, { ...free, leg: { mode: 'car', links: [], ticketBookingRef: 'lot-tam' } } as typeof item)).toBe('lot-tam');
+    const lodging = maroko.items.find((each) => each.ref === 'd2-radykalny-oboz')!;
+    const { bookingRef: __, ...unbooked } = lodging;
+    expect(itemBookingRef(maroko, unbooked as typeof lodging)).toBe('nocleg-agafay');
+  });
+});

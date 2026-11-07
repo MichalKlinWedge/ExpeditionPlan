@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, instantToZoned, ITEM_KIND, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -30,6 +30,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayMap, useDayStops } from '@/features/plan/day-map';
+import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ContactList } from '@/features/plan/item-facts';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields } from '@/features/plan/item-editor';
@@ -125,6 +126,7 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const [editMode, setEditMode] = useState(false);
   /** Punkt otwarty w szczegółach (opis, przewodnik). */
   const [detail, setDetail] = useState<PlanItem | null>(null);
+  const [booking, setBooking] = useState<string | null>(null);
   /** Szczegóły otwarte „Posłuchaj” z mapy dnia — od razu czytanie na głos. */
   const [detailPlay, setDetailPlay] = useState(false);
   const [saving, setSaving] = useState(0);
@@ -482,6 +484,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                     setDetail(item);
                   }}
                   onShowMap={(y) => scroll.current?.scrollTo({ y, animated: true })}
+                  onBooking={setBooking}
                   guides={trip === null ? undefined : guidedPlaces(trip)}
                   onGuide={(item, play) => {
                     setDetailPlay(play);
@@ -532,6 +535,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           onSaveEatOut={signedIn && canAct ? saveEatOut : undefined}
         />
       )}
+      {trip !== null && <BookingSheet trip={trip} bookingRef={booking} onClose={() => setBooking(null)} tripId={tripId} online={signedIn} />}
     </View>
   );
 }
@@ -564,6 +568,8 @@ type DayProps = {
   onOpen?: (item: PlanItem) => void;
   /** Przewinięcie do mapy dnia (dotknięcie numeru albo karty punktu); `y` w treści przewijanej strony. */
   onShowMap?: (y: number) => void;
+  /** Okno rezerwacji (`ref`) — przycisk przy punkcie z rezerwacją i przy noclegu. */
+  onBooking?: (bookingRef: string) => void;
   /** Punkty z przewodnikiem — znaczek 📖. */
   guided?: Set<string>;
   /** Miejsca z przewodnikiem do mapy dnia i „Poczytaj / Posłuchaj” z karty pinezki. */
@@ -611,7 +617,7 @@ function StopNumber({ n, pin, chosen, onPress }: { n: number; pin: MapPin | unde
   );
 }
 
-function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt, onOpen, onShowMap, guided, guides, onGuide }: DayProps) {
+function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt, onOpen, onShowMap, onBooking, guided, guides, onGuide }: DayProps) {
   const theme = useTheme();
   const { doc, inputs } = state;
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
@@ -726,6 +732,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
         const offMap = source !== undefined && missingOnMap(doc, source);
         const flight = source === undefined ? undefined : flightOf(doc, source);
         const flightText = flight === undefined ? undefined : flightLine(flight);
+        const bookingRef = source === undefined ? undefined : itemBookingRef(doc, source);
+        const hasBooking = bookingRef !== undefined && doc.bookings.some((each) => each.ref === bookingRef);
         return (
           <ThemedView
             key={item.ref}
@@ -778,6 +786,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
               )}
               <Warnings list={schedule!.warnings.filter((warning) => warning.itemRef === item.ref)} />
             </Pressable>
+            {hasBooking && onBooking && <AppButton label="🎫 Rezerwacja" small onPress={() => onBooking(bookingRef!)} style={styles.start} />}
             {actions && source && (
               <View style={styles.edit}>
                 <EditButton label="↑" onPress={() => actions.move(item.ref, -1)} />
@@ -822,6 +831,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
               brak na mapie (miejsce bez współrzędnych)
             </ThemedText>
           )}
+          {lodging.booking && onBooking && <AppButton label="🎫 Rezerwacja" small onPress={() => onBooking(lodging.booking!.ref)} style={styles.start} />}
           {/* Gospodarz i inne kontakty rezerwacji tej nocy — jedno dotknięcie = połączenie. */}
           <ContactList contacts={lodgingContacts(doc, lodging)} />
         </ThemedView>
@@ -911,6 +921,7 @@ function Warnings({ list }: { list: ScheduleWarning[] }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  start: { alignSelf: 'flex-start' },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   title: { flex: 1, textAlign: 'center' },
   pad: { padding: Spacing.three },
