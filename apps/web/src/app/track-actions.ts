@@ -1,6 +1,6 @@
 "use server";
 
-import { DocTrack, formatMinutes, type ItemRouteFields, setItemRoute, TripDocument } from "@expeditionplan/core";
+import { DocTrack, formatMinutes, type ItemRouteFields, setItemRoute, setTrackEnds, trackEndsNote, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
@@ -57,13 +57,15 @@ async function commit(tripId: string, itemRef: string, build: (doc: Doc, item: D
  * Trasa punktu (`setItemRoute`). Ślad idzie przez `saveElements`, a punkt przez `savePlanEdit` — ręczna
  * edycja daje `user_locked`, więc „Przelicz przejazdy” jej nie nadpisze.
  */
-async function writeRoute(tripId: string, itemRef: string, fields: ItemRouteFields, ok: (before: Doc["items"][number]) => string): Promise<FormState> {
+async function writeRoute(tripId: string, itemRef: string, fields: ItemRouteFields, ok: (before: Doc["items"][number], ends: string) => string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
   const pulled = await pullTrip(supabase, tripId);
   if (pulled.error !== undefined) return { error: pulled.error };
   const { payload } = pulled;
   const doc = stateFromPayload(payload).doc;
-  const edit = setItemRoute(doc, itemRef, `id-${uuidv7()}`, fields);
+  // Plik GPX sam ustawia brakujący start i koniec przejścia.
+  const ends = fields.geojson === undefined ? null : setTrackEnds(doc, itemRef, { fromId: uuidv7(), toId: uuidv7() }, { name: fields.name ?? null, coordinates: fields.geojson.coordinates });
+  const edit = setItemRoute(ends?.doc ?? doc, itemRef, `id-${uuidv7()}`, fields);
   if (edit === null) return { error: "Tego punktu już nie ma — odśwież stronę." };
   const checked = TripDocument.safeParse(edit.doc);
   if (!checked.success) {
@@ -72,13 +74,14 @@ async function writeRoute(tripId: string, itemRef: string, fields: ItemRouteFiel
   const track = checked.data.tracks.find((each) => each.ref === edit.track.ref)!;
   const item = checked.data.items.find((each) => each.ref === itemRef)!;
   try {
-    const ids = await saveElements(supabase, tripId, checked.data, [{ collection: "tracks", element: track, op: edit.trackCreated ? "insert" : "update" }], refIndex(payload.tables));
+    const places: ElementWrite[] = (ends?.places ?? []).map(({ place, created }) => ({ collection: "places", element: place, op: created ? "insert" : "update" }));
+    const ids = await saveElements(supabase, tripId, checked.data, [...places, { collection: "tracks", element: track, op: edit.trackCreated ? "insert" : "update" }], refIndex(payload.tables));
     await savePlanEdit(supabase, tripId, { doc: checked.data, changed: [item] }, ids);
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
   refresh();
-  return { ok: ok(doc.items.find((each) => each.ref === itemRef)!) };
+  return { ok: ok(doc.items.find((each) => each.ref === itemRef)!, ends === null ? "" : trackEndsNote(ends)) };
 }
 
 /** Plik GPX: linia i liczby z pliku zapisują się od razu, a komunikat podaje poprzedni czas punktu. */
@@ -87,12 +90,12 @@ export async function saveTrack(tripId: string, itemRef: string, upload: TrackUp
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Niepoprawny ślad." };
   const { name, geojson, stats } = parsed.data;
   const { distanceKm, durationMin, ascentM, descentM } = stats;
-  return writeRoute(tripId, itemRef, { geojson, name, distanceKm, durationMin, ...(ascentM !== null ? { ascentM } : {}), ...(descentM !== null ? { descentM } : {}) }, (before) => {
+  return writeRoute(tripId, itemRef, { geojson, name, distanceKm, durationMin, ...(ascentM !== null ? { ascentM } : {}), ...(descentM !== null ? { descentM } : {}) }, (before, ends) => {
     const was = before.durationMin ?? before.leg?.durationMin;
     const numbers = `${distanceKm.toLocaleString("pl-PL")} km${ascentM !== null ? `, ↑ ${ascentM} m` : ""}, ok. ${formatMinutes(durationMin)}`;
     const previous = was !== undefined && was !== durationMin ? ` (było ${formatMinutes(was)})` : "";
     const flat = ascentM === null ? " Plik nie ma wysokości, więc czas nie uwzględnia podejść." : "";
-    return `Zapisano ślad: ${numbers}${previous}${before.dayRef !== undefined ? " — plan dnia przeliczony" : ""}.${flat}`;
+    return `Zapisano ślad: ${numbers}${previous}${before.dayRef !== undefined ? " — plan dnia przeliczony" : ""}.${flat}${ends === "" ? "" : ` ${ends}`}`;
   });
 }
 

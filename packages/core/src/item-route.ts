@@ -1,3 +1,5 @@
+import type { LatLng } from './coordinates.ts';
+import { distanceM, type LngLat } from './polyline.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
@@ -20,7 +22,7 @@ const GOOGLE_ROUTE_LABEL = 'Trasa w Mapach Google';
 
 /** Etykieta linku do trasy po adresie. */
 export function routeLinkLabel(url: string): string {
-  if (/(^|\/\/|\.)mapy\.(com|cz)(\/|$)/i.test(url)) return 'Trasa na mapy.com';
+  if (/(^|\/\/|\.)mapy\.(com|cz)(\/|$)/i.test(url)) return MAPY_ROUTE_LABEL;
   return /\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.|maps\.)?google\.[a-z.]+\/maps)/i.test(url) || /\/\/maps\.google\./i.test(url) ? GOOGLE_ROUTE_LABEL : 'Trasa na mapie';
 }
 
@@ -45,12 +47,102 @@ export function drivingRouteUrl(doc: Doc, item: Item): string | null {
   return `https://www.google.com/maps/dir/?api=1${origin === undefined ? '' : `&origin=${encodeURIComponent(origin)}`}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
 }
 
-/** Link do trasy przejazdu: własny albo liczony ze „skąd” i „dokąd” dla auta. */
+/**
+ * Skąd i dokąd jedzie punkt `transport`. Z `leg` (szkice AI je podają), a bez niego z sąsiadów
+ * w dniu: skąd = miejsce poprzedniego punktu (na początku dnia baza), dokąd = miejsce następnego.
+ * Miejsce samego przejazdu bywa i startem („Wyjazd z parkingu”), i celem („Przejazd do
+ * Szybenika”), więc służy tylko wtedy, gdy po przejeździe nie ma już punktu z miejscem.
+ * Sąsiedzi z tego samego wariantu — punkt wersji B nie jedzie z punktu wersji A.
+ * Koniec wskazany w `leg`, ale bez współrzędnych, zostaje pusty: zgadnięty z sąsiadów dałby trasę
+ * z innego miejsca niż to, które widać w „skąd” (start w domu, a 5 km od bazy dnia).
+ */
+export function legEnds(doc: Doc, item: Item): { from?: LatLng; to?: LatLng } {
+  const places = new Map(doc.places.map((place) => [place.ref, place]));
+  const at = (ref: string | undefined) => {
+    const place = ref === undefined ? undefined : places.get(ref);
+    return place?.lat !== undefined && place.lng !== undefined ? { lat: place.lat, lng: place.lng } : undefined;
+  };
+  let from = at(item.leg?.fromPlaceRef);
+  let to = at(item.leg?.toPlaceRef);
+  const guessFrom = item.leg?.fromPlaceRef === undefined;
+  const guessTo = item.leg?.toPlaceRef === undefined;
+  if ((guessFrom || guessTo) && item.dayRef !== undefined) {
+    const fits = (each: Item) => each.variantRefs.length === 0 || each.variantRefs.some((ref) => item.variantRefs.includes(ref));
+    const day = doc.items
+      .filter((each) => each.dayRef === item.dayRef && each.parentRef === undefined && (each.ref === item.ref || fits(each)))
+      .sort((a, b) => (a.sortKey ?? '').localeCompare(b.sortKey ?? ''));
+    const index = day.findIndex((each) => each.ref === item.ref);
+    const arrival = (each: Item) => at(each.leg?.toPlaceRef ?? each.placeRef);
+    if (guessFrom) {
+      const previous = day.slice(0, index).reverse().find((each) => arrival(each) !== undefined);
+      const base = doc.days.find((each) => each.ref === item.dayRef)?.baseRef;
+      from = previous === undefined ? at(base) : arrival(previous);
+    }
+    if (guessTo) {
+      const next = day.slice(index + 1).find((each) => at(each.leg?.fromPlaceRef ?? each.placeRef) !== undefined);
+      to = next === undefined ? at(item.placeRef) : at(next.leg?.fromPlaceRef ?? next.placeRef);
+    }
+  }
+  return { from, to };
+}
+
+const MAPY_ROUTE_LABEL = 'Trasa na mapy.com';
+/** Limit adresu mapy.com i gęstość punktów: krótki spacer nie potrzebuje piętnastu. */
+const MAPY_MAX_WAYPOINTS = 15;
+const WAYPOINT_EVERY_M = 500;
+
+const mapyPoint = (point: LngLat) => `${Math.round(point[0] * 1e5) / 1e5},${Math.round(point[1] * 1e5) / 1e5}`;
+
+/** Punkty pośrednie równo po długości śladu, także w środku długiego odcinka uproszczonej linii: mapy.com odtwarza przez nie przebieg. */
+function waypointsAlong(line: readonly LngLat[]): LngLat[] {
+  const lengths = [0];
+  for (let i = 1; i < line.length; i += 1) lengths.push(lengths[i - 1]! + distanceM(line[i - 1]!, line[i]!));
+  const total = lengths.at(-1)!;
+  const count = Math.min(MAPY_MAX_WAYPOINTS, Math.floor(total / WAYPOINT_EVERY_M));
+  return Array.from({ length: count }, (_, index) => {
+    const wanted = (total * (index + 1)) / (count + 1);
+    const after = lengths.findIndex((length) => length >= wanted);
+    const a = line[after - 1]!;
+    const b = line[after]!;
+    const share = (wanted - lengths[after - 1]!) / (lengths[after]! - lengths[after - 1]!);
+    return [a[0] + (b[0] - a[0]) * share, a[1] + (b[1] - a[1]) * share];
+  });
+}
+
+/**
+ * Link do trasy pieszej na mapy.com: udokumentowany adres `fnc/v1/route`, bez klucza. Sam link, trasa liczy
+ * się dopiero po otwarciu i nic z niej nie zapisujemy (`docs/USLUGI.md` §5). Punkt ze śladem idzie przebiegiem
+ * śladu, a przejście bez śladu od startu do końca. Aktywność bez śladu nie ma trasy, tylko miejsce. `null` = brak końców.
+ */
+export function footRouteUrl(doc: Doc, item: Item): string | null {
+  if (!isFootRouteItem(item)) return null;
+  const line = doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.geojson?.coordinates.map((point): LngLat => [point[0]!, point[1]!]);
+  let start: LngLat | undefined;
+  let end: LngLat | undefined;
+  let waypoints: LngLat[] = [];
+  if (line !== undefined && line.length >= 2) {
+    start = line[0];
+    end = line.at(-1);
+    waypoints = waypointsAlong(line);
+  } else if (item.leg !== undefined) {
+    const { from, to } = legEnds(doc, item);
+    start = from && [from.lng, from.lat];
+    end = to && [to.lng, to.lat];
+  }
+  if (start === undefined || end === undefined) return null;
+  if (waypoints.length === 0 && mapyPoint(start) === mapyPoint(end)) return null;
+  const via = waypoints.length === 0 ? '' : `&waypoints=${waypoints.map(mapyPoint).join(';')}`;
+  return `https://mapy.com/fnc/v1/route?mapset=outdoor&start=${mapyPoint(start)}&end=${mapyPoint(end)}&routeType=${item.leg?.mode === 'walk' ? 'foot_fast' : 'foot_hiking'}${via}`;
+}
+
+/** Link do trasy punktu: własny, a bez niego liczony z końców (autem Mapy Google, pieszo mapy.com). Link zapisany w śladzie ma własne miejsce. */
 export function legRouteLink(doc: Doc, item: Item): { url: string; label: string } | null {
-  if (item.kind !== 'transport') return null;
-  if (item.leg?.routeUrl !== undefined) return { url: item.leg.routeUrl, label: routeLinkLabel(item.leg.routeUrl) };
-  const url = drivingRouteUrl(doc, item);
-  return url === null ? null : { url, label: GOOGLE_ROUTE_LABEL };
+  if (item.kind === 'transport' && item.leg?.routeUrl !== undefined) return { url: item.leg.routeUrl, label: routeLinkLabel(item.leg.routeUrl) };
+  const driving = drivingRouteUrl(doc, item);
+  if (driving !== null) return { url: driving, label: GOOGLE_ROUTE_LABEL };
+  if (!isFootRouteItem(item) || doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.url !== undefined) return null;
+  const foot = footRouteUrl(doc, item);
+  return foot === null ? null : { url: foot, label: MAPY_ROUTE_LABEL };
 }
 
 export type ItemRouteFields = {

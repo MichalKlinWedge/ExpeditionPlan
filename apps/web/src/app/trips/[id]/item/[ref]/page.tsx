@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { bookingContacts, dayLabel, flightLine, flightOf, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -184,6 +184,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
               tripId={id}
               itemRef={item.ref}
               url={track?.url}
+              plannerUrl={footRouteUrl(doc, item)}
               current={{
                 ...((item.leg?.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm) !== undefined ? { distanceKm: (item.leg?.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm)! } : {}),
                 ...((item.durationMin ?? item.leg?.durationMin) !== undefined ? { durationMin: (item.durationMin ?? item.leg?.durationMin)! } : {}),

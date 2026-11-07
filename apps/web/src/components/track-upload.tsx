@@ -31,7 +31,7 @@ export function TrackUpload({ tripId, itemRef, hasLine }: { tripId: string; item
   return (
     <div className="flex flex-col gap-2 text-sm">
       <label className="flex flex-col gap-1 text-xs text-zinc-500">
-        {hasLine ? "Zamień ślad (plik .gpx)" : "Dodaj ślad (plik .gpx z mapy.cz, Komoot, Garmina, Strava…)"} — zapisze się od razu z długością, czasem i podejściem
+        {hasLine ? "Zamień ślad (plik .gpx)" : "Dodaj ślad (plik .gpx z mapy.cz, Komoot, Garmina, Strava…)"} — zapisze się od razu z długością, czasem i podejściem, a brakujący start i koniec ustawi się sam
         <input
           type="file"
           accept=".gpx,application/gpx+xml"

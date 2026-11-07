@@ -196,6 +196,8 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - Plan Standard: „darmowy dla wszystkich”. **Directions: 2000/dzień, 40/min; Matrix: 500/dzień, 40/min; Isochrones: 500/dzień, 20/min** (część limitów z gwiazdką „obowiązują dodatkowe ograniczenia”).
 - Status: **częściowo potwierdzone** — strona https://openrouteservice.org/plans/ zwróciła 404 przy bezpośrednim odczycie; liczby pochodzą z indeksu wyszukiwarki tej oficjalnej strony. Maks. liczba punktów/rozmiar macierzy — **NIEPOTWIERDZONE**.
 - Sprawdzone w użyciu (1.11.2026): `POST /v2/directions/{profil}`, klucz w nagłówku `Authorization`; domyślnie punkt musi leżeć ≤ 350 m od drogi (błąd 2010 / HTTP 404) — wysyłamy `radiuses` 5 km (auto) / 1 km (pieszo). Kod: `packages/planner/src/routing.ts`, odstęp 1,6 s między zapytaniami, najwyżej 60 tras na plan.
+- Limity z https://openrouteservice.org/restrictions/ (7.11.2026): 50 punktów na trasę, 2000 punktów przy wysokościach. `elevation: true` daje podejście i zejście. Czas pieszo ORS liczy bez podejść (41 min tam, gdzie norma DIN daje 1 h 50 min), więc do czasu pieszo tylko `hikingMinutes`.
+- **ORS a trasy użytkownika (7.11.2026):** 8 miejskich GPX-ów z mapy.com, `foot-hiking`. Sam start i koniec: tylko 3 z 8 zgodne (100 % śladu w 50 m), bo pozostałe to celowo dłuższe spacery (1,09 km wobec 4,3 km). Z 3 punktami pośrednimi 72–100 %. Podejście zawyżone na płaskim (84 m wobec 15 m). Wniosek: wyliczanie ze startu i końca nie zastępuje GPX, tras górskich nie sprawdzono.
 - Źródło: https://openrouteservice.org/plans/
 
 ### Geoapify Routing
@@ -207,7 +209,8 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - **NIE do zapisywanych tras.** Regulamin (obowiązuje od 1.06.2025), pkt 4.6.2: zakaz przechowywania i cache'owania wyników funkcji API oraz eksportu danych z usługi. Plan i telefon offline trzymają czas, dystans i linię, więc wynik API tu nie wejdzie bez zgody Seznam. Atrybucja wymagana (pkt 3.2, 4.4).
 - Routing: `routeType` m.in. `foot_fast`, `foot_hiking`; odpowiedź `length` (m), `duration` (s), `geometry`; maks. 15 punktów pośrednich. Trasa = 4 kredyty, wysokość = 4; taryfa Basic 250 000 kredytów/mies. Adresu końcówki i sposobu podania klucza nie sprawdzono.
 - Używamy wyłącznie linku do trasy (`tracks.url`), liczb przepisanych przez użytkownika z mapy i pliku GPX, który sam wyeksportował. Format krótkich linków `mapy.com/s/…` i parametru `rc` nie jest udokumentowany — nie dekodujemy ich.
-- Źródła: https://developer.mapy.com/en/terms-and-conditions, https://developer.mapy.com/pricing/, https://developer.mapy.com/en/rest-api/funkce/planovani/
+- **Adres do otwarcia trasy (sprawdzone 7.11.2026):** `https://mapy.com/fnc/v1/route` z `start`, `end` i `waypoints` (lon,lat, do 15 punktów, rozdzielone `;`), `routeType` (m.in. `foot_fast`, `foot_hiking`) i `mapset` (m.in. `outdoor`). Dokumentacja: „nie wymaga klucza API”. To sam link, nic z niego nie zapisujemy. Wywołanie przekierowuje do planowania trasy.
+- Źródła: https://developer.mapy.com/en/terms-and-conditions, https://developer.mapy.com/pricing/, https://developer.mapy.com/en/rest-api/funkce/planovani/, https://developer.mapy.com/en/further-uses-of-mapycz/mapy-cz-url/
 
 ### GraphHopper
 - Free: **500 kredytów/dzień**, max **5 punktów** na zapytanie, limit kredytów na minutę (bez liczby), **tylko niekomercyjnie**. Basic: 69 EUR/mies. netto.

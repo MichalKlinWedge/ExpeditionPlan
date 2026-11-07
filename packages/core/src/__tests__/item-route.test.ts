@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { drivingRouteUrl, isFootRouteItem, legRouteLink, routeLinkLabel, setItemRoute } from '../item-route.ts';
+import { drivingRouteUrl, footRouteUrl, isFootRouteItem, legRouteLink, routeLinkLabel, setItemRoute } from '../item-route.ts';
 import { legLabel } from '../plan-info.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
@@ -20,6 +20,68 @@ function withWalk() {
   const item = { ...rest, leg };
   return { doc: TripDocument.parse({ ...doc, items: doc.items.map((each) => (each.ref === walk.ref ? item : each)) }), ref: walk.ref, dayRef: walk.dayRef! };
 }
+
+describe('link do trasy pieszej na mapy.com', () => {
+  const places = [
+    { ref: 'a', name: 'Start', lat: 50.8277, lng: 15.5228, provider: 'user' as const, links: [] },
+    { ref: 'b', name: 'Szczyt', lat: 50.8476, lng: 15.4927, provider: 'user' as const, links: [] },
+    { ref: 'c', name: 'Bez współrzędnych', provider: 'unknown' as const, links: [] },
+  ];
+  const tracks: unknown[] = [];
+  const doc = { places, tracks, items: [], days: [] } as unknown as TripDocument;
+  const item = (mode: string, leg: object = { fromPlaceRef: 'a', toPlaceRef: 'b' }, extra: object = {}) => ({ kind: 'transport', variantRefs: [], leg: { mode, links: [], ...leg }, ...extra }) as unknown as TripDocument['items'][number];
+
+  it('z końców, w trybie turystycznym albo spacerowym', () => {
+    expect(footRouteUrl(doc, item('hike'))).toBe('https://mapy.com/fnc/v1/route?mapset=outdoor&start=15.5228,50.8277&end=15.4927,50.8476&routeType=foot_hiking');
+    expect(footRouteUrl(doc, item('walk'))).toContain('routeType=foot_fast');
+    expect(legRouteLink(doc, item('hike'))?.label).toBe('Trasa na mapy.com');
+  });
+
+  it('auto, koniec bez współrzędnych i ten sam punkt nie mają linku', () => {
+    expect(footRouteUrl(doc, item('car'))).toBeNull();
+    expect(footRouteUrl(doc, item('hike', { fromPlaceRef: 'a', toPlaceRef: 'c' }))).toBeNull();
+    expect(footRouteUrl(doc, item('hike', { fromPlaceRef: 'a', toPlaceRef: 'a' }))).toBeNull();
+  });
+
+  it('aktywność bez śladu ma tylko miejsce, a nie trasę od sąsiadów', () => {
+    expect(footRouteUrl(doc, { kind: 'activity', variantRefs: [], placeRef: 'a' } as unknown as TripDocument['items'][number])).toBeNull();
+  });
+
+  // Prosty ślad na wschód: 0,01° długości na tej szerokości to ok. 700 m.
+  const line = (points: number) => ({ type: 'LineString', coordinates: Array.from({ length: points }, (_, index) => [15 + index * 0.01, 50]) });
+  const withTrack = (geojson: object, url?: string) => {
+    const trackDoc = { ...doc, tracks: [{ ref: 't', name: 'Ślad', geojson, ...(url ? { url } : {}) }] } as unknown as TripDocument;
+    return { trackDoc, walk: { kind: 'activity', variantRefs: [], activity: { trackRef: 't' } } as unknown as TripDocument['items'][number] };
+  };
+
+  it('ślad idzie swoim przebiegiem, co najwyżej przez 15 punktów pośrednich', () => {
+    const short = withTrack(line(2));
+    const shortUrl = footRouteUrl(short.trackDoc, short.walk)!;
+    expect(shortUrl).toContain('start=15,50&end=15.01,50');
+    expect(shortUrl).toContain('&waypoints=');
+    expect(shortUrl.split('waypoints=')[1]!.split(';')).toHaveLength(1);
+    const long = withTrack(line(200));
+    expect(footRouteUrl(long.trackDoc, long.walk)!.split('waypoints=')[1]!.split(';')).toHaveLength(15);
+  });
+
+  it('rzadka linia po uproszczeniu nie powtarza punktów pośrednich', () => {
+    const sparse = withTrack({ type: 'LineString', coordinates: [[15, 50], [15.1, 50]] });
+    const via = footRouteUrl(sparse.trackDoc, sparse.walk)!.split('waypoints=')[1]!.split(';');
+    expect(via.length).toBeGreaterThan(10);
+    expect(new Set(via).size).toBe(via.length);
+    expect(via).not.toContain('15.1,50');
+  });
+
+  it('pętla ze śladem ma link, bo prowadzą ją punkty pośrednie', () => {
+    const loop = withTrack({ type: 'LineString', coordinates: [[15, 50], [15.02, 50], [15, 50]] });
+    expect(footRouteUrl(loop.trackDoc, loop.walk)).toContain('waypoints=');
+  });
+
+  it('link zapisany w śladzie ma pierwszeństwo: bez drugiego linku', () => {
+    const saved = withTrack(line(3), URL_A);
+    expect(legRouteLink(saved.trackDoc, saved.walk)).toBeNull();
+  });
+});
 
 describe('link do trasy autem', () => {
   const places = [

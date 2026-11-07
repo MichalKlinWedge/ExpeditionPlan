@@ -23,6 +23,7 @@ export * from './plan-merge.ts';
 export * from './plan-info.ts';
 export * from './item-facts.ts';
 export * from './item-route.ts';
+export * from './track-ends.ts';
 export * from './pool-nearby.ts';
 export * from './polyline.ts';
 export * from './coordinates.ts';

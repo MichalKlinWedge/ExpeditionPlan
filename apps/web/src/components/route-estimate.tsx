@@ -7,8 +7,9 @@ import type { FormState } from "@/app/actions";
 import { saveItemRoute } from "@/app/track-actions";
 
 /**
- * Trasa z mapy na karcie punktu: link (mapy.com → Udostępnij) i liczby, które mapa pokazuje. Czas od razu
- * przelicza plan dnia. Zapisuje tylko to, co zmieniono — sam link nie rusza czasu ani linii przejazdu.
+ * Trasa z mapy na karcie punktu: „Zaplanuj na mapy.com” otwiera trasę od startu do końca, a zapisuje się
+ * własny link i liczby, które mapa pokazuje. Czas od razu przelicza plan dnia. Zapisuje tylko to, co
+ * zmieniono — sam link nie rusza czasu ani linii przejazdu.
  * Wgrany GPX wypełnia pola sam (nowe `current` po zapisie); „Wstaw z pliku” wraca do jego liczb po ręcznej zmianie.
  */
 
@@ -17,7 +18,7 @@ type Values = { distanceKm?: number; durationMin?: number; ascentM?: number };
 const text = (value: number | undefined) => (value === undefined ? "" : String(value).replace(".", ","));
 const number = (value: string) => Number(value.trim().replace(",", "."));
 
-export function RouteEstimate({ tripId, itemRef, url, current, fromFile }: { tripId: string; itemRef: string; url: string | undefined; current: Values; fromFile?: Values | undefined }) {
+export function RouteEstimate({ tripId, itemRef, url, plannerUrl, current, fromFile }: { tripId: string; itemRef: string; url: string | undefined; plannerUrl: string | null; current: Values; fromFile?: Values | undefined }) {
   const [link, setLink] = useState(url ?? "");
   const [km, setKm] = useState(text(current.distanceKm));
   const [hours, setHours] = useState(current.durationMin === undefined ? "" : String(Math.floor(current.durationMin / 60)));
@@ -70,8 +71,15 @@ export function RouteEstimate({ tripId, itemRef, url, current, fromFile }: { tri
   const field = "field px-2 py-1 text-sm";
   return (
     <div className="flex flex-col gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+      {plannerUrl === null ? (
+        <p className="text-xs text-zinc-500">Link do mapy.com utworzy się sam, gdy punkt będzie miał start i koniec ze współrzędnymi.</p>
+      ) : (
+        <a href={plannerUrl} target="_blank" rel="noreferrer" className="btn-secondary btn-sm self-start">
+          Zaplanuj na mapy.com
+        </a>
+      )}
       <label className="flex flex-col gap-1 text-xs text-zinc-500">
-        Link do trasy (mapy.com → Udostępnij)
+        Własny link do trasy (opcjonalnie, mapy.com → Udostępnij; bez niego plan pokazuje link utworzony sam)
         <input value={link} onChange={(event) => setLink(event.target.value)} inputMode="url" placeholder="https://mapy.com/s/…" disabled={pending} className={field} />
         <span>Link tylko otwiera trasę: długość i czas nie przeliczają się z niego.</span>
       </label>

@@ -1,4 +1,4 @@
-import { decodePolyline, encodePolyline, simplifyPath, type TripDocument } from '@expeditionplan/core';
+import { decodePolyline, encodePolyline, legEnds, simplifyPath, type TripDocument } from '@expeditionplan/core';
 
 import { HOME_COUNTRY, type Lookup, withCoordinates } from './ground.ts';
 import { candidateQueries, skipReason } from './queries.ts';
@@ -12,6 +12,8 @@ import { candidateQueries, skipReason } from './queries.ts';
  * postój), dystans z trasy, a do mapy — uproszczona linia trasy (`leg.geometry`). Lotów, promów,
  * pociągów ORS nie liczy — zostają jak są.
  */
+
+export { legEnds };
 
 type Doc = TripDocument;
 type Item = Doc['items'][number];
@@ -57,42 +59,6 @@ export type RouteResult = {
 
 const coords = (place: Place | undefined): LatLng | undefined =>
   place?.lat !== undefined && place.lng !== undefined ? { lat: place.lat, lng: place.lng } : undefined;
-
-/**
- * Skąd i dokąd jedzie punkt `transport`. Z `leg` (szkice AI je podają), a bez niego z sąsiadów
- * w dniu: skąd = miejsce poprzedniego punktu (na początku dnia baza), dokąd = miejsce następnego.
- * Miejsce samego przejazdu bywa i startem („Wyjazd z parkingu”), i celem („Przejazd do
- * Szybenika”), więc służy tylko wtedy, gdy po przejeździe nie ma już punktu z miejscem.
- * Sąsiedzi z tego samego wariantu — punkt wersji B nie jedzie z punktu wersji A.
- * Koniec wskazany w `leg`, ale bez współrzędnych, zostaje pusty: zgadnięty z sąsiadów dałby trasę
- * z innego miejsca niż to, które widać w „skąd” (start w domu, a 5 km od bazy dnia).
- */
-export function legEnds(doc: Doc, item: Item): { from?: LatLng; to?: LatLng } {
-  const places = new Map(doc.places.map((place) => [place.ref, place]));
-  const at = (ref: string | undefined) => (ref === undefined ? undefined : coords(places.get(ref)));
-  let from = at(item.leg?.fromPlaceRef);
-  let to = at(item.leg?.toPlaceRef);
-  const guessFrom = item.leg?.fromPlaceRef === undefined;
-  const guessTo = item.leg?.toPlaceRef === undefined;
-  if ((guessFrom || guessTo) && item.dayRef !== undefined) {
-    const fits = (each: Item) => each.variantRefs.length === 0 || each.variantRefs.some((ref) => item.variantRefs.includes(ref));
-    const day = doc.items
-      .filter((each) => each.dayRef === item.dayRef && each.parentRef === undefined && (each.ref === item.ref || fits(each)))
-      .sort((a, b) => (a.sortKey ?? '').localeCompare(b.sortKey ?? ''));
-    const index = day.findIndex((each) => each.ref === item.ref);
-    const arrival = (each: Item) => at(each.leg?.toPlaceRef ?? each.placeRef);
-    if (guessFrom) {
-      const previous = day.slice(0, index).reverse().find((each) => arrival(each) !== undefined);
-      const base = doc.days.find((each) => each.ref === item.dayRef)?.baseRef;
-      from = previous === undefined ? at(base) : arrival(previous);
-    }
-    if (guessTo) {
-      const next = day.slice(index + 1).find((each) => at(each.leg?.fromPlaceRef ?? each.placeRef) !== undefined);
-      to = next === undefined ? at(item.placeRef) : at(next.leg?.fromPlaceRef ?? next.placeRef);
-    }
-  }
-  return { from, to };
-}
 
 /**
  * Końce przejazdu wskazane w `leg`, ale bez współrzędnych, szukane po nazwie. Inaczej niż w
