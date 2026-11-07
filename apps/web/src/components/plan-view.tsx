@@ -5,6 +5,7 @@ import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expedition
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { bookingHref } from "@/lib/booking-link";
 import { SparkIcon } from "@/components/icons";
 import { DayConstraints, DayEndField, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
@@ -56,6 +57,8 @@ type Props = {
   guidedOnly?: boolean;
   /** Dzień (`ref`) albo `"pool"` z adresu (`?day=`) — powrót z karty punktu na ten sam dzień. */
   initialDay?: string;
+  /** Rezerwacje punktów prowadzą do ich wiersza na „Rezerwacje i budżet”; link publiczny bez tego. */
+  bookingLinks?: boolean;
 };
 
 const variantsKey = (tripId: string) => `plan-variants:${tripId}`;
@@ -78,7 +81,7 @@ function saveChosenVariants(tripId: string, chosen: Record<string, string>) {
   }
 }
 
-export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay }: Props) {
+export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay, bookingLinks = false }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
@@ -397,6 +400,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
               itemBase={itemBase}
               guided={guided}
               guidedOnly={guidedOnly}
+              bookingLink={bookingLinks ? (booking) => bookingHref(tripId, booking) : null}
               field={fieldLog(doc, mapDay.ref, inputs)}
               fieldVariants={inputs.activeVariants}
             />
@@ -807,6 +811,8 @@ type DayProps = {
   itemBase?: string;
   guided?: string[];
   guidedOnly: boolean;
+  /** Adres wiersza rezerwacji; `null` — bez linków. */
+  bookingLink: ((booking: TripDocument["bookings"][number]) => string | null) | null;
   /** Przebieg dnia z telefonu (`schedule_events`): opóźnienia, pominięcia, „zrobione”, pula, warianty. */
   field: FieldLog;
   /** Warianty wybrane na telefonie (groupRef → variantRef). */
@@ -826,7 +832,15 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided, guidedOnly, field, fieldVariants }: DayProps) {
+function BookingLink({ href }: { href: string }) {
+  return (
+    <Link href={href} title="Szczegóły rezerwacji na „Rezerwacje i budżet”" className="btn-mini ml-1.5 font-normal">
+      rezerwacja
+    </Link>
+  );
+}
+
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided, guidedOnly, bookingLink, field, fieldVariants }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -915,6 +929,9 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
             const flight = source === undefined ? undefined : flightOf(doc, source);
             const flightText = flight === undefined ? undefined : flightLine(flight);
             const offMap = source !== undefined && missingOnMap(doc, source);
+            const bookingRef = source?.bookingRef ?? source?.leg?.ticketBookingRef;
+            const booking = bookingRef === undefined ? undefined : doc.bookings.find((each) => each.ref === bookingRef);
+            const bookingUrl = booking === undefined || bookingLink === null ? null : bookingLink(booking);
             return (
               <li
                 key={item.ref}
@@ -1005,7 +1022,19 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     {offMap && onPin && source?.placeRef && <PinButton onClick={() => onPin(source.placeRef!, places.get(source.placeRef!)?.name ?? item.title)} />}
                   </span>
                 </div>
-                {flightText && <p className="ml-31 text-xs font-semibold text-sea dark:text-teal-300">✈ {flightText}</p>}
+                {flightText && (
+                  <p className="ml-31 text-xs font-semibold text-sea dark:text-teal-300">
+                    ✈ {flightText}
+                    {bookingUrl && flight === booking && <BookingLink href={bookingUrl} />}
+                  </p>
+                )}
+                {booking && flight !== booking && (
+                  <p className="ml-31 text-xs text-zinc-500">
+                    Rezerwacja: {booking.title}
+                    {booking.confirmationCode ? ` · kod ${booking.confirmationCode}` : ""}
+                    {bookingUrl && <BookingLink href={bookingUrl} />}
+                  </p>
+                )}
                 {leg && <p className="ml-31 text-xs text-zinc-500">{leg}</p>}
                 {routeStopsLabel(item) && <p className="ml-31 text-xs font-medium text-zinc-600 dark:text-zinc-400">{routeStopsLabel(item)}</p>}
                 {route && (
@@ -1091,6 +1120,11 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     {lodging.booking && lodging.booking.title !== lodging.name ? ` · ${lodging.booking.title}` : ""}
                     {lodging.booking?.code ? ` · kod ${lodging.booking.code}` : ""}
                   </span>
+                  {(() => {
+                    const booking = lodging.booking === undefined || bookingLink === null ? undefined : doc.bookings.find((each) => each.ref === lodging.booking!.ref);
+                    const url = booking === undefined ? null : bookingLink!(booking);
+                    return url && <BookingLink href={url} />;
+                  })()}
                   {!lodging.onMap && (
                     <span title="Miejsce noclegu bez współrzędnych — „Uzupełnij współrzędne miejsc” albo własna pinezka" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
                       brak na mapie

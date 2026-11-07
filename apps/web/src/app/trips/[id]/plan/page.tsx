@@ -97,6 +97,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         itemBase={`/trips/${id}/item/`}
         guided={guided}
         initialDay={typeof day === "string" ? day : undefined}
+        bookingLinks
       />
     </>
   );

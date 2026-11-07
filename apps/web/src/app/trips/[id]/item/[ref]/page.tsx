@@ -14,6 +14,7 @@ import { RouteEstimate } from "@/components/route-estimate";
 import { TrackUpload } from "@/components/track-upload";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+import { bookingHref } from "@/lib/booking-link";
 
 export const metadata: Metadata = { title: "Punkt planu — Expedition Planner" };
 
@@ -60,7 +61,9 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const day = doc.days[dayIndex];
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
-  const booking = item.bookingRef === undefined ? undefined : doc.bookings.find((each) => each.ref === item.bookingRef);
+  const bookingRef = item.bookingRef ?? item.leg?.ticketBookingRef ?? (item.kind === "lodging" ? lodgingBooking(doc, item)?.ref : undefined);
+  const booking = bookingRef === undefined ? undefined : doc.bookings.find((each) => each.ref === bookingRef);
+  const bookingUrl = booking === undefined ? null : bookingHref(id, booking);
   const flight = flightOf(doc, item);
   const leg = legLabel(item) ?? stopsLabel(item);
   const route = legRouteLink(doc, item);
@@ -123,6 +126,14 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
           <p>
             Rezerwacja: <strong>{booking.title}</strong>
             {booking.confirmationCode ? <span className="font-mono"> · {booking.confirmationCode}</span> : null}
+            {bookingUrl && (
+              <>
+                {" "}
+                <Link href={bookingUrl} className="btn-mini">
+                  szczegóły
+                </Link>
+              </>
+            )}
           </p>
         )}
         {item.activity && (item.activity.distanceKm || item.activity.ascentM) && (

@@ -1,9 +1,10 @@
 "use client";
 
 import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestion, CONTACT_ROLE, formatMoneyRange, fxLine, lineTravelerNames, moneyToInput, PRICE_BASIS, type TripDocument } from "@expeditionplan/core";
-import { Fragment, type ReactNode, startTransition, useActionState, useState, useTransition } from "react";
+import { Fragment, type ReactNode, startTransition, useActionState, useEffect, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
+import { bookingAnchor } from "@/lib/booking-link";
 import {
   addSuggestedBudgetLine,
   removeBudgetLine,
@@ -885,7 +886,7 @@ export function BookingRow({
   ) : null;
   return (
     <>
-      <tr className="border-t border-zinc-100 dark:border-zinc-900">
+      <tr id={bookingAnchor(booking.ref)} className="border-t border-zinc-100 data-focus:bg-signal/10 dark:border-zinc-900">
         {children}
         {actionsColumn && (
           <td className="hidden py-1 pl-2 align-top sm:table-cell">
@@ -926,6 +927,27 @@ export function BookingRow({
       )}
     </>
   );
+}
+
+/**
+ * Wejście z planu albo karty punktu (`#rezerwacja-…`): przewija do wiersza i go podświetla. Samo `:target`
+ * nie wystarcza: przejście w aplikacji go nie ustawia, a strona dochodzi strumieniem już po przewinięciu.
+ */
+export function BookingFocus() {
+  useEffect(() => {
+    const focus = () => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      document.querySelectorAll("[data-focus]").forEach((each) => each.removeAttribute("data-focus"));
+      const row = id === "" ? null : document.getElementById(id);
+      if (row === null) return;
+      row.setAttribute("data-focus", "");
+      row.scrollIntoView({ block: "center" });
+    };
+    focus();
+    window.addEventListener("hashchange", focus);
+    return () => window.removeEventListener("hashchange", focus);
+  }, []);
+  return null;
 }
 
 export function NewBooking({ tripId, statuses, zones, places }: { tripId: string; statuses: Record<string, string>; zones: string[]; places: PlaceOption[] }) {

@@ -8,12 +8,13 @@ import { Suspense } from "react";
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
-import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
+import { BookingFocus, BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+import { isListedBooking } from "@/lib/booking-link";
 import { planChoices } from "@/lib/tasks";
 
 export const metadata: Metadata = { title: "Rezerwacje i budżet — Expedition Planner" };
@@ -149,7 +150,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
     const { data: signed } = await supabase.storage.from("journal").createSignedUrls(receiptPaths, 3600);
     for (const each of signed ?? []) if (each.path && each.signedUrl && !each.error) receipts.set(each.path, each.signedUrl);
   }
-  const bookings = doc.bookings.filter((booking) => booking.status !== "candidate" && booking.status !== "idea");
+  const bookings = doc.bookings.filter(isListedBooking);
   const candidates = doc.bookings.length - bookings.length;
   const packaged = new Map<string, Doc["items"]>();
   for (const item of doc.items) if (item.bookingRef) packaged.set(item.bookingRef, [...(packaged.get(item.bookingRef) ?? []), item]);
@@ -398,6 +399,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           </table>
         )}
         {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />}
+        <BookingFocus />
       </section>
 
       <Link href={`/trips/${id}/tasks`} className="btn-secondary self-start">
