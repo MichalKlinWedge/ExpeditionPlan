@@ -38,6 +38,7 @@ import { PoolView } from '@/features/plan/pool-view';
 import { TripNewsBanner } from '@/features/plan/trip-news';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
+import { MealsView } from '@/features/trip/meals-view';
 import { TasksView } from '@/features/trip/tasks-view';
 import { JournalView } from '@/features/trip/journal-view';
 import { scheduleTripReminders } from '@/features/trip/reminders';
@@ -117,7 +118,7 @@ type PlanProps = {
 /** Plan jednego wyjazdu. */
 export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose, bottomInset = 0 }: PlanProps) {
   const theme = useTheme();
-  const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'tasks' | 'journal' | 'info'>('plan');
+  const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'meals' | 'tasks' | 'journal' | 'info'>('plan');
   const [trip, setTrip] = useState<CachedTrip | null>(null);
   /** „Co nowego” — zmiany innych od ostatniej wizyty (online). */
   const [news, setNews] = useState<NewsSummary | null>(null);
@@ -139,6 +140,12 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const showContacts = () => {
     setMode('info');
     setToContacts(true);
+  };
+  // Knajpa w szczegółach posiłku → ten posiłek w zakładce Posiłki.
+  const [toMeal, setToMeal] = useState<string | null>(null);
+  const showMeal = (itemRef: string) => {
+    setMode('meals');
+    setToMeal(itemRef);
   };
   /** Zapisy idą po kolei — kolejna zmiana może dotyczyć punktu dodanego przed chwilą. */
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -410,6 +417,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
             { value: 'plan', label: 'Plan' },
             { value: 'wallet', label: 'Wydatki' },
             { value: 'packing', label: 'Sprzęt' },
+            { value: 'meals', label: 'Posiłki' },
             { value: 'tasks', label: 'Zadania' },
             { value: 'journal', label: 'Dziennik' },
             { value: 'info', label: 'Info' },
@@ -442,6 +450,21 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                     }
                   : undefined
               }
+            />
+          ) : mode === 'meals' ? (
+            <MealsView
+              trip={trip}
+              focusRef={toMeal}
+              onFocusAt={(y) => {
+                tabScroll.current?.scrollTo({ y, animated: true });
+                setToMeal(null);
+              }}
+              onOpenItem={(ref) => {
+                const item = trip.state.doc.items.find((each) => each.ref === ref);
+                if (item === undefined) return;
+                setDetailPlay(false);
+                setDetail(item);
+              }}
             />
           ) : mode === 'tasks' ? (
             <TasksView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canAct={signedIn && canAct} onChanged={afterLocalWrite} />
@@ -562,6 +585,10 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           onContacts={() => {
             setDetail(null);
             showContacts();
+          }}
+          onMeal={(ref) => {
+            setDetail(null);
+            showMeal(ref);
           }}
         />
       )}

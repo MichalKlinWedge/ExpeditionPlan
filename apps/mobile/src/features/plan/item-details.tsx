@@ -17,6 +17,7 @@ import {
   lodgingDetails,
   type PlanItem as Item,
   speechParts,
+  mealEateries,
 } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Image } from 'expo-image';
@@ -59,6 +60,8 @@ type Props = {
   onSaveEatOut?: (edit: EatOutEdit) => Promise<void>;
   /** Z okna rezerwacji: kontakty wyjazdu w zakładce Info. */
   onContacts?: () => void;
+  /** Przy posiłku: knajpa prowadzi do tego posiłku w zakładce Posiłki (szczegóły się zamykają). */
+  onMeal?: (itemRef: string) => void;
 };
 
 /** Przewodnik punktu z wierszy `audio_guides` telefonu. */
@@ -91,7 +94,7 @@ export function prefetchGuideImages(trip: CachedTrip) {
   if (urls.length > 0) void Image.prefetch(urls, 'disk').catch(() => undefined);
 }
 
-export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online, onSaveEatOut, onContacts }: Props) {
+export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online, onSaveEatOut, onContacts, onMeal }: Props) {
   // Przejścia po odnośnikach: stos punktów nad otwartym; nowy `item` z zewnątrz zaczyna od zera.
   const [path, setPath] = useState<{ root: string | null; stack: Item[] }>({ root: null, stack: [] });
   const stack = path.root === (item?.ref ?? null) ? path.stack : [];
@@ -107,7 +110,7 @@ export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, onl
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
             {current !== null && (
-              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0} tripId={tripId} online={online} onSaveEatOut={onSaveEatOut} onContacts={onContacts} />
+              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0} tripId={tripId} online={online} onSaveEatOut={onSaveEatOut} onContacts={onContacts} onMeal={onMeal} />
             )}
           </SafeAreaView>
         </ThemedView>
@@ -127,9 +130,11 @@ type DetailsProps = {
   online?: boolean;
   onSaveEatOut?: (edit: EatOutEdit) => Promise<void>;
   onContacts?: () => void;
+  /** Przy posiłku: knajpa prowadzi do tego posiłku w zakładce Posiłki (szczegóły się zamykają). */
+  onMeal?: (itemRef: string) => void;
 };
 
-function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online, onSaveEatOut, onContacts }: DetailsProps) {
+function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online, onSaveEatOut, onContacts, onMeal }: DetailsProps) {
   const doc = trip.state.doc;
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
@@ -227,6 +232,24 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         ))}
         <ItemFactsCard trip={trip} item={item} tripId={tripId} online={online} onBooking={setBooking} />
         <BookingSheet trip={trip} bookingRef={booking} onClose={() => setBooking(null)} tripId={tripId} online={online} onOpenItem={(ref) => ref !== item.ref && onOpen(ref)} onContacts={onContacts} />
+        {item.kind === 'meal' && mealEateries(doc, item.ref).length > 0 && (
+          <View style={styles.eateries}>
+            <ThemedText type="smallBold">Gdzie jemy</ThemedText>
+            {mealEateries(doc, item.ref).map((eatery, _, all) => {
+              const label = `${all.length > 1 && eatery.active ? '✓ ' : ''}${eatery.name}`;
+              return (
+                <View key={eatery.placeRef} style={styles.eatery}>
+                  {onMeal ? <Button small label={label} onPress={() => onMeal(item.ref)} /> : <ThemedText type="small">{label}</ThemedText>}
+                  {eatery.summary ? (
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.eaterySummary}>
+                      {eatery.summary}
+                    </ThemedText>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        )}
         {item.kind === 'meal' && !item.selfCooked && online && tripId !== undefined && <EateriesCard trip={trip} tripId={tripId} item={item} onSave={onSaveEatOut} />}
         <TrackCard doc={doc} item={item} />
 
@@ -305,6 +328,9 @@ function Linked({ segments, onOpen }: { segments: GuideSegment[]; onOpen: (ref: 
 }
 
 const styles = StyleSheet.create({
+  eateries: { gap: Spacing.one },
+  eatery: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
+  eaterySummary: { flexShrink: 1 },
   fill: { flex: 1 },
   top: { flexDirection: 'row', paddingHorizontal: Spacing.four, paddingVertical: Spacing.three },
   content: { gap: Spacing.three, padding: Spacing.four, paddingTop: 0 },
