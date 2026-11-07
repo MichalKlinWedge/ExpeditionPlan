@@ -25,6 +25,7 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 | Geoapify Routing | routing | z puli 3000 kredytów/dzień; trasa = (punkty − 1) kredytów | atrybucja | OK |
 | GraphHopper Free | routing | 500 kredytów/dzień, max 5 punktów | tylko niekomercyjnie | OK z warunkiem (zapas) |
 | Transitous (MOTIS 2) | komunikacja publiczna | brak twardego limitu (sygnał: ~720 zapytań `/plan` na dobę) | tylko FOSS / niekomercyjnie, projekt powinien być open source, User-Agent z kontaktem, link do źródeł | OK z warunkiem |
+| Overpass API (FOSSGIS, overpass-api.de) | linie komunikacji z OSM (relacje `type=route`) | wytyczne: < 10 000 zapytań i < 1 GB na dobę, przy stałym użyciu ok. 100× mniej; liczy się suma wszystkich użytkowników | identyfikujący User-Agent, podpis „© OpenStreetMap” z linkiem „zgłoś błąd”, e-mail operatora na stronie; komercyjnie tylko jako nieistotna część oferty; bez masowego pobierania | OK z warunkiem (zapytanie tylko na kliknięcie) |
 | Open-Meteo | pogoda | 600/min, 5000/h, 10 000/dzień, 300 tys./mies. | tylko niekomercyjnie, CC BY 4.0 | OK z warunkiem |
 | Frankfurter | kursy walut | brak kwot, limit anty-nadużyciowy | v2 obejmuje MAD i GEL; v1 tylko kursy EBC | **OK (używać v2)** |
 | Nager.Date | święta | „brak limitów” | komercyjnie tylko ze sponsoringiem; **Maroko bez świąt islamskich** | OK z warunkiem |
@@ -223,6 +224,19 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - Wymagany User-Agent: nazwa aplikacji, wersja, kontakt (w przeglądarce Referer + kontakt na stronie). Widoczny link do strony źródeł Transitous i przestrzeganie licencji źródeł (w tym OSM).
 - Zasięg geograficzny (Maroko, Gruzja) — strona API nie opisuje; **NIEPOTWIERDZONE**.
 - Źródło: https://transitous.org/api/
+
+### Overpass API — linie komunikacji z OpenStreetMap (sprawdzone 7.11.2026)
+- Serwer: `https://overpass-api.de/api/interpreter` (FOSSGIS e.V.). Adres w konfiguracji (`OVERPASS_URL`), nie na sztywno — FOSSGIS to zaleca. Inne serwery (np. ovp.dresel.systems, overpass.private.coffee) mają własne zasady, **niesprawdzone**.
+- Warunki FOSSGIS (nutzungsbedingungen, dotyczą też overpass-api.de):
+  - podpis jak wymaga licencja i OSMF oraz link do https://www.openstreetmap.org/fixthemap („zgłoś błąd”);
+  - na stronie łatwo dostępny e-mail operatora (u nas „Pomoc”, `CONTACT_EMAIL`; bez niego rysowanie linii jest wyłączone);
+  - User-Agent identyfikujący aplikację (nie biblioteki), Referer gdy się da, najwyżej 2 połączenia, skrypt 1;
+  - zakazane: masowe pobieranie, strony o dużym ruchu; komercyjnie tylko, gdy usługa nie jest istotną częścią oferty.
+- Wiki OSM (Overpass API): bez przeszkadzania innym < 10 000 zapytań, < 1 GB i < 10 min obliczeń na dobę, przy stałym użyciu ok. 100× mniej; aplikacja liczy się jako suma użytkowników; bez równoległych skryptów; po 429/406 odczekać 30 s. Serwer bywa przeciążony (502/504) — „nie oczekuj wysokiej niezawodności”.
+- Dokumentacja serwera (commons): problemem jest „aplikacja dla nie tylko maperów OSM oparta na publicznych instancjach” — przy większej skali własna instancja.
+- U nas: jedno zapytanie na kliknięcie („Narysuj na mapie” albo zapis odcinków z wklejonej trasy), relacje linii o podanych numerach w prostokącie wokół przejazdu; zapisany jest tylko wycięty kawałek linii w `leg.geometry` (kilkadziesiąt punktów).
+- Licencja danych: ODbL. Atrybucja wg wytycznych OSMF: „OpenStreetMap” z linkiem do openstreetmap.org/copyright, przy mapie w rogu (u nas w podpisie mapy dnia). Czy zapisany kawałek linii to już „Derivative Database”, wytyczne nie przesądzają; przy małym wycinku do własnego planu traktujemy go jak wynik (Produced Work) z podpisem.
+- Źródła: https://www.fossgis.de/arbeitsgruppen/osm-server/nutzungsbedingungen/, https://wiki.openstreetmap.org/wiki/Overpass_API, https://dev.overpass-api.de/overpass-doc/en/preface/commons.html, https://www.openstreetmap.org/copyright, https://osmfoundation.org/wiki/Licence/Attribution_Guidelines
 
 ---
 

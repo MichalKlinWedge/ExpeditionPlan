@@ -139,7 +139,8 @@ export function applyTransitDraft(doc: Doc, itemRef: string, draft: TransitDraft
   if (picked.has('segments') && draft.segments.length > 0) {
     const segments = draftSegments(draft);
     const line = segments.find((segment) => segment.mode !== 'walk' && segment.line)?.line;
-    const { line: _line, ...rest } = leg;
+    // Linia na mapie była z poprzednich odcinków: nowa powstaje z OpenStreetMap po zapisie (`applyTransitShape`).
+    const { line: _line, geometry: _geometry, ...rest } = leg;
     leg = { ...rest, segments, mode: mainMode(segments) ?? leg.mode, ...(line !== undefined ? { line } : {}) };
   }
   if (picked.has('frequencyMin') && draft.frequencyMin !== null) leg = { ...leg, frequencyMin: draft.frequencyMin };

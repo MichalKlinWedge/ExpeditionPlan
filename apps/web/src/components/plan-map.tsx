@@ -102,7 +102,9 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
           style: STYLE,
           center: [15, 35],
           zoom: 1,
-          attributionControl: { compact: true, customAttribution: '<a href="https://openrouteservice.org/" target="_blank">Trasy: openrouteservice.org</a>' },
+          attributionControl: { compact: true, customAttribution:
+            '<a href="https://openrouteservice.org/" target="_blank">Trasy: openrouteservice.org</a> · Linie komunikacji: <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a> (ODbL), <a href="https://openstreetmap.org/fixthemap" target="_blank">zgłoś błąd</a>',
+        },
         });
         created.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
         created.on("error", (event) => console.warn("Mapa:", event.error?.message));

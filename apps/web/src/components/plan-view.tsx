@@ -1,11 +1,11 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, hasFieldLog, instantToZoned, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, hasFieldLog, instantToZoned, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { bookingHref } from "@/lib/booking-link";
+import { BookingDialog } from "@/components/booking-dialog";
 import { SparkIcon } from "@/components/icons";
 import { DayConstraints, DayEndField, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
@@ -57,8 +57,8 @@ type Props = {
   guidedOnly?: boolean;
   /** Dzień (`ref`) albo `"pool"` z adresu (`?day=`) — powrót z karty punktu na ten sam dzień. */
   initialDay?: string;
-  /** Rezerwacje punktów prowadzą do ich wiersza na „Rezerwacje i budżet”; link publiczny bez tego. */
-  bookingLinks?: boolean;
+  /** Rezerwacje punktów otwierają okno ze szczegółami i dokumentami tych rezerwacji z sejfu; link publiczny bez tego. */
+  bookingDocuments?: VaultDocument[];
 };
 
 const variantsKey = (tripId: string) => `plan-variants:${tripId}`;
@@ -81,13 +81,16 @@ function saveChosenVariants(tripId: string, chosen: Record<string, string>) {
   }
 }
 
-export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay, bookingLinks = false }: Props) {
+export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay, bookingDocuments }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
   const [ids, setIds] = useState(initialIds);
   const [saving, setSaving] = useState<{ pending: number; error?: string; ok?: boolean; note?: string }>({ pending: 0 });
   const [scenario, setScenario] = useState<Scenario>("optimistic");
+  // Okno rezerwacji otwarte z punktu planu (`ref` rezerwacji).
+  const [openBooking, setOpenBooking] = useState<string | null>(null);
+  const openDetails = openBooking === null ? null : bookingDetails(doc, openBooking, localToday());
   const hydrated = useHydrated();
   // Wybrany wariant zostaje na czas tej karty przeglądarki: powrót z karty punktu i zapis odświeżają widok od nowa.
   const [chosen, setChosen] = useState<Record<string, string> | null>(null);
@@ -400,7 +403,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
               itemBase={itemBase}
               guided={guided}
               guidedOnly={guidedOnly}
-              bookingLink={bookingLinks ? (booking) => bookingHref(tripId, booking) : null}
+              onBooking={bookingDocuments ? setOpenBooking : null}
               field={fieldLog(doc, mapDay.ref, inputs)}
               fieldVariants={inputs.activeVariants}
             />
@@ -464,6 +467,9 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
           )}
         </div>
       </div>
+      {openDetails && bookingDocuments && (
+        <BookingDialog tripId={tripId} details={openDetails} documents={bookingDocuments.filter((each) => ids[openDetails.booking.ref] !== undefined && each.bookingId === ids[openDetails.booking.ref])} onClose={() => setOpenBooking(null)} />
+      )}
     </div>
   );
 }
@@ -812,7 +818,8 @@ type DayProps = {
   guided?: string[];
   guidedOnly: boolean;
   /** Adres wiersza rezerwacji; `null` — bez linków. */
-  bookingLink: ((booking: TripDocument["bookings"][number]) => string | null) | null;
+  /** Otwiera okno rezerwacji; `null` — bez przycisku (link publiczny). */
+  onBooking: ((bookingRef: string) => void) | null;
   /** Przebieg dnia z telefonu (`schedule_events`): opóźnienia, pominięcia, „zrobione”, pula, warianty. */
   field: FieldLog;
   /** Warianty wybrane na telefonie (groupRef → variantRef). */
@@ -832,15 +839,15 @@ const DOT: Record<string, string> = {
   decision: "bg-amber-500",
 };
 
-function BookingLink({ href }: { href: string }) {
+function BookingButton({ onClick }: { onClick: () => void }) {
   return (
-    <Link href={href} title="Szczegóły rezerwacji na „Rezerwacje i budżet”" className="btn-mini ml-1.5 font-normal">
+    <button type="button" onClick={onClick} title="Szczegóły rezerwacji i dokumenty z sejfu" className="btn-mini ml-1.5 font-normal">
       rezerwacja
-    </Link>
+    </button>
   );
 }
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided, guidedOnly, bookingLink, field, fieldVariants }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided, guidedOnly, onBooking, field, fieldVariants }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -931,7 +938,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
             const offMap = source !== undefined && missingOnMap(doc, source);
             const bookingRef = source?.bookingRef ?? source?.leg?.ticketBookingRef;
             const booking = bookingRef === undefined ? undefined : doc.bookings.find((each) => each.ref === bookingRef);
-            const bookingUrl = booking === undefined || bookingLink === null ? null : bookingLink(booking);
+            const openBooking = booking === undefined || onBooking === null ? null : () => onBooking(booking.ref);
             return (
               <li
                 key={item.ref}
@@ -1025,14 +1032,14 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                 {flightText && (
                   <p className="ml-31 text-xs font-semibold text-sea dark:text-teal-300">
                     ✈ {flightText}
-                    {bookingUrl && flight === booking && <BookingLink href={bookingUrl} />}
+                    {openBooking && flight === booking && <BookingButton onClick={openBooking} />}
                   </p>
                 )}
                 {booking && flight !== booking && (
                   <p className="ml-31 text-xs text-zinc-500">
                     Rezerwacja: {booking.title}
                     {booking.confirmationCode ? ` · kod ${booking.confirmationCode}` : ""}
-                    {bookingUrl && <BookingLink href={bookingUrl} />}
+                    {openBooking && <BookingButton onClick={openBooking} />}
                   </p>
                 )}
                 {leg && <p className="ml-31 text-xs text-zinc-500">{leg}</p>}
@@ -1120,11 +1127,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     {lodging.booking && lodging.booking.title !== lodging.name ? ` · ${lodging.booking.title}` : ""}
                     {lodging.booking?.code ? ` · kod ${lodging.booking.code}` : ""}
                   </span>
-                  {(() => {
-                    const booking = lodging.booking === undefined || bookingLink === null ? undefined : doc.bookings.find((each) => each.ref === lodging.booking!.ref);
-                    const url = booking === undefined ? null : bookingLink!(booking);
-                    return url && <BookingLink href={url} />;
-                  })()}
+                  {lodging.booking !== undefined && onBooking !== null && <BookingButton onClick={() => onBooking(lodging.booking!.ref)} />}
                   {!lodging.onMap && (
                     <span title="Miejsce noclegu bez współrzędnych — „Uzupełnij współrzędne miejsc” albo własna pinezka" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
                       brak na mapie

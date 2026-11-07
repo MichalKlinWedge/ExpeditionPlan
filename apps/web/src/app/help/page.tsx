@@ -47,6 +47,15 @@ export default function HelpPage() {
           Expedition Planner to dwie części: <strong>Planner Hub</strong> w przeglądarce (ta strona) do planowania przed wyjazdem i aplikacja <strong>Expedition Planner</strong> na
           Androida do korzystania z planu w trasie — także bez internetu. Obie widzą ten sam wyjazd; zmiana w jednej po chwili jest w drugiej.
         </p>
+        {/* Warunki serwerów OpenStreetMap (FOSSGIS) wymagają łatwo dostępnego e-maila operatora strony. */}
+        {process.env.CONTACT_EMAIL && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Kontakt:{" "}
+            <a href={`mailto:${process.env.CONTACT_EMAIL}`} className="underline">
+              {process.env.CONTACT_EMAIL}
+            </a>
+          </p>
+        )}
       </div>
 
       <nav className="card flex flex-col gap-1 p-4 text-sm">

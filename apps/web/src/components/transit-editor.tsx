@@ -4,7 +4,7 @@ import type { TransitDraft, TransitDraftRow } from "@expeditionplan/core";
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { readTransit, saveTransit } from "@/app/transit-actions";
+import { drawTransit, readTransit, saveTransit } from "@/app/transit-actions";
 import { SparkIcon } from "@/components/icons";
 
 /**
@@ -12,7 +12,7 @@ import { SparkIcon } from "@/components/icons";
  * przewoźnika, z którego AI robi szkic (linie, przesiadki, czas, odjazdy). Pola z inną wartością
  * w planie są domyślnie odznaczone, jak przy noclegu.
  */
-export function TransitEditor({ tripId, itemRef, routeUrl }: { tripId: string; itemRef: string; routeUrl: string | undefined }) {
+export function TransitEditor({ tripId, itemRef, routeUrl, canDraw }: { tripId: string; itemRef: string; routeUrl: string | undefined; canDraw: boolean }) {
   const [text, setText] = useState("");
   const [state, setState] = useState<FormState>({});
   const [draft, setDraft] = useState<{ draft: TransitDraft; rows: TransitDraftRow[] } | null>(null);
@@ -65,6 +65,15 @@ export function TransitEditor({ tripId, itemRef, routeUrl }: { tripId: string; i
           {pending ? "Czytam…" : "Odczytaj trasę (AI)"}
         </button>
       </div>
+
+      {canDraw && !draft && (
+        <div className="flex flex-col gap-1">
+          <button type="button" disabled={pending} onClick={() => start(async () => setState(await drawTransit(tripId, itemRef)))} className="btn-secondary btn-sm self-start">
+            Narysuj na mapie (OpenStreetMap)
+          </button>
+          <p className="text-xs text-zinc-500">Przebieg linii między przystankami z OpenStreetMap. Po zapisie nowej trasy rysuje się sam.</p>
+        </div>
+      )}
 
       {draft && (
         <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-3">

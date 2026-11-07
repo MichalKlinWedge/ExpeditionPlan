@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { type GuideRow, guideFor, placesOffMap } from "@expeditionplan/core";
+import { type GuideRow, guideFor, placesOffMap, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -60,6 +60,8 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
     const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
     return guideFor(guides, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]) === null ? [] : [item.ref];
   });
+  // Dokumenty rezerwacji z sejfu do okna rezerwacji (RLS już odcięło te, których ktoś nie widzi).
+  const bookingDocuments = ((data as PullPayload).tables.documents ?? []).map((row) => vaultDocument(row as Record<string, unknown>)).filter((each): each is VaultDocument => each !== null && each.bookingId !== null);
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -97,7 +99,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         itemBase={`/trips/${id}/item/`}
         guided={guided}
         initialDay={typeof day === "string" ? day : undefined}
-        bookingLinks
+        bookingDocuments={bookingDocuments}
       />
     </>
   );

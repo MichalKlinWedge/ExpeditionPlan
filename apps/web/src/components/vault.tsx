@@ -399,7 +399,7 @@ function UploadForm({ tripId, bookings, items, people, userId, owner, onDone }: 
 }
 
 /** Kod na całym ekranie, czarny na białym (czytniki przy bramkach nie lubią ciemnego motywu). */
-function CodeScreen({ title, payload, format, plain, onClose }: { title: string; payload: string; format: string | null; plain?: boolean; onClose: () => void }) {
+export function CodeScreen({ title, payload, format, plain, onClose }: { title: string; payload: string; format: string | null; plain?: boolean; onClose: () => void }) {
   const [svg, setSvg] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   useEffect(() => {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, transitDetails, transitRouteUrl, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, transitDetails, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -224,7 +224,8 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
           {transit.map((line) => (
             <p key={line}>{line}</p>
           ))}
-          {editing && <TransitEditor tripId={id} itemRef={item.ref} routeUrl={transitRouteUrl(doc, item) ?? undefined} />}
+          {item.leg?.geometry !== undefined && <p className="text-xs text-zinc-500">Na mapie dnia: przebieg linii z OpenStreetMap.</p>}
+          {editing && <TransitEditor tripId={id} itemRef={item.ref} routeUrl={transitRouteUrl(doc, item) ?? undefined} canDraw={transitShapeRequest(doc, item) !== null} />}
         </section>
       )}
 
