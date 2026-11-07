@@ -9,7 +9,7 @@ import { EditToggle, editMode } from "@/components/edit-toggle";
 import { TaskList } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { checkableTasks, planChoices, taskDescriptions } from "@/lib/tasks";
+import { checkableTasks, planChoices, taskColumns } from "@/lib/tasks";
 
 export const metadata: Metadata = { title: "Zadania — Expedition Planner" };
 
@@ -71,7 +71,7 @@ async function Tasks({ params, searchParams }: { params: Promise<{ id: string }>
         </h2>
         {doc.tasks.length === 0 && <p className="text-sm text-zinc-500">Plan nie ma zadań.{mayEdit ? " Dodasz je po „Edytuj”." : ""}</p>}
         {!mayEdit && doc.tasks.length > 0 && <p className="text-xs text-zinc-500">Odhaczasz zadania przypisane do siebie — resztę widzisz bez zmiany.</p>}
-        <TaskList tripId={id} tasks={doc.tasks} describe={taskDescriptions(doc)} choices={planChoices(doc)} canEdit={canEdit} checkable={checkable} />
+        <TaskList tripId={id} tasks={doc.tasks} columns={taskColumns(doc)} choices={planChoices(doc)} canEdit={canEdit} checkable={checkable} />
       </section>
     </>
   );

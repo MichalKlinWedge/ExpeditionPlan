@@ -1,7 +1,7 @@
 "use client";
 
 import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestion, CONTACT_ROLE, formatMoneyRange, fxLine, lineTravelerNames, moneyToInput, PRICE_BASIS, type TripDocument } from "@expeditionplan/core";
-import { type ReactNode, startTransition, useActionState, useState, useTransition } from "react";
+import { Fragment, type ReactNode, startTransition, useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import {
@@ -414,55 +414,107 @@ function TaskForm({ tripId, task, choices, onDone }: { tripId: string; task?: Ta
     </form>
   );
 }
-/** `checkable` — zadania do odhaczenia także w podglądzie (organizator, edytor, widz przy swoich). */
-export function TaskList({ tripId, tasks, describe, choices, canEdit, checkable = [] }: { tripId: string; tasks: Task[]; describe: Record<string, string>; choices: Choices; canEdit: boolean; checkable?: string[] }) {
+/** Kolumny wiersza zadania, liczone na stronie, bo potrzebują całego planu. */
+export type TaskColumns = { due: string; who: string };
+
+/** Tabela zadań, jak budżet i rezerwacje. `checkable` — zadania do odhaczenia także w podglądzie (organizator, edytor, widz przy swoich). */
+export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable = [] }: { tripId: string; tasks: Task[]; columns: Record<string, TaskColumns>; choices: Choices; canEdit: boolean; checkable?: string[] }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
   const action = useAction();
   const open = tasks.filter((task) => task.status === "open");
   const closed = tasks.filter((task) => task.status !== "open");
-  const row = (task: Task) =>
-    editing === task.ref ? (
-      <li key={task.ref} className="card p-3">
-        <TaskForm tripId={tripId} task={task} choices={choices} onDone={() => setEditing(null)} />
-      </li>
-    ) : (
-      <li key={task.ref} className="flex items-start gap-2">
-        {(canEdit || checkable.includes(task.ref)) && (
-          <input
-            type="checkbox"
-            checked={task.status === "done"}
-            disabled={action.pending}
-            onChange={() => action.run(() => setTaskStatus(tripId, task.ref, task.status === "open" ? "done" : "open"))}
-            className="mt-1"
-            aria-label={task.status === "open" ? "Zrobione" : "Otwórz ponownie"}
-          />
+  const checkColumn = canEdit || checkable.length > 0;
+  const span = 4 + (checkColumn ? 1 : 0) + (canEdit ? 1 : 0);
+  const buttons = (task: Task) => (
+    <>
+      <button onClick={() => setEditing(task.ref)} className={small}>
+        edytuj
+      </button>
+      <button disabled={action.pending} onClick={() => action.run(() => removeTask(tripId, task.ref), `Usunąć zadanie „${task.title}”?`)} className={danger}>
+        usuń
+      </button>
+    </>
+  );
+  const row = (task: Task) => {
+    if (editing === task.ref) {
+      return (
+        <tr key={task.ref} className="border-t border-zinc-100 dark:border-zinc-900">
+          <td colSpan={span} className="py-2">
+            <TaskForm tripId={tripId} task={task} choices={choices} onDone={() => setEditing(null)} />
+          </td>
+        </tr>
+      );
+    }
+    const { due, who } = columns[task.ref] ?? { due: "", who: "" };
+    const muted = task.status !== "open" ? "text-zinc-400 line-through" : "";
+    return (
+      <Fragment key={task.ref}>
+        <tr className="border-t border-zinc-100 dark:border-zinc-900">
+          {checkColumn && (
+            <td className="w-6 py-1 pr-2 align-top">
+              {(canEdit || checkable.includes(task.ref)) && (
+                <input
+                  type="checkbox"
+                  checked={task.status === "done"}
+                  disabled={action.pending}
+                  onChange={() => action.run(() => setTaskStatus(tripId, task.ref, task.status === "open" ? "done" : "open"))}
+                  className="mt-1"
+                  aria-label={task.status === "open" ? "Zrobione" : "Otwórz ponownie"}
+                />
+              )}
+            </td>
+          )}
+          <td className="py-1 pr-3 align-top break-words">
+            <span className={`block ${muted}`}>
+              {task.priority === "high" ? <span className="text-red-600" title="pilne">! </span> : null}
+              {task.title}
+            </span>
+            {/* Na telefonie rodzaj, termin, osoby i działania pod nazwą: tyle kolumn się nie mieści. */}
+            <span className="block text-xs text-zinc-500 sm:hidden">{[TASK_KIND[task.kind], due, who].filter(Boolean).join(" · ")}</span>
+            {canEdit && <span className="mt-1 flex gap-1 sm:hidden">{buttons(task)}</span>}
+          </td>
+          <td className="hidden py-1 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{TASK_KIND[task.kind]}</td>
+          <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{due}</td>
+          <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{who}</td>
+          {canEdit && (
+            <td className="hidden py-1 pl-2 align-top sm:table-cell">
+              <div className="flex items-center justify-end gap-1 whitespace-nowrap">{buttons(task)}</div>
+            </td>
+          )}
+        </tr>
+        {/* Opis i odpowiedź na całą szerokość tabeli, żeby nie ściskały kolumny z nazwą. */}
+        {(task.body || task.answer) && (
+          <tr>
+            {checkColumn && <td />}
+            <td colSpan={span - (checkColumn ? 1 : 0)} className="pb-1.5 text-xs break-words">
+              {task.body && <span className="block whitespace-pre-line text-zinc-500">{task.body}</span>}
+              {task.answer && <span className="block whitespace-pre-line text-green-700 dark:text-green-400">→ {task.answer}</span>}
+            </td>
+          </tr>
         )}
-        <span className={`flex flex-1 flex-col ${task.status !== "open" ? "text-zinc-400 line-through" : ""}`}>
-          <span>
-            {task.priority === "high" ? <span className="text-red-600">! </span> : null}
-            {task.title}
-            <span className="text-xs text-zinc-500"> · {TASK_KIND[task.kind]}{describe[task.ref] ? ` · ${describe[task.ref]}` : ""}</span>
-          </span>
-          {task.body && <span className="text-xs whitespace-pre-line text-zinc-500">{task.body}</span>}
-          {task.answer && <span className="text-xs whitespace-pre-line text-green-700 dark:text-green-400">→ {task.answer}</span>}
-        </span>
-        {canEdit && (
-          <span className="text-zinc-500 whitespace-nowrap">
-            <button onClick={() => setEditing(task.ref)} className={small}>
-              edytuj
-            </button>{" "}
-            <button disabled={action.pending} onClick={() => action.run(() => removeTask(tripId, task.ref), `Usunąć zadanie „${task.title}”?`)} className={danger}>
-              usuń
-            </button>
-          </span>
-        )}
-      </li>
+      </Fragment>
     );
+  };
+  const table = (rows: Task[]) => (
+    <table className="w-full text-left text-sm">
+      <thead className="text-xs text-zinc-500">
+        <tr>
+          {checkColumn && <th className="w-6 py-1 font-normal"><span className="sr-only">Zrobione</span></th>}
+          <th className="py-1 font-normal">Zadanie</th>
+          <th className="hidden py-1 font-normal sm:table-cell">Rodzaj</th>
+          <th className="hidden py-1 font-normal sm:table-cell">Termin</th>
+          <th className="hidden py-1 font-normal sm:table-cell">Kto</th>
+          {canEdit && <th className="hidden py-1 sm:table-cell" />}
+        </tr>
+      </thead>
+      <tbody>{rows.map(row)}</tbody>
+    </table>
+  );
   return (
     <div className="flex flex-col gap-3 text-sm">
-      <ul className="flex flex-col gap-2">{open.map(row)}</ul>
+      {open.length > 0 && table(open)}
       <Status state={action.state} />
       {canEdit &&
         (adding ? (
@@ -477,7 +529,7 @@ export function TaskList({ tripId, tasks, describe, choices, canEdit, checkable 
           {showClosed ? "Ukryj zamknięte" : `Pokaż zamknięte (${closed.length})`}
         </button>
       )}
-      {showClosed && <ul className="flex flex-col gap-2">{closed.map(row)}</ul>}
+      {showClosed && table(closed)}
     </div>
   );
 }

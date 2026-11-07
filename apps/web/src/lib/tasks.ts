@@ -1,7 +1,7 @@
 import { shortDate } from "@expeditionplan/core";
 import type { TripDocument } from "@expeditionplan/core";
 
-import type { Choices } from "@/components/logistics-editors";
+import type { Choices, TaskColumns } from "@/components/logistics-editors";
 
 /**
  * Zadania na webie (strona „Zadania”, logistyka): termin i osoby po ludzku, listy wyboru do
@@ -33,14 +33,12 @@ function due(task: Task, doc: Doc): string | null {
   }
 }
 
-/** Termin i osoby każdego zadania („3 dni przed wyjazdem · Ania”). */
-export function taskDescriptions(doc: Doc): Record<string, string> {
+/** Termin i osoby każdego zadania do kolumn tabeli („3 dni przed wyjazdem”, „Ania, Tomek”). */
+export function taskColumns(doc: Doc): Record<string, TaskColumns> {
   return Object.fromEntries(
     doc.tasks.map((task) => [
       task.ref,
-      [due(task, doc), task.assigneeRefs.length > 0 ? task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", ") : null]
-        .filter(Boolean)
-        .join(" · "),
+      { due: due(task, doc) ?? "", who: task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", ") },
     ]),
   );
 }
