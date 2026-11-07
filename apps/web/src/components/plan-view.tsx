@@ -421,6 +421,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
               selected={selected}
               onSelect={(ref) => select(ref, "list")}
               weather={weather[mapDay.ref]}
+              tripId={tripId}
               itemBase={itemBase}
               guided={guided}
               guidedOnly={guidedOnly}
@@ -835,6 +836,8 @@ type DayProps = {
   numbers: Record<string, number> | null;
   selected: string | null;
   onSelect: (ref: string) => void;
+  /** Pinezka przy polu miejsca w edycji punktu (strona Miejsca). */
+  tripId?: string;
   itemBase?: string;
   guided?: string[];
   guidedOnly: boolean;
@@ -868,7 +871,7 @@ function BookingButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, itemBase, guided, guidedOnly, onBooking, field, fieldVariants }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, tripId, itemBase, guided, guidedOnly, onBooking, field, fieldVariants }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -1118,7 +1121,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                         setEditing(null);
                       }}
                     />
-                    <ItemPlaceEditor key={source.placeRef ?? "brak"} doc={doc} item={source} onEdit={actions.edit} />
+                    <ItemPlaceEditor key={source.placeRef ?? "brak"} tripId={tripId} doc={doc} item={source} onEdit={actions.edit} />
                   </>
                 )}
               </li>

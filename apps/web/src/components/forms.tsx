@@ -4,6 +4,7 @@ import { transportPlan } from "@expeditionplan/core";
 import { useActionState, useId, useState, useTransition } from "react";
 
 import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTraveler, removeTrip, updateTraveler } from "@/app/actions";
+import { PlacePin } from "@/components/place-pin";
 import { travelerPresence } from "@/lib/labels";
 
 /** Formularze MVP-1 — stan i błędy z akcji serwera przez `useActionState`. */
@@ -100,12 +101,15 @@ export type Traveler = {
 };
 
 type TripRange = { start: string; end: string };
-type TripPlace = { id: string; name: string };
+type TripPlace = { id: string; ref: string; name: string };
 
 /** Nowy uczestnik albo edycja istniejącego (`traveler`) — te same pola, inna akcja. */
 export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone }: { tripId: string; trip: TripRange; guardians: { id: string; name: string }[]; places: TripPlace[]; traveler?: Traveler; onDone?: () => void }) {
   const placeList = useId();
   const placeName = (id: string | null | undefined) => places.find((place) => place.id === id)?.name ?? "";
+  // Tylko dla pinezek przy „Start” i „Koniec” — pola zostają niekontrolowane.
+  const [startName, setStartName] = useState(placeName(traveler?.start_place_id));
+  const [endName, setEndName] = useState(placeName(traveler?.end_place_id));
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = traveler ? await updateTraveler(tripId, traveler.id, prev, form) : await addTraveler(tripId, prev, form);
     if (result.ok && onDone) onDone();
@@ -162,11 +166,17 @@ export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone
       </label>
       <label className={`${label} col-span-2 sm:col-span-3`}>
         Start
-        <input name="startPlace" list={placeList} maxLength={200} className={input} placeholder="np. Wrocław" defaultValue={placeName(traveler?.start_place_id)} />
+        <span className="flex items-stretch gap-1">
+          <input name="startPlace" list={placeList} maxLength={200} className={`${input} min-w-0`} placeholder="np. Wrocław" defaultValue={placeName(traveler?.start_place_id)} onChange={(event) => setStartName(event.target.value)} />
+          <PlacePin tripId={tripId} places={places} name={startName} />
+        </span>
       </label>
       <label className={`${label} col-span-2 sm:col-span-3`}>
         Koniec
-        <input name="endPlace" list={placeList} maxLength={200} className={input} placeholder="np. Jakuszyce" defaultValue={placeName(traveler?.end_place_id)} />
+        <span className="flex items-stretch gap-1">
+          <input name="endPlace" list={placeList} maxLength={200} className={`${input} min-w-0`} placeholder="np. Jakuszyce" defaultValue={placeName(traveler?.end_place_id)} onChange={(event) => setEndName(event.target.value)} />
+          <PlacePin tripId={tripId} places={places} name={endName} />
+        </span>
       </label>
       <datalist id={placeList}>
         {places.map((place) => (

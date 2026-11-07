@@ -4,12 +4,15 @@ import { type PlanEdit, type PlanItem as Item, placeUses, renamePlace, replacePl
 import { uuidv7 } from "@expeditionplan/sync";
 import { useId, useState } from "react";
 
+import { PlacePin } from "@/components/place-pin";
+
 /**
  * Miejsce punktu w edycji: poprawa nazwy, „to inny lokal” (ta sama pozycja w planie, stare współrzędne
  * i adres znikają) albo inne miejsce tylko dla tego punktu. Nazwa miejsca jest wspólna: punkt, baza
  * dnia, nocleg i rezerwacje pokazują to samo, więc dwie pierwsze akcje zmieniają je wszędzie.
  */
-export function ItemPlaceEditor({ doc, item, onEdit, disabled = false }: { doc: TripDocument; item: Item; onEdit: (edit: PlanEdit | null) => void; disabled?: boolean }) {
+/** `tripId` — pinezka przy polu prowadzi do wpisanego miejsca na stronie Miejsca. */
+export function ItemPlaceEditor({ tripId, doc, item, onEdit, disabled = false }: { tripId?: string; doc: TripDocument; item: Item; onEdit: (edit: PlanEdit | null) => void; disabled?: boolean }) {
   const place = item.placeRef === undefined ? undefined : doc.places.find((each) => each.ref === item.placeRef);
   const [name, setName] = useState(place?.name ?? "");
   const listId = useId();
@@ -20,7 +23,10 @@ export function ItemPlaceEditor({ doc, item, onEdit, disabled = false }: { doc: 
     <div className="mt-2 flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
       <label className="flex flex-col gap-1 text-xs text-zinc-500">
         Miejsce
-        <input value={name} onChange={(event) => setName(event.target.value)} list={listId} placeholder="Nazwa miejsca" className="field w-full px-2 py-1 text-sm" />
+        <span className="flex items-stretch gap-1">
+          <input value={name} onChange={(event) => setName(event.target.value)} list={listId} placeholder="Nazwa miejsca" className="field w-full min-w-0 px-2 py-1 text-sm" />
+          {tripId !== undefined && <PlacePin tripId={tripId} places={doc.places} name={name} />}
+        </span>
         <datalist id={listId}>
           {doc.places.map((each) => (
             <option key={each.ref} value={each.name} />

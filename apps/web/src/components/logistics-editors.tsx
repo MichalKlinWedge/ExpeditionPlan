@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Fragment, type ReactNode, startTransition, useActionState, useEffect, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
+import { PlacePin } from "@/components/place-pin";
 import { bookingAnchor, contactAnchor } from "@/lib/booking-link";
 import {
   addSuggestedBudgetLine,
@@ -593,6 +594,8 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
   const listId = `zones-${booking?.ref ?? "new"}`;
   const placeListId = `places-${booking?.ref ?? "new"}`;
   const place = places.find((each) => each.ref === booking?.startPlaceRef);
+  // Tylko dla pinezki przy „Miejsce noclegu” — pole zostaje niekontrolowane.
+  const [placeName, setPlaceName] = useState(place?.name ?? "");
   // Sam `action` czyści formularz po każdej odpowiedzi serwera, także po błędzie: wpisane dane by przepadły.
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -793,7 +796,10 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
           <div className="grid gap-2 sm:grid-cols-2">
             <label className={label}>
               Miejsce noclegu
-              <input name="placeName" defaultValue={place?.name} list={placeListId} placeholder="np. Riad Lakhdar" className={input} />
+              <span className="flex items-stretch gap-1">
+                <input name="placeName" defaultValue={place?.name} onChange={(event) => setPlaceName(event.target.value)} list={placeListId} placeholder="np. Riad Lakhdar" className={`${input} w-full`} />
+                <PlacePin tripId={tripId} places={places} name={placeName} />
+              </span>
               <datalist id={placeListId}>
                 {places.map((each) => (
                   <option key={each.ref} value={each.name} />

@@ -56,7 +56,7 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
       {item.kind === "transport" ? (
         <ItemLegEditor tripId={tripId} doc={doc} item={item} onEdit={save} disabled={pending} />
       ) : (
-        <ItemPlaceEditor key={item.placeRef ?? "brak"} doc={doc} item={item} onEdit={(edit) => save(edit)} disabled={pending} />
+        <ItemPlaceEditor key={item.placeRef ?? "brak"} tripId={tripId} doc={doc} item={item} onEdit={(edit) => save(edit)} disabled={pending} />
       )}
       {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
