@@ -231,7 +231,8 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   const day = doc.days.find((candidate) => candidate.ref === dayRef);
   if (day === undefined) throw new Error(`Nie ma dnia „${dayRef}”.`);
 
-  const scenario = options.scenario ?? 'optimistic';
+  // Dzień bez scenariuszy (`scenarios: false`) liczy się zawsze krótszym czasem.
+  const scenario = day.scenarios === false ? 'optimistic' : (options.scenario ?? 'optimistic');
   const tz = day.tz;
   const dayList = itemsForDay(doc, dayRef, options);
   // Postoje w trasie nie są osobnym krokiem dnia: wydłużają przejazd i trafiają do wyniku zaraz po nim.
@@ -279,7 +280,6 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   // Początek dnia: z planu, z pierwszej podanej godziny, a gdy nie ma żadnej — 08:00. Inaczej dzień
   // bez godzin (Gruzja: „Uszguli, cały dzień”) zaczynałby się o północy.
   // Punkty przed pierwszą godziną liczymy wstecz od niej („dojazd 3 h”, potem „w Mestii ok. 13:00”).
-  const scenario0 = options.scenario ?? 'optimistic';
   const firstIndex = items.findIndex((item) => item.time?.precision === 'exact' || item.time?.precision === 'approx' || item.time?.precision === 'range');
   const firstTimed = firstIndex === -1 ? undefined : items[firstIndex];
   const firstStart =
@@ -287,7 +287,7 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   const leadMin = items
     .slice(0, Math.max(firstIndex, 0))
     .filter((item) => parentOf(item) === undefined && (item.participantRefs ?? []).length === 0)
-    .reduce((sum, item) => sum + durationOf(item, scenario0) + stopsOf(item).reduce((all, stop) => all + durationOf(stop, scenario0), 0) + (item.bufferAfterMin ?? 0), 0);
+    .reduce((sum, item) => sum + durationOf(item, scenario) + stopsOf(item).reduce((all, stop) => all + durationOf(stop, scenario), 0) + (item.bufferAfterMin ?? 0), 0);
   const startOfDay =
     day.dayStart !== undefined
       ? at(day.dayStart)

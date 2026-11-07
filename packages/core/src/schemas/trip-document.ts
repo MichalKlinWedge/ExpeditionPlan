@@ -155,6 +155,11 @@ export const DocDay = z.object({
   anchorTime: LocalTime.optional(),
   dayStart: LocalTime.optional(),
   dayEnd: LocalTime.optional(),
+  /**
+   * `false` = dzień bez scenariuszy: liczy się tylko krótszy czas punktów (jak „optymistyczny”), także
+   * w propozycjach cięć, a plan nie pokazuje przełącznika optymistyczny / pesymistyczny. Brak = są.
+   */
+  scenarios: z.boolean().optional(),
   /** Jazda dnia tak, jak podaje dokument („246 km · 2 h 52 min”) — do porównania z wyliczoną. */
   statedDriving: z.object({ distanceKm: z.number().nonnegative().optional(), durationMin: z.number().int().nonnegative().optional() }).optional(),
 });

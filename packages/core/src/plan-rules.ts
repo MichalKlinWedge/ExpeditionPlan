@@ -265,6 +265,19 @@ export function setDayEnd(doc: Doc, dayRef: string, dayEnd: string | undefined):
   return { doc: { ...doc, days: swap(doc.days, [next]) }, writes: [{ collection: 'days', element: next, op: 'update' }], changed: [] };
 }
 
+// --- Scenariusze dnia -------------------------------------------------------------------------
+
+/** Czy dzień ma scenariusze optymistyczny / pesymistyczny (domyślnie tak). */
+export const hasScenarios = (day: Pick<Doc['days'][number], 'scenarios'> | undefined) => day?.scenarios !== false;
+
+/** Włączenie lub wyłączenie scenariuszy dnia; włączone = brak pola, jak w dniach sprzed tej opcji. */
+export function setDayScenarios(doc: Doc, dayRef: string, on: boolean): RulesEdit | null {
+  const day = doc.days.find((each) => each.ref === dayRef);
+  if (day === undefined || hasScenarios(day) === on) return null;
+  const next = clean({ ...day, scenarios: on ? undefined : false });
+  return { doc: { ...doc, days: swap(doc.days, [next]) }, writes: [{ collection: 'days', element: next, op: 'update' }], changed: [] };
+}
+
 // --- Notatki dnia ----------------------------------------------------------------------------
 
 /** Treść notatki z formularza; zasięg i cel (dzień) dopisuje funkcja. */

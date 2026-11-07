@@ -20,6 +20,7 @@ import {
   type RulesEdit,
   type ScheduleWarning,
   setDayEnd,
+  setDayScenarios,
   setItemVariant,
   type TripDocument,
   type Note,
@@ -380,6 +381,20 @@ export function DayEndField({ dayRef, value, onRules }: { dayRef: string; value:
         }}
       />
       <span>puste pole = bez ostrzeżenia</span>
+    </label>
+  );
+}
+
+// --- Scenariusze dnia ------------------------------------------------------------------------
+
+/** Wyłączone: dzień liczy się krótszym czasem, a plan nie pokazuje przełącznika scenariuszy. */
+export function DayScenariosField({ dayRef, on, onRules }: { dayRef: string; on: boolean; onRules: OnRules | null }) {
+  if (onRules === null) return null;
+  return (
+    <label className="flex flex-wrap items-center gap-2 self-start text-xs text-zinc-500">
+      <input type="checkbox" checked={on} onChange={(event) => onRules((doc) => setDayScenarios(doc, dayRef, event.target.checked))} />
+      Scenariusze optymistyczny / pesymistyczny
+      {!on && <span>(wyłączone: liczą się krótsze czasy)</span>}
     </label>
   );
 }

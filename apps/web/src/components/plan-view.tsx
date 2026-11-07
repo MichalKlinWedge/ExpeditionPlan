@@ -1,13 +1,13 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, hasFieldLog, instantToZoned, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, hasFieldLog, hasScenarios, instantToZoned, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
 import { SparkIcon } from "@/components/icons";
-import { DayConstraints, DayEndField, DayNotes, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
+import { DayConstraints, DayEndField, DayNotes, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
 import { ItemPlaceEditor } from "@/components/item-place";
@@ -277,6 +277,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
   );
   const top = (
     <>
+      {/* Dzień bez scenariuszy (ustawienie dnia): bez przełącznika, liczy się krótszy czas. */}
+      {(mapDay === undefined || hasScenarios(mapDay)) && (
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span>Scenariusz:</span>
         {(["optimistic", "pessimistic"] as const).map((each) => (
@@ -288,6 +290,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
           </button>
         ))}
       </div>
+      )}
 
       <Coverage doc={doc} />
 
@@ -1177,6 +1180,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
         ))}
 
       <DayEndField dayRef={dayRef} value={day.dayEnd} onRules={onRules} />
+      <DayScenariosField dayRef={dayRef} on={hasScenarios(day)} onRules={onRules} />
 
       {schedule && <DayConstraints doc={doc} dayRef={dayRef} items={schedule.items} warnings={schedule.warnings} onRules={onRules} />}
 

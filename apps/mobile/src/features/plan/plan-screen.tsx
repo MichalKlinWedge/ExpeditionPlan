@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -493,17 +493,20 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               ))}
               {(poolCount > 0 || actions !== null) && <Chip active={showPool} label={`Pula (${poolCount})`} onPress={() => setIndex(days.length)} />}
             </ScrollView>
-            <View style={styles.scenario}>
-              <Segmented
-                label="Scenariusz"
-                options={[
-                  { value: 'optimistic', label: 'optymistyczny' },
-                  { value: 'pessimistic', label: 'pesymistyczny' },
-                ]}
-                value={scenario}
-                onChange={setScenario}
-              />
-            </View>
+            {/* Dzień bez scenariuszy (ustawienie dnia na webie): bez przełącznika, liczy się krótszy czas. */}
+            {(showPool || hasScenarios(day)) && (
+              <View style={styles.scenario}>
+                <Segmented
+                  label="Scenariusz"
+                  options={[
+                    { value: 'optimistic', label: 'optymistyczny' },
+                    { value: 'pessimistic', label: 'pesymistyczny' },
+                  ]}
+                  value={scenario}
+                  onChange={setScenario}
+                />
+              </View>
+            )}
           </View>
           <ScrollView ref={scroll} contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]}>
             {showPool && trip !== null && (

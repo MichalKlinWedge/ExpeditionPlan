@@ -18,7 +18,9 @@ import {
   removeNote,
   removeVariant,
   removeVariantGroup,
+  hasScenarios,
   setDayEnd,
+  setDayScenarios,
   setItemVariant,
   updateConstraint,
   updateNote,
@@ -209,5 +211,30 @@ describe('planowany koniec dnia', () => {
     const set = setDayEnd(maroko, 'd2', '21:00')!;
     expect(setDayEnd(set.doc, 'd2', '21:00')).toBeNull();
     expect(setDayEnd(maroko, 'nie-ma', '21:00')).toBeNull();
+  });
+});
+
+describe('scenariusze dnia', () => {
+  const ends = (doc: TripDocument, day: string, scenario: 'optimistic' | 'pessimistic') => JSON.stringify(scheduleDay(doc, day, { scenario }).items.map((item) => item.end));
+  // Dzień, w którym pesymistyczny daje inne godziny niż optymistyczny.
+  const day = maroko.days.find((each) => ends(maroko, each.ref, 'optimistic') !== ends(maroko, each.ref, 'pessimistic'))!.ref;
+
+  it('wyłączone: pesymistyczny liczy się jak optymistyczny, a włączenie usuwa pole z dnia', () => {
+    expect(hasScenarios(maroko.days.find((each) => each.ref === day))).toBe(true);
+    const off = setDayScenarios(maroko, day, false)!;
+    expect(off.writes).toEqual([{ collection: 'days', element: off.doc.days.find((each) => each.ref === day), op: 'update' }]);
+    expect(hasScenarios(off.doc.days.find((each) => each.ref === day))).toBe(false);
+    expect(ends(off.doc, day, 'pessimistic')).toBe(ends(maroko, day, 'optimistic'));
+    expect(scheduleDay(off.doc, day, { scenario: 'pessimistic' }).scenario).toBe('optimistic');
+    expect(TripDocument.safeParse(off.doc).success).toBe(true);
+
+    const on = setDayScenarios(off.doc, day, true)!;
+    expect('scenarios' in on.doc.days.find((each) => each.ref === day)!).toBe(false);
+    expect(ends(on.doc, day, 'pessimistic')).toBe(ends(maroko, day, 'pessimistic'));
+  });
+
+  it('bez zmiany albo przy nieznanym dniu nie ma czego zapisać', () => {
+    expect(setDayScenarios(maroko, day, true)).toBeNull();
+    expect(setDayScenarios(maroko, 'nie-ma', false)).toBeNull();
   });
 });

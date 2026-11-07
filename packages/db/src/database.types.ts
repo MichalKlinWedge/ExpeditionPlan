@@ -305,14 +305,14 @@ isOneToOne: false
                   ]
                 },"days": {
                   Row: {
-                    "anchor_time": string | null,"base_place_id": string | null,"created_at": string,"date": string,"day_end": string | null,"day_start": string | null,"deleted_at": string | null,"id": string,"lodging_booking_id": string | null,"lodging_group_id": string | null,"ref": string | null,"row_version": number,"stated_driving": Json | null,"summary": string | null,"title": string | null,"trip_id": string,"tz": string,"updated_at": string,"updated_by": string | null
+                    "anchor_time": string | null,"base_place_id": string | null,"created_at": string,"date": string,"day_end": string | null,"day_start": string | null,"deleted_at": string | null,"id": string,"lodging_booking_id": string | null,"lodging_group_id": string | null,"ref": string | null,"row_version": number,"scenarios": boolean | null,"stated_driving": Json | null,"summary": string | null,"title": string | null,"trip_id": string,"tz": string,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "anchor_time"?: string | null,"base_place_id"?: string | null,"created_at"?: string,"date": string,"day_end"?: string | null,"day_start"?: string | null,"deleted_at"?: string | null,"id": string,"lodging_booking_id"?: string | null,"lodging_group_id"?: string | null,"ref"?: string | null,"row_version"?: number,"stated_driving"?: Json | null,"summary"?: string | null,"title"?: string | null,"trip_id": string,"tz": string,"updated_at"?: string,"updated_by"?: string | null
+                    "anchor_time"?: string | null,"base_place_id"?: string | null,"created_at"?: string,"date": string,"day_end"?: string | null,"day_start"?: string | null,"deleted_at"?: string | null,"id": string,"lodging_booking_id"?: string | null,"lodging_group_id"?: string | null,"ref"?: string | null,"row_version"?: number,"scenarios"?: boolean | null,"stated_driving"?: Json | null,"summary"?: string | null,"title"?: string | null,"trip_id": string,"tz": string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "anchor_time"?: string | null,"base_place_id"?: string | null,"created_at"?: string,"date"?: string,"day_end"?: string | null,"day_start"?: string | null,"deleted_at"?: string | null,"id"?: string,"lodging_booking_id"?: string | null,"lodging_group_id"?: string | null,"ref"?: string | null,"row_version"?: number,"stated_driving"?: Json | null,"summary"?: string | null,"title"?: string | null,"trip_id"?: string,"tz"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "anchor_time"?: string | null,"base_place_id"?: string | null,"created_at"?: string,"date"?: string,"day_end"?: string | null,"day_start"?: string | null,"deleted_at"?: string | null,"id"?: string,"lodging_booking_id"?: string | null,"lodging_group_id"?: string | null,"ref"?: string | null,"row_version"?: number,"scenarios"?: boolean | null,"stated_driving"?: Json | null,"summary"?: string | null,"title"?: string | null,"trip_id"?: string,"tz"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
