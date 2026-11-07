@@ -1,17 +1,23 @@
 import { GUIDE_SITE, type GuideContent, type GuideImage, type GuideLinkTarget, type GuideSegment, linkGuideText } from "@expeditionplan/core";
 import Link from "next/link";
 
+import { GuideListen } from "@/components/guide-listen";
+
 /**
  * Treść przewodnika po miejscu: opis, zdjęcia z Commons, ciekawostki, historia, wskazówki i atrybucja.
  * Karta punktu w planie i publiczny link. `itemBase` to adres karty bez klucza punktu; nazwy innych
  * opisanych miejsc w tekście prowadzą do ich kart (raz na miejsce w całym opisie).
+ * „Posłuchaj” czyta opis głosem przeglądarki (`GuideListen`); `title` jest czytany na początku.
  */
-export function GuideArticle({ guide, targets, itemBase }: { guide: GuideContent; targets: GuideLinkTarget[]; itemBase: string }) {
+export function GuideArticle({ guide, targets, itemBase, title }: { guide: GuideContent; targets: GuideLinkTarget[]; itemBase: string; title?: string }) {
   const used = new Set<string>();
   const linked = (text: string) => <Linked itemBase={itemBase} segments={linkGuideText(text, targets, used)} />;
   return (
     <article className="card flex flex-col gap-3 p-4 text-sm">
-      <p className="text-base">{linked(guide.summary)}</p>
+      <div className="flex items-start gap-3">
+        <p className="flex-1 text-base">{linked(guide.summary)}</p>
+        <GuideListen guide={guide} {...(title ? { title } : {})} />
+      </div>
       {guide.images.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           {guide.images.map((image) => (

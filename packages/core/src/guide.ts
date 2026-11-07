@@ -187,3 +187,22 @@ export function undescribedSights(doc: Doc, rows: readonly GuideRow[], ids: Reco
 export function guideText(content: GuideDraft): string {
   return [content.summary, ...content.facts, content.history ?? '', ...content.tips].filter((part) => part.trim() !== '').join('\n\n');
 }
+
+/**
+ * Tekst na kawałki dla syntezatora mowy (telefon: `expo-speech`, web: `speechSynthesis`) — po akapitach,
+ * a za długie po zdaniach, każdy najwyżej `limit` znaków.
+ */
+export function speechParts(text: string, limit: number): string[] {
+  return text.split(/\n\n+/).flatMap((paragraph) => {
+    if (paragraph.length <= limit) return [paragraph];
+    const parts: string[] = [];
+    let current = '';
+    for (const sentence of paragraph.split(/(?<=[.!?])\s+/)) {
+      if ((current + ' ' + sentence).length > limit && current !== '') {
+        parts.push(current);
+        current = sentence;
+      } else current = current === '' ? sentence : `${current} ${sentence}`;
+    }
+    return current === '' ? parts : [...parts, current];
+  });
+}

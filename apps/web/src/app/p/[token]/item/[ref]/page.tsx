@@ -65,7 +65,7 @@ async function PublicItem({ params }: { params: Promise<{ token: string; ref: st
       {guide === null ? (
         <p className="text-sm text-zinc-500">Ten punkt nie ma opisu.</p>
       ) : (
-        <GuideArticle guide={guide} targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/p/${encodeURIComponent(token)}/item/`} />
+        <GuideArticle guide={guide} title={guide.title} targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/p/${encodeURIComponent(token)}/item/`} />
       )}
     </>
   );

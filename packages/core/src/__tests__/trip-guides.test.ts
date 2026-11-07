@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { editGuideText, GuideContent, type GuideImage, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, putGuideImage, removeGuideImage, tripGuides, undescribedSights } from '../guide.ts';
+import { editGuideText, GuideContent, type GuideImage, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, putGuideImage, removeGuideImage, speechParts, tripGuides, undescribedSights } from '../guide.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const load = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
@@ -100,5 +100,14 @@ describe('opisy miejsc wyjazdu', () => {
       expect(isWikimediaImage({ ...photo('a'), sourceUrl: 'https://example.com/plik' })).toBe(false);
       expect(isWikimediaImage({ ...photo('a'), license: undefined })).toBe(false);
     });
+  });
+});
+
+describe('speechParts', () => {
+  it('dzieli po akapitach, a za długi akapit po zdaniach w limicie', () => {
+    expect(speechParts('Pierwszy.\n\nDrugi.', 100)).toEqual(['Pierwszy.', 'Drugi.']);
+    const parts = speechParts('Aaaa aaaa. Bbbb bbbb! Cccc cccc?', 22);
+    expect(parts).toEqual(['Aaaa aaaa. Bbbb bbbb!', 'Cccc cccc?']);
+    expect(parts.every((part) => part.length <= 22)).toBe(true);
   });
 });

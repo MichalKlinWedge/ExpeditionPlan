@@ -78,7 +78,7 @@ function GuideRowCard({ tripId, guide, canEdit }: { tripId: string; guide: TripG
           </>
         )}
       </p>
-      {open && editing === null && <GuideArticle guide={content} targets={[]} itemBase={`/trips/${tripId}/item/`} />}
+      {open && editing === null && <GuideArticle guide={content} title={guide.title} targets={[]} itemBase={`/trips/${tripId}/item/`} />}
       {open && editing === "text" && <GuideTextForm tripId={tripId} guide={guide} onClose={() => setEditing(null)} />}
       {open && editing === "images" && <GuideImagesForm tripId={tripId} guide={guide} onClose={() => setEditing(null)} />}
       {open && canEdit && editing === null && (
