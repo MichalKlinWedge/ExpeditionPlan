@@ -339,28 +339,24 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                             </span>
                           )}
                           {packaged.get(booking.ref) && (
-                            <span className="block">
-                              w pakiecie:{" "}
-                              {packaged.get(booking.ref)!.map((item, index) => (
-                                <Fragment key={item.ref}>
-                                  {index > 0 && ", "}
-                                  <Link href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="underline hover:text-sea">
-                                    {item.title}
-                                  </Link>
-                                </Fragment>
+                            <span className="mt-0.5 flex flex-wrap items-center gap-1">
+                              w pakiecie:
+                              {packaged.get(booking.ref)!.map((item) => (
+                                <Link key={item.ref} href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="btn-mini">
+                                  {item.title}
+                                </Link>
                               ))}
                             </span>
                           )}
                           {contacts.length > 0 && (
-                            <span className="block">
-                              kontakty:{" "}
-                              {contacts.map((contact, index) => (
+                            <span className="mt-0.5 flex flex-wrap items-center gap-1">
+                              kontakty:
+                              {contacts.map((contact) => (
                                 <Fragment key={contact.ref}>
-                                  {index > 0 && ", "}
-                                  <Link href={contactHref(id, contact.ref)} title="Na stronie Kontakty" className="underline hover:text-sea">
+                                  <Link href={contactHref(id, contact.ref)} title="Na stronie Kontakty" className="btn-mini">
                                     {contact.name}
                                   </Link>
-                                  {contact.phone ? ` ${contact.phone}` : ""}
+                                  {contact.phone && <span>{contact.phone}</span>}
                                 </Fragment>
                               ))}
                             </span>
