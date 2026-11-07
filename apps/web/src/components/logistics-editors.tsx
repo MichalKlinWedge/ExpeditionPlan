@@ -4,7 +4,7 @@ import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestio
 import { Fragment, type ReactNode, startTransition, useActionState, useEffect, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { bookingAnchor } from "@/lib/booking-link";
+import { bookingAnchor, contactAnchor } from "@/lib/booking-link";
 import {
   addSuggestedBudgetLine,
   removeBudgetLine,
@@ -930,10 +930,11 @@ export function BookingRow({
 }
 
 /**
- * Wejście z planu albo karty punktu (`#rezerwacja-…`): przewija do wiersza i go podświetla. Samo `:target`
- * nie wystarcza: przejście w aplikacji go nie ustawia, a strona dochodzi strumieniem już po przewinięciu.
+ * Wejście z kotwicą (`#rezerwacja-…` z planu, `#kontakt-…` z rezerwacji): przewija do elementu i go podświetla
+ * (`data-focus`). Samo `:target` nie wystarcza: przejście w aplikacji go nie ustawia, a strona dochodzi
+ * strumieniem już po przewinięciu.
  */
-export function BookingFocus() {
+export function HashFocus() {
   useEffect(() => {
     const focus = () => {
       const id = decodeURIComponent(window.location.hash.slice(1));
@@ -1081,7 +1082,7 @@ export function Contacts({
               <ContactForm tripId={tripId} contact={contact} bookings={bookings} onDone={() => setEditing(null)} />
             </li>
           ) : (
-            <li key={contact.ref} className="flex flex-wrap items-baseline gap-x-2">
+            <li key={contact.ref} id={contactAnchor(contact.ref)} className="flex flex-wrap items-baseline gap-x-2 rounded data-focus:bg-signal/10">
               <span className="font-medium">{contact.name}</span>
               <span className="text-xs text-zinc-500">{CONTACT_ROLE[contact.role]}</span>
               {contact.phone && (

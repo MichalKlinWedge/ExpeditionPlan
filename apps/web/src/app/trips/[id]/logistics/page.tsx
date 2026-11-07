@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BOOKING_KIND, BOOKING_STATUS, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,13 +8,13 @@ import { Fragment, Suspense } from "react";
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
-import { BookingFocus, BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
+import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { isListedBooking } from "@/lib/booking-link";
+import { contactHref, isListedBooking } from "@/lib/booking-link";
 import { planChoices } from "@/lib/tasks";
 
 export const metadata: Metadata = { title: "Rezerwacje i budżet — Expedition Planner" };
@@ -303,6 +303,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                 const cost = booking.paid ? formatMoney(booking.paid.amountMinor, booking.paid.currency) : bookingPrice(booking);
                 const facts = bookingFacts(booking, today);
                 const line = bookingLine(booking);
+                const contacts = bookingContacts(doc, booking.ref);
                 const statusControl = mayEdit ? <BookingStatusSelect tripId={id} bookingRef={booking.ref} status={booking.status} statuses={statuses} tone={tone} /> : <span className={`text-xs ${tone}`}>{BOOKING_STATUS[booking.status]}</span>;
                 const place = booking.kind === "lodging" && booking.startPlaceRef !== undefined ? doc.places.find((each) => each.ref === booking.startPlaceRef) : undefined;
                 return (
@@ -319,7 +320,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                     actionsColumn={mayEdit}
                     removal={mayEdit && booking.status === "cancelled" ? <RemoveCancelledBooking tripId={id} bookingRef={booking.ref} title={booking.title} note={bookingRemovalNote(removeBooking(doc, booking.ref)!.summary)} /> : null}
                     details={
-                      line || facts.length > 0 || place || packaged.get(booking.ref) ? (
+                      line || facts.length > 0 || place || packaged.get(booking.ref) || contacts.length > 0 ? (
                         <>
                           {line ? (
                             <span className="block text-zinc-600 dark:text-zinc-400">
@@ -350,6 +351,20 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                               ))}
                             </span>
                           )}
+                          {contacts.length > 0 && (
+                            <span className="block">
+                              kontakty:{" "}
+                              {contacts.map((contact, index) => (
+                                <Fragment key={contact.ref}>
+                                  {index > 0 && ", "}
+                                  <Link href={contactHref(id, contact.ref)} title="Na stronie Kontakty" className="underline hover:text-sea">
+                                    {contact.name}
+                                  </Link>
+                                  {contact.phone ? ` ${contact.phone}` : ""}
+                                </Fragment>
+                              ))}
+                            </span>
+                          )}
                         </>
                       ) : null
                     }
@@ -374,7 +389,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           </table>
         )}
         {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />}
-        <BookingFocus />
+        <HashFocus />
       </section>
 
       <Link href={`/trips/${id}/tasks`} className="btn-secondary self-start">

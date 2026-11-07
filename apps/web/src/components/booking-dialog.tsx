@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 
 import { LinkedText } from "@/components/linked-text";
 import { CodeScreen } from "@/components/vault";
-import { bookingHref } from "@/lib/booking-link";
+import { bookingHref, contactHref } from "@/lib/booking-link";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -113,7 +113,9 @@ export function BookingDialog({ tripId, details, documents, onClose }: Props) {
             <h3 className="font-semibold">Kontakty</h3>
             {details.contacts.map((contact) => (
               <p key={contact.ref}>
-                {contact.name}
+                <Link href={contactHref(tripId, contact.ref)} title="Na stronie Kontakty" onClick={leave} className="underline hover:text-sea">
+                  {contact.name}
+                </Link>
                 <span className="text-zinc-500"> · {CONTACT_ROLE[contact.role]}</span>
                 {contact.phone ? (
                   <>

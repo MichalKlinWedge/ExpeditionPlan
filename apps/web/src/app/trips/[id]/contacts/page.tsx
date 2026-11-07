@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EditToggle, editMode } from "@/components/edit-toggle";
-import { Contacts } from "@/components/logistics-editors";
+import { Contacts, HashFocus } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { planChoices } from "@/lib/tasks";
@@ -91,6 +91,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
         <h2 className="text-lg font-semibold">Gospodarze, wypożyczalnie i inne ({others.length})</h2>
         <Contacts tripId={id} contacts={others} bookings={bookings} canEdit={canEdit} />
       </section>
+      <HashFocus />
     </>
   );
 }

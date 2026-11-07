@@ -9,6 +9,11 @@ export const isListedBooking = (booking: Pick<BookingLike, "status">) => booking
 
 export const bookingAnchor = (ref: string) => `rezerwacja-${ref}`;
 
+export const contactAnchor = (ref: string) => `kontakt-${ref}`;
+
+/** Kontakt na stronie „Kontakty” (z rezerwacji). */
+export const contactHref = (tripId: string, ref: string) => `/trips/${tripId}/contacts#${encodeURIComponent(contactAnchor(ref))}`;
+
 /** `null` dla kandydata i pomysłu. */
 export function bookingHref(tripId: string, booking: BookingLike): string | null {
   return isListedBooking(booking) ? `/trips/${tripId}/logistics#${encodeURIComponent(bookingAnchor(booking.ref))}` : null;
