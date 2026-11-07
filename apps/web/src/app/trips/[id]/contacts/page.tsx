@@ -9,6 +9,7 @@ import { EditToggle, editMode } from "@/components/edit-toggle";
 import { Contacts, HashFocus } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+import { bookingHref } from "@/lib/booking-link";
 import { planChoices } from "@/lib/tasks";
 
 export const metadata: Metadata = { title: "Kontakty — Expedition Planner" };
@@ -51,6 +52,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
   const emergency = doc.contacts.filter((contact) => contact.role === "emergency");
   const others = doc.contacts.filter((contact) => contact.role !== "emergency");
   const bookings = planChoices(doc).bookings;
+  const bookingHrefs = Object.fromEntries(doc.bookings.flatMap((booking) => (bookingHref(id, booking) === null ? [] : [[booking.ref, bookingHref(id, booking)!]])));
 
   return (
     <>
@@ -69,7 +71,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
           <h2 className="text-lg font-semibold">Numery alarmowe</h2>
           {/* W edycji — lista z „edytuj / usuń” i dodawaniem; w podglądzie — duże numery do wybrania jednym dotknięciem. */}
           {canEdit ? (
-            <Contacts tripId={id} contacts={emergency} bookings={bookings} canEdit defaultRole="emergency" addLabel="+ Dodaj numer alarmowy" />
+            <Contacts tripId={id} contacts={emergency} bookings={bookings} canEdit defaultRole="emergency" addLabel="+ Dodaj numer alarmowy" bookingHrefs={bookingHrefs} />
           ) : (
             <ul className="flex flex-wrap gap-3">
               {emergency
@@ -89,7 +91,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
 
       <section className="flex flex-col gap-3 card p-4">
         <h2 className="text-lg font-semibold">Gospodarze, wypożyczalnie i inne ({others.length})</h2>
-        <Contacts tripId={id} contacts={others} bookings={bookings} canEdit={canEdit} />
+        <Contacts tripId={id} contacts={others} bookings={bookings} canEdit={canEdit} bookingHrefs={bookingHrefs} />
       </section>
       <HashFocus />
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestion, CONTACT_ROLE, formatMoneyRange, fxLine, lineTravelerNames, moneyToInput, PRICE_BASIS, type TripDocument } from "@expeditionplan/core";
+import Link from "next/link";
 import { Fragment, type ReactNode, startTransition, useActionState, useEffect, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
@@ -1061,6 +1062,7 @@ export function Contacts({
   canEdit,
   defaultRole,
   addLabel = "+ Dodaj kontakt",
+  bookingHrefs = {},
 }: {
   tripId: string;
   contacts: Contact[];
@@ -1068,6 +1070,8 @@ export function Contacts({
   canEdit: boolean;
   defaultRole?: Contact["role"];
   addLabel?: string;
+  /** Ref rezerwacji → jej wiersz na „Rezerwacje i budżet”; bez wpisu sama nazwa. */
+  bookingHrefs?: Record<string, string>;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const remove = useAction();
@@ -1095,7 +1099,18 @@ export function Contacts({
                   {contact.email}
                 </a>
               )}
-              {contact.bookingRef && <span className="text-xs text-zinc-500">· {titles.get(contact.bookingRef) ?? "rezerwacja"}</span>}
+              {contact.bookingRef && (
+                <span className="text-xs text-zinc-500">
+                  ·{" "}
+                  {bookingHrefs[contact.bookingRef] ? (
+                    <Link href={bookingHrefs[contact.bookingRef]!} title="Szczegóły rezerwacji na „Rezerwacje i budżet”" className="underline hover:text-sea">
+                      {titles.get(contact.bookingRef) ?? "rezerwacja"}
+                    </Link>
+                  ) : (
+                    (titles.get(contact.bookingRef) ?? "rezerwacja")
+                  )}
+                </span>
+              )}
               {contact.notes && <span className="text-xs text-zinc-500">· {contact.notes}</span>}
               {canEdit && (
                 <span className="text-zinc-500">
