@@ -1,11 +1,36 @@
 "use client";
 
-import type { TransitDraft, TransitDraftRow } from "@expeditionplan/core";
+import type { TransitDetailField, TransitDraft, TransitDraftRow } from "@expeditionplan/core";
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { drawTransit, readTransit, saveTransit } from "@/app/transit-actions";
+import { drawTransit, readTransit, removeTransit, saveTransit } from "@/app/transit-actions";
 import { SparkIcon } from "@/components/icons";
+
+const DETAIL_NAME: Record<TransitDetailField, string> = { segments: "trasę", frequencyMin: "częstotliwość", departures: "odjazdy", instructions: "wskazówki", alternative: "plan B" };
+
+/** Szczegóły przejazdu w edycji: każdy wpis z „usuń” (np. opis z importu, który nie pasuje do nowej trasy). */
+export function TransitDetails({ tripId, itemRef, rows }: { tripId: string; itemRef: string; rows: { key: TransitDetailField; text: string }[] }) {
+  const [state, setState] = useState<FormState>({});
+  const [pending, start] = useTransition();
+  const remove = (key: TransitDetailField) => {
+    if (!window.confirm(`Usunąć ${DETAIL_NAME[key]} z tego przejazdu?`)) return;
+    start(async () => setState(await removeTransit(tripId, itemRef, key)));
+  };
+  return (
+    <>
+      {rows.map((row) => (
+        <p key={row.key}>
+          {row.text}{" "}
+          <button type="button" disabled={pending} onClick={() => remove(row.key)} className="btn-mini btn-mini-danger">
+            usuń
+          </button>
+        </p>
+      ))}
+      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+    </>
+  );
+}
 
 /**
  * Przejazd komunikacją na karcie punktu: tekst połączenia wklejony z wyszukiwarki albo ze strony

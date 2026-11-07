@@ -45,16 +45,46 @@ export function transitLines(item: Pick<Item, 'kind' | 'leg'>): string | null {
 
 /** Szczegóły przejazdu komunikacją na kartę punktu: odcinki, częstotliwość, odjazdy, wskazówki, plan B. */
 export function transitDetails(item: Pick<Item, 'kind' | 'leg'>): string[] {
+  return transitDetailRows(item).map((row) => row.text);
+}
+
+/** Pole przejazdu, które da się usunąć z karty punktu (bez czasu: ten liczy silnik). */
+export const TRANSIT_DETAIL_FIELDS = ['segments', 'frequencyMin', 'departures', 'instructions', 'alternative'] as const;
+export type TransitDetailField = (typeof TRANSIT_DETAIL_FIELDS)[number];
+
+/** Szczegóły z polem, z którego pochodzą — do „usuń” przy każdym wierszu. */
+export function transitDetailRows(item: Pick<Item, 'kind' | 'leg'>): { key: TransitDetailField; text: string }[] {
   const leg = item.leg;
   if (!isTransitItem(item) || leg === undefined) return [];
   const segments = leg.segments ?? [];
-  return [
-    segments.length > 0 ? segmentsLabel(segments) : leg.line ? `${MODE_NAME[leg.mode] ?? leg.mode} ${leg.line}` : null,
-    leg.frequencyMin ? `kursuje co ok. ${formatMinutes(leg.frequencyMin)}` : null,
-    leg.departures?.length ? `odjazdy: ${leg.departures.join(', ')}` : null,
-    leg.instructions ?? null,
-    leg.alternative?.instructions ? `plan B: ${leg.alternative.instructions}` : null,
-  ].filter((line): line is string => line !== null);
+  const rows: { key: TransitDetailField; text: string | null }[] = [
+    { key: 'segments', text: segments.length > 0 ? segmentsLabel(segments) : leg.line ? `${MODE_NAME[leg.mode] ?? leg.mode} ${leg.line}` : null },
+    { key: 'frequencyMin', text: leg.frequencyMin ? `kursuje co ok. ${formatMinutes(leg.frequencyMin)}` : null },
+    { key: 'departures', text: leg.departures?.length ? `odjazdy: ${leg.departures.join(', ')}` : null },
+    { key: 'instructions', text: leg.instructions ?? null },
+    { key: 'alternative', text: leg.alternative?.instructions ? `plan B: ${leg.alternative.instructions}` : null },
+  ];
+  return rows.filter((row): row is { key: TransitDetailField; text: string } => row.text !== null);
+}
+
+/**
+ * Usuwa jeden wpis przejazdu. Trasa znika razem z linią (`leg.line`) i jej przebiegiem na mapie
+ * (`leg.geometry`), bo oba z niej wynikają; plan B znika w całości (środek i czas też, karta ich nie pokazuje).
+ * `null` = nie ma punktu albo nie jest przejazdem komunikacją.
+ */
+export function removeTransitDetail(doc: Doc, itemRef: string, field: TransitDetailField): { doc: Doc; item: Item } | null {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  if (item === undefined || !isTransitItem(item) || item.leg === undefined) return null;
+  let leg: Leg;
+  if (field === 'segments') {
+    const { segments: _segments, line: _line, geometry: _geometry, ...rest } = item.leg;
+    leg = rest;
+  } else {
+    const { [field]: _removed, ...rest } = item.leg;
+    leg = rest as Leg;
+  }
+  const next: Item = { ...item, leg };
+  return { doc: { ...doc, items: doc.items.map((each) => (each.ref === itemRef ? next : each)) }, item: next };
 }
 
 const short = (max: number) => z.string().trim().min(1).max(max).nullable();

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { legRouteLink, transitRouteUrl } from '../item-route.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
-import { applyTransitDraft, segmentsLabel, TransitDraft, transitDetails, transitDraftRows, transitLines } from '../transit-info.ts';
+import { applyTransitDraft, removeTransitDetail, segmentsLabel, TransitDraft, transitDetailRows, transitDetails, transitDraftRows, transitLines } from '../transit-info.ts';
 
 const fixture = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
 const METRO = 'd1-metro-espanya';
@@ -113,5 +113,34 @@ describe('szkic z wklejonej trasy', () => {
 describe('opis odcinków', () => {
   it('przejście na tej samej stacji bez „A → A”', () => {
     expect(segmentsLabel([{ mode: 'metro', line: 'L5', to: 'Diagonal' }, { mode: 'walk', from: 'Diagonal', to: 'Diagonal', durationMin: 4 }])).toBe('metro L5 do Diagonal, pieszo na Diagonal (4 min)');
+  });
+});
+
+describe('usuwanie wpisów przejazdu', () => {
+  const plan = fixture('barcelona');
+  const train = plan.items.find((each) => each.leg?.line === 'R2 Nord' && each.leg.segments !== undefined)!;
+
+  it('wiersze z polem, z którego pochodzą', () => {
+    expect(transitDetailRows(train).map((row) => row.key)).toEqual(['segments', 'frequencyMin', 'instructions', 'alternative']);
+  });
+
+  it('opis i plan B znikają pojedynczo; trasa razem z linią i przebiegiem na mapie', () => {
+    const withLine = { ...plan, items: plan.items.map((each) => (each.ref === train.ref ? { ...each, leg: { ...each.leg!, geometry: 'abc' } } : each)) };
+    const noText = removeTransitDetail(withLine, train.ref, 'instructions')!;
+    expect(noText.item.leg!.instructions).toBeUndefined();
+    expect(noText.item.leg!.alternative?.instructions).toBe(train.leg!.alternative!.instructions);
+    const noPlanB = removeTransitDetail(noText.doc, train.ref, 'alternative')!;
+    expect(noPlanB.item.leg!.alternative).toBeUndefined();
+    const noRoute = removeTransitDetail(noPlanB.doc, train.ref, 'segments')!;
+    expect(noRoute.item.leg).not.toHaveProperty('segments');
+    expect(noRoute.item.leg).not.toHaveProperty('line');
+    expect(noRoute.item.leg).not.toHaveProperty('geometry');
+    expect(noRoute.item.leg!.durationMin).toBe(train.leg!.durationMin);
+    expect(TripDocument.safeParse(noRoute.doc).success).toBe(true);
+  });
+
+  it('nie dla punktu bez komunikacji', () => {
+    const other = plan.items.find((each) => each.kind !== 'transport')!;
+    expect(removeTransitDetail(plan, other.ref, 'instructions')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 "use server";
 
-import { applyTransitDraft, applyTransitShape, isTransitItem, TRANSIT_FIELDS, TransitDraft, type TransitDraftRow, transitDraftRows, transitShapeRequest, TripDocument } from "@expeditionplan/core";
+import { applyTransitDraft, applyTransitShape, isTransitItem, removeTransitDetail, TRANSIT_DETAIL_FIELDS, TRANSIT_FIELDS, TransitDraft, type TransitDraftRow, transitDraftRows, transitShapeRequest, TripDocument } from "@expeditionplan/core";
 import { bboxAround, fetchOsmRoutes, OVERPASS_URL, readTransitText, TRANSIT_TEXT_LIMIT } from "@expeditionplan/planner";
 import { refIndex, savePlanEdit, stateFromPayload } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
@@ -100,6 +100,25 @@ export async function saveTransit(tripId: string, itemRef: string, input: Transi
   refresh();
   if (line !== null && "error" in line) return { ok: "Zapisano przejazd.", error: line.error };
   return { ok: line === null ? "Zapisano przejazd." : `Zapisano przejazd. ${line.note}` };
+}
+
+/** Usuwa jeden wpis przejazdu z karty punktu (zły opis z importu, nieaktualny plan B). */
+export async function removeTransit(tripId: string, itemRef: string, field: string): Promise<FormState> {
+  const picked = z.enum(TRANSIT_DETAIL_FIELDS).safeParse(field);
+  if (!picked.success) return { error: "Niepoprawne pole przejazdu." };
+  const loaded = await loadTrip(tripId, itemRef);
+  if ("error" in loaded) return { error: loaded.error };
+  const edit = removeTransitDetail(loaded.doc, itemRef, picked.data);
+  if (edit === null) return { error: "Tego punktu już nie ma albo nie jest przejazdem komunikacją — odśwież stronę." };
+  const checked = TripDocument.safeParse(edit.doc);
+  if (!checked.success) return { error: validationError(checked.error) };
+  try {
+    await savePlanEdit(loaded.supabase, tripId, { doc: checked.data, changed: [checked.data.items.find((each) => each.ref === itemRef)!] }, loaded.ids);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  refresh();
+  return { ok: "Usunięto." };
 }
 
 /** Linia na mapie dnia dla zapisanych odcinków (np. z importu planu albo po zmianie „skąd” i „dokąd”). */

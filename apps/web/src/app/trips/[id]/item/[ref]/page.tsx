@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, transitDetails, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
 import { bookingDetails, itemBookingRef, localToday, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
@@ -14,7 +14,7 @@ import { ItemHeaderEditor } from "@/components/item-header";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
 import { TrackUpload } from "@/components/track-upload";
-import { TransitEditor } from "@/components/transit-editor";
+import { TransitDetails, TransitEditor } from "@/components/transit-editor";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
@@ -76,7 +76,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const time = item.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}` : null;
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
   const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
-  const transit = isTransitItem(item) ? transitDetails(item) : null;
+  const transit = isTransitItem(item) ? transitDetailRows(item) : null;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
 
   return (
@@ -216,9 +216,11 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
       {transit !== null && (editing || transit.length > 0) && (
         <section id="przejazd-komunikacja" className="card flex scroll-mt-4 flex-col gap-2 p-4 text-sm">
           <h2 className="text-lg font-semibold">Przejazd komunikacją</h2>
-          {transit.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
+          {editing ? (
+            <TransitDetails tripId={id} itemRef={item.ref} rows={transit} />
+          ) : (
+            transit.map((row) => <p key={row.key}>{row.text}</p>)
+          )}
           {item.leg?.geometry !== undefined && <p className="text-xs text-zinc-500">Na mapie dnia: przebieg linii z OpenStreetMap.</p>}
           {editing && <TransitEditor tripId={id} itemRef={item.ref} routeUrl={transitRouteUrl(doc, item) ?? undefined} canDraw={transitShapeRequest(doc, item) !== null} />}
         </section>
