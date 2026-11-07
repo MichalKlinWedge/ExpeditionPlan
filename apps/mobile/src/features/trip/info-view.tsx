@@ -20,8 +20,11 @@ function call(phone: string) {
   Linking.openURL(`tel:${number}`).catch(() => Alert.alert('Nie można zadzwonić', phone));
 }
 
-/** `onContactsAt` dostaje położenie kontaktów w liście (przejście „Kontakty wyjazdu” z okna rezerwacji). */
-export function InfoView({ trip, tripId, signedIn = false, onContactsAt }: { trip: CachedTrip; tripId?: string; signedIn?: boolean; onContactsAt?: (y: number) => void }) {
+/**
+ * `onContactsAt` dostaje położenie kontaktów w liście (przejście „Kontakty wyjazdu” z okna rezerwacji);
+ * `onBooking` otwiera rezerwację kontaktu.
+ */
+export function InfoView({ trip, tripId, signedIn = false, onContactsAt, onBooking }: { trip: CachedTrip; tripId?: string; signedIn?: boolean; onContactsAt?: (y: number) => void; onBooking?: (bookingRef: string) => void }) {
   const doc = trip.state.doc;
   const emergency = doc.contacts.filter((contact) => contact.role === 'emergency');
   const others = doc.contacts.filter((contact) => contact.role !== 'emergency');
@@ -71,7 +74,7 @@ export function InfoView({ trip, tripId, signedIn = false, onContactsAt }: { tri
                       <ThemedText type="small" themeColor="textSecondary">
                         {' '}
                         · {CONTACT_ROLE[contact.role] ?? contact.role}
-                        {bookingTitle(contact.bookingRef) ? ` · ${bookingTitle(contact.bookingRef)}` : ''}
+                        {!onBooking && bookingTitle(contact.bookingRef) ? ` · ${bookingTitle(contact.bookingRef)}` : ''}
                       </ThemedText>
                     </ThemedText>
                     {contact.phone && (
@@ -80,6 +83,11 @@ export function InfoView({ trip, tripId, signedIn = false, onContactsAt }: { tri
                       </Pressable>
                     )}
                   </View>
+                  {onBooking && contact.bookingRef && bookingTitle(contact.bookingRef) ? (
+                    <Pressable onPress={() => onBooking(contact.bookingRef!)} hitSlop={6}>
+                      <ThemedText type="linkPrimary">🎫 {bookingTitle(contact.bookingRef)} ›</ThemedText>
+                    </Pressable>
+                  ) : null}
                   {contact.notes ? (
                     <ThemedText type="small" themeColor="textSecondary">
                       {contact.notes}

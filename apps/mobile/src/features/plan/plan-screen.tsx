@@ -427,6 +427,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               trip={trip}
               tripId={tripId}
               signedIn={signedIn}
+              onBooking={setBooking}
               onContactsAt={
                 toContacts
                   ? (y) => {
@@ -565,7 +566,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           onClose={() => setBooking(null)}
           tripId={tripId}
           online={signedIn}
-          onContacts={showContacts}
+          onContacts={mode === 'info' ? undefined : showContacts}
           onOpenItem={(ref) => {
             const item = trip.state.doc.items.find((each) => each.ref === ref);
             if (item === undefined) return;
