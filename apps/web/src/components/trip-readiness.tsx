@@ -62,7 +62,7 @@ export function TripReadiness({ tripId, issues, daysLeft, people }: { tripId: st
             <ul className="flex flex-col gap-0.5">
               {items.slice(0, SHOWN).map((issue) => (
                 <li key={`${group}:${issue.ref}`} className="flex flex-wrap items-baseline gap-x-1.5">
-                  <Link href={hrefOf(tripId, group, issue.ref)} className="underline-offset-2 hover:text-sea hover:underline">
+                  <Link href={hrefOf(tripId, group, issue.ref)} className="btn-mini">
                     {issue.title}
                   </Link>
                   {issue.date && (

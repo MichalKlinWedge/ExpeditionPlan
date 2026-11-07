@@ -68,8 +68,8 @@ function GuideRowCard({ tripId, guide, canEdit }: { tripId: string; guide: TripG
             {" · "}
             {guide.usedBy.slice(0, 4).map((item, index) => (
               <span key={item.ref}>
-                {index > 0 && ", "}
-                <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} className="underline">
+                {index > 0 && " "}
+                <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} className="btn-mini">
                   {item.title}
                 </Link>
               </span>
@@ -124,7 +124,7 @@ function MissingRow({ tripId, item, canEdit }: { tripId: string; item: { ref: st
   return (
     <li className="card flex flex-col gap-2 p-3 text-sm">
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} className="hover:text-sea hover:underline">
+        <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} className="btn-mini">
           {item.title}
         </Link>
         {canEdit && (

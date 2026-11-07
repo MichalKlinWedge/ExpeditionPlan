@@ -48,7 +48,7 @@ function Line({ tripId, line, now }: { tripId: string; line: NewsLine; now: numb
     <li className="flex flex-wrap items-baseline gap-x-1.5">
       <span className={line.action === "removed" ? "text-red-700 dark:text-red-400" : line.action === "added" ? "text-emerald-700 dark:text-emerald-400" : ""}>{NEWS_ACTION[line.action]}</span>
       <span className="text-zinc-500">{line.kind}</span>
-      <Link href={hrefOf(tripId, line)} className="font-medium underline-offset-2 hover:text-sea hover:underline">
+      <Link href={hrefOf(tripId, line)} className="btn-mini">
         {line.title ? `„${line.title}”` : "(bez nazwy)"}
       </Link>
       {line.fields.length > 0 && <span className="text-zinc-500">— {line.fields.join(", ")}</span>}

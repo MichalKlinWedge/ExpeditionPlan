@@ -1126,15 +1126,12 @@ export function Contacts({
                 </span>
               )}
               {contact.bookingRef && (bookingItems[contact.bookingRef] ?? []).length > 0 && (
-                <span className="basis-full text-xs text-zinc-500">
-                  w planie:{" "}
-                  {bookingItems[contact.bookingRef]!.map((item, index) => (
-                    <Fragment key={item.ref}>
-                      {index > 0 && ", "}
-                      <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="underline hover:text-sea">
-                        {item.title}
-                      </Link>
-                    </Fragment>
+                <span className="mt-0.5 flex basis-full flex-wrap items-center gap-1 text-xs text-zinc-500">
+                  w planie:
+                  {bookingItems[contact.bookingRef]!.map((item) => (
+                    <Link key={item.ref} href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="btn-mini">
+                      {item.title}
+                    </Link>
                   ))}
                 </span>
               )}

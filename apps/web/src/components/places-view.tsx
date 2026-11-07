@@ -198,7 +198,7 @@ function PlaceDescription({ tripId, place, canEdit }: { tripId: string; place: P
           {guide.fromItem && (
             <p className="text-xs text-zinc-500">
               Opis z punktu{" "}
-              <Link href={`/trips/${tripId}/item/${encodeURIComponent(guide.fromItem.ref)}`} className="underline">
+              <Link href={`/trips/${tripId}/item/${encodeURIComponent(guide.fromItem.ref)}`} className="btn-mini">
                 {guide.fromItem.title}
               </Link>
             </p>
@@ -344,8 +344,8 @@ function PlaceRow({
               Korzystają:{" "}
               {linked.slice(0, 4).map((each, index) => (
                 <span key={each.key}>
-                  {index > 0 && ", "}
-                  <Link href={each.href} className="underline">
+                  {index > 0 && " "}
+                  <Link href={each.href} className="btn-mini">
                     {each.title}
                   </Link>
                 </span>

@@ -85,11 +85,10 @@ export function BookingDialog({ tripId, details, documents, onClose }: Props) {
         {details.items.length > 0 && (
           <div className="flex flex-col gap-1">
             <h3 className="font-semibold">W pakiecie</h3>
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex flex-wrap gap-1">
               {details.items.map((item) => (
                 <li key={item.ref}>
-                  ·{" "}
-                  <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" onClick={leave} className="underline hover:text-sea">
+                  <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" onClick={leave} className="btn-mini">
                     {item.title}
                   </Link>
                 </li>
@@ -113,7 +112,7 @@ export function BookingDialog({ tripId, details, documents, onClose }: Props) {
             <h3 className="font-semibold">Kontakty</h3>
             {details.contacts.map((contact) => (
               <p key={contact.ref}>
-                <Link href={contactHref(tripId, contact.ref)} title="Na stronie Kontakty" onClick={leave} className="underline hover:text-sea">
+                <Link href={contactHref(tripId, contact.ref)} title="Na stronie Kontakty" onClick={leave} className="btn-mini">
                   {contact.name}
                 </Link>
                 <span className="text-zinc-500"> · {CONTACT_ROLE[contact.role]}</span>
