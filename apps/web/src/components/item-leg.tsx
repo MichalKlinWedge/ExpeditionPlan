@@ -48,8 +48,8 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
   const pin = (typed: string) => {
     const place = typed.trim() === "" ? undefined : placeOf(typed);
     return place === undefined ? null : (
-      <Link href={`/trips/${tripId}/places?miejsce=${encodeURIComponent(place.ref)}`} title={`„${place.name}” w Miejscach`} aria-label={`Pokaż „${place.name}” w Miejscach`} className="btn-mini shrink-0">
-        <PinIcon className="size-4" />
+      <Link href={`/trips/${tripId}/places?miejsce=${encodeURIComponent(place.ref)}`} title={`„${place.name}” w Miejscach`} aria-label={`Pokaż „${place.name}” w Miejscach`} className="btn-mini my-0 shrink-0 justify-center self-stretch px-2">
+        <PinIcon className="size-5" />
       </Link>
     );
   };
@@ -58,14 +58,14 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs text-zinc-500">
           Skąd
-          <span className="flex items-center gap-1">
+          <span className="flex items-stretch gap-1">
             <input value={from} onChange={(event) => setFrom(event.target.value)} list={listId} placeholder="Nazwa miejsca" disabled={busy} className={field} />
             {pin(from)}
           </span>
         </label>
         <label className="flex flex-col gap-1 text-xs text-zinc-500">
           Dokąd
-          <span className="flex items-center gap-1">
+          <span className="flex items-stretch gap-1">
             <input value={to} onChange={(event) => setTo(event.target.value)} list={listId} placeholder="Nazwa miejsca" disabled={busy} className={field} />
             {pin(to)}
           </span>
