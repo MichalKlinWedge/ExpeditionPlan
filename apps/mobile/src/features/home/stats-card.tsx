@@ -81,7 +81,11 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
         </Pressable>
       )}
       {stats.next && (
-        <Pressable onPress={() => router.navigate('/trips')}>
+        <Pressable
+          onPress={() => {
+            setCurrentTrip(stats.next!.trip.id);
+            router.navigate('/plan');
+          }}>
           <ThemedView type="backgroundElement" style={[styles.hero, styles.next, { borderColor: theme.backgroundSelected }]}>
             <View style={[styles.countdown, { backgroundColor: theme.accentSoft }]}>
               <ThemedText style={[styles.countdownValue, { color: theme.primary }]}>{stats.next.inDays}</ThemedText>
