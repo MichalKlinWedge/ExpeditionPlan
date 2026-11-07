@@ -64,31 +64,34 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
   const bookingDocuments = ((data as PullPayload).tables.documents ?? []).map((row) => vaultDocument(row as Record<string, unknown>)).filter((each): each is VaultDocument => each !== null && each.bookingId !== null);
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-col gap-1">
           <Link href={`/trips/${id}`} className="back-link">
             ← {state.doc.trip.title}
           </Link>
           <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href={`/trips/${id}/print`} className="btn-secondary btn-sm">
-            Wydruk / PDF
-          </Link>
-          {canEdit && <EditToggle href={`/trips/${id}/plan`} editing={editing} />}
+        {/* Narzędzia edycji pod „Zakończ edycję”, przy prawej krawędzi — nie spychają planu w dół. */}
+        <div className="ml-auto flex flex-col items-end gap-2">
+          <div className="flex items-center gap-3">
+            <Link href={`/trips/${id}/print`} className="btn-secondary btn-sm">
+              Wydruk / PDF
+            </Link>
+            {canEdit && <EditToggle href={`/trips/${id}/plan`} editing={editing} />}
+          </div>
+          {editing && (
+            <>
+              <PlanActionButton end run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
+              <PlanActionButton end run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
+              <PlanActionButton end ai run={describeTrip.bind(null, id)} label="Przygotuj brakujące opisy" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
+              <Link href={`/trips/${id}/places`} className="btn-secondary btn-sm">
+                Wszystkie miejsca: nazwy i współrzędne →
+              </Link>
+            </>
+          )}
         </div>
       </div>
-      {editing && (
-        <div className="flex flex-col gap-2">
-          <PlanActionButton run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
-          <PlanActionButton run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
-          <PlanActionButton ai run={describeTrip.bind(null, id)} label="Przygotuj brakujące opisy" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
-          <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />
-          <Link href={`/trips/${id}/places`} className="btn-secondary btn-sm self-start">
-            Wszystkie miejsca: nazwy i współrzędne →
-          </Link>
-        </div>
-      )}
+      {editing && <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />}
       <PlanView
         // Nowa wersja danych z serwera = nowy stan widoku (patrz `useRefreshOnReturn`).
         key={(data as { version: number }).version}

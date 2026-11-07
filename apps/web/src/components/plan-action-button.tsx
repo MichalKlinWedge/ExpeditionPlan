@@ -10,8 +10,9 @@ import { SparkIcon } from "@/components/icons";
  * Narzędzie planu jako przycisk („Uzupełnij współrzędne”, „Przelicz przejazdy”): akcja serwera
  * z licznikiem sekund (usługi mają limity zapytań na sekundę), wynik pod przyciskiem. Po sukcesie
  * odświeża stronę — widok planu dostaje nową wersję danych i liczy dzień od nowa. `ai` = działanie AI, z ikoną.
+ * `end` = w kolumnie przy prawej krawędzi (nagłówek planu): przycisk, a pod nim źródła i wynik, do prawej.
  */
-export function PlanActionButton({ run, label, note, ai = false }: { run: () => Promise<FormState>; label: string; note: string; ai?: boolean }) {
+export function PlanActionButton({ run, label, note, ai = false, end = false }: { run: () => Promise<FormState>; label: string; note: string; ai?: boolean; end?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [seconds, setSeconds] = useState(0);
@@ -35,8 +36,8 @@ export function PlanActionButton({ run, label, note, ai = false }: { run: () => 
   };
 
   return (
-    <div className="flex flex-col gap-1 text-sm">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className={`flex flex-col gap-1 text-sm ${end ? "items-end text-right" : ""}`}>
+      <div className={end ? "flex flex-col items-end gap-0.5" : "flex flex-wrap items-center gap-3"}>
         <button onClick={click} disabled={pending} className="btn-secondary btn-sm">
           {ai && <SparkIcon className="size-4" />}
           {pending ? `${label}… ${seconds} s` : label}
