@@ -105,7 +105,7 @@ describe('link do trasy autem', () => {
     expect(legRouteLink(doc, own('car', 'https://maps.app.goo.gl/AbC'))).toEqual({ url: 'https://maps.app.goo.gl/AbC', label: 'Trasa w Mapach Google' });
     expect(legRouteLink(doc, own('train', 'https://example.com/trasa'))).toEqual({ url: 'https://example.com/trasa', label: 'Trasa na mapie' });
     expect(legRouteLink(doc, item('car'))?.label).toBe('Trasa w Mapach Google');
-    expect(legRouteLink(doc, item('train'))).toBeNull();
+    expect(legRouteLink(doc, item('train'))?.label).toBe('Trasa komunikacją w Mapach Google');
   });
 
   it('nie dla innych środków transportu ani bez celu', () => {

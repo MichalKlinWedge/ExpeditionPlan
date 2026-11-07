@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, instantToZoned, ITEM_KIND, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, instantToZoned, ITEM_KIND, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -722,7 +722,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
       {schedule?.items.map((item) => {
         const source = byRef.get(item.ref);
         const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
-        const leg = source === undefined ? null : (legLabel(source) ?? stopsLabel(source));
+        const leg = source === undefined ? null : [transitLines(source), legLabel(source) ?? stopsLabel(source)].filter(Boolean).join(' · ') || null;
         const offMap = source !== undefined && missingOnMap(doc, source);
         const flight = source === undefined ? undefined : flightOf(doc, source);
         const flightText = flight === undefined ? undefined : flightLine(flight);

@@ -242,6 +242,8 @@ const legDetails = {
   instructions: z.string().optional(),
   line: z.string().optional(),
   frequencyMin: z.number().int().positive().optional(),
+  /** Godziny odjazdów z pierwszego przystanku, przepisane z rozkładu przez użytkownika. */
+  departures: z.array(LocalTime).max(30).optional(),
   segments: z.array(LegSegment).optional(),
   /** Karnet albo bilet, który pokrywa przejazd (T-casual). */
   ticketBookingRef: Ref.optional(),

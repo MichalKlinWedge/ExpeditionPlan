@@ -10,11 +10,13 @@ import {
   guideText,
   itemIcon,
   legLabel,
+  transitDetails,
   legRouteLink,
   stopsLabel,
   linkGuideText,
   lodgingDetails,
   type PlanItem as Item,
+  speechParts,
 } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Image } from 'expo-image';
@@ -40,22 +42,8 @@ import { TrackCard } from '@/features/plan/track-card';
  * ma polski głos); zamknięcie szczegółów przerywa czytanie.
  */
 
-/** Tekst na kawałki mieszczące się w limicie syntezatora — po akapitach, a za długie po zdaniach. */
-function speechParts(text: string): string[] {
-  const limit = Math.min(Speech.maxSpeechInputLength || 4000, 3500);
-  return text.split(/\n\n+/).flatMap((paragraph) => {
-    if (paragraph.length <= limit) return [paragraph];
-    const parts: string[] = [];
-    let current = '';
-    for (const sentence of paragraph.split(/(?<=[.!?])\s+/)) {
-      if ((current + ' ' + sentence).length > limit && current !== '') {
-        parts.push(current);
-        current = sentence;
-      } else current = current === '' ? sentence : `${current} ${sentence}`;
-    }
-    return current === '' ? parts : [...parts, current];
-  });
-}
+/** Limit kawałka tekstu dla syntezatora telefonu. */
+const SPEECH_LIMIT = Math.min(Speech.maxSpeechInputLength || 4000, 3500);
 
 type Props = {
   trip: CachedTrip;
@@ -162,7 +150,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
     if (guide === null) return;
     void Speech.stop();
     if (speaking) return setSpeaking(false);
-    const parts = speechParts(`${guide.title}.\n\n${guideText(guide)}`);
+    const parts = speechParts(`${guide.title}.\n\n${guideText(guide)}`, SPEECH_LIMIT);
     const finished = () => setSpeaking(false);
     parts.forEach((part, i) =>
       Speech.speak(part, { language: 'pl-PL', rate: 0.95, ...(i === parts.length - 1 ? { onDone: finished } : {}), onStopped: finished, onError: finished }),
@@ -204,6 +192,11 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
           </View>
         )}
         {leg && <ThemedText type="small">{leg}</ThemedText>}
+        {transitDetails(item).map((line) => (
+          <ThemedText key={line} type="small">
+            {line}
+          </ThemedText>
+        ))}
         {route && (
           <View style={{ alignSelf: 'flex-start' }}>
             <Button small label={route.label} onPress={() => open(route.url)} />

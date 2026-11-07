@@ -12,6 +12,7 @@ export * from './logistics.ts';
 export * from './tune.ts';
 export * from './receipt.ts';
 export * from './lodging.ts';
+export * from './transit.ts';
 export * from './venue.ts';
 export * from './venue-page.ts';
 export * from './wiki.ts';

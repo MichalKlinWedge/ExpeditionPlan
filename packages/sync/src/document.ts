@@ -114,7 +114,7 @@ const bookingExtras: Pick<Spec, 'toRow' | 'fromRow'> = {
 };
 
 /** Szczegóły przejazdu niejawnego, które nie mają własnej kolumny. */
-const LEG_DETAILS = ['segments', 'alternative', 'roundTrip', 'transit', 'links'] as const;
+const LEG_DETAILS = ['segments', 'departures', 'alternative', 'roundTrip', 'transit', 'links'] as const;
 
 const legExtras: Pick<Spec, 'toRow' | 'fromRow'> = {
   toRow: (leg) => {

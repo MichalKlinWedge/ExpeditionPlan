@@ -58,4 +58,5 @@ export * from './trip-status.ts';
 export * from './trip-reschedule.ts';
 export * from './traveler-presence.ts';
 export * from './lodging-info.ts';
+export * from './transit-info.ts';
 export * from './venue-info.ts';

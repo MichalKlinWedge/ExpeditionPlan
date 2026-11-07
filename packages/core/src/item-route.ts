@@ -1,5 +1,6 @@
 import type { LatLng } from './coordinates.ts';
 import { distanceM, type LngLat } from './polyline.ts';
+import { isTransitItem } from './item-kind.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
@@ -19,6 +20,7 @@ const FOOT = new Set(['walk', 'hike']);
 export const isFootRouteItem = (item: Item) => item.kind === 'activity' || FOOT.has(item.leg?.mode ?? '');
 
 const GOOGLE_ROUTE_LABEL = 'Trasa w Mapach Google';
+const TRANSIT_ROUTE_LABEL = 'Trasa komunikacją w Mapach Google';
 
 /** Etykieta linku do trasy po adresie. */
 export function routeLinkLabel(url: string): string {
@@ -86,6 +88,28 @@ export function legEnds(doc: Doc, item: Item): { from?: LatLng; to?: LatLng } {
   return { from, to };
 }
 
+/**
+ * Link do trasy komunikacją w Mapach Google. Końce z `leg`, a bez nich z sąsiednich punktów dnia
+ * (`legEnds`), bo przejazd metrem rzadko ma wpisane „skąd”. Mapy pokazują trasę na teraz: adres nie
+ * przyjmuje godziny odjazdu. `null` = nie komunikacja albo brak celu.
+ */
+export function transitRouteUrl(doc: Doc, item: Item): string | null {
+  const leg = item.leg;
+  if (!isTransitItem(item) || leg === undefined) return null;
+  const named = (ref: string | undefined) => {
+    const place = ref === undefined ? undefined : doc.places.find((each) => each.ref === ref);
+    if (place === undefined) return undefined;
+    return place.lat !== undefined && place.lng !== undefined ? `${place.lat},${place.lng}` : (place.address ?? place.searchName ?? place.name);
+  };
+  const ends = legEnds(doc, item);
+  const at = (point: { lat: number; lng: number } | undefined) => (point === undefined ? undefined : `${point.lat},${point.lng}`);
+  const destination = named(leg.toPlaceRef) ?? at(ends.to) ?? named(item.placeRef);
+  if (destination === undefined) return null;
+  const origin = named(leg.fromPlaceRef) ?? at(ends.from);
+  if (origin === destination) return null;
+  return `https://www.google.com/maps/dir/?api=1${origin === undefined ? '' : `&origin=${encodeURIComponent(origin)}`}&destination=${encodeURIComponent(destination)}&travelmode=transit`;
+}
+
 const MAPY_ROUTE_LABEL = 'Trasa na mapy.com';
 /** Limit adresu mapy.com i gęstość punktów: krótki spacer nie potrzebuje piętnastu. */
 const MAPY_MAX_WAYPOINTS = 15;
@@ -135,11 +159,13 @@ export function footRouteUrl(doc: Doc, item: Item): string | null {
   return `https://mapy.com/fnc/v1/route?mapset=outdoor&start=${mapyPoint(start)}&end=${mapyPoint(end)}&routeType=${item.leg?.mode === 'walk' ? 'foot_fast' : 'foot_hiking'}${via}`;
 }
 
-/** Link do trasy punktu: własny, a bez niego liczony z końców (autem Mapy Google, pieszo mapy.com). Link zapisany w śladzie ma własne miejsce. */
+/** Link do trasy punktu: własny, a bez niego liczony z końców (autem i komunikacją Mapy Google, pieszo mapy.com). Link zapisany w śladzie ma własne miejsce. */
 export function legRouteLink(doc: Doc, item: Item): { url: string; label: string } | null {
   if (item.kind === 'transport' && item.leg?.routeUrl !== undefined) return { url: item.leg.routeUrl, label: routeLinkLabel(item.leg.routeUrl) };
   const driving = drivingRouteUrl(doc, item);
   if (driving !== null) return { url: driving, label: GOOGLE_ROUTE_LABEL };
+  const transit = transitRouteUrl(doc, item);
+  if (transit !== null) return { url: transit, label: TRANSIT_ROUTE_LABEL };
   if (!isFootRouteItem(item) || doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.url !== undefined) return null;
   const foot = footRouteUrl(doc, item);
   return foot === null ? null : { url: foot, label: MAPY_ROUTE_LABEL };

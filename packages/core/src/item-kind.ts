@@ -27,6 +27,9 @@ const isPublic = (value: string | undefined): value is PublicMode => value !== u
 /** Środek transportu publicznego punktu, jeśli nim jedzie. */
 export const publicMode = (item: Pick<Item, 'kind' | 'leg'>): PublicMode | undefined => (item.kind === 'transport' && isPublic(item.leg?.mode) ? item.leg.mode : undefined);
 
+/** Punkt jedzie komunikacją publiczną (autobus, tramwaj, metro, pociąg, prom, kolejka). */
+export const isTransitItem = (item: Pick<Item, 'kind' | 'leg'>) => publicMode(item) !== undefined;
+
 /** Pozycje listy: etykiety rodzajów z aplikacji, a zaraz za przejazdem transport publiczny, trekking i pieszo. */
 export function kindChoices(labels: Record<string, string>): [KindChoice, string][] {
   return Object.entries(labels).flatMap(([key, name]): [KindChoice, string][] =>

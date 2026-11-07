@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, transitDetails, transitRouteUrl, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,6 +12,7 @@ import { ItemHeaderEditor } from "@/components/item-header";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
 import { TrackUpload } from "@/components/track-upload";
+import { TransitEditor } from "@/components/transit-editor";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { bookingHref } from "@/lib/booking-link";
@@ -73,6 +74,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const time = item.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}` : null;
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
   const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
+  const transit = isTransitItem(item) ? transitDetails(item) : null;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
 
   return (
@@ -216,6 +218,16 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
         </section>
       )}
 
+      {transit !== null && (editing || transit.length > 0) && (
+        <section className="card flex flex-col gap-2 p-4 text-sm">
+          <h2 className="text-lg font-semibold">Przejazd komunikacją</h2>
+          {transit.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+          {editing && <TransitEditor tripId={id} itemRef={item.ref} routeUrl={transitRouteUrl(doc, item) ?? undefined} />}
+        </section>
+      )}
+
       {lodging !== null && (editing || lodging.lines.length > 0 || lodging.contacts.length > 0) && (
         <section className="card flex flex-col gap-2 p-4 text-sm">
           <h2 className="text-lg font-semibold">Obiekt</h2>
@@ -250,7 +262,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
             {canEdit ? " Opis powstaje z artykułu w Wikipedii albo Wikivoyage o tym miejscu (ciekawostki, historia, zdjęcia)." : " Organizator może go przygotować na webie."}
           </p>
         ) : (
-          <GuideArticle guide={guide} targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/trips/${id}/item/`} />
+          <GuideArticle guide={guide} title={guide.title} targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/trips/${id}/item/`} />
         )}
         {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guideRow?.place_id === null ? guide?.hint : undefined} />}
       </section>
