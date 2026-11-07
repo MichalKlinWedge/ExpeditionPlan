@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { BookingButton } from "@/components/booking-dialog";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { GuideArticle } from "@/components/guide-article";
+import { ItemEatOut } from "@/components/item-eat-out";
 import { GuideButtons } from "@/components/guide-button";
 import { ItemHeaderEditor } from "@/components/item-header";
 import { ItemPlanNav } from "@/components/item-plan-nav";
@@ -79,6 +80,8 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
   const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
   const transit = isTransitItem(item) ? transitDetailRows(item) : null;
+  // Bez miejsca, przejazdu, rezerwacji i opisu karta z podstawowymi danymi byłaby pusta.
+  const hasInfo = place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
 
   return (
@@ -105,6 +108,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
 
       <ItemPlanNav tripId={id} doc={doc} inputs={inputs} itemRef={item.ref} editing={editing} />
 
+      {hasInfo && (
       <section className="card flex flex-col gap-2 p-4 text-sm">
         {place && (
           <p>
@@ -159,6 +163,9 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
           </p>
         )}
       </section>
+      )}
+
+      {item.kind === "meal" && !item.selfCooked && <ItemEatOut tripId={id} doc={doc} ids={ids} itemRef={item.ref} editing={editing} />}
 
       {(track !== undefined || isFootRouteItem(item)) && (track?.geojson !== undefined || track?.url !== undefined || canEdit) && (
         <section className="card flex flex-col gap-2 p-4 text-sm">
