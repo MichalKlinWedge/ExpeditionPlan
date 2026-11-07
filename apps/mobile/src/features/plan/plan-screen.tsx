@@ -133,6 +133,13 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   /** Id nowych punktów, zanim synchronizacja wpisze je do bazy telefonu. */
   const extraIds = useRef<Record<string, string>>({});
   const scroll = useRef<ScrollViewInstance>(null);
+  // Zakładki poza planem; „Kontakty wyjazdu” z okna rezerwacji przewija Info do kontaktów.
+  const tabScroll = useRef<ScrollViewInstance>(null);
+  const [toContacts, setToContacts] = useState(false);
+  const showContacts = () => {
+    setMode('info');
+    setToContacts(true);
+  };
   /** Zapisy idą po kolei — kolejna zmiana może dotyczyć punktu dodanego przed chwilą. */
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [sync, setSync] = useState<{ busy: boolean; syncedAt?: string; error?: string }>({ busy: signedIn });
@@ -412,11 +419,23 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
         />
       )}
       {trip !== null && mode !== 'plan' && (
-        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={tabScroll} contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]} keyboardShouldPersistTaps="handled">
           {mode === 'wallet' ? (
             <WalletView trip={trip} tripId={tripId} canAdd={signedIn && canAddExpense} canEditAll={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           ) : mode === 'info' ? (
-            <InfoView trip={trip} tripId={tripId} signedIn={signedIn} />
+            <InfoView
+              trip={trip}
+              tripId={tripId}
+              signedIn={signedIn}
+              onContactsAt={
+                toContacts
+                  ? (y) => {
+                      tabScroll.current?.scrollTo({ y, animated: true });
+                      setToContacts(false);
+                    }
+                  : undefined
+              }
+            />
           ) : mode === 'tasks' ? (
             <TasksView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canAct={signedIn && canAct} onChanged={afterLocalWrite} />
           ) : mode === 'journal' ? (
@@ -533,6 +552,10 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           tripId={tripId}
           online={signedIn}
           onSaveEatOut={signedIn && canAct ? saveEatOut : undefined}
+          onContacts={() => {
+            setDetail(null);
+            showContacts();
+          }}
         />
       )}
       {trip !== null && (
@@ -542,6 +565,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           onClose={() => setBooking(null)}
           tripId={tripId}
           online={signedIn}
+          onContacts={showContacts}
           onOpenItem={(ref) => {
             const item = trip.state.doc.items.find((each) => each.ref === ref);
             if (item === undefined) return;

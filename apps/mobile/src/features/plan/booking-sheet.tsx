@@ -25,9 +25,11 @@ type Props = {
   online?: boolean;
   /** Szczegóły punktu z pakietu; okno rezerwacji zamyka się samo. */
   onOpenItem?: (itemRef: string) => void;
+  /** Wszystkie kontakty wyjazdu w zakładce Info; okno rezerwacji zamyka się samo. */
+  onContacts?: () => void;
 };
 
-export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false, onOpenItem }: Props) {
+export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false, onOpenItem, onContacts }: Props) {
   const details = bookingRef === null ? null : bookingDetails(trip.state.doc, bookingRef, localToday());
   return (
     <Modal visible={details !== null} animationType="slide" onRequestClose={onClose}>
@@ -90,8 +92,20 @@ export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false
                   )}
                   {details.contacts.length > 0 && (
                     <View style={styles.block}>
+                      <ThemedText type="smallBold">Kontakty</ThemedText>
                       <ContactList contacts={details.contacts} />
                     </View>
+                  )}
+                  {onContacts && trip.state.doc.contacts.length > 0 && (
+                    <Button
+                      label="Kontakty wyjazdu →"
+                      small
+                      onPress={() => {
+                        onClose();
+                        onContacts();
+                      }}
+                      style={styles.start}
+                    />
                   )}
                   {details.booking.links.length > 0 && (
                     <View style={styles.links}>
@@ -118,4 +132,5 @@ const styles = StyleSheet.create({
   card: { borderRadius: 12, padding: Spacing.three, gap: Spacing.one },
   block: { gap: Spacing.one },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  start: { alignSelf: 'flex-start' },
 });

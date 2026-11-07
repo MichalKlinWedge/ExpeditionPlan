@@ -20,7 +20,8 @@ function call(phone: string) {
   Linking.openURL(`tel:${number}`).catch(() => Alert.alert('Nie można zadzwonić', phone));
 }
 
-export function InfoView({ trip, tripId, signedIn = false }: { trip: CachedTrip; tripId?: string; signedIn?: boolean }) {
+/** `onContactsAt` dostaje położenie kontaktów w liście (przejście „Kontakty wyjazdu” z okna rezerwacji). */
+export function InfoView({ trip, tripId, signedIn = false, onContactsAt }: { trip: CachedTrip; tripId?: string; signedIn?: boolean; onContactsAt?: (y: number) => void }) {
   const doc = trip.state.doc;
   const emergency = doc.contacts.filter((contact) => contact.role === 'emergency');
   const others = doc.contacts.filter((contact) => contact.role !== 'emergency');
@@ -45,46 +46,50 @@ export function InfoView({ trip, tripId, signedIn = false }: { trip: CachedTrip;
   return (
     <View style={styles.list}>
       {vault}
-      {emergency.length > 0 && (
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">Numery alarmowe</ThemedText>
-          {emergency.map((contact) => (
-            <Pressable key={contact.ref} onPress={() => contact.phone && call(contact.phone)} disabled={!contact.phone} style={styles.row} hitSlop={6}>
-              <ThemedText style={styles.grow}>{contact.name}</ThemedText>
-              {contact.phone && <ThemedText type="linkPrimary">{contact.phone}</ThemedText>}
-            </Pressable>
-          ))}
-        </ThemedView>
-      )}
+      {(emergency.length > 0 || others.length > 0) && (
+        <View style={styles.list} onLayout={(event) => onContactsAt?.(event.nativeEvent.layout.y)}>
+          {emergency.length > 0 && (
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedText type="smallBold">Numery alarmowe</ThemedText>
+              {emergency.map((contact) => (
+                <Pressable key={contact.ref} onPress={() => contact.phone && call(contact.phone)} disabled={!contact.phone} style={styles.row} hitSlop={6}>
+                  <ThemedText style={styles.grow}>{contact.name}</ThemedText>
+                  {contact.phone && <ThemedText type="linkPrimary">{contact.phone}</ThemedText>}
+                </Pressable>
+              ))}
+            </ThemedView>
+          )}
 
-      {others.length > 0 && (
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">Kontakty</ThemedText>
-          {others.map((contact) => (
-            <View key={contact.ref} style={styles.block}>
-              <View style={styles.row}>
-                <ThemedText style={styles.grow}>
-                  {contact.name}
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {' '}
-                    · {CONTACT_ROLE[contact.role] ?? contact.role}
-                    {bookingTitle(contact.bookingRef) ? ` · ${bookingTitle(contact.bookingRef)}` : ''}
-                  </ThemedText>
-                </ThemedText>
-                {contact.phone && (
-                  <Pressable onPress={() => call(contact.phone!)} hitSlop={6}>
-                    <ThemedText type="linkPrimary">{contact.phone}</ThemedText>
-                  </Pressable>
-                )}
-              </View>
-              {contact.notes ? (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {contact.notes}
-                </ThemedText>
-              ) : null}
-            </View>
-          ))}
-        </ThemedView>
+          {others.length > 0 && (
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedText type="smallBold">Kontakty</ThemedText>
+              {others.map((contact) => (
+                <View key={contact.ref} style={styles.block}>
+                  <View style={styles.row}>
+                    <ThemedText style={styles.grow}>
+                      {contact.name}
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {' '}
+                        · {CONTACT_ROLE[contact.role] ?? contact.role}
+                        {bookingTitle(contact.bookingRef) ? ` · ${bookingTitle(contact.bookingRef)}` : ''}
+                      </ThemedText>
+                    </ThemedText>
+                    {contact.phone && (
+                      <Pressable onPress={() => call(contact.phone!)} hitSlop={6}>
+                        <ThemedText type="linkPrimary">{contact.phone}</ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
+                  {contact.notes ? (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {contact.notes}
+                    </ThemedText>
+                  ) : null}
+                </View>
+              ))}
+            </ThemedView>
+          )}
+        </View>
       )}
 
       {important.length > 0 && (
