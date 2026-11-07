@@ -177,9 +177,18 @@ export function transitShape(segments: readonly Segment[], start: LngLat, end: L
 /** Linie do zapytania o relacje: numery odcinków, które nie są pieszo. */
 export const transitRefs = (segments: readonly Segment[]): string[] => [...new Set(segments.filter((segment) => segment.mode !== 'walk' && segment.line).map((segment) => segment.line!))];
 
-/** Co trzeba pobrać z OSM dla punktu: numery linii i końce przejazdu. `null` = brak odcinków z linią albo końców na mapie. */
+/**
+ * Odcinki do rysowania: zapisane, a bez nich jeden odcinek z samej linii przejazdu („pociąg R2 Nord”).
+ * Taki odcinek nie ma nazw przystanków, więc wsiada i wysiada najbliżej startu i celu (`segmentLine`).
+ */
+function shapeSegments(leg: NonNullable<Item['leg']>): Segment[] {
+  if (leg.segments !== undefined && leg.segments.length > 0) return leg.segments;
+  return leg.line === undefined ? [] : [{ mode: leg.mode, line: leg.line }];
+}
+
+/** Co trzeba pobrać z OSM dla punktu: numery linii i końce przejazdu. `null` = brak linii (w odcinkach ani w przejeździe) albo końców na mapie. */
 export function transitShapeRequest(doc: TripDocument, item: Item): { refs: string[]; start: LngLat; end: LngLat } | null {
-  const segments = item.leg?.segments ?? [];
+  const segments = item.leg === undefined ? [] : shapeSegments(item.leg);
   const refs = transitRefs(segments);
   if (!isTransitItem(item) || refs.length === 0) return null;
   const { from, to } = legEnds(doc, item);
@@ -192,7 +201,7 @@ export function applyTransitShape(doc: TripDocument, itemRef: string, routes: re
   const item = doc.items.find((each) => each.ref === itemRef);
   const request = item === undefined ? null : transitShapeRequest(doc, item);
   if (item === undefined || request === null || item.leg === undefined) return null;
-  const { shape, misses } = transitShape(item.leg.segments ?? [], request.start, request.end, routes);
+  const { shape, misses } = transitShape(shapeSegments(item.leg), request.start, request.end, routes);
   const { geometry: _geometry, ...leg } = item.leg;
   const next: Item = { ...item, leg: shape === null ? leg : { ...leg, geometry: shape.geometry } };
   return { doc: { ...doc, items: doc.items.map((each) => (each.ref === itemRef ? next : each)) }, item: next, shape, misses };

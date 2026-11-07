@@ -101,6 +101,13 @@ describe('linia w przejeździe z planu', () => {
     expect(transitShapeRequest(doc, doc.items[1]!)).toBeNull();
   });
 
+  it('przejazd z samą linią, bez odcinków: przystanki najbliżej startu i celu', () => {
+    const lineOnly = { ...doc, places: [{ ...doc.places[0]!, lat: 0.0008, lng: 0.0003 }, { ...doc.places[1]!, lat: 0.001, lng: 0.0302 }], items: doc.items.map((each) => (each.ref === 'm' ? { ...each, leg: { mode: 'metro', line: 'L3', fromPlaceRef: 'a', toPlaceRef: 'b', links: [] } } : each)) } as typeof doc;
+    expect(transitShapeRequest(lineOnly, lineOnly.items[0]!)?.refs).toEqual(['L3']);
+    const drawn = applyTransitShape(lineOnly, 'm', [east])!;
+    expect(drawn.shape).toMatchObject({ matched: 1, total: 1 });
+  });
+
   it('zapis linii, a bez trafienia w OSM stara linia znika', () => {
     const drawn = applyTransitShape(doc, 'm', [east])!;
     expect(drawn.shape?.matched).toBe(1);
