@@ -32,6 +32,7 @@ import { Spacing } from '@/constants/theme';
 import { DayMap, useDayStops } from '@/features/plan/day-map';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ContactList } from '@/features/plan/item-facts';
+import { PlacePin } from '@/features/plan/place-pin';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, type PlaceChange } from '@/features/plan/item-editor';
 import { PoolView } from '@/features/plan/pool-view';
@@ -734,6 +735,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
   const byRef = new Map(doc.items.map((item) => [item.ref, item]));
   const base = day.baseRef === undefined ? undefined : places.get(day.baseRef)?.name;
   const lodging = dayLodging(doc, dayRef);
+  const lodgingPlace = lodging?.placeRef === undefined ? undefined : doc.places.find((each) => each.ref === lodging.placeRef);
   const sun = schedule?.facts.sun;
   const slack = schedule?.slack ? SLACK[schedule.slack] : undefined;
   const { map, pinOf } = useDayStops(doc, schedule?.items.map((item) => item.ref).join(',') ?? '', lodging?.placeRef);
@@ -925,7 +927,13 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
               brak na mapie (miejsce bez współrzędnych)
             </ThemedText>
           )}
-          {lodging.booking && onBooking && <AppButton label="🎫 Rezerwacja" small onPress={() => onBooking(lodging.booking!.ref)} style={styles.start} />}
+          {(lodgingPlace !== undefined || (lodging.booking && onBooking)) && (
+            // Pinezka (miejsce noclegu w Mapach Google) ma wysokość przycisku rezerwacji obok.
+            <View style={styles.lodgingActions}>
+              {lodging.booking && onBooking && <AppButton label="🎫 Rezerwacja" small onPress={() => onBooking(lodging.booking!.ref)} />}
+              {lodgingPlace !== undefined && <PlacePin place={lodgingPlace} />}
+            </View>
+          )}
           {/* Gospodarz i inne kontakty rezerwacji tej nocy — jedno dotknięcie = połączenie. */}
           <ContactList contacts={lodgingContacts(doc, lodging)} />
         </ThemedView>
@@ -1017,6 +1025,7 @@ function Warnings({ list }: { list: ScheduleWarning[] }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   start: { alignSelf: 'flex-start' },
+  lodgingActions: { flexDirection: 'row', alignItems: 'stretch', alignSelf: 'flex-start', gap: Spacing.two },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   title: { flex: 1, textAlign: 'center' },
   pad: { padding: Spacing.three },

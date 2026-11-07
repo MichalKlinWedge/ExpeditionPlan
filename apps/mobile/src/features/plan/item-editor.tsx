@@ -1,11 +1,12 @@
 import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode, type TripDocument } from '@expeditionplan/core';
 import { useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { PlacePin } from '@/features/plan/place-pin';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
@@ -190,12 +191,6 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
   );
 }
 
-/** Pinezka: znane miejsce w Mapach Google (współrzędne, a bez nich nazwa); nic się nie zapisuje. */
-function showPlace(place: TripDocument['places'][number]) {
-  const query = place.lat !== undefined && place.lng !== undefined ? `${place.lat},${place.lng}` : place.name;
-  void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
-}
-
 /** „Skąd” / „Dokąd”: pole z pinezką (gdy nazwa to miejsce z planu) i podpowiedziami miejsc planu przy pisaniu. */
 function PlaceField({ label, value, onChange, doc, input }: { label: string; value: string; onChange: (value: string) => void; doc: TripDocument; input: object[] }) {
   const theme = useTheme();
@@ -210,11 +205,7 @@ function PlaceField({ label, value, onChange, doc, input }: { label: string; val
       </ThemedText>
       <View style={styles.placeRow}>
         <TextInput value={value} onChangeText={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} style={[...input, styles.grow]} placeholder="Nazwa miejsca" placeholderTextColor={theme.textSecondary} />
-        {place !== undefined && (
-          <Pressable onPress={() => showPlace(place)} accessibilityLabel={`Pokaż „${place.name}” w Mapach Google`} hitSlop={4} style={[styles.pin, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}>
-            <ThemedText style={styles.pinIcon}>📍</ThemedText>
-          </Pressable>
-        )}
+        {place !== undefined && <PlacePin place={place} />}
       </View>
       {hints.length > 0 && (
         <View style={styles.wrap}>
@@ -264,8 +255,6 @@ const styles = StyleSheet.create({
   // Pinezka ma wysokość pola (`stretch`), jak na webie.
   placeRow: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.two },
   grow: { flex: 1 },
-  pin: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, alignItems: 'center', justifyContent: 'center' },
-  pinIcon: { fontSize: 20, lineHeight: 24 },
   fill: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   title: { flex: 1, textAlign: 'center' },
