@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, transitDetails, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
+import { bookingDetails, itemBookingRef, localToday, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { BookingButton } from "@/components/booking-dialog";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { GuideArticle } from "@/components/guide-article";
 import { GuideButtons } from "@/components/guide-button";
@@ -15,7 +17,6 @@ import { TrackUpload } from "@/components/track-upload";
 import { TransitEditor } from "@/components/transit-editor";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { bookingHref } from "@/lib/booking-link";
 
 export const metadata: Metadata = { title: "Punkt planu — Expedition Planner" };
 
@@ -62,9 +63,10 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const day = doc.days[dayIndex];
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
-  const bookingRef = item.bookingRef ?? item.leg?.ticketBookingRef ?? (item.kind === "lodging" ? lodgingBooking(doc, item)?.ref : undefined);
-  const booking = bookingRef === undefined ? undefined : doc.bookings.find((each) => each.ref === bookingRef);
-  const bookingUrl = booking === undefined ? null : bookingHref(id, booking);
+  const bookingRef = itemBookingRef(doc, item);
+  const booking = bookingRef === undefined ? null : bookingDetails(doc, bookingRef, localToday());
+  // Dokumenty rezerwacji z sejfu do okna rezerwacji (RLS już odcięło te, których ktoś nie widzi).
+  const bookingDocuments = booking === null || bookingRef === undefined || ids[bookingRef] === undefined ? [] : (payload.tables.documents ?? []).map((row) => vaultDocument(row as Record<string, unknown>)).filter((each): each is VaultDocument => each !== null && each.bookingId === ids[bookingRef]);
   const flight = flightOf(doc, item);
   const leg = legLabel(item) ?? stopsLabel(item);
   const route = legRouteLink(doc, item);
@@ -126,16 +128,9 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
         {flight && <p>✈ {flightLine(flight)}</p>}
         {booking && (
           <p>
-            Rezerwacja: <strong>{booking.title}</strong>
-            {booking.confirmationCode ? <span className="font-mono"> · {booking.confirmationCode}</span> : null}
-            {bookingUrl && (
-              <>
-                {" "}
-                <Link href={bookingUrl} className="btn-mini">
-                  szczegóły
-                </Link>
-              </>
-            )}
+            Rezerwacja: <strong>{booking.booking.title}</strong>
+            {booking.booking.confirmationCode ? <span className="font-mono"> · {booking.booking.confirmationCode}</span> : null}{" "}
+            <BookingButton tripId={id} details={booking} documents={bookingDocuments} label={bookingDocuments.length > 0 ? `szczegóły i dokumenty (${bookingDocuments.length})` : "szczegóły"} />
           </p>
         )}
         {item.activity && (item.activity.distanceKm || item.activity.ascentM) && (
