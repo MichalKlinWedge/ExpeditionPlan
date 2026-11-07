@@ -43,12 +43,38 @@ export function taskColumns(doc: Doc): Record<string, TaskColumns> {
   );
 }
 
+/**
+ * Punkty dni do list wyboru, dzień po dniu. Ta sama nazwa w jednym dniu (kopie posiłku dla kolejnych
+ * knajp, punkt w kilku wariantach) dostaje dopisek: miejsce, a gdy i ono to samo, wariant.
+ */
+function itemChoices(doc: Doc): Choices["items"] {
+  const dayNo = new Map(doc.days.map((day, index) => [day.ref, index + 1]));
+  const places = new Map(doc.places.map((place) => [place.ref, place.name]));
+  const variants = new Map(doc.variants.map((variant) => [variant.ref, variant.label]));
+  const items = doc.items.filter((item) => item.dayRef !== undefined && dayNo.has(item.dayRef));
+  const order = new Map(items.map((item, index) => [item.ref, index]));
+  items.sort((a, b) => dayNo.get(a.dayRef!)! - dayNo.get(b.dayRef!)! || order.get(a.ref)! - order.get(b.ref)!);
+  const key = (item: (typeof items)[number], ...parts: string[]) => [item.dayRef, item.title, ...parts].join("\u0000");
+  const count = (keys: string[]) => keys.reduce((map, each) => map.set(each, (map.get(each) ?? 0) + 1), new Map<string, number>());
+  const place = (item: (typeof items)[number]) => (item.placeRef === undefined ? "" : (places.get(item.placeRef) ?? ""));
+  const variant = (item: (typeof items)[number]) => item.variantRefs.map((ref) => variants.get(ref) ?? "").filter((label) => label !== "").join(", ");
+  const sameTitle = count(items.map((item) => key(item)));
+  const samePlace = count(items.map((item) => key(item, place(item))));
+  return items.map((item) => {
+    const extra = [] as string[];
+    if (sameTitle.get(key(item))! > 1) {
+      if (place(item) !== "") extra.push(place(item));
+      if (samePlace.get(key(item, place(item)))! > 1 && variant(item) !== "") extra.push(`wariant: ${variant(item)}`);
+    }
+    return { ref: item.ref, label: `dz. ${dayNo.get(item.dayRef!)} · ${item.title}${extra.length > 0 ? ` (${extra.join(", ")})` : ""}` };
+  });
+}
+
 /** Listy wyboru do formularzy rezerwacji, kontaktów i zadań. */
 export function planChoices(doc: Doc): Choices {
-  const dayLabel = new Map(doc.days.map((day, index) => [day.ref, `dz. ${index + 1}`]));
   return {
     travelers: doc.travelers.map((traveler) => ({ ref: traveler.ref, name: traveler.name })),
-    items: doc.items.filter((item) => item.dayRef !== undefined).map((item) => ({ ref: item.ref, label: `${dayLabel.get(item.dayRef!) ?? ""} · ${item.title}` })),
+    items: itemChoices(doc),
     bookings: doc.bookings.filter((booking) => booking.status !== "candidate" && booking.status !== "idea").map((booking) => ({ ref: booking.ref, title: booking.title })),
     days: doc.days.map((day, index) => ({ ref: day.ref, label: `${index + 1}. ${shortDate(day.date)}` })),
     groups: doc.variantGroups.filter((group) => group.scope !== "booking").map((group) => ({ ref: group.ref, title: group.title })),
