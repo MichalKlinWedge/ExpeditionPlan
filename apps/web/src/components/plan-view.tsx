@@ -12,6 +12,7 @@ import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
 import { ItemPlaceEditor } from "@/components/item-place";
 import { highlightRoute, type LatLng, PlanMap } from "@/components/plan-map";
+import { readChosenVariants, saveChosenVariants } from "@/lib/plan-variants";
 import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -79,26 +80,6 @@ export function PlanPageGrid({ header, actions, children }: { header: ReactNode;
       {children}
     </div>
   );
-}
-
-const variantsKey = (tripId: string) => `plan-variants:${tripId}`;
-
-/** Warianty wybrane w tej karcie przeglądarki; pomija te, których plan już nie ma. Bez dostępu do pamięci — domyślne. */
-function readChosenVariants(tripId: string, doc: TripDocument): Record<string, string> {
-  try {
-    const saved = JSON.parse(sessionStorage.getItem(variantsKey(tripId)) ?? "{}") as Record<string, string>;
-    return Object.fromEntries(Object.entries(saved).filter(([group, ref]) => doc.variants.some((variant) => variant.ref === ref && variant.groupRef === group)));
-  } catch {
-    return {};
-  }
-}
-
-function saveChosenVariants(tripId: string, chosen: Record<string, string>) {
-  try {
-    sessionStorage.setItem(variantsKey(tripId), JSON.stringify(chosen));
-  } catch {
-    // Bez pamięci wybór działa do odświeżenia widoku.
-  }
 }
 
 export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay, bookingDocuments, beside = false }: Props) {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
 import { bookingDetails, itemBookingRef, localToday, vaultDocument, type VaultDocument } from "@expeditionplan/core";
-import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload, type TripState } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -11,6 +11,7 @@ import { EditToggle, editMode } from "@/components/edit-toggle";
 import { GuideArticle } from "@/components/guide-article";
 import { GuideButtons } from "@/components/guide-button";
 import { ItemHeaderEditor } from "@/components/item-header";
+import { ItemPlanNav } from "@/components/item-plan-nav";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
 import { TrackUpload } from "@/components/track-upload";
@@ -48,8 +49,9 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   if (data === null) notFound();
   const payload = data as PullPayload;
   let doc: TripDocument;
+  let inputs: TripState["inputs"];
   try {
-    doc = stateFromPayload(payload).doc;
+    ({ doc, inputs } = stateFromPayload(payload));
   } catch (e) {
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
@@ -97,10 +99,11 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
           {itemKindLabel(item, ITEM_KIND)}
           {day ? ` · Dzień ${dayIndex + 1}, ${dayLabel(day.date)}` : " · w puli (poza dniami)"}
           {time ? ` · ${time}` : ""}
-          {item.durationMin ? ` · ${item.durationMin} min` : ""}
         </p>
         {editing && <ItemHeaderEditor tripId={id} doc={doc} ids={ids} itemRef={item.ref} />}
       </div>
+
+      <ItemPlanNav tripId={id} doc={doc} inputs={inputs} itemRef={item.ref} editing={editing} />
 
       <section className="card flex flex-col gap-2 p-4 text-sm">
         {place && (
