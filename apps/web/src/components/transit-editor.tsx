@@ -9,8 +9,9 @@ import { SparkIcon } from "@/components/icons";
 
 /**
  * Przejazd komunikacją na karcie punktu: tekst połączenia wklejony z wyszukiwarki albo ze strony
- * przewoźnika, z którego AI robi szkic (linie, przesiadki, czas, odjazdy). Pola z inną wartością
- * w planie są domyślnie odznaczone, jak przy noclegu.
+ * przewoźnika, z którego AI robi szkic (linie, przesiadki, czas, odjazdy). Inaczej niż przy noclegu
+ * wszystkie pola są domyślnie zaznaczone: wklejone połączenie to świadoma nowa trasa, a stara z importu
+ * zostałaby obok nowego czasu. Przy polach zastępujących plan widać „teraz w planie”.
  */
 export function TransitEditor({ tripId, itemRef, routeUrl, canDraw }: { tripId: string; itemRef: string; routeUrl: string | undefined; canDraw: boolean }) {
   const [text, setText] = useState("");
@@ -25,7 +26,7 @@ export function TransitEditor({ tripId, itemRef, routeUrl, canDraw }: { tripId: 
       setState(result);
       if (result.draft && result.rows) {
         setDraft({ draft: result.draft, rows: result.rows });
-        setPicked(new Set(result.rows.filter((row) => row.current === undefined).map((row) => row.key)));
+        setPicked(new Set(result.rows.map((row) => row.key)));
       } else setDraft(null);
     });
 
