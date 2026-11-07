@@ -219,7 +219,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
       )}
 
       {transit !== null && (editing || transit.length > 0) && (
-        <section className="card flex flex-col gap-2 p-4 text-sm">
+        <section id="przejazd-komunikacja" className="card flex scroll-mt-4 flex-col gap-2 p-4 text-sm">
           <h2 className="text-lg font-semibold">Przejazd komunikacją</h2>
           {transit.map((line) => (
             <p key={line}>{line}</p>

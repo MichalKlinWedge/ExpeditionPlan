@@ -1,6 +1,6 @@
 "use client";
 
-import { isFootRouteItem, isTransit, type PlanEdit, type PlanItem as Item, setLegRoute, type TripDocument } from "@expeditionplan/core";
+import { isFootRouteItem, isTransit, isTransitItem, type PlanEdit, type PlanItem as Item, setLegRoute, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import { useId, useState, useTransition } from "react";
 
@@ -9,7 +9,8 @@ import { type FormState, routeItem } from "@/app/actions";
 /**
  * Przejazd w edycji: skąd, dokąd i własny link do trasy. Zmiana miejsc od razu przelicza trasę
  * (OpenRouteService) i link do Map Google. Trasy piesze mają czas z mapy albo GPX i własny formularz
- * na karcie punktu, więc ich czasu tu nie nadpisujemy.
+ * na karcie punktu, więc ich czasu tu nie nadpisujemy. Komunikacji publicznej mapa nie liczy: linie, czas
+ * i odjazdy dodaje się z wklejonego połączenia w sekcji „Przejazd komunikacją” niżej.
  */
 export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: { tripId: string; doc: TripDocument; item: Item; onEdit: (edit: PlanEdit, done: () => void) => void; disabled?: boolean }) {
   const name = (ref: string | undefined) => doc.places.find((each) => each.ref === ref)?.name ?? "";
@@ -22,6 +23,8 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
   const [routing, startRouting] = useTransition();
   const listId = useId();
   const foot = isFootRouteItem(item);
+  const publicTransport = isTransitItem(item);
+  const routable = !foot && !publicTransport;
   const busy = disabled || routing;
 
   const recalculate = () => startRouting(async () => setState(await routeItem(tripId, item.ref)));
@@ -32,7 +35,7 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
     if (edit === null) return setState({ ok: "Bez zmian." });
     setState({});
     onEdit(edit, () => {
-      if (edit.placesChanged && !foot) recalculate();
+      if (edit.placesChanged && routable) recalculate();
       else setState({ ok: "Zapisano." });
     });
   };
@@ -74,12 +77,22 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
           Ten przejazd nie ma jeszcze „skąd” i „dokąd”.{item.placeRef !== undefined ? " W „Dokąd” jest dotychczasowe miejsce punktu: jeśli to start, przenieś je do „Skąd”." : ""} Zapis utworzy trasę i link do Map Google, domyślnie autem.
         </p>
       )}
-      <p className="text-xs text-zinc-500">Własny link tylko otwiera trasę: długość i czas przejazdu nadal liczymy ze „skąd” i „dokąd”.</p>
+      {publicTransport ? (
+        <p className="text-xs text-zinc-500">
+          Komunikacji nie przeliczamy z mapy. Linie, przesiadki, czas i odjazdy dodasz niżej w{" "}
+          <a href="#przejazd-komunikacja" className="btn-mini">
+            Przejazd komunikacją
+          </a>
+          : wklej tam połączenie z Map Google, Jakdojade albo ze strony przewoźnika.
+        </p>
+      ) : (
+        <p className="text-xs text-zinc-500">Własny link tylko otwiera trasę: długość i czas przejazdu nadal liczymy ze „skąd” i „dokąd”.</p>
+      )}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={save} disabled={busy} className="btn-primary btn-sm">
           {routing ? "Przeliczam…" : "Zapisz przejazd"}
         </button>
-        {!foot && (
+        {routable && (
           <button type="button" onClick={recalculate} disabled={busy} title="Długość i czas z OpenRouteService; czas wpisany ręcznie zostanie zastąpiony" className="btn-secondary btn-sm">
             Przelicz trasę
           </button>
