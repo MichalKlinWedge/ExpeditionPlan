@@ -17,8 +17,8 @@ import { VenueCard } from "@/components/venue-card";
 
 const people = (each: { adults: number; children: number }) => `${each.adults} dor.${each.children > 0 ? ` + ${each.children} dz.` : ""}`;
 
-export function MealsView({ tripId, doc, ids, mayEdit, editing }: { tripId: string; doc: TripDocument; ids: Record<string, string>; mayEdit: boolean; editing: boolean }) {
-  const [selected, setSelected] = useState<string | null>(null);
+export function MealsView({ tripId, doc, ids, mayEdit, editing, initialPlace }: { tripId: string; doc: TripDocument; ids: Record<string, string>; mayEdit: boolean; editing: boolean; initialPlace?: string }) {
+  const [selected, setSelected] = useState<string | null>(initialPlace ?? null);
   const mapBox = useRef<HTMLDivElement>(null);
   const meals = useMemo(() => mealList(doc, { allVariants: true }), [doc]);
   const { numbers, map } = useMemo(() => mealMap(doc, meals), [doc, meals]);
@@ -26,6 +26,12 @@ export function MealsView({ tripId, doc, ids, mayEdit, editing }: { tripId: stri
   const { adults, children } = headcount(doc);
   const own = selfCookedTotals(meals);
   const chosen = doc.places.find((place) => place.ref === selected);
+
+  // Z karty punktu (`#posilek-<ref>`): lista przewija się do tego posiłku, także po przejściu w aplikacji.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (id !== "") document.getElementById(id)?.scrollIntoView({ block: "center" });
+  }, []);
 
   // Nowe miejsce: kolumna wraca na górę, żeby mapa z pinezką była widoczna po czytaniu długiego opisu.
   useEffect(() => {

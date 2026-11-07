@@ -2,6 +2,7 @@
 
 import { addEatOutChoices, documentProblem, EATERY_KINDS, type EateryKind, eatOutGroup, formatDistance, isPinnedEatery, mealEateries, type TripDocument } from "@expeditionplan/core";
 import { saveElements, uuidv7 } from "@expeditionplan/sync";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -211,18 +212,25 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
           const n = selection.numbers[eatery.placeRef];
           return (
             <li key={eatery.placeRef} className="flex flex-wrap items-baseline gap-x-2">
-              <button
-                type="button"
-                onClick={() => selection.onSelect(eatery.placeRef)}
-                aria-pressed={selection.selected === eatery.placeRef}
-                title="Pokaż knajpę na mapie i jej dane"
-                className={`flex items-baseline gap-x-1.5 text-left underline-offset-2 hover:text-sea hover:underline ${selection.selected === eatery.placeRef ? "font-semibold text-sea" : ""}`}>
-                {n !== undefined && <span className="flex h-4 min-w-4 items-center justify-center self-center rounded-full bg-sea px-1 text-[10px] font-semibold text-white">{n}</span>}
-                <span>
+              {selection.href ? (
+                <Link href={selection.href(eatery.placeRef)} title="Posiłek i knajpa na stronie Posiłki" className="btn-mini">
                   {group !== undefined && eatery.active && "✓ "}
                   {eatery.name}
-                </span>
-              </button>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => selection.onSelect(eatery.placeRef)}
+                  aria-pressed={selection.selected === eatery.placeRef}
+                  title="Pokaż knajpę na mapie i jej dane"
+                  className={`flex items-baseline gap-x-1.5 text-left underline-offset-2 hover:text-sea hover:underline ${selection.selected === eatery.placeRef ? "font-semibold text-sea" : ""}`}>
+                  {n !== undefined && <span className="flex h-4 min-w-4 items-center justify-center self-center rounded-full bg-sea px-1 text-[10px] font-semibold text-white">{n}</span>}
+                  <span>
+                    {group !== undefined && eatery.active && "✓ "}
+                    {eatery.name}
+                  </span>
+                </button>
+              )}
               {eatery.summary && <span className="text-zinc-500">{eatery.summary}</span>}
               {canEdit && eatery.variantRef !== undefined && !eatery.active && (
                 <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="btn-mini">

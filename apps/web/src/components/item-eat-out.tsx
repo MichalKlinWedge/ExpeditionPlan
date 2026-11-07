@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { EatOutSearch, MealEateries } from "@/components/eat-out";
+import { mealAnchor } from "@/components/meal-row";
 
 /**
- * Knajpy posiłku na karcie punktu: przypięte (jak na „Posiłkach”, nazwa prowadzi do miejsca na
- * stronie Miejsca) i — w edycji — „knajpy w pobliżu”, to samo wyszukiwanie co na „Posiłkach”.
+ * Knajpy posiłku na karcie punktu: przypięte (jak na „Posiłkach”, nazwa prowadzi do tego posiłku
+ * na stronie Posiłki z wybraną knajpą) i — w edycji — „knajpy w pobliżu”, to samo wyszukiwanie co na „Posiłkach”.
  */
 export function ItemEatOut({ tripId, doc, ids, itemRef, editing }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string; editing: boolean }) {
   const router = useRouter();
@@ -16,7 +17,12 @@ export function ItemEatOut({ tripId, doc, ids, itemRef, editing }: { tripId: str
   const [pinned, setPinned] = useState<string[] | null>(null);
   const hasEateries = mealEateries(doc, itemRef).length > 0;
   if (!editing && !hasEateries) return null;
-  const selection = { numbers: {}, selected: null, onSelect: (placeRef: string) => router.push(`/trips/${tripId}/places?miejsce=${encodeURIComponent(placeRef)}`) };
+  const selection = {
+    numbers: {},
+    selected: null,
+    onSelect: () => {},
+    href: (placeRef: string) => `/trips/${tripId}/meals?knajpa=${encodeURIComponent(placeRef)}#${encodeURIComponent(mealAnchor(itemRef))}`,
+  };
 
   return (
     <section className="card flex flex-col gap-2 p-4 text-sm">

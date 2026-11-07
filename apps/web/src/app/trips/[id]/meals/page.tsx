@@ -12,7 +12,7 @@ import { requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Posiłki — Expedition Planner" };
 
-/** Posiłki dzień po dniu, a obok mapa i dane przypiętej knajpy: ile osób (dorośli i dzieci), które gotujecie sami i ile porcji. Dodawanie, zmiana, usuwanie i „gotujemy sami” — po „Edytuj”. */
+/** Posiłki dzień po dniu, a obok mapa i dane przypiętej knajpy (`?knajpa=<ref>` wybiera ją od razu, z karty punktu): ile osób (dorośli i dzieci), które gotujecie sami i ile porcji. Dodawanie, zmiana, usuwanie i „gotujemy sami” — po „Edytuj”. */
 
 export default function MealsPage(props: PageProps<"/trips/[id]/meals">) {
   return (
@@ -27,6 +27,7 @@ export default function MealsPage(props: PageProps<"/trips/[id]/meals">) {
 async function View({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
   const wantsEdit = await editMode(searchParams);
+  const eatery = (await searchParams).knajpa;
   const { supabase } = await requireUser(`/trips/${id}/meals`);
   const [{ data, error }, membership] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
@@ -56,7 +57,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
         </div>
         {mayEdit && <EditToggle href={`/trips/${id}/meals`} editing={canEdit} />}
       </div>
-      <MealsView tripId={id} doc={doc} ids={ids} mayEdit={mayEdit} editing={canEdit} />
+      <MealsView tripId={id} doc={doc} ids={ids} mayEdit={mayEdit} editing={canEdit} initialPlace={typeof eatery === "string" ? eatery : undefined} />
     </>
   );
 }

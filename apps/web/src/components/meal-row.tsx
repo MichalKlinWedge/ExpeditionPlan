@@ -9,6 +9,8 @@ export type MealSelection = {
   numbers: Record<string, number>;
   selected: string | null;
   onSelect: (placeRef: string) => void;
+  /** Poza „Posiłkami” (karta punktu): nazwa knajpy jest przyciskiem do tej strony zamiast `onSelect`. */
+  href?: (placeRef: string) => string;
 };
 
 export function MealDaySection({ day, children }: { day: MealDay; children: ReactNode }) {
@@ -25,7 +27,9 @@ export function MealDaySection({ day, children }: { day: MealDay; children: Reac
 /** Klasy wiersza posiłku: wszystkie posiłki w wybranym miejscu i z wybraną knajpą mają obwódkę, a pinezka przewija do pierwszego z nich. */
 export const mealRowClass = (doc: TripDocument, meal: Meal, selected: string | null) => `card flex scroll-mt-4 flex-col gap-2 p-3 text-sm ${selected !== null && mealPlaceRefs(doc, meal).includes(selected) ? "ring-2 ring-sea" : ""}`;
 
-export const mealRowId = (meal: Meal) => `posilek-${meal.itemRef}`;
+export const mealAnchor = (itemRef: string) => `posilek-${itemRef}`;
+
+export const mealRowId = (meal: Meal) => mealAnchor(meal.itemRef);
 
 export function MealHead({ doc, meal, selection }: { doc: TripDocument; meal: Meal; selection: MealSelection }) {
   const time = mealTime(doc, meal);
