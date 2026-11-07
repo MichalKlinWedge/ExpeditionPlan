@@ -1,4 +1,4 @@
-import { dayMap, tripOverview } from "@expeditionplan/core";
+import { BOOKING_KIND, dayLabelShort, dayMap, dayMonth, formatKm, pluralForm, tripOverview } from "@expeditionplan/core";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -9,7 +9,6 @@ import { MemoriesMap } from "@/components/memories-map";
 import { PublicTripHeader } from "@/components/public-trip-header";
 import { Loading, Shell } from "@/components/shell";
 import { Stat } from "@/components/stat";
-import { BOOKING_KIND } from "@/lib/labels";
 import { EXPIRED_LINK, loadPublicTrip } from "@/lib/public-trip";
 
 /**
@@ -31,11 +30,6 @@ export default function PublicOverviewPage(props: PageProps<"/p/[token]">) {
   );
 }
 
-const date = (value: string, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("pl-PL", { ...options, timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
-const dayDate = (value: string) => date(value, { weekday: "short", day: "numeric", month: "long" });
-const shortDate = (value: string) => date(value, { day: "numeric", month: "long" });
-const km = (value: number) => `${value.toLocaleString("pl-PL")} km`;
-const plural = (n: number, one: string, few: string, many: string) => (n === 1 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? few : many);
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -95,19 +89,19 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
       )}
 
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat value={String(stats.days)} label={plural(stats.days, "dzień", "dni", "dni")} />
-        {overview.nights > 0 && <Stat value={String(overview.nights)} label={plural(overview.nights, "noc", "noce", "nocy")} />}
+        <Stat value={String(stats.days)} label={pluralForm(stats.days, ["dzień", "dni", "dni"])} />
+        {overview.nights > 0 && <Stat value={String(overview.nights)} label={pluralForm(overview.nights, ["noc", "noce", "nocy"])} />}
         {overview.people + overview.tentative > 0 && (
           <Stat
             value={String(overview.people)}
-            label={`${plural(overview.people, "osoba", "osoby", "osób")}${overview.tentative > 0 ? ` (${overview.tentative} ${plural(overview.tentative, "się waha", "się wahają", "się waha")})` : ""}`}
+            label={`${pluralForm(overview.people, ["osoba", "osoby", "osób"])}${overview.tentative > 0 ? ` (${overview.tentative} ${pluralForm(overview.tentative, ["się waha", "się wahają", "się waha"])})` : ""}`}
           />
         )}
-        <Stat value={String(stats.planned)} label={plural(stats.planned, "punkt w planie", "punkty w planie", "punktów w planie")} />
-        {foot.km > 0 && <Stat value={`${overview.footMax ? "do " : ""}${km(foot.km)}`} label={`pieszo${foot.ascentM > 0 ? ` · ↑ ${foot.ascentM.toLocaleString("pl-PL")} m` : ""}${overview.footMax ? " · najdłuższy wariant" : ""}`} />}
-        {stats.driveKm > 0 && <Stat value={km(stats.driveKm)} label="autem" />}
-        {stats.transitKm > 0 && <Stat value={km(stats.transitKm)} label="komunikacją" />}
-        {stats.flightKm > 0 && <Stat value={km(stats.flightKm)} label="samolotem" />}
+        <Stat value={String(stats.planned)} label={pluralForm(stats.planned, ["punkt w planie", "punkty w planie", "punktów w planie"])} />
+        {foot.km > 0 && <Stat value={`${overview.footMax ? "do " : ""}${formatKm(foot.km)}`} label={`pieszo${foot.ascentM > 0 ? ` · ↑ ${foot.ascentM.toLocaleString("pl-PL")} m` : ""}${overview.footMax ? " · najdłuższy wariant" : ""}`} />}
+        {stats.driveKm > 0 && <Stat value={formatKm(stats.driveKm)} label="autem" />}
+        {stats.transitKm > 0 && <Stat value={formatKm(stats.transitKm)} label="komunikacją" />}
+        {stats.flightKm > 0 && <Stat value={formatKm(stats.flightKm)} label="samolotem" />}
       </section>
 
       {map.pins.length > 0 && (
@@ -148,7 +142,7 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
           {overview.days.map((day) => (
             <li key={day.ref} className="flex flex-col gap-1 p-3 text-sm">
               <Link href={`${base}/plan?day=${encodeURIComponent(day.ref)}`} className="font-medium hover:text-sea">
-                Dzień {day.no} · {dayDate(day.date)}
+                Dzień {day.no} · {dayLabelShort(day.date)}
                 {day.title ? ` — ${day.title}` : ""}
               </Link>
               {day.summary && <p className="text-zinc-600 dark:text-zinc-400">{day.summary}</p>}
@@ -173,7 +167,7 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
                 <span className="font-medium">{stay.name}</span>
                 <span className="text-zinc-500">
                   {" "}
-                  · {shortDate(stay.from)} – {shortDate(stay.to)} · {stay.nights} {plural(stay.nights, "noc", "noce", "nocy")}
+                  · {dayMonth(stay.from)} – {dayMonth(stay.to)} · {stay.nights} {pluralForm(stay.nights, ["noc", "noce", "nocy"])}
                 </span>
               </li>
             ))}
@@ -190,7 +184,7 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
                 <span className="text-zinc-500">
                   {" "}
                   · {BOOKING_KIND[each.kind] ?? each.kind}
-                  {each.date ? ` · ${shortDate(each.date)}` : ""}
+                  {each.date ? ` · ${dayMonth(each.date)}` : ""}
                 </span>
               </li>
             ))}

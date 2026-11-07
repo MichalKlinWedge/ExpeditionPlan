@@ -1,3 +1,4 @@
+import { formatKm } from './format.ts';
 import { decodePolyline, distanceM, type LngLat } from './polyline.ts';
 import { isRouteStop } from './route-stops.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
@@ -16,13 +17,12 @@ export const ROUTABLE_MODES: ReadonlySet<string> = new Set(['car', 'rental_car',
 
 /** 84 → „1 h 24 min”, 45 → „45 min”, 120 → „2 h”. */
 export function formatMinutes(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
+  const total = Math.round(minutes);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   if (h === 0) return `${m} min`;
   return m === 0 ? `${h} h` : `${h} h ${m} min`;
 }
-
-const km = (value: number) => `${value.toLocaleString('pl-PL', { maximumFractionDigits: value < 10 ? 1 : 0 })} km`;
 
 /**
  * Opis przejazdu: „63,6 km · 1 h 24 min, w gorszym razie 1 h 49 min (trasa z mapy)” albo
@@ -53,9 +53,9 @@ function legTimeLabel(item: Item): string | null {
   if (item.durationMin !== undefined) return `${formatMinutes(item.durationMin)} (wpisane ręcznie)`;
   if (leg.routed && leg.durationMin !== undefined) {
     const worse = leg.durationMaxMin !== undefined && leg.durationMaxMin > leg.durationMin ? `, w gorszym razie ${formatMinutes(leg.durationMaxMin)}` : '';
-    return `${leg.distanceKm !== undefined ? `${km(leg.distanceKm)} · ` : ''}${formatMinutes(leg.durationMin)}${worse} (trasa z mapy)`;
+    return `${leg.distanceKm !== undefined ? `${formatKm(leg.distanceKm)} · ` : ''}${formatMinutes(leg.durationMin)}${worse} (trasa z mapy)`;
   }
-  const parts = [leg.durationMin === undefined ? null : `ok. ${formatMinutes(leg.durationMin)}`, leg.distanceKm === undefined ? null : `ok. ${km(leg.distanceKm)}`].filter((part) => part !== null);
+  const parts = [leg.durationMin === undefined ? null : `ok. ${formatMinutes(leg.durationMin)}`, leg.distanceKm === undefined ? null : `ok. ${formatKm(leg.distanceKm)}`].filter((part) => part !== null);
   return parts.length === 0 ? null : `${parts.join(', ')} (${leg.routed === false ? 'z podanej trasy' : 'szacunek'})`;
 }
 

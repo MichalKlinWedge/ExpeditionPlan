@@ -1,3 +1,4 @@
+import { distanceM as coreDistanceM } from '@expeditionplan/core';
 import * as Battery from 'expo-battery';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
@@ -79,10 +80,4 @@ export const WALK_RADIUS_M = 40;
 /** Promień geofence w tle — zalecane przez Androida 100–150 m (docs/USLUGI.md). */
 export const GEOFENCE_RADIUS_M = 100;
 
-export function distanceM(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const rad = Math.PI / 180;
-  const dLat = (lat2 - lat1) * rad;
-  const dLng = (lng2 - lng1) * rad;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
-  return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
-}
+export const distanceM = (lat1: number, lng1: number, lat2: number, lng2: number): number => coreDistanceM([lng1, lat1], [lng2, lat2]);

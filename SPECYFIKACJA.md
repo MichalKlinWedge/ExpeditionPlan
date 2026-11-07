@@ -1,6 +1,6 @@
 # ExpeditionPlan — specyfikacja v0.4
 
-Źródła: wstępna specyfikacja (30.10.2026), doświadczenia z FormaSync (`D:\AI\Kardio`) oraz pięć własnych planów wyjazdów z katalogu [`exaples/`](exaples/) (analiza w §0.2).
+Źródła: wstępna specyfikacja (30.10.2026), doświadczenia z FormaSync (`D:\AI\Kardio`) oraz pięć własnych planów wyjazdów z katalogu [`examples/`](examples/) (analiza w §0.2).
 Plan realizacji: [PLAN_ETAPOWY.md](PLAN_ETAPOWY.md).
 
 **Zmiany w v0.4 (bramka po PoC i MVP-1, 31.10.2026):** decyzje z bramki w [POC_WYNIKI.md](POC_WYNIKI.md) (dostawcy, synchronizacja własna, D3, D8, OTA). Model danych z §5 w migracjach `supabase/migrations/*_mvp1_*.sql`, z odstępstwami opisanymi w §5 „Odstępstwa w MVP-1”: `ref` dokumentu jako kolumna, miejsca na razie per wyjazd, uczestnicy punktu i źródła jako tablice id, godziny jako tekst `GG:MM`, zapis całego dokumentu jedną funkcją `import_trip`.
@@ -30,7 +30,7 @@ Plan realizacji: [PLAN_ETAPOWY.md](PLAN_ETAPOWY.md).
 | W11 | Poczta: `mail()` na hostingu, SPF/DKIM, spam. | Wbudowany SMTP Supabase Auth ma bardzo niski limit wysyłek. Od MVP logowanie przez Google + magic link przez własny SMTP (np. Resend). |
 | W12 | Tokeny w SecureStore. Na serwerze minimum danych, kopie szyfrowane E2E. | Sejf: prywatny bucket + RLS + widoczność per dokument. Lokalizacja użytkownika nie opuszcza telefonu. |
 
-### 0.2. Z własnych planów (`exaples/`)
+### 0.2. Z własnych planów (`examples/`)
 
 Przeanalizowane: **Barcelona** (3 dni, miasto, komunikacja, mecz), **Gruzja 2027 v4** (12 dni, 3 bazy, auto, trekking, porównanie noclegów), **Maroko** (5 dni, objazd autem, rodzina, 21 stron: warianty, audyt czasu, pula atrakcji, auto, budżet), **Chatka Sylwestrowa** (2 dni, 11 osób, góry, nocleg niekomercyjny), **wzór.docx / Dinara** (3 dni, via ferrata, szablon dokumentu).
 
@@ -107,13 +107,13 @@ Wniosek ogólny: realne plany to nie tylko oś czasu z punktami. To **dokument d
                  │ Supabase            │
                  │ Postgres + RLS      │
                  │ Realtime, Storage   │
-                 │ Edge Functions ─────┼──► LLM (Claude / Gemini / OpenAI)
-                 │  (ai-*, places-*,   │──► geokodowanie / POI / routing
-                 │   offline-manifest, │──► Open-Meteo, święta, kursy walut, TTS
-                 │   share-public,     │
-                 │   export-doc)       │
+                 │ RPC (public_trip,   │
+                 │  pull_changes, …)   │
                  └─────────────────────┘
-       Kafle offline: PMTiles / paczki regionów (CDN, np. Cloudflare R2)
+       Serwer weba (Next, Vercel) ──► LLM (Gemini; Claude / OpenAI w narzędziach)
+                                  ──► geokodowanie / miejsca / routing, Open-Meteo, święta, kursy
+       Link publiczny: RPC `public_trip` (bez Edge Functions)
+       Kafle offline: paczki OpenFreeMap (`OfflineManager`); PMTiles tylko w PoC (patrz R6)
 ```
 
 ### Stos i decyzje
@@ -122,7 +122,7 @@ Wniosek ogólny: realne plany to nie tylko oś czasu z punktami. To **dokument d
 |---|---|---|---|
 | Mobile | **Expo SDK 58 + Expo Router + TypeScript** (New Architecture) | sprawdzony w FormaSync na SDK 57 (dev build, EAS, OTA, kanały); wspólny TS z webem; MapLibre RN v11 wymaga New Architecture i SDK ≥ 54 | Flutter, Kotlin: brak współdzielenia kodu, nowa nauka |
 | Web | **Next.js (React, TS)** | ten sam język i typy co mobile; SSR dla linku publicznego (OG, podgląd w komunikatorach) | Vue: brak współdzielenia z RN |
-| Backend | **Supabase** (Postgres, Auth, RLS, Realtime, Storage, Edge Functions) | role i uprawnienia w bazie (RLS), realtime bez własnego serwera, pliki z uprawnieniami | Firebase: NoSQL utrudnia rozliczenia i raporty. Własny PHP/MySQL (jak skrytka FormaSync): brak realtime i auth |
+| Backend | **Supabase** (Postgres, Auth, RLS, Realtime, Storage) | role i uprawnienia w bazie (RLS), realtime bez własnego serwera, pliki z uprawnieniami | Firebase: NoSQL utrudnia rozliczenia i raporty. Własny PHP/MySQL (jak skrytka FormaSync): brak realtime i auth |
 | Lokalna baza (mobile) | `expo-sqlite` + **Drizzle** | ten sam wzorzec migracji co FormaSync | WatermelonDB: kolejny paradygmat |
 | Stan | Zustand (mobile i web) + TanStack Query (web) | jak w FormaSync | Redux |
 | Walidacja i schematy | **Zod** w `packages/core`: jedno źródło dla formularzy, odpowiedzi AI, pól `jsonb` i API | jeden walidator dla wszystkich dostawców AI (W4) | — |
@@ -135,22 +135,24 @@ Wniosek ogólny: realne plany to nie tylko oś czasu z punktami. To **dokument d
 ### Struktura repozytorium (monorepo, npm workspaces)
 
 ```
-apps/web/            Next.js — Planner Hub + strona linku publicznego
-apps/mobile/         Expo — Pocket Guide
+apps/web/            Next.js — Planner Hub + strona linku publicznego (/p/[token])
+apps/mobile/         Expo — Pocket Guide (Expedition Planner)
 packages/core/       czysty TS: typy domeny, schematy Zod (w tym Price, BookingDetails),
                      silnik harmonogramu i ograniczeń, słońce/Księżyc, ceny dla grupy,
                      rozliczenia, czas i strefy, łatki planu (testowany bez sieci)
 packages/ai/         polecenia, adaptery dostawców, walidacja i naprawa JSON
-packages/db/         typy wygenerowane z Supabase, wspólne zapytania
-packages/export/     model sekcji dokumentu → DOCX / PDF / HTML (link publiczny)
+packages/planner/    łańcuch „Zaplanuj z AI”, opisy miejsc (Wikipedia), import, paragony, wyszukiwanie miejsc
+packages/sync/       synchronizacja telefon ↔ Supabase (outbox, pull_changes), mapowanie TripDocument ↔ wiersze
+packages/db/         typy wygenerowane z Supabase
+tools/               CLI: import-plan, plan-ai, geocode, seed-dev
+scripts/             sync-env.mjs (zmienne środowiskowe do aplikacji)
 supabase/
-  migrations/        SQL: tabele, RLS, triggery (updated_at, plan_version)
-  functions/         Edge Functions (Deno): ai-*, places-*, offline-manifest, share-public, export-doc
+  migrations/        SQL: tabele, RLS, triggery (row_version, activity_log), RPC
   tests/             pgTAP: testy polityk RLS
-fixtures/plans/      przykładowe plany z exaples/ w postaci danych (test schematu i regresji AI)
+fixtures/plans/      przykładowe plany z examples/ w postaci danych (test schematu i regresji AI)
 ```
 
-Zasada: **logika domenowa żyje w `packages/core` i jest identyczna na webie, telefonie i w Edge Functions** (np. przeliczenie harmonogramu po opóźnieniu działa offline na telefonie i daje ten sam wynik co na serwerze).
+Zasada: **logika domenowa żyje w `packages/core` i jest identyczna na webie i telefonie** (a w razie potrzeby także w Deno) (np. przeliczenie harmonogramu po opóźnieniu działa offline na telefonie i daje ten sam wynik co na serwerze).
 
 ---
 
@@ -177,7 +179,7 @@ Ustrukturyzowany formularz, zapisywany jako `trip_brief` i walidowany schematem 
 - M: Etap 1 (warianty szkieletu), Etap 2 (pula + harmonogram + audyt zapasu), „przelicz dzień z poleceniem”.
 - S: Etap 3 (czat dostrajający jako łatki), Etap 4 (logistyka i kandydaci do porównania), Etap 5 (informacje praktyczne, pakowanie, TODO).
 - S: import rezerwacji: PDF, zrzut ekranu albo wklejony mail → AI wyciąga dane do `bookings` (jak zdjęcie posiłku w FormaSync).
-- S: **import istniejącego planu** (DOCX/PDF jak w `exaples/`) → pełna struktura wyjazdu do przejrzenia i akceptacji.
+- S: **import istniejącego planu** (DOCX/PDF jak w `examples/`) → pełna struktura wyjazdu do przejrzenia i akceptacji.
 
 ### M4. Edytor planu (Planner Hub) — web
 - M: widok dni (kolumny lub lista) i mapa obok. Przeciąganie punktów w obrębie dnia i między dniami. Edycja punktu: precyzja i godziny, czas trwania (także przedział), bufor, stała godzina, priorytet, cena, płatność, notatka, linki, uczestnicy.
@@ -292,7 +294,7 @@ Ustrukturyzowany formularz, zapisywany jako `trip_brief` i walidowany schematem 
 4. **Propozycja → akceptacja.** Wynik etapu to draft pokazany jako podgląd lub diff. Do tabel planu trafia dopiero po akceptacji. Ponowne przeliczenie zastępuje draft, nie dokłada drugiego (W5).
 5. **Ręczne zmiany są święte.** Punkty edytowane ręcznie i elementy „już ustalone” (kupione loty, rezerwacje) dostają `user_locked = true`, a AI dostaje je jako ograniczenia, których nie wolno ruszać.
 6. **Uczciwość co do niepewności.** Ceny i fakty bez źródła są oznaczone jako szacunek (`SZAC.`), każda cena ma datę sprawdzenia albo flagę „rząd wielkości”. AI ma wprost mówić, czego się nie da zmieścić, zamiast udawać, że się mieści.
-7. **Dostawca wymienny** (W4): Claude, Gemini i OpenAI za jednym interfejsem, model wybierany z listy pobranej z API, klucze w sekretach Edge Functions, limit wywołań i koszt per użytkownik/dzień.
+7. **Dostawca wymienny** (W4): Claude, Gemini i OpenAI za jednym interfejsem, model wybierany z listy pobranej z API, klucze tylko w zmiennych serwera weba, limit wywołań i koszt per użytkownik/dzień.
 
 ### Etapy
 
@@ -330,7 +332,7 @@ Operacje łatki (Etap 3):
 - % punktów ugruntowanych (dopasowanych do realnego miejsca w promieniu X m),
 - % punktów zaplanowanych w godzinach otwarcia (gdzie godziny są znane),
 - realizowalność dnia: suma czasów + przejścia + bufory ≤ okno dnia, brak naruszonych ograniczeń twardych,
-- zgodność z planami referencyjnymi z `exaples/` (czy AI widzi te same ryzyka: zachód słońca, kolejki, godziny biura, limity km),
+- zgodność z planami referencyjnymi z `examples/` (czy AI widzi te same ryzyka: zachód słońca, kolejki, godziny biura, limity km),
 - koszt i czas wygenerowania planu 4-dniowego per dostawca.
 
 ---
@@ -357,7 +359,7 @@ Operacje łatki (Etap 3):
 - **Czas:** zdarzenia planu jako **czas lokalny + strefa IANA**; prawdziwe chwile (wydatek, opóźnienie) jako `timestamptz`. Wyjazd przez kilka stref jest od początku przewidziany.
 - **Precyzja czasu punktu** (`time_precision`): `exact` (09:45), `approx` (~09:30), `range` (11:45–12:45), `part_of_day` (rano / południe / popołudnie / wieczór / noc), `day` (cały dzień, bez godzin), `relative` (`+1:20` od kotwicy dnia albo od końca poprzedniego kroku — `relative_from`). Godzina może mieć własną strefę (`time_tz`), gdy różni się od strefy dnia: punkt na lotnisku wylotu w dniu, który żyje w strefie celu.
 - Kolejność: `sort_key text` (fractional indexing), żeby przeciąganie zmieniało jeden wiersz.
-- Pola `jsonb` mają zawsze schemat Zod w `packages/core` i są walidowane przy zapisie (Edge Function lub check w kliencie).
+- Pola `jsonb` mają zawsze schemat Zod w `packages/core` i są walidowane przy zapisie (akcja serwera, RPC lub check w kliencie).
 - Surowe odpowiedzi zewnętrznych źródeł w `raw jsonb` (W2).
 
 ### Tabele — rdzeń
@@ -368,7 +370,7 @@ Operacje łatki (Etap 3):
 | `trips` | `owner_id`, `title`, `subtitle`, `goal` (założenia), `status`, `start_date`, `end_date`, `primary_tz`, `base_currency`, `plan_version`, `cover_path` | |
 | `trip_members` | `trip_id`, `user_id`, `role` (owner/editor/viewer), `can_add_expenses` | PK (trip_id, user_id) |
 | `trip_invites` | `trip_id`, `role`, `token_hash`, `expires_at`, `max_uses`, `used_count` | w bazie tylko hasz tokena (jak skrytka FormaSync) |
-| `public_shares` | `trip_id`, `token_hash`, `hide` (jsonb: costs, vault, lodging_address, names), `enabled` | odczyt tylko przez Edge Function `share-public` |
+| `public_shares` | `trip_id`, `token_hash`, `hide` (jsonb: costs, vault, lodging_address, names), `enabled` | odczyt tylko przez RPC `public_trip` (z ukrywaniem pól wg `hide`) |
 | `travelers` | `trip_id`, `user_id` (nullable), `name`, `nickname`, `age` (w chwili wyjazdu), `household` (rodzina), `guardian_traveler_id`, `is_driver`, `diet`, `notes` | uczestnicy, także bez konta |
 | `trip_brief` | `trip_id`, `goal`, `location`, `dates`, `profiles`, `transport`, `budget_level`, `currency`, `constraints`, `fixed` (już ustalone), `must_see`, `avoid` | dane z formularza, schemat Zod |
 | `days` | `trip_id`, `date`, `day_index`, `tz`, `title`, `summary` (wstęp dnia), `base_place_id`, `lodging_booking_id` albo `lodging_group_id` (grupa kandydatów — dzień pokazuje wybranego), `anchor_time` (godzina zero, nullable), `day_start`, `day_end` | słońce, Księżyc, święta liczone, nie przechowywane |
@@ -440,14 +442,23 @@ Schemat w migracjach `supabase/migrations/*_mvp1_*.sql` realizuje tabele powyże
 - **`trips.status = 'postponed'`** — wyjazd odłożony: termin niepewny albo nie wypalił. Daty zostają orientacyjne (dni planu są z nimi związane); osobna sekcja „Odłożone” na listach web i telefon, bez odliczania, gotowości i przypomnień.
 - **Zmiana terminu** (web, `core/trip-reschedule.ts` + RPC `reschedule_trip`, jedna transakcja, organizator i edytor): cały plan o tę samą liczbę dni, długość bez zmian. Przesuwają się dni, niekupione rezerwacje (z `freeCancellationUntil`), daty otwartych zadań, `decideBy` z datą i daty `fixed` w briefie. Zostają fakty: rezerwacje `booked`/`paid` albo z zapłatą czy kodem potwierdzenia (do ręcznej zmiany u dostawcy), `paid.date`, `checkedAt`, `fx.date`, zadania zamknięte, wydatki, dziennik i zdarzenia z trasy. Podgląd pokazuje też nowe problemy dni wg silnika: zachód słońca, zamknięte miejsca, inna różnica czasu między strefami.
 - **`journal_entries`** — dziennik z trasy (wpis i zdjęcie przy dniu albo punkcie), tabela „trasy” jak `expenses`: zapis z telefonu przez outbox, dodaje każdy uczestnik (także widz), poprawia autor albo organizator i edytor. Zdjęcia w prywatnym buckecie `journal` (`<trip_id>/<entry_id>/<plik>`, do 15 MB), odczyt dla uczestników wyjazdu.
-- **`audio_guides.content jsonb`** — treść przewodnika jako dane (`GuideContent`: opis, ciekawostki, historia, wskazówki, zdjęcia z Commons z licencją, artykuł źródłowy); `text` zostaje do czytania na głos. Jeden przewodnik na miejsce. Źródło wyłącznie Wikipedia (bez pewnego dopasowania artykułu nie ma opisu); licencja CC BY-SA 4.0 (`docs/USLUGI.md` §12).
+- **`audio_guides.content jsonb`** — treść przewodnika jako dane (`GuideContent`: opis, ciekawostki, historia, wskazówki, zdjęcia z Commons z licencją, artykuł źródłowy); `text` zostaje do czytania na głos. Jeden przewodnik na miejsce. Źródła: Wikipedia, Wikidata (tylko do znalezienia artykułu), Wikivoyage oraz strona albo tekst podany przez użytkownika, z której zostaje tylko streszczenie z linkiem (`article.site: 'web'`, bez CC BY-SA i bez zdjęć z tej strony). Bez pewnego dopasowania artykułu albo źródła podanego przez użytkownika nie ma opisu; licencja artykułów CC BY-SA 4.0 (`docs/USLUGI.md` §12).
 - **`items.self_cooked`** — posiłek przygotowywany przez grupę (porcje i zakupy). Lista zakupów to pozycje `packing_items` w kategorii `zakupy`, bez osobnej tabeli.
+- **`places.venue`** (jsonb) — dane lokalu: punkty opisu, przykładowe ceny, ocena i `readOn`, wyłącznie z tekstu wklejonego przez użytkownika albo ze strony samego lokalu (`docs/USLUGI.md` §13).
+- **`travelers`: `tentative`, `from_date`, `to_date`, `notes`, `start_place_id`, `end_place_id`** — wahanie, obecność na części wyjazdu (brak dat = cały wyjazd), notatka, miejsca startu i końca do wspólnego transportu. Bez wpływu na koszty i harmonogram; ukryte w linku publicznym.
+- **`budget_lines.participant_ids`** — dla kogo jest pozycja (brak = wszyscy, także dodani później); „na osobę” mnoży tylko przez wybranych.
+- **`guide_library`** — wspólna pamięć gotowych opisów z Wikipedii i Wikivoyage (klucz: serwis, język, tytuł artykułu); treść jest kopiowana do `audio_guides` wyjazdu, więc odświeżenie nie zmienia innych wyjazdów.
+- **`trip_members.seen_changes_at`** i RPC `trip_news` / `mark_changes_seen` — „Co nowego od ostatniej wizyty” z `activity_log` (wpisy innych osób od tej chwili).
+- **`public_trip(token)`** — jedyny odczyt linku publicznego; ukrywa pola wg `public_shares.hide` (`costs`, `names`, `lodgingAddress`) i zawsze: notatki i wzrost osób, powiązanie z kontem, `tentative`, daty obecności, miejsca startu i końca, kody i linki rezerwacji. Zwraca tylko liczbę osób niepewnych (`tentative`), nigdy ich imiona.
+- **`can_create_trips()` / `trip_creator`** — wyjazdy zakłada tylko konto z flagą `trip_creator` w `app_metadata` (ustawia ją wyłącznie serwer kluczem service role); pozostali widzą wyjazdy, do których ich zaproszono.
+- **Sejf `documents`** — wiersz decyduje o widoczności (`visibility`, `visible_to`) przez `can_see_document`, ta sama reguła obejmuje plik w prywatnym buckecie `documents`.
+- **Kolumny zarezerwowane (nic do nich nie pisze, `SPECS` w `packages/sync/src/document.ts` ich nie mapuje):** tabela `vehicles`, `bookings.paid_by_traveler_id`, `travelers.diet`, `legs.polyline`, `items.status`, `places.provider_id`, `raw`, `fetched_at`, `opening_hours_parsed`, `tracks.gpx_path`, `offline`. Nie opierać na nich logiki, dopóki ktoś ich nie wypełni (linia GPX leży w `tracks.geojson`, dieta grupy w `TripBrief`).
 
 ### Uprawnienia (RLS)
 
 | Zasób | owner | editor | viewer | link publiczny |
 |---|---|---|---|---|
-| plan (days, items, legs, places, variants, constraints, notes, tracks) | RW | RW | R | R (przez Edge Function, z ukryciami) |
+| plan (days, items, legs, places, variants, constraints, notes, tracks) | RW | RW | R | R (przez RPC `public_trip`, z ukryciami) |
 | `schedule_events` (opóźnienia, statusy, wybór wariantu) | RW | RW | R (S: opcja „może przesuwać”) | — |
 | członkowie, zaproszenia, link publiczny | RW | R | R | — |
 | travelers | RW | RW | R | imiona wg `hide` |
@@ -515,15 +526,15 @@ koniec(i) = start(i) + czas_trwania(i) [przedział: min i max] + suma opóźnie�
 - **Zapas dnia** = okno dnia (lub najbliższe ograniczenie twarde) − (czasy + przejścia + bufory), dla scenariusza pesymistycznego. Klasyfikacja: duży / mały / brak / ujemny.
 - Przy braku zapasu silnik proponuje cięcia rosnąco po `cut_rank` (najpierw `optional`, potem `should`, nigdy `must`) i pokazuje, ile każde cięcie zwalnia. To samo działa na telefonie po „Zostajemy dłużej”.
 
-Ta sama funkcja liczy plan na webie, „Tu i teraz” offline na telefonie i walidację wyniku AI. Pokrycie testami jest tu obowiązkowe: strefy czasowe, zmiana czasu (noc 24/25.10 z planu Chatki), punkty przez północ, dwie strefy w jednym dniu (lot), przedziały, tryb względny. Plany z `exaples/` są przypadkami testowymi.
+Ta sama funkcja liczy plan na webie, „Tu i teraz” offline na telefonie i walidację wyniku AI. Pokrycie testami jest tu obowiązkowe: strefy czasowe, zmiana czasu (noc 24/25.10 z planu Chatki), punkty przez północ, dwie strefy w jednym dniu (lot), przedziały, tryb względny. Plany z `examples/` są przypadkami testowymi.
 
 ---
 
 ## 8. Bezpieczeństwo i prywatność
 
-- RLS na każdej tabeli od pierwszej migracji, testowane (pgTAP). Klucz `service_role` wyłącznie w Edge Functions.
-- Klucze AI, routingu i TTS wyłącznie w sekretach Edge Functions (W4). Limity per użytkownik (wywołania/dzień, koszt/miesiąc) w tabeli i sprawdzane w funkcji.
-- Link publiczny: token losowy, w bazie tylko hasz, odczyt wyłącznie przez Edge Function z zastosowaniem `hide`. Unieważnienie = nowy token.
+- RLS na każdej tabeli od pierwszej migracji, testowane (pgTAP). Klucz `service_role` wyłącznie na serwerze (skrypty, akcje serwera weba), nigdy w aplikacji.
+- Klucze AI i routingu wyłącznie w zmiennych serwera weba (`scripts/sync-env.mjs` → `apps/web/.env.local`, na produkcji zmienne Vercela), nigdy w przeglądarce ani APK (W4). Limity per użytkownik (wywołania/dzień, koszt/miesiąc) w tabeli i sprawdzane po stronie serwera.
+- Link publiczny: token losowy, w bazie tylko hasz, odczyt wyłącznie przez RPC `public_trip` z zastosowaniem `hide`. Unieważnienie = nowy token.
 - Sejf: prywatny bucket, polityki Storage oparte na `documents.visibility`, krótkotrwałe podpisane URL-e. Na telefonie pliki w katalogu prywatnym aplikacji, kasowane razem z wyjazdem z urządzenia.
 - Kody rezerwacji i dane kontaktowe gospodarzy są widoczne tylko członkom wyjazdu (nigdy w linku publicznym).
 - Lokalizacja użytkownika jest liczona wyłącznie na telefonie i nie trafia na serwer (brak „gdzie są inni” w zakresie).
@@ -559,7 +570,7 @@ Stan na 30.10.2026, zweryfikowany na oficjalnych stronach: szczegóły, liczby i
 | Routing | przejścia | OpenRouteService, Geoapify; GraphHopper jako zapas | ORS: 2000 tras/dzień, 40/min, macierz 500/dzień. GraphHopper Free: 500/dzień, tylko niekomercyjnie |
 | Komunikacja publiczna | przejścia (R5) | szacunek + deep link; Transitous (MOTIS) później | Transitous: tylko FOSS / niekomercyjnie, projekt powinien być open source, User-Agent z kontaktem |
 | Kafle mapy | web | **OpenFreeMap** | bez klucza i limitu wyświetleń |
-| Kafle mapy | offline | **regionalny PMTiles z buildu Protomaps na własnym CDN (R2)**, pobierany w całości na telefon (R6) | dane ODbL (atrybucja OSM), style CC0. Paczki offline z OpenFreeMap tylko małe (≤ 3000 kafli / 50 MB na pobranie). MapTiler — NIE (zakaz bulk). **Zakaz pobierania offline z tile.openstreetmap.org** |
+| Kafle mapy | offline | **regionalny PMTiles z buildu Protomaps na własnym CDN (R2)**, pobierany w całości na telefon (R6); **w aplikacji zrealizowane inaczej: paczki OpenFreeMap** (`apps/mobile/src/features/map/offline-packs.ts`), PMTiles tylko w kodzie PoC | dane ODbL (atrybucja OSM), style CC0. Paczki offline z OpenFreeMap tylko małe (≤ 3000 kafli / 50 MB na pobranie). MapTiler — NIE (zakaz bulk). **Zakaz pobierania offline z tile.openstreetmap.org** |
 | Pogoda | alerty, go / no-go | Open-Meteo | 10 000 wywołań/dzień, tylko niekomercyjnie, CC BY 4.0, prognoza do 16 dni; cache prognoz po stronie serwera |
 | Święta państwowe | fakty dnia | Nager.Date (`nagerholidays.com/api/v4`) | komercyjnie tylko ze sponsoringiem; **Maroko bez świąt islamskich** → święta ruchome z innego źródła albo z danych kraju, z oznaczeniem „±1 dzień” (R13) |
 | Kursy walut | budżet, portfel | **Frankfurter API v2** | MAD i GEL dostępne, bez klucza, także komercyjnie. Nie używać v1 (tylko kursy EBC, bez MAD/GEL) |
@@ -577,12 +588,12 @@ Stan na 30.10.2026, zweryfikowany na oficjalnych stronach: szczegóły, liczby i
 | R3 | Licencja Google Maps Platform dla rachunku w EOG: treści Places API (poza lat/lng i `place_id`) **nie wolno używać z żadną mapą, także Google**, dozwolone zastosowania to zamknięta lista. Cache: `place_id` bez limitu, lat/lng do 30 dni; nazw, adresów i godzin nie wolno zapisywać. Wyjątek: Places UI Kit (bez offline). | Google Places jest nie do pogodzenia z mapą offline i pamięcią podręczną miejsc. | **Google Places wykreślone** (D4). Dane OSM (Geoapify, Overpass, Wikidata). Google wyłącznie jako deep link do nawigacji. |
 | R4 | Geofencing na Androidzie (potwierdzone): promień ≥ 100 m, zalecane 100–150 m (30 m zawodne), limit 100 aktywnych geofence na aplikację, w tle opóźnienie ok. 2–3 min (do ~6 min po bezruchu), po restarcie telefonu rejestracja od nowa. Lokalizacja w tle wymaga osobnej zgody; w Google Play także deklaracji i wideo (przy D1 nie dotyczy). | Autoodtwarzanie przy 30 m niewykonalne w tle; audio może zacząć się już za punktem. | Geofence 100–150 m → powiadomienie. Precyzja tylko w jawnym „Trybie spaceru”. Rejestrujemy wyłącznie punkty dnia dzisiejszego i odtwarzamy je po restarcie. PoC-3. |
 | R5 | Brak darmowego, globalnego routingu komunikacji publicznej. | Czasy przejazdów komunikacją niedokładne. | MVP: szacunek (AI + dystans) oznaczony jako szacunek + instrukcja + deep link do Google Maps. Później: Transitous/MOTIS, Navitia albo płatne API. |
-| R6 | Rozmiar i licencje kafli offline. Źródła PMTiles **nie działają z paczkami offline MapLibre**, a obsługa `pmtiles://` na Androidzie zależy od wersji MapLibre Native (od 11.7.0). | Duże pobrania, naruszenie warunków dostawcy, mapa bez napisów offline. | Offline = cały plik `.pmtiles` regionu (`pmtiles extract` z bbox i maxzoom) z własnego CDN, otwierany z pamięci telefonu (`pmtiles://file://…`). Lokalne glify i sprite'y w pakiecie. PoC-2 sprawdza, czy `@maplibre/maplibre-react-native` przepuszcza `pmtiles://`. |
+| R6 | Rozmiar i licencje kafli offline. Źródła PMTiles **nie działają z paczkami offline MapLibre**, a obsługa `pmtiles://` na Androidzie zależy od wersji MapLibre Native (od 11.7.0). | Duże pobrania, naruszenie warunków dostawcy, mapa bez napisów offline. | Offline = cały plik `.pmtiles` regionu (`pmtiles extract` z bbox i maxzoom) z własnego CDN, otwierany z pamięci telefonu (`pmtiles://file://…`). Lokalne glify i sprite'y w pakiecie. PoC-2 sprawdza, czy `@maplibre/maplibre-react-native` przepuszcza `pmtiles://`. **Decyzja:** aplikacja używa paczek OpenFreeMap (`apps/mobile/src/features/map/offline-packs.ts`), PMTiles został tylko w kodzie PoC. |
 | R7 | Synchronizacja offline (konflikty, zgubione zapisy). | Utrata danych (W2). | Zdarzenia tylko dopisywane + outbox + idempotencja. PoC-4. Plan B: PowerSync. |
 | R8 | Darmowy Supabase wstrzymuje projekt po 7 dniach bezczynności (potwierdzone; okno przywrócenia niejednoznaczne: 90 dni albo rok). Free: 1 GB Storage, 5 GB egress. | Aplikacja „martwa” w trakcie albo po wyjeździe. | Pro (25 USD/mies., bez pauzy) przed pierwszym realnym wyjazdem. Duże pliki (kafle, audio) poza Supabase Storage (R2). |
-| R9 | Edge Functions: 150 s (Free) / 400 s (płatne) wall clock, **idle timeout 150 s na każdym planie**, 2 s CPU. | Długie generowanie planu przerwane. | Każde wywołanie (etap albo dzień planu) musi zwrócić odpowiedź lub zacząć strumień w < 150 s. Etapy jako osobne wywołania zapisane w `ai_runs`, orkiestracja z klienta z postępem. Limit czasu `packages/ai` (120 s) poniżej progu. |
+| R9 | (Nieaktualne: AI działa na serwerze Next, patrz §5 „Odstępstwa w MVP-1”.) Edge Functions: 150 s (Free) / 400 s (płatne) wall clock, **idle timeout 150 s na każdym planie**, 2 s CPU. | Długie generowanie planu przerwane. | Każde wywołanie (etap albo dzień planu) musi zwrócić odpowiedź lub zacząć strumień w < 150 s. Etapy jako osobne wywołania zapisane w `ai_runs`, orkiestracja z klienta z postępem. Limit czasu `packages/ai` (120 s) poniżej progu. |
 | R10 | Koszt AI i TTS przy grupie znajomych. | Rachunki. | Limity per użytkownik, cache miejsc i transkrypcji per `place_id` (wspólne między wyjazdami), TTS w telefonie domyślnie. |
-| R11 | Model danych staje się zbyt rozbudowany dla UI (warianty, pula, ograniczenia, przedziały). | Edytor trudny w obsłudze, MVP się rozrasta. | Schemat pełny od początku, ale UI warstwami: MVP pokazuje warianty i pulę w najprostszej formie. Import planów z `exaples/` jako test, czy struktura nie jest nadmiarowa. |
+| R11 | Model danych staje się zbyt rozbudowany dla UI (warianty, pula, ograniczenia, przedziały). | Edytor trudny w obsłudze, MVP się rozrasta. | Schemat pełny od początku, ale UI warstwami: MVP pokazuje warianty i pulę w najprostszej formie. Import planów z `examples/` jako test, czy struktura nie jest nadmiarowa. |
 | R12 | Darmowe plany części usług dopuszczają tylko użycie niekomercyjne: Open-Meteo, Nager.Date, GraphHopper, Stadia, MapTiler, Transitous (ten także wymaga open source). | Zmiana D1 na produkt publiczny lub płatny łamie warunki. | Przy D1 bez zmian. Przy zmianie D1: przegląd [docs/USLUGI.md](docs/USLUGI.md), płatne plany albo zamienniki. Usługi wybrane jako główne (Geoapify, ORS, Frankfurter v2, OpenFreeMap, Protomaps) nie mają tego ograniczenia. |
 | R13 | Nager.Date nie zwraca świąt islamskich dla Maroka (Id al-Fitr, Id al-Adha, Nowy Rok islamski, Mawlid); daty zależą od obserwacji Księżyca. | Silnik nie ostrzeże o zamkniętych zabytkach i sklepach. | Święta ruchome z drugiego źródła albo z danych kraju, oznaczone „data przybliżona ±1 dzień”. Test na planie Maroka. |
 
@@ -594,7 +605,7 @@ Stan na 30.10.2026, zweryfikowany na oficjalnych stronach: szczegóły, liczby i
 |---|---|---|
 | D1 | Odbiorcy: ja + znajomi (jak FormaSync) czy produkt publiczny w Google Play? | **Ja + znajomi.** APK przez GitHub Releases. Sklep dopiero w etapie wydania (deklaracja lokalizacji w tle, polityka prywatności). |
 | D2 | Klucze AI: serwerowe (płaci właściciel) czy każdy wkleja własny (jak FormaSync)? | **Serwerowe z limitem per osoba.** Własny klucz jako opcja później. |
-| D3 | Dostawca AI domyślny | **Claude** do planowania. Gemini jako tańsza alternatywa za tym samym walidatorem. Po PoC-1: **Haiku 5.5 dla etapu 2** (~0,05 USD za plan, silnik audytuje wynik), **Opus 5.5 dla etapu 1 i importu planu** (100% ryzyk, najlepszy import, zwięzły — szybszy i tańszy od Sonneta). Sonnet odpada; Fable nie używamy. |
+| D3 | Dostawca AI domyślny | **Claude** do planowania. Gemini jako tańsza alternatywa za tym samym walidatorem. Po PoC-1: **Haiku 5.5 dla etapu 2** (~0,05 USD za plan, silnik audytuje wynik), **Opus 5.5 dla etapu 1 i importu planu** (100% ryzyk, najlepszy import, zwięzły — szybszy i tańszy od Sonneta). Sonnet odpada; Fable nie używamy. **Obowiązują D8** (produkcja na Gemini) **i reguła kosztu** (rozwój: domyślnie Sonnet i Haiku, Opus tylko podany wprost w `--models`, `tools/plan-ai/src/pricing.ts`). |
 | D8 | Klucz AI w produkcji | **Gemini API** (decyzja właściciela 1.11.2026), domyślnie `gemini-3.5-flash-lite` (szkic planu ≈ 0,03–0,07 USD, 15–60 s AI). Testy na darmowym limicie (w EOG z warunkami płatnymi dla danych); produkcja dla innych użytkowników **wymaga rozliczeń w projekcie Google Cloud** (warunki Gemini API, docs/USLUGI.md §11). Łańcuch działa na serwerze weba (Next), nie w Edge Function — patrz §5 „Odstępstwa w MVP-1”. |
 | D4 | Źródło miejsc | **OSM przez Geoapify.** Google Places wykluczone przez warunki dla EOG (R3); w PoC-1 porównanie z Google tylko jakościowe, bez zapisywania danych. |
 | D5 | Web: Next.js | **Tak.** Wspólny TS z Expo, SSR linku publicznego. |

@@ -1,4 +1,4 @@
-import { instantToZoned } from '@expeditionplan/core';
+import { instantToZoned, plural } from '@expeditionplan/core';
 import { type CachedTrip, removeJournalEntry, saveJournalEntry, uuidv7 } from '@expeditionplan/sync';
 import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -98,7 +98,7 @@ function Journal({ trip, tripId, signedIn, userId, canEditAll, onChanged }: Prop
       )}
       {waiting > 0 && (
         <ThemedText type="small" themeColor="textSecondary">
-          {waiting === 1 ? '1 zdjęcie czeka' : `${waiting} zdjęć czeka`} na internet.
+          {plural(waiting, ['zdjęcie czeka', 'zdjęcia czekają', 'zdjęć czeka'])} na internet.
         </ThemedText>
       )}
       {groups.length === 0 && (

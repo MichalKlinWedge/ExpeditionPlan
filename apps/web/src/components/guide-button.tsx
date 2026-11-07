@@ -14,7 +14,7 @@ function GuideSourceForm({ tripId, target, confirmRegenerate }: { tripId: string
   const [pending, start] = useTransition();
   return (
     <details className="text-xs text-zinc-500">
-      <summary className="cursor-pointer underline">Nie ma w Wikipedii? Podaj stronę o tym miejscu</summary>
+      <summary className="cursor-pointer hover:text-sea">Nie ma w Wikipedii? Podaj stronę o tym miejscu</summary>
       <div className="mt-2 flex flex-col gap-2">
         <label className="flex flex-col gap-1">
           Adres strony (lokalna turystyka, strona obiektu, artykuł w Wikipedii w dowolnym języku)

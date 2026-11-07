@@ -1,9 +1,8 @@
-import { type Meal, type MealDay, mealEateries, mealPlaceRefs, mealTime, type TripDocument } from "@expeditionplan/core";
+import { dayLabel, type Meal, type MealDay, mealEateries, mealPlaceRefs, mealTime, type TripDocument } from "@expeditionplan/core";
 import type { ReactNode } from "react";
 
 /** Wspólne dla podglądu i edycji „Posiłków”: nagłówek dnia oraz numer i nazwa posiłku, które wybierają jego miejsce. */
 
-const longDay = (date: string) => new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
 export type MealSelection = {
   /** Numery miejsc na mapie (`mealMap`). */
@@ -16,7 +15,7 @@ export function MealDaySection({ day, children }: { day: MealDay; children: Reac
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-semibold">
-        Dzień {day.dayNo} <span className="font-normal text-zinc-500">· {longDay(day.date)}</span>
+        Dzień {day.dayNo} <span className="font-normal text-zinc-500">· {dayLabel(day.date)}</span>
       </h2>
       {day.meals.length === 0 ? <p className="text-xs text-zinc-500">Bez posiłków w planie.</p> : <ul className="flex flex-col gap-2">{children}</ul>}
     </section>

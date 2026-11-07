@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { IsoDate } from './common.ts';
-import { Ref, TripDocumentShape } from './trip-document.ts';
+import { PriceBasis } from './price.ts';
+import { ContactRole, ItemKind, Ref, TripDocumentShape } from './trip-document.ts';
 
 /**
  * Wyniki etapów łańcucha AI (SPECYFIKACJA §4). Etap 1 to warianty szkieletu wyjazdu, etap 2 —
@@ -102,7 +103,7 @@ export const PracticalInfo = z.object({
     .array(
       z.object({
         name: text,
-        role: z.enum(['emergency', 'host', 'operator', 'rental', 'guide', 'venue', 'other']),
+        role: ContactRole,
         phone: z.string().optional(),
         notes: z.string().optional(),
       }),
@@ -174,7 +175,7 @@ export const LogisticsCandidates = z.object({
               priceMinMinor: z.number().int().nonnegative(),
               priceMaxMinor: z.number().int().nonnegative(),
               currency: z.string().regex(/^[A-Z]{3}$/),
-              priceBasis: z.enum(['per_person', 'per_group', 'per_unit', 'per_night', 'per_day']),
+              priceBasis: PriceBasis,
               refundable: z.boolean().optional(),
               conditions: z.array(z.string()).default([]),
               includes: z.array(z.string()).default([]),
@@ -207,7 +208,7 @@ export type LogisticsCandidates = z.infer<typeof LogisticsCandidates>;
  */
 const PatchItem = z.object({
   title: text,
-  kind: z.enum(['visit', 'activity', 'meal', 'transport', 'lodging', 'errand', 'meetup', 'free', 'decision']),
+  kind: ItemKind,
   durationMin: minutes.optional(),
   /** Godzina „nie wcześniej niż” (HH:MM); bez niej punkt idzie po poprzednim. */
   start: z.string().regex(/^\d{2}:\d{2}$/).optional(),

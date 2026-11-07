@@ -1,12 +1,13 @@
 "use server";
 
-import { DocTrack, type ItemRouteFields, setItemRoute, TripDocument } from "@expeditionplan/core";
+import { DocTrack, formatMinutes, type ItemRouteFields, setItemRoute, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
+import { pullTrip, validationError } from "@/lib/trip-snapshot";
 
 /**
  * Ślad GPX punktu (Etap 7). Plik czyta i upraszcza przeglądarka (`trackFromGpx` z core) — na serwer
@@ -29,15 +30,11 @@ const Upload = z.object({
 });
 export type TrackUpload = z.input<typeof Upload>;
 
-const message = (error: { message: string; code?: string }) => (error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message);
-const minutesLabel = (value: number) => `${Math.floor(value / 60)} h ${value % 60} min`;
-
 async function commit(tripId: string, itemRef: string, build: (doc: Doc, item: Doc["items"][number]) => { doc: Doc; writes: ElementWrite[]; ok: string } | string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: message(error) };
-  if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { payload } = pulled;
   const doc = stateFromPayload(payload).doc;
   const item = doc.items.find((each) => each.ref === itemRef);
   if (item === undefined) return { error: "Tego punktu już nie ma — odśwież stronę." };
@@ -45,8 +42,7 @@ async function commit(tripId: string, itemRef: string, build: (doc: Doc, item: D
   if (typeof result === "string") return { error: result };
   const checked = TripDocument.safeParse(result.doc);
   if (!checked.success) {
-    const issue = checked.error.issues[0]!;
-    return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
+    return { error: validationError(checked.error) };
   }
   try {
     await saveElements(supabase, tripId, checked.data, result.writes, refIndex(payload.tables));
@@ -63,17 +59,15 @@ async function commit(tripId: string, itemRef: string, build: (doc: Doc, item: D
  */
 async function writeRoute(tripId: string, itemRef: string, fields: ItemRouteFields, ok: (before: Doc["items"][number]) => string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: message(error) };
-  if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { payload } = pulled;
   const doc = stateFromPayload(payload).doc;
   const edit = setItemRoute(doc, itemRef, `id-${uuidv7()}`, fields);
   if (edit === null) return { error: "Tego punktu już nie ma — odśwież stronę." };
   const checked = TripDocument.safeParse(edit.doc);
   if (!checked.success) {
-    const issue = checked.error.issues[0]!;
-    return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
+    return { error: validationError(checked.error) };
   }
   const track = checked.data.tracks.find((each) => each.ref === edit.track.ref)!;
   const item = checked.data.items.find((each) => each.ref === itemRef)!;
@@ -95,8 +89,8 @@ export async function saveTrack(tripId: string, itemRef: string, upload: TrackUp
   const { distanceKm, durationMin, ascentM, descentM } = stats;
   return writeRoute(tripId, itemRef, { geojson, name, distanceKm, durationMin, ...(ascentM !== null ? { ascentM } : {}), ...(descentM !== null ? { descentM } : {}) }, (before) => {
     const was = before.durationMin ?? before.leg?.durationMin;
-    const numbers = `${distanceKm.toLocaleString("pl-PL")} km${ascentM !== null ? `, ↑ ${ascentM} m` : ""}, ok. ${minutesLabel(durationMin)}`;
-    const previous = was !== undefined && was !== durationMin ? ` (było ${minutesLabel(was)})` : "";
+    const numbers = `${distanceKm.toLocaleString("pl-PL")} km${ascentM !== null ? `, ↑ ${ascentM} m` : ""}, ok. ${formatMinutes(durationMin)}`;
+    const previous = was !== undefined && was !== durationMin ? ` (było ${formatMinutes(was)})` : "";
     const flat = ascentM === null ? " Plik nie ma wysokości, więc czas nie uwzględnia podejść." : "";
     return `Zapisano ślad: ${numbers}${previous}${before.dayRef !== undefined ? " — plan dnia przeliczony" : ""}.${flat}`;
   });
@@ -125,7 +119,7 @@ export async function saveItemRoute(tripId: string, itemRef: string, fields: z.i
       ...(ascentM !== undefined ? { ascentM } : {}),
     },
     () => {
-      if (durationMin !== undefined) return `Zapisano trasę. Czas punktu: ${minutesLabel(durationMin)} — plan dnia przeliczony.`;
+      if (durationMin !== undefined) return `Zapisano trasę. Czas punktu: ${formatMinutes(durationMin)} — plan dnia przeliczony.`;
       // Regulamin Mapy.com nie pozwala zapisywać wyników ich API, więc sam link liczb nie zmienia.
       if (url && distanceKm === undefined) return "Zapisano link. Długość i czas nie przeliczają się z linku: przepisz je z mapy albo wgraj GPX.";
       return "Zapisano trasę.";

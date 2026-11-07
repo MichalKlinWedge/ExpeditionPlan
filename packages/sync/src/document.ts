@@ -322,6 +322,12 @@ export function documentFromRows(trip: Row, tables: TableRows): Doc {
 }
 
 /** `ref` → `id` wszystkich wierszy migawki (także tych bez `ref` — klucz `id-<uuid>`). */
+/** Punkty zablokowane przed AI (`user_locked`), po `ref` z dokumentu. */
+export function lockedRefs(tables: TableRows): Set<string> {
+  const rows = (tables.items ?? []) as unknown as { id: string; ref: string | null; user_locked?: boolean; deleted_at: string | null }[];
+  return new Set(rows.filter((row) => row.user_locked && row.deleted_at === null).map((row) => row.ref ?? `id-${row.id}`));
+}
+
 export function refIndex(tables: TableRows): Record<string, string> {
   const index: Record<string, string> = {};
   for (const collection of COLLECTIONS) {

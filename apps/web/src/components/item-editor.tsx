@@ -2,24 +2,12 @@
 
 import { useState } from "react";
 
-import { type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode } from "@expeditionplan/core";
+import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode } from "@expeditionplan/core";
 
 /**
  * Edycja punktu planu (MVP-3): nazwa, rodzaj, godzina z precyzją, czas trwania (przedział),
  * bufor, stała godzina, priorytet i kolejność cięcia. Puste pole = brak wartości.
  */
-
-const KINDS: Record<string, string> = {
-  visit: "zwiedzanie",
-  activity: "aktywność",
-  meal: "posiłek",
-  transport: "przejazd",
-  lodging: "nocleg",
-  errand: "sprawa",
-  meetup: "spotkanie",
-  free: "czas wolny",
-  decision: "decyzja",
-};
 
 const PRECISION: Record<string, string> = {
   none: "bez godziny (po poprzednim)",
@@ -145,7 +133,7 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
       <label className={label}>
         Rodzaj
         <select className={input} value={draft.kind} onChange={(event) => set({ kind: event.target.value as KindChoice })}>
-          {kindChoices(KINDS).map(([key, name]) => (
+          {kindChoices(ITEM_KIND).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
             </option>

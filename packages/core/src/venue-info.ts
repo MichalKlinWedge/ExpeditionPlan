@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { formatMoney } from './budget.ts';
+import { formatMoneyRange } from './budget.ts';
 import { plainName } from './place-list.ts';
 import { Currency, IsoDate, MinorAmount } from './schemas/common.ts';
 import type { TripDocument, Venue, VenuePrice, VenueRating } from './schemas/trip-document.ts';
@@ -58,8 +58,7 @@ export function venueRatingLabel(rating: Pick<VenueRating, 'value' | 'scale'> & 
 
 /** „Pizza margherita: 32 zł”, „Zupa: 18 zł – 24 zł” */
 export function venuePriceLabel(price: VenuePrice): string {
-  const low = formatMoney(price.minMinor, price.currency);
-  return `${price.name}: ${price.minMinor === price.maxMinor ? low : `${low} – ${formatMoney(price.maxMinor, price.currency)}`}`;
+  return `${price.name}: ${formatMoneyRange(price.minMinor, price.maxMinor, price.currency)}`;
 }
 
 /** Wiersze szkicu do podglądu: każdy punkt i każda cena osobno, bez tych, które już są zapisane w tej samej postaci. */

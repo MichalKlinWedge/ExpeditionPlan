@@ -1,6 +1,7 @@
-import { PlanPatch, scheduleDay, type TripDocument } from "@expeditionplan/core";
+import type { Metadata } from "next";
+import { PlanPatch, scheduleDay, SLACK_LABEL, type TripDocument } from "@expeditionplan/core";
 import { applyPatch } from "@expeditionplan/planner";
-import { stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { dbLoadError, lockedRefs, type PullPayload, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -8,6 +9,8 @@ import { Suspense } from "react";
 import { Loading, Shell } from "@/components/shell";
 import { type Preview, TuneChat } from "@/components/tune-chat";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Dostrajanie z AI — Expedition Planner" };
 
 /**
  * Dostrajanie planu z AI (etap 3): rozmowa i najnowsza propozycja łatki. Podgląd liczy się od nowa
@@ -27,20 +30,17 @@ export default function TunePage(props: PageProps<"/trips/[id]/tune">) {
   );
 }
 
-const SLACK: Record<string, string> = { large: "duży zapas", small: "mały zapas", none: "bez zapasu", negative: "nie spina się" };
 
 /** „koniec 19:30 · mały zapas” dla dnia; `—`, gdy silnik nie umie go policzyć. */
 function daySummary(doc: TripDocument, dayRef: string): string {
   try {
     const schedule = scheduleDay(doc, dayRef);
     const last = schedule.items.at(-1);
-    return [last ? `koniec ${last.endLocal}` : "bez punktów", schedule.slack ? SLACK[schedule.slack] : null].filter(Boolean).join(" · ");
+    return [last ? `koniec ${last.endLocal}` : "bez punktów", schedule.slack ? SLACK_LABEL[schedule.slack] : null].filter(Boolean).join(" · ");
   } catch {
     return "—";
   }
 }
-
-type Row = { id: string; ref: string | null; user_locked?: boolean; deleted_at: string | null };
 
 async function Tune({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -51,18 +51,17 @@ async function Tune({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("ai_messages").select("role, content").eq("trip_id", id).order("created_at", { ascending: false }).limit(20),
     supabase.from("ai_runs").select("id, output").eq("trip_id", id).eq("stage", "tune").eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   const doc = stateFromPayload(payload).doc;
   if (!canEdit) return <p className="text-sm text-zinc-500">Dostrajać plan z AI może organizator albo edytor.</p>;
 
   let preview: Preview | null = null;
   const patch = PlanPatch.safeParse((runRow.data?.output as { patch?: unknown } | null)?.patch);
   if (runRow.data && patch.success) {
-    const rows = (payload.tables.items ?? []) as unknown as Row[];
-    const locked = new Set(rows.filter((row) => row.user_locked && row.deleted_at === null).map((row) => row.ref ?? `id-${row.id}`));
+    const locked = lockedRefs(payload.tables);
     const applied = applyPatch(doc, patch.data, locked, uuidv7);
     // Dni, których dotyczy łatka: gdzie punkt był albo gdzie jest po zmianie.
     const touched = new Set<string>();

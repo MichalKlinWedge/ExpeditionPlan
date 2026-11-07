@@ -44,7 +44,7 @@ export function VenueCard({ tripId, place, isEatery, canEdit, editing }: { tripI
             <>
               {place.address || place.openingHours ? " · " : ""}
               <a href={place.website} target="_blank" rel="noreferrer" className="underline">
-                strona lokalu
+                strona knajpy
               </a>
             </>
           )}
@@ -95,32 +95,32 @@ function VenueEditor({ tripId, place, canClear }: { tripId: string; place: Place
         <div className="flex flex-col gap-1">
           <button type="button" disabled={pending} onClick={() => read("site", () => readVenueSite(tripId, place.ref))} className="btn-secondary btn-sm self-start">
             <SparkIcon className="size-4" />
-            {reading === "site" ? "Czytam stronę… (ok. 10–30 s)" : "Odczytaj opis i menu ze strony lokalu (AI)"}
+            {reading === "site" ? "Czytam stronę… (ok. 10–30 s)" : "Odczytaj opis i menu ze strony knajpy (AI)"}
           </button>
-          <p className="text-xs text-zinc-500">Pobiera raz stronę lokalu i jej menu. Oceny zwykle tam nie ma: tę wklej niżej.</p>
+          <p className="text-xs text-zinc-500">Pobiera raz stronę knajpy i jej menu. Oceny zwykle tam nie ma: tę wklej niżej.</p>
         </div>
       )}
       <label className="flex flex-col gap-1 text-xs text-zinc-500">
-        Wklej tekst ze strony lokalu: opis, ocenę, menu z cenami
-        <textarea value={text} onChange={(event) => setText(event.target.value)} rows={5} maxLength={20_000} disabled={pending} placeholder="Zaznacz i skopiuj tekst, np. z Google Maps, TripAdvisora albo menu lokalu." className="field p-2 text-sm" />
+        Wklej tekst ze strony knajpy: opis, ocenę, menu z cenami
+        <textarea value={text} onChange={(event) => setText(event.target.value)} rows={5} maxLength={20_000} disabled={pending} placeholder="Zaznacz i skopiuj tekst, np. z Google Maps, TripAdvisora albo menu knajpy." className="field p-2 text-sm" />
       </label>
       <p className="text-xs text-zinc-500">
         Serwisy z ocenami nie pozwalają ich automatycznie pobierać i zapisywać, więc ocena pochodzi tylko z wklejonego tekstu.{" "}
         <a href={`https://www.google.com/maps/search/?api=1&query=${query}`} target="_blank" rel="noreferrer" className="underline">
-          Otwórz lokal w Google Maps
+          Otwórz knajpę w Google Maps
         </a>
         . AI przygotuje punkty, a Ty wybierzesz, które dopisać. To, co już jest zapisane, zostaje.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" disabled={pending || text.trim() === ""} onClick={() => read("text", () => readVenue(tripId, place.ref, text))} className="btn-primary btn-sm">
           <SparkIcon className="size-4" />
-          {reading === "text" ? "Czytam…" : "Odczytaj dane lokalu (AI)"}
+          {reading === "text" ? "Czytam…" : "Odczytaj dane knajpy (AI)"}
         </button>
         {canClear && (
           <button
             type="button"
             disabled={pending}
-            onClick={() => window.confirm("Usunąć wszystkie punkty, ceny i ocenę tego lokalu?") && start(async () => setState(await clearVenue(tripId, place.ref)))}
+            onClick={() => window.confirm("Usunąć wszystkie punkty, ceny i ocenę tej knajpy?") && start(async () => setState(await clearVenue(tripId, place.ref)))}
             className="btn-mini btn-mini-danger">
             usuń wszystko
           </button>

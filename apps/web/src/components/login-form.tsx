@@ -1,5 +1,6 @@
 "use client";
 
+import { dbErrorMessage } from "@expeditionplan/sync";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -24,7 +25,7 @@ export function LoginForm() {
     setPending(true);
     const { error } = await createClient().auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo() } });
     if (error) {
-      setStatus({ error: error.message });
+      setStatus({ error: dbErrorMessage(error, "Nie udało się zalogować. Spróbuj jeszcze raz.") });
       setPending(false);
     }
   };
@@ -43,7 +44,7 @@ export function LoginForm() {
       setStatus({ error: "Nie ma konta z tym adresem. Konto zakłada się z linku zaproszenia od organizatora wyjazdu." });
       return;
     }
-    setStatus(error ? { error: error.message } : { ok: `Wysłałem link logowania na ${email}. Otwórz go w tej przeglądarce.` });
+    setStatus(error ? { error: dbErrorMessage(error, "Nie udało się wysłać linku. Spróbuj za chwilę.") } : { ok: `Wysłałem link logowania na ${email}. Otwórz go w tej przeglądarce.` });
   };
 
   return (

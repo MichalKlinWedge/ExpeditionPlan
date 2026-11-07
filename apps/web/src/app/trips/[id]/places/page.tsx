@@ -1,5 +1,6 @@
+import { EditToggle } from "@/components/edit-toggle";
 import { type GuideRow, placeGuide, placeList, similarPlaces, type TripDocument } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -29,19 +30,21 @@ export default function PlacesPage(props: PageProps<"/trips/[id]/places">) {
 async function View({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
   // Wejście z listy wszystkich miejsc: to miejsce jest od razu wybrane.
-  const { miejsce } = await searchParams;
+  const query = await searchParams;
+  const { miejsce } = query;
   const { supabase } = await requireUser(`/trips/${id}/places`);
   const [{ data, error }, membership] = await Promise.all([supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }), supabase.from("my_trips").select("role").eq("id", id).maybeSingle()]);
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   let doc: TripDocument;
   try {
     doc = stateFromPayload(payload).doc;
   } catch (e) {
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
-  const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
+  const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
+  const canEdit = mayEdit && query.edit === "1";
   const ids = refIndex(payload.tables);
   const similar = similarPlaces(doc);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
@@ -56,12 +59,15 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
         <Link href={`/trips/${id}`} className="back-link">
           ← {doc.trip.title}
         </Link>
-        <h1 className="text-2xl font-semibold">Miejsca</h1>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h1 className="text-2xl font-semibold">Miejsca</h1>
+          {mayEdit && <EditToggle href={`/trips/${id}/places`} editing={canEdit} />}
+        </div>
         <Link href="/places" className="self-start text-xs text-zinc-500 underline hover:text-sea">
           Miejsca ze wszystkich wyjazdów
         </Link>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {canEdit ? "Miejsce jest wspólne dla punktów, które z niego korzystają: zmiana nazwy lub współrzędnych obowiązuje wszędzie." : "Miejsca, z których korzysta ten plan."}
+          {mayEdit ? "Miejsce jest wspólne dla punktów, które z niego korzystają: zmiana nazwy lub współrzędnych obowiązuje wszędzie." : "Miejsca, z których korzysta ten plan."}
         </p>
       </div>
       {places.length === 0 ? <p className="text-sm text-zinc-500">Ten plan nie ma jeszcze miejsc.</p> : <PlacesView tripId={id} places={places} canEdit={canEdit} hasRouted={doc.items.some((item) => item.leg?.routed === true)} initial={typeof miejsce === "string" ? miejsce : null} />}

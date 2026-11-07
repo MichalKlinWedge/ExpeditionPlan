@@ -1,4 +1,4 @@
-import { formatMoney, settle, toBase, type TripDocument } from "@expeditionplan/core";
+import { formatMoney, settle, settleInputFromRows, toBase, type TripDocument } from "@expeditionplan/core";
 
 /**
  * Rozliczenie „kto komu ile” na webie (tylko odczyt — przelewy „Oddane” zaznacza się w telefonie,
@@ -10,14 +10,11 @@ type Row = Record<string, unknown> & { id: string; deleted_at: string | null };
 
 export function Settlement({ doc, tables }: { doc: TripDocument; tables: Record<string, Row[] | undefined> }) {
   const alive = (table: string) => (tables[table] ?? []).filter((row) => row.deleted_at === null);
-  const travelers = alive("travelers").map((row) => ({ id: row.id, name: String(row.name), household: (row.household as string | null) ?? null, guardianId: (row.guardian_id as string | null) ?? null }));
-  const expenses = alive("expenses").map((row) => ({ id: row.id, payerId: (row.payer_traveler_id as string | null) ?? null, amountMinor: Number(row.amount_minor), currency: String(row.currency) }));
+  const rows = settleInputFromRows({ travelers: alive("travelers"), expenses: alive("expenses"), splits: alive("expense_splits"), payments: alive("settlements") });
+  const { travelers, expenses } = rows;
   if (travelers.length < 2 || expenses.length === 0) return null;
   const input = {
-    travelers,
-    expenses,
-    splits: alive("expense_splits").map((row) => ({ expenseId: String(row.expense_id), travelerId: String(row.traveler_id), weight: (row.weight as number | null) ?? 1 })),
-    payments: alive("settlements").map((row) => ({ fromId: String(row.from_traveler_id), toId: String(row.to_traveler_id), amountMinor: Number(row.amount_minor), currency: String(row.currency) })),
+    ...rows,
     toBase: (amount: number, currency: string) => toBase(doc, amount, currency),
   };
   const money = (minor: number) => formatMoney(minor, doc.trip.baseCurrency);

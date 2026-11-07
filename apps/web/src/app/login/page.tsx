@@ -1,9 +1,10 @@
+import { MEMBER_ROLE } from "@expeditionplan/core";
 import { Suspense } from "react";
 
 import { CompassIcon, PeakIcon, RouteIcon, SparkIcon } from "@/components/icons";
 import { LoginForm } from "@/components/login-form";
 import { Shell } from "@/components/shell";
-import { ROLE, tripDates } from "@/lib/labels";
+import { tripDates } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -47,7 +48,7 @@ function Hero({ invite }: { invite: Invite | null }) {
           <span className="chip self-start bg-signal! text-white!">Zaproszenie</span>
           <h1 className="text-3xl font-bold text-white">{invite.title}</h1>
           <p className="text-zinc-200">
-            {tripDates(invite.start_date, invite.end_date)} · dołączysz jako <strong className="text-white">{ROLE[invite.role] ?? invite.role}</strong>
+            {tripDates(invite.start_date, invite.end_date)} · dołączysz jako <strong className="text-white">{MEMBER_ROLE[invite.role] ?? invite.role}</strong>
             {invite.invited_by ? ` · zaprasza ${invite.invited_by}` : ""}
           </p>
           <p className="text-sm text-zinc-300">Zaloguj się, a potem kliknij „Dołącz do wyjazdu”. Nowe konto zakłada link z maila.</p>

@@ -2,7 +2,7 @@
 
 import { type Eatery, eaterySummary, type EateryKind, mealSearchCenter, mealSlot, metersBetween, type OpenAtMeal, openAtMeal, type SearchCenter, TripBrief, type TripDocument } from "@expeditionplan/core";
 import { type EateryDiet, findEateries, geoapifyLookup } from "@expeditionplan/planner";
-import { stateFromPayload } from "@expeditionplan/sync";
+import { type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 
 import { aiAccessError } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
@@ -39,7 +39,7 @@ export async function findRestaurants(
   if (error || data === null) return { error: error?.message ?? "Nie ma takiego wyjazdu." };
   let doc: TripDocument;
   try {
-    doc = stateFromPayload(data as Parameters<typeof stateFromPayload>[0]).doc;
+    doc = stateFromPayload(data as PullPayload).doc;
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }

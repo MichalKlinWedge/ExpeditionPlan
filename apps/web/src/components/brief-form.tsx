@@ -323,8 +323,8 @@ export function BriefForm({ tripId, tripTz, initial, travelers }: { tripId: stri
                 Uwagi
                 <input className={input} value={each.note ?? ""} onChange={(event) => setFixed(index, { note: event.target.value })} />
               </label>
-              <button type="button" className={`${secondary} justify-self-start`} onClick={() => update({ fixed: draft.fixed.filter((_, i) => i !== index) })}>
-                Usuń
+              <button type="button" className="btn-mini btn-mini-danger justify-self-start" onClick={() => update({ fixed: draft.fixed.filter((_, i) => i !== index) })}>
+                usuń
               </button>
             </fieldset>
           ))}

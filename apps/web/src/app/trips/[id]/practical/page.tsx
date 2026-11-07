@@ -1,6 +1,7 @@
+import type { Metadata } from "next";
 import { PracticalInfo } from "@expeditionplan/core";
 import type { SourceCheck } from "@expeditionplan/planner";
-import { stateFromPayload } from "@expeditionplan/sync";
+import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -10,6 +11,8 @@ import { PlanActionButton } from "@/components/plan-action-button";
 import { PracticalReview } from "@/components/practical-review";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Informacje praktyczne — Expedition Planner" };
 
 /**
  * Informacje praktyczne wyjazdu: notatki ogólne, kontakty i źródła z planu, a dla organizatora
@@ -48,9 +51,9 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
       .limit(1)
       .maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const doc = stateFromPayload(data as Parameters<typeof stateFromPayload>[0]).doc;
+  const doc = stateFromPayload(data as PullPayload).doc;
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const output = draftRow.data?.output as { info?: unknown; sources?: SourceCheck[] } | null | undefined;
   const draft = PracticalInfo.safeParse(output?.info);
@@ -70,7 +73,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
           ai
           run={draftPractical.bind(null, id)}
           label={draft.success ? "Przygotuj nowy szkic z AI" : "Przygotuj z AI"}
-          note="Notatki, kontakty alarmowe, pakowanie, zadania i źródła — szkic do akceptacji (Gemini, ok. 30 s)"
+          note="Notatki, kontakty alarmowe, sprzęt, zadania i źródła — szkic do akceptacji (Gemini, ok. 30 s)"
         />
       )}
       {canEdit && draft.success && draftRow.data?.status === "ok" && <PracticalReview tripId={id} runId={draftRow.data.id} info={draft.data} checks={output?.sources ?? []} />}

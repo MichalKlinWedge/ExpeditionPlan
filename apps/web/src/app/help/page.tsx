@@ -92,7 +92,7 @@ export default function HelpPage() {
               pomysły, których nie ma w żadnym dniu („+ Dodaj do puli”). Można je grupować, filtrować (z opisem, koniecznie, bez miejsca na mapie) i w każdej chwili wstawić do dnia.
             </Step>
             <Step name="Karta punktu">
-              opis, ceny, linki, opis przewodnika z Wikipedii (📖 przy punkcie znaczy, że opis już jest) i trasa pieszo: link z mapy.com (🗺 w planie dnia) z długością i czasem przepisanymi z mapy, od których liczą się godziny dnia. Plik GPX sam wypełnia długość, czas i podejście oraz rysuje dokładny przebieg na mapie planu.
+              opis, ceny, linki, opis miejsca z Wikipedii (📖 przy punkcie znaczy, że opis już jest) i trasa pieszo: link z mapy.com (🗺 w planie dnia) z długością i czasem przepisanymi z mapy, od których liczą się godziny dnia. Plik GPX sam wypełnia długość, czas i podejście oraz rysuje dokładny przebieg na mapie planu.
             </Step>
             <Step name="Miejsca">
               wszystkie miejsca planu z listą tego, co z nich korzysta. Organizator i edytor poprawią tu nazwę, adres i współrzędne (wklejone, wskazane na mapie albo znalezione po nazwie), także gdy automat postawił pinezkę w złym miejscu. Zmiana obowiązuje wszędzie, gdzie miejsce jest użyte, a czasy przejazdów trzeba potem przeliczyć w planie. Miejsca ze wszystkich wyjazdów są pod przyciskiem „Wszystkie miejsca” na liście wyjazdów.
@@ -106,7 +106,13 @@ export default function HelpPage() {
             <Step name="Zadania, posiłki, lista zakupów, kontakty">
               co trzeba zrobić przed wyjazdem, kto gotuje i dla ilu osób, wspólne zakupy, gospodarze i numery alarmowe.
             </Step>
+            <Step name="Sprzęt">co zabrać: rzeczy osobiste pakuje każdy, a przy wspólnych widać, kto co bierze i czego jeszcze brakuje.</Step>
             <Step name="Sejf dokumentów">bilety, vouchery i kody QR — w telefonie dostępne offline.</Step>
+            <Step name="Informacje praktyczne">numery, zwyczaje, pogoda i źródła. AI przygotowuje szkic, a Ty wybierasz, co z niego dodać.</Step>
+            <Step name="Dziennik">wpisy i zdjęcia z trasy, dzień po dniu. Na webie są do czytania, a dodaje się je na telefonie.</Step>
+            <Step name="Dostrajanie z AI i porównanie ze szkicem">
+              czatem prosisz o zmiany w planie albo plan B i oglądasz je przed zastosowaniem. Na stronie porównania przenosisz punkty ze szkicu AI do planu.
+            </Step>
             <Step name="Uczestnicy i dostęp">
               lista jadących, linki zaproszeń (widz albo edytor) i — dla organizatora — kto dołączył, kiedy ostatnio był w aplikacji i zmiana dostępu.
             </Step>
@@ -135,7 +141,7 @@ export default function HelpPage() {
             <Step name="Wyjazdy">Twoje wyjazdy i „Pobierz wyjazd offline”.</Step>
             <Step name="Plan">
               plan dnia z godzinami liczonymi na telefonie. Karta „Teraz” w dniu wyjazdu: <em>✓ Zrobione</em>, <em>+15 min</em> / <em>+30 min</em> (zostajemy dłużej — reszta dnia się
-              przesuwa), <em>Pomiń</em>. Niżej zakładki <em>Wydatki</em> (także 📷 paragon — AI odczyta kwotę), <em>Pakowanie</em>, <em>Zadania</em>, <em>Dziennik</em> ze zdjęciami i{" "}
+              przesuwa), <em>Pomiń</em>. Niżej zakładki <em>Wydatki</em> (także 📷 paragon — AI odczyta kwotę), <em>Sprzęt</em> (w nim też lista zakupów), <em>Zadania</em>, <em>Dziennik</em> ze zdjęciami i{" "}
               <em>Info</em>. Chip <em>Pula</em> pokazuje pomysły spoza dni.
             </Step>
             <Step name="Mapa">
@@ -146,7 +152,7 @@ export default function HelpPage() {
             </Step>
           </ul>
           <p>
-            Bez zasięgu wszystko działa na danych z telefonu; wydatki, pakowanie i dziennik zapisane offline wyślą się same, gdy wróci internet. Zmiany planu (edycja, wstawianie z
+            Bez zasięgu wszystko działa na danych z telefonu; wydatki, sprzęt i dziennik zapisane offline wyślą się same, gdy wróci internet. Zmiany planu (edycja, wstawianie z
             puli) wymagają połączenia.
           </p>
         </Section>

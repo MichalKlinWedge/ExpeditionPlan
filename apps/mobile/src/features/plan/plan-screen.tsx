@@ -1,40 +1,4 @@
-import {
-  activeVariants as resolveVariants,
-  addItem,
-  addPoolItem,
-  dayLodging,
-  lodgingContacts,
-  type DaySchedule,
-  documentProblem,
-  type DayWeather,
-  type EatOutEdit,
-  flightLine,
-  flightOf,
-  instantToZoned,
-  itemIcon,
-  ItemInUseError,
-  itemKindLabel,
-  LODGING_STOP,
-  type MapPin,
-  legLabel,
-  stopsLabel,
-  mapCoverage,
-  missingOnMap,
-  moveToDay,
-  moveWithinDay,
-  type PlanEdit,
-  type PlanItem,
-  removeItemClosingGap,
-  updateItem,
-  proposeCuts,
-  type Scenario,
-  scheduleDay,
-  type ScheduleWarning,
-  weatherLine,
-  weatherVariantHint,
-  routeStopsLabel,
-  routeStopTime,
-} from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, instantToZoned, ITEM_KIND, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -68,7 +32,7 @@ import { Spacing } from '@/constants/theme';
 import { DayMap, useDayStops } from '@/features/plan/day-map';
 import { ContactList } from '@/features/plan/item-facts';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
-import { DayPicker, ItemEditor, type ItemFields, KIND } from '@/features/plan/item-editor';
+import { DayPicker, ItemEditor, type ItemFields } from '@/features/plan/item-editor';
 import { PoolView } from '@/features/plan/pool-view';
 import { TripNewsBanner } from '@/features/plan/trip-news';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
@@ -91,19 +55,15 @@ import { supabase } from '@/lib/supabase';
  */
 
 const SLACK: Record<string, { label: string; color: string }> = {
-  large: { label: 'duży zapas', color: '#2e7d32' },
-  small: { label: 'mały zapas', color: '#b26a00' },
-  none: { label: 'bez zapasu', color: '#e65100' },
-  negative: { label: 'dzień się nie spina', color: '#c62828' },
+  large: { label: SLACK_LABEL.large, color: '#2e7d32' },
+  small: { label: SLACK_LABEL.small, color: '#b26a00' },
+  none: { label: SLACK_LABEL.none, color: '#e65100' },
+  negative: { label: SLACK_LABEL.negative, color: '#c62828' },
 };
 
 const HARD = '#d32f2f';
 const SOFT = '#b26a00';
 
-const weekday = (date: string) => {
-  const text = new Intl.DateTimeFormat('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
-  return text.charAt(0).toUpperCase() + text.slice(1);
-};
 
 const stamp = (iso: string) =>
   new Date(iso).toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -210,7 +170,7 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
         .then(async (found) => setNews(found === null ? null : summarizeNews(found, await newsRows(client, found))))
         .catch(() => undefined);
       if (fresh.rejected.length > 0) {
-        Alert.alert('Serwer nie przyjął zmiany', `${fresh.rejected.length === 1 ? 'Jeden zapis' : `${fresh.rejected.length} zapisy`} z telefonu wycofano — brak uprawnień albo dane już się zmieniły.
+        Alert.alert('Serwer nie przyjął zmiany', `${plural(fresh.rejected.length, ['zapis', 'zapisy', 'zapisów'])} z telefonu wycofano — brak uprawnień albo dane już się zmieniły.
 
 ${fresh.rejected[0]!.error}`);
       }
@@ -375,7 +335,7 @@ ${fresh.rejected[0]!.error}`);
   else if (sync.busy) status = 'Synchronizuję…';
   else if (sync.error !== undefined) status = sync.syncedAt ? `Bez połączenia — plan z ${stamp(sync.syncedAt)}` : `Brak połączenia, a plan nie był jeszcze pobrany na telefon (${sync.error}).`;
   else status = sync.syncedAt ? `Zsynchronizowano ${stamp(sync.syncedAt)}` : '';
-  if (trip !== null && trip.pending > 0) status += ` · ${trip.pending === 1 ? '1 zmiana czeka' : `${trip.pending} zmian czeka`} na wysłanie`;
+  if (trip !== null && trip.pending > 0) status += ` · ${plural(trip.pending, ['zmiana czeka', 'zmiany czekają', 'zmian czeka'])} na wysłanie`;
   // Ile planu jest na mapie — miejsca ze współrzędnymi i przejazdy policzone trasą (web: „Uzupełnij”, „Przelicz”).
   const coverage = trip === null ? null : mapCoverage(trip.state.doc);
   if (coverage !== null && coverage.places.total > 0) {
@@ -696,7 +656,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
   return (
     <View style={styles.day} onLayout={(event) => (dayTop.current = event.nativeEvent.layout.y)}>
       <ThemedText style={styles.dayTitle}>
-        {weekday(day.date)}
+        {capitalized(dayLabel(day.date))}
         {day.title ? ` — ${day.title}` : ''}
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
@@ -797,7 +757,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
                 </ThemedText>
               )}
               <ThemedText type="small" themeColor="textSecondary">
-                {source === undefined ? KIND[item.kind] : itemKindLabel(source, KIND)}
+                {source === undefined ? ITEM_KIND[item.kind] : itemKindLabel(source, ITEM_KIND)}
                 {place && place !== item.title ? ` · ${place}` : ''}
                 {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ''}
               </ThemedText>

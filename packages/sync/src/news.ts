@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { RemoteError } from './remote.ts';
+import { dbErrorMessage, RemoteError } from './remote.ts';
 
 /**
  * „Co nowego od ostatniej wizyty” (RPC `trip_news`): zmiany innych osób z `activity_log` złożone
@@ -111,7 +111,7 @@ export function summarizeNews(news: TripNews, rowOf: (table: string, id: string)
 /** Zmiany innych od ostatniej wizyty (null — brak dostępu albo serwer przed migracją). */
 export async function fetchTripNews(client: SupabaseClient, tripId: string): Promise<TripNews | null> {
   const { data, error } = await client.rpc('trip_news', { p_trip: tripId });
-  if (error) throw new RemoteError(error.message, error.code);
+  if (error) throw new RemoteError(dbErrorMessage(error), error.code);
   return (data as TripNews | null) ?? null;
 }
 
@@ -126,7 +126,7 @@ export async function newsRows(client: SupabaseClient, news: TripNews): Promise<
     for (let start = 0; start < all.length; start += 80) {
       requests.push(
         Promise.resolve(client.from(table).select('*').in('id', all.slice(start, start + 80))).then(({ data, error }) => {
-          if (error) throw new RemoteError(error.message, error.code);
+          if (error) throw new RemoteError(dbErrorMessage(error), error.code);
           for (const row of (data ?? []) as NewsRow[]) rows.set(`${table}:${row.id}`, row);
         }),
       );
@@ -139,7 +139,7 @@ export async function newsRows(client: SupabaseClient, news: TripNews): Promise<
 /** „Przejrzane” — od teraz nowe są tylko późniejsze zmiany. */
 export async function markNewsSeen(client: SupabaseClient, tripId: string): Promise<void> {
   const { error } = await client.rpc('mark_changes_seen', { p_trip: tripId });
-  if (error) throw new RemoteError(error.message, error.code);
+  if (error) throw new RemoteError(dbErrorMessage(error), error.code);
 }
 
 /** Czasownik bez rodzaju osoby: „dodano punkt „Zamek” — Anna”. */

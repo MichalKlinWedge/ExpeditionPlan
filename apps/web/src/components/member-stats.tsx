@@ -1,7 +1,7 @@
+import { MEMBER_ROLE } from "@expeditionplan/core";
 import { MemberAccess } from "@/components/member-access";
 import { TravelerAccount } from "@/components/traveler-account";
 import { TravelerInvite } from "@/components/traveler-invite";
-import { ROLE } from "@/lib/labels";
 
 /**
  * Kto ma dostęp i czy korzysta (tylko organizator): e-mail, rola, kiedy i z którego linku dołączył,
@@ -100,7 +100,7 @@ export function MemberStats({
                       <MemberAccess tripId={tripId} userId={member.user_id} name={member.display_name ?? member.email ?? "?"} role={member.role} canAddExpenses={member.can_add_expenses} />
                     ) : (
                       <>
-                        {ROLE[member.role] ?? member.role}
+                        {MEMBER_ROLE[member.role] ?? member.role}
                         {member.can_add_expenses && member.role === "viewer" && <span className="block text-xs text-zinc-500">+ dodaje wydatki</span>}
                       </>
                     )}
@@ -163,7 +163,7 @@ export function MemberStats({
               const state = invite.revoked_at ? "cofnięty" : new Date(invite.expires_at).getTime() < now ? "wygasł" : invite.used_count >= invite.max_uses ? "wykorzystany" : `ważny do ${date(invite.expires_at)}`;
               return (
                 <li key={invite.id}>
-                  {date(invite.created_at)} · {ROLE[invite.role] ?? invite.role}
+                  {date(invite.created_at)} · {MEMBER_ROLE[invite.role] ?? invite.role}
                   {invite.traveler_id && ` · dla: ${travelers.find((each) => each.id === invite.traveler_id)?.name ?? "?"}`} · użyty {invite.used_count} z {invite.max_uses} · <span className="text-zinc-500">{state}</span>
                   {joined.length > 0 && <span className="text-zinc-500"> · dołączyli: {joined.map((member) => member.display_name ?? member.email ?? "?").join(", ")}</span>}
                 </li>

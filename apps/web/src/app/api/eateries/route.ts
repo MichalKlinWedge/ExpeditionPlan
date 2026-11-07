@@ -1,6 +1,6 @@
 import type { Database } from "@expeditionplan/db";
 import { EateriesRequest, eateriesForMeal, findEateries, positionCenter } from "@expeditionplan/planner";
-import { stateFromPayload } from "@expeditionplan/sync";
+import { type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 import { createClient } from "@supabase/supabase-js";
 
 import { aiAccessFor } from "@/lib/ai";
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   if (error || data === null) return fail("Nie ma takiego wyjazdu.", 404);
   let doc;
   try {
-    doc = stateFromPayload(data as Parameters<typeof stateFromPayload>[0]).doc;
+    doc = stateFromPayload(data as PullPayload).doc;
   } catch (e) {
     return fail(e instanceof Error ? e.message : String(e), 500);
   }

@@ -1,4 +1,4 @@
-import { type PlanItem, routeLinkLabel, trackPosition, type TrackPosition, type TripDocument } from '@expeditionplan/core';
+import { formatKm, formatMinutes, type PlanItem, routeLinkLabel, trackPosition, type TrackPosition, type TripDocument } from '@expeditionplan/core';
 import * as Location from 'expo-location';
 import { useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
@@ -15,7 +15,6 @@ import { useTheme } from '@/hooks/use-theme';
  * na linię z planu: odległość od śladu, przebyte i pozostałe km, podejścia przed wami.
  */
 
-const km = (value: number) => `${value.toLocaleString('pl-PL')} km`;
 const OFF_TRACK_M = 150;
 
 export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) {
@@ -49,10 +48,10 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
       </ThemedText>
       <ThemedText type="small">
         {track.name}
-        {track.distanceKm !== undefined ? ` · ${km(track.distanceKm)}` : ''}
+        {track.distanceKm !== undefined ? ` · ${formatKm(track.distanceKm)}` : ''}
         {track.ascentM !== undefined ? ` · ↑ ${track.ascentM} m` : ''}
         {track.descentM !== undefined ? ` ↓ ${track.descentM} m` : ''}
-        {track.durationMin !== undefined ? ` · ok. ${Math.floor(track.durationMin / 60)} h ${track.durationMin % 60} min` : ''}
+        {track.durationMin !== undefined ? ` · ok. ${formatMinutes(track.durationMin)}` : ''}
       </ThemedText>
       {position !== null && (
         <View style={styles.result}>
@@ -60,7 +59,7 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
             {off ? `⚠ Jesteś ${position.offTrackM} m od śladu` : `Na śladzie (${position.offTrackM} m od linii)`}
           </ThemedText>
           <ThemedText type="small">
-            Za wami {km(position.doneKm)}, przed wami {km(position.leftKm)}
+            Za wami {formatKm(position.doneKm)}, przed wami {formatKm(position.leftKm)}
             {position.leftAscentM !== null ? ` i ↑ ${position.leftAscentM} m podejść` : ''}.
           </ThemedText>
         </View>

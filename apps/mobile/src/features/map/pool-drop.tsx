@@ -1,4 +1,4 @@
-import { addPoolItem, documentProblem } from '@expeditionplan/core';
+import { addPoolItem, documentProblem, ITEM_KIND } from '@expeditionplan/core';
 import { type CachedTrip, refreshTrip, savePlanEdit, uuidv7 } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useState } from 'react';
@@ -9,7 +9,7 @@ import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type ItemFields, KIND } from '@/features/plan/item-editor';
+import { type ItemFields } from '@/features/plan/item-editor';
 import { localDb, remote } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
 
@@ -54,7 +54,7 @@ export function PoolDrop({ trip, tripId, at, onDone }: Props) {
       <TextInput value={title} onChangeText={setTitle} style={input} placeholder="Co? np. Punkt widokowy" placeholderTextColor={theme.textSecondary} autoFocus />
       <View style={styles.chips}>
         {QUICK_KINDS.map((each) => (
-          <Chip key={each} compact active={kind === each} label={KIND[each] ?? each} onPress={() => setKind(each)} />
+          <Chip key={each} compact active={kind === each} label={ITEM_KIND[each] ?? each} onPress={() => setKind(each)} />
         ))}
       </View>
       <TextInput value={description} onChangeText={setDescription} style={input} placeholder="Opis (opcjonalnie)" placeholderTextColor={theme.textSecondary} />

@@ -1,5 +1,6 @@
+import type { Metadata } from "next";
 import { type GuideRow, guideFor, placesOffMap } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -12,6 +13,8 @@ import { PlanActionButton } from "@/components/plan-action-button";
 import { PlanView } from "@/components/plan-view";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Plan dzień po dniu — Expedition Planner" };
 
 /**
  * Plan dzień po dniu. Dane idą tą samą drogą co na telefon: `pull_changes` → `stateFromPayload`
@@ -39,11 +42,11 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   let state: ReturnType<typeof stateFromPayload>;
   try {
-    state = stateFromPayload(data as Parameters<typeof stateFromPayload>[0]);
+    state = stateFromPayload(data as PullPayload);
   } catch (e) {
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
@@ -77,7 +80,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         <div className="flex flex-col gap-2">
           <PlanActionButton run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
           <PlanActionButton run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
-          <PlanActionButton ai run={describeTrip.bind(null, id)} label="Przygotuj opisy atrakcji (przewodnik)" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
+          <PlanActionButton ai run={describeTrip.bind(null, id)} label="Przygotuj brakujące opisy" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
           <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />
           <Link href={`/trips/${id}/places`} className="self-start text-xs text-zinc-500 underline hover:text-sea">
             Wszystkie miejsca: nazwy i współrzędne →

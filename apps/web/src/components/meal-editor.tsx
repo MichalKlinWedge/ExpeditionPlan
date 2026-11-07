@@ -1,6 +1,6 @@
 "use client";
 
-import { addMeal, documentProblem, ItemInUseError, mealDays, mealList, mealPoints, type PlanEdit, removeItemClosingGap, type TripDocument, updateItem } from "@expeditionplan/core";
+import { addMeal, dayChip, documentProblem, ItemInUseError, mealDays, mealList, mealPoints, type PlanEdit, removeItemClosingGap, type TripDocument, updateItem } from "@expeditionplan/core";
 import { savePlanEdit, uuidv7 } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -20,7 +20,6 @@ import { createClient } from "@/lib/supabase/client";
 
 const SUGGESTIONS = ["Śniadanie", "Drugie śniadanie", "Lunch", "Obiad", "Podwieczorek", "Kolacja", "Przekąska"];
 
-const shortDay = (date: string) => new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
 const input = "field min-w-0 px-2 py-1 text-sm";
 
@@ -150,7 +149,7 @@ function AddMeal({ doc, disabled, onAdd }: { doc: TripDocument; disabled: boolea
           className={input}>
           {doc.days.map((day, index) => (
             <option key={day.ref} value={day.ref}>
-              {index + 1}. {shortDay(day.date)}
+              {index + 1}. {dayChip(day.date)}
             </option>
           ))}
         </select>
@@ -181,7 +180,7 @@ function AddMeal({ doc, disabled, onAdd }: { doc: TripDocument; disabled: boolea
         <input type="checkbox" checked={selfCooked} onChange={(event) => setSelfCooked(event.target.checked)} />
         gotujemy sami
       </label>
-      <button disabled={disabled} className="btn-secondary btn-sm">
+      <button disabled={disabled} className="btn-primary btn-sm">
         Dodaj posiłek
       </button>
     </form>

@@ -1,6 +1,6 @@
 "use server";
 
-import { applyLodgingDraft, LodgingDraft, type LodgingDraftRow, lodgingDraftRows, setLodgingLink, TripDocument } from "@expeditionplan/core";
+import { applyLodgingDraft, LODGING_FIELDS, LodgingDraft, type LodgingDraftRow, lodgingDraftRows, setLodgingLink, TripDocument } from "@expeditionplan/core";
 import { LODGING_TEXT_LIMIT, readLodgingText } from "@expeditionplan/planner";
 import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { FormState } from "@/app/actions";
 import { aiAccessError, geminiClient } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+import { pullTrip, validationError } from "@/lib/trip-snapshot";
 
 /**
  * Obiekt noclegu na karcie punktu: link do jego strony i dane z tekstu, który wkleił użytkownik.
@@ -17,21 +18,15 @@ import { requireUser } from "@/lib/auth";
 
 export type LodgingReadState = FormState & { draft?: LodgingDraft; rows?: LodgingDraftRow[] };
 
-const FIELDS = z.array(z.enum(["description", "address", "checkInFrom", "checkOutUntil", "breakfast", "beds", "rooms", "amenities", "confirmationCode", "contact"]));
+const FIELDS = z.array(z.enum(LODGING_FIELDS));
 
 async function loadTrip(tripId: string, itemRef: string) {
   const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message };
-  if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { payload } = pulled;
   return { supabase, doc: stateFromPayload(payload).doc, ids: refIndex(payload.tables) };
 }
-
-const problem = (error: z.ZodError) => {
-  const issue = error.issues[0]!;
-  return `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}`;
-};
 
 /** Czyta wklejony tekst i zwraca szkic do podglądu; nic jeszcze nie zapisuje. */
 export async function readLodging(tripId: string, itemRef: string, text: string): Promise<LodgingReadState> {
@@ -68,7 +63,7 @@ export async function saveLodging(tripId: string, itemRef: string, input: Lodgin
   const edit = applyLodgingDraft(loaded.doc, itemRef, draft.data, picked.data, { bookingId: uuidv7(), contactId: uuidv7() });
   if (edit === null) return { error: "Tego punktu już nie ma — odśwież stronę." };
   const checked = TripDocument.safeParse(edit.doc);
-  if (!checked.success) return { error: problem(checked.error) };
+  if (!checked.success) return { error: validationError(checked.error) };
   const item = checked.data.items.find((each) => each.ref === itemRef)!;
   try {
     const ids = await saveElements(loaded.supabase, tripId, checked.data, edit.writes as ElementWrite[], loaded.ids);
@@ -92,7 +87,7 @@ export async function saveLodgingLink(tripId: string, itemRef: string, url: stri
   const edit = setLodgingLink(loaded.doc, itemRef, parsed === null ? null : parsed.data);
   if (edit === null) return { error: "Tego punktu już nie ma — odśwież stronę." };
   const checked = TripDocument.safeParse(edit.doc);
-  if (!checked.success) return { error: problem(checked.error) };
+  if (!checked.success) return { error: validationError(checked.error) };
   try {
     await savePlanEdit(loaded.supabase, tripId, { doc: checked.data, changed: [checked.data.items.find((each) => each.ref === itemRef)!] }, loaded.ids);
   } catch (e) {

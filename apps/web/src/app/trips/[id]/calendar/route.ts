@@ -1,5 +1,5 @@
 import { tripCalendar } from "@expeditionplan/core";
-import { stateFromPayload } from "@expeditionplan/sync";
+import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,9 +14,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims) return new Response("Zaloguj się.", { status: 401 });
   const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
-  if (error) return new Response(error.message, { status: 500 });
+  if (error) return new Response(dbLoadError(error), { status: 500 });
   if (data === null) return new Response("Nie ma takiego wyjazdu.", { status: 404 });
-  const { doc, inputs } = stateFromPayload(data as Parameters<typeof stateFromPayload>[0]);
+  const { doc, inputs } = stateFromPayload(data as PullPayload);
   const origin = new URL(request.url).origin;
   const ics = tripCalendar(doc, {
     tripId: id,

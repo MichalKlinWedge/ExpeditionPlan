@@ -16,23 +16,23 @@ $$;
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000f1', true);
 select lives_ok(
-  $$insert into public.guide_library (site, lang, article_title, content) values ('wikipedia', 'pl', 'Sagrada Família', '{"summary":"a"}')$$,
+  $$insert into public.guide_library (site, lang, article_title, content) values ('wikipedia', 'pl', 'Artykuł testowy biblioteki', '{"summary":"a"}')$$,
   'organizator dodaje opis');
 select lives_ok(
-  $$update public.guide_library set content = '{"summary":"b"}' where article_title = 'Sagrada Família'$$,
+  $$update public.guide_library set content = '{"summary":"b"}' where article_title = 'Artykuł testowy biblioteki'$$,
   'organizator odświeża opis');
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000f2', false);
-select is((select content ->> 'summary' from public.guide_library where article_title = 'Sagrada Família'), 'b', 'inne konto czyta opis');
+select is((select content ->> 'summary' from public.guide_library where article_title = 'Artykuł testowy biblioteki'), 'b', 'inne konto czyta opis');
 select throws_ok(
   $$insert into public.guide_library (site, lang, article_title, content) values ('wikipedia', 'pl', 'Inny', '{}')$$,
   '42501', null, 'konto bez prawa zakładania wyjazdów nie dodaje opisu');
-update public.guide_library set content = '{"summary":"zły"}' where article_title = 'Sagrada Família';
+update public.guide_library set content = '{"summary":"zły"}' where article_title = 'Artykuł testowy biblioteki';
 reset role;
-select is((select content ->> 'summary' from public.guide_library where article_title = 'Sagrada Família'), 'b', 'ani go nie podmienia');
+select is((select content ->> 'summary' from public.guide_library where article_title = 'Artykuł testowy biblioteki'), 'b', 'ani go nie podmienia');
 
 select set_config('role', 'anon', true);
-select is((select count(*) from public.guide_library), 0::bigint, 'bez logowania nic nie widać');
+select throws_ok('select count(*) from public.guide_library', '42501', null, 'bez logowania nie ma dostępu');
 reset role;
 
 select * from finish();

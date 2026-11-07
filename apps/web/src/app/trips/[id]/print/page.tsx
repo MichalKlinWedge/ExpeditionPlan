@@ -1,5 +1,6 @@
-import { routeStopsLabel, routeStopTime, dayItems, flightLine, flightOf, type GuideRow, guideFor, instantToZoned, itemIcon, legLabel, scheduleDay, stopsLabel, type TripDocument } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import type { Metadata } from "next";
+import { BOOKING_KIND, CONTACT_ROLE, dayItems, dayLabel, flightLine, flightOf, guideFor, type GuideRow, instantToZoned, itemIcon, legLabel, routeStopsLabel, routeStopTime, scheduleDay, shortDate, stopsLabel, type TripDocument } from "@expeditionplan/core";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -7,7 +8,9 @@ import { Suspense } from "react";
 import { PrintButton } from "@/components/print-button";
 import { Loading } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { BOOKING_KIND, tripDates } from "@/lib/labels";
+import { tripDates } from "@/lib/labels";
+
+export const metadata: Metadata = { title: "Wydruk planu — Expedition Planner" };
 
 /**
  * Plan do druku / PDF (zapas na papierze): kontakty, rezerwacje i dni z godzinami z silnika
@@ -19,19 +22,7 @@ import { BOOKING_KIND, tripDates } from "@/lib/labels";
 type Doc = TripDocument;
 type Booking = Doc["bookings"][number];
 
-const CONTACT_ROLE: Record<string, string> = {
-  emergency: "alarmowy",
-  host: "gospodarz",
-  operator: "organizator",
-  rental: "wynajem",
-  guide: "przewodnik",
-  venue: "miejsce",
-  other: "inny",
-};
 
-const weekday = (date: string) =>
-  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
-const shortDate = (date: string) => new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 const at = (time: Booking["start"]) => (time ? `${shortDate(time.date)}${time.time ? ` ${time.precision === "approx" ? "ok. " : ""}${time.time}` : ""}` : "");
 
 export default function PrintPage(props: PageProps<"/trips/[id]/print">) {
@@ -48,9 +39,9 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}/print`);
   const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
-  if (error) return <p className="p-6 text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="p-6 text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   const { doc, inputs } = stateFromPayload(payload);
   const ids = refIndex(payload.tables);
   const guides = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
@@ -131,7 +122,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
           <section key={day.ref} className="break-inside-avoid-page flex flex-col gap-1">
             <h2 className="border-b border-zinc-400 pb-0.5 text-lg font-bold">
               <span className="text-zinc-500">Dzień {index + 1} · </span>
-              {weekday(day.date).replace(/^./, (first) => first.toUpperCase())}
+              {dayLabel(day.date)}
               {day.title ? ` — ${day.title}` : ""}
             </h2>
             <p className="text-xs text-zinc-600">

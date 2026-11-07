@@ -1,5 +1,6 @@
 "use client";
 
+import { formatMinutes } from "@expeditionplan/core";
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
@@ -15,7 +16,6 @@ type Values = { distanceKm?: number; durationMin?: number; ascentM?: number };
 
 const text = (value: number | undefined) => (value === undefined ? "" : String(value).replace(".", ","));
 const number = (value: string) => Number(value.trim().replace(",", "."));
-const minutesLabel = (value: number) => `${Math.floor(value / 60)} h ${value % 60} min`;
 
 export function RouteEstimate({ tripId, itemRef, url, current, fromFile }: { tripId: string; itemRef: string; url: string | undefined; current: Values; fromFile?: Values | undefined }) {
   const [link, setLink] = useState(url ?? "");
@@ -99,7 +99,7 @@ export function RouteEstimate({ tripId, itemRef, url, current, fromFile }: { tri
       {showFile && (
         <button type="button" onClick={() => fill(fromFile)} className="btn-mini self-start">
           Wstaw z pliku GPX: {text(fromFile.distanceKm)} km{fromFile.ascentM !== undefined ? ` · ↑ ${fromFile.ascentM} m` : ""}
-          {fromFile.durationMin !== undefined ? ` · ok. ${minutesLabel(fromFile.durationMin)}` : ""}
+          {fromFile.durationMin !== undefined ? ` · ok. ${formatMinutes(fromFile.durationMin)}` : ""}
         </button>
       )}
       <p className="text-xs text-zinc-500">Wpisz liczby z mapy albo wgraj niżej plik GPX, który sam je wypełni i narysuje przebieg na mapie planu (czas z pliku liczy norma DIN). Czas przeliczy godziny tego dnia, a „Przelicz przejazdy” nie nadpisze go szacunkiem.</p>

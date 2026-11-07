@@ -1,4 +1,4 @@
-import { type ItemFacts, itemFacts, type PlanItem as Item, type TripDocument } from '@expeditionplan/core';
+import { CONTACT_ROLE, type ItemFacts, itemFacts, type PlanItem as Item, type TripDocument } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Alert, Linking, StyleSheet, View } from 'react-native';
 
@@ -16,7 +16,6 @@ import { DocumentsView } from '@/features/trip/documents-view';
 
 type Contact = TripDocument['contacts'][number];
 
-const ROLE: Record<Contact['role'], string> = { host: 'gospodarz', operator: 'organizator', rental: 'wypożyczalnia', guide: 'przewodnik', emergency: 'alarmowy', venue: 'obiekt', other: 'kontakt' };
 
 /** Połączenie z numerem z planu (spacje, myślniki i nawiasy znikają). */
 export function callPhone(phone: string) {
@@ -30,7 +29,7 @@ export function ContactList({ contacts }: { contacts: Contact[] }) {
       {contacts.map((contact) => (
         <View key={contact.ref} style={styles.contact}>
           <ThemedText type="small">
-            {contact.name} <ThemedText type="small" themeColor="textSecondary">· {ROLE[contact.role]}</ThemedText>
+            {contact.name} <ThemedText type="small" themeColor="textSecondary">· {CONTACT_ROLE[contact.role]}</ThemedText>
           </ThemedText>
           {contact.phone ? (
             <Button label={`📞 Zadzwoń ${contact.phone}`} small onPress={() => callPhone(contact.phone!)} />

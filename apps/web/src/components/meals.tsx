@@ -17,7 +17,7 @@ export function Shopping({ tripId, doc, tables, ids, canEdit }: { tripId: string
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p className="text-zinc-600 dark:text-zinc-400">
-        Kupione: <strong>{items.filter((item) => item.bought).length}</strong> z {items.length}. Odhacza się na telefonie (zakładka Pakowanie), także bez internetu.
+        Kupione: <strong>{items.filter((item) => item.bought).length}</strong> z {items.length}. Odhacza się na telefonie (zakładka Sprzęt, lista Zakupy), także bez internetu.
       </p>
       <ShoppingList tripId={tripId} items={items} canEdit={canEdit} />
     </div>

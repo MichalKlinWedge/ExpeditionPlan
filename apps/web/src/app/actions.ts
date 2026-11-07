@@ -1,9 +1,9 @@
 "use server";
 
-import { Currency, IsoDate, parseCoordinates, PLANNING, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
+import { Currency, formatMinutes, IsoDate, parseCoordinates, PLANNING, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { geoapifyLookup, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
-import { COLLECTIONS, importTrip, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { COLLECTIONS, dbErrorMessage, importTrip, lockedRefs, type PullPayload, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,9 +20,6 @@ import { SAMPLE_PLANS } from "@/lib/sample-plans";
  */
 
 export type FormState = { error?: string; ok?: string; token?: string };
-
-const message = (error: { message: string; code?: string }) =>
-  error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message;
 
 export async function signOut() {
   const { supabase } = await requireUser();
@@ -56,7 +53,7 @@ export async function createTrip(_prev: FormState, form: FormData): Promise<Form
     base_currency: parsed.data.baseCurrency,
     ...(parsed.data.postponed ? { status: POSTPONED } : {}),
   });
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   redirect(`/trips/${id}`);
 }
 
@@ -64,7 +61,7 @@ export async function createTrip(_prev: FormState, form: FormData): Promise<Form
 export async function setTripPostponed(tripId: string, postponed: boolean): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}`);
   const { data, error } = await supabase.from("trips").update({ status: postponed ? POSTPONED : PLANNING }).eq("id", tripId).select("id");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: postponed ? "Wyjazd odłożony." : "Wyjazd wrócił do planów." };
@@ -93,7 +90,7 @@ async function transportFields(supabase: Awaited<ReturnType<typeof requireUser>>
   const wanted = [data.startPlace ?? "", data.endPlace ?? ""];
   if (wanted.every((name) => name === "")) return { row: { start_place_id: null, end_place_id: null } };
   const { data: places, error } = await supabase.from("places").select("id, name").eq("trip_id", tripId).is("deleted_at", null).order("name");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   const known = new Map(places.map((place) => [place.name.toLowerCase(), place.id]));
   const idFor = async (name: string): Promise<string | null | { error: string }> => {
     if (name === "") return null;
@@ -101,7 +98,7 @@ async function transportFields(supabase: Awaited<ReturnType<typeof requireUser>>
     if (found !== undefined) return found;
     const id = uuidv7();
     const { error: failed } = await supabase.from("places").insert({ id, trip_id: tripId, name, provider: "unknown", sort_key: `z${Date.now().toString(36)}` });
-    if (failed) return { error: message(failed) };
+    if (failed) return { error: dbErrorMessage(failed) };
     known.set(name.toLowerCase(), id);
     return id;
   };
@@ -115,7 +112,7 @@ async function transportFields(supabase: Awaited<ReturnType<typeof requireUser>>
 /** Pola „waha się”, zakres dat i uwagi; zakres sprawdzony względem terminu wyjazdu. */
 async function presenceFields(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], tripId: string, data: z.infer<typeof NewTraveler>) {
   const { data: trip, error } = await supabase.from("my_trips").select("start_date, end_date").eq("id", tripId).maybeSingle();
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if (trip === null) return { error: "Nie znaleziono wyjazdu." };
   const dates = travelerDates(data.fromDate, data.toDate, { startDate: trip.start_date!, endDate: trip.end_date! });
   if ("error" in dates) return { error: dates.error };
@@ -145,7 +142,7 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
     // Na koniec listy; klucz porównywany jak tekst, tak jak w imporcie dokumentu.
     sort_key: String(count ?? 0).padStart(5, "0"),
   });
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   refresh();
   return { ok: `Dodano: ${parsed.data.name}` };
 }
@@ -175,7 +172,7 @@ export async function updateTraveler(tripId: string, travelerId: string, _prev: 
     .eq("id", travelerId)
     .eq("trip_id", tripId)
     .select("id");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   // RLS odrzuca UPDATE bez błędu (0 wierszy) — widz nie edytuje.
   if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
@@ -199,11 +196,11 @@ export async function removeTraveler(tripId: string, travelerId: string): Promis
   const count = async (table: string, filter: (query: Counted) => Counted) => {
     const query = db.from(table).select("id", { count: "exact", head: true }).eq("trip_id", tripId).is("deleted_at", null) as unknown as Counted;
     const { count: found, error } = await filter(query);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(dbErrorMessage(error));
     return found ?? 0;
   };
   const { data: person, error } = await supabase.from("travelers").select("name, user_id").eq("id", travelerId).eq("trip_id", tripId).maybeSingle();
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if (person === null) return { error: "Nie ma takiego uczestnika." };
   if (person.user_id !== null) return { error: `${person.name} jest połączony z kontem członka wyjazdu — tego uczestnika nie usuwamy.` };
   let uses: string[];
@@ -228,7 +225,7 @@ export async function removeTraveler(tripId: string, travelerId: string): Promis
   }
   if (uses.length > 0) return { error: `Nie usunięto „${person.name}” — jest powiązany z: ${uses.join(", ")}. Zmień to najpierw.` };
   const { data, error: removeError } = await supabase.from("travelers").update({ deleted_at: new Date().toISOString() }).eq("id", travelerId).select("id");
-  if (removeError) return { error: message(removeError) };
+  if (removeError) return { error: dbErrorMessage(removeError) };
   if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: `Usunięto: ${person.name}` };
@@ -239,7 +236,7 @@ export async function createInvite(tripId: string, _prev: FormState, form: FormD
   const maxUses = Math.min(Math.max(Number(form.get("maxUses") ?? 1) || 1, 1), 50);
   const { supabase } = await requireUser(`/trips/${tripId}`);
   const { data, error } = await supabase.rpc("create_invite", { p_trip: tripId, p_role: role, p_days: 14, p_max_uses: maxUses });
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   return { token: data };
 }
 
@@ -256,7 +253,7 @@ export async function saveBrief(tripId: string, _prev: FormState, form: FormData
     supabase.from("travelers").select("name, nickname, age, household, is_driver, notes").eq("trip_id", tripId).is("deleted_at", null).order("sort_key"),
     supabase.from("trip_brief").select("id").eq("trip_id", tripId).maybeSingle(),
   ]);
-  if (trip.error) return { error: message(trip.error) };
+  if (trip.error) return { error: dbErrorMessage(trip.error) };
   let draft: Record<string, unknown>;
   try {
     draft = JSON.parse(String(form.get("brief") ?? "{}"));
@@ -287,7 +284,7 @@ export async function saveBrief(tripId: string, _prev: FormState, form: FormData
   const { error } = existing.data
     ? await supabase.from("trip_brief").update(row).eq("id", existing.data.id)
     : await supabase.from("trip_brief").insert({ id: uuidv7(), ...row });
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   refresh();
   return { ok: "Zapisano brief wyjazdu." };
 }
@@ -308,7 +305,7 @@ export async function importSamples(): Promise<FormState> {
   const { supabase, canCreateTrips } = await requireUser("/");
   if (!canCreateTrips) return { error: NO_CREATE };
   const { data: mine, error } = await supabase.from("my_trips").select("title").eq("role", "owner");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   const titles = new Set(mine.map((trip) => trip.title));
   const added: string[] = [];
   for (const plan of SAMPLE_PLANS) {
@@ -355,7 +352,7 @@ export async function importTripFile(_prev: FormState, form: FormData): Promise<
 export async function acceptInvite(token: string): Promise<FormState> {
   const { supabase } = await requireUser(`/join/${token}`);
   const { data, error } = await supabase.rpc("accept_invite", { p_token: token });
-  if (error) return { error: error.code === "P0002" ? "Zaproszenie wygasło, zostało wykorzystane albo jest nieprawidłowe." : message(error) };
+  if (error) return { error: error.code === "P0002" ? "Zaproszenie wygasło, zostało wykorzystane albo jest nieprawidłowe." : dbErrorMessage(error) };
   redirect(`/trips/${data}`);
 }
 
@@ -368,7 +365,7 @@ export async function removeTrip(tripId: string): Promise<FormState> {
   const { data: trip } = await supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle();
   if (trip === null) return { error: "Nie ma takiego wyjazdu albo nie masz do niego dostępu." };
   const { error } = await supabase.rpc(trip.role === "owner" ? "delete_trip" : "leave_trip", { p_trip: tripId });
-  if (error) return { error: error.message };
+  if (error) return { error: dbErrorMessage(error) };
   redirect("/");
 }
 
@@ -386,7 +383,7 @@ export async function planWithAi(tripId: string): Promise<FormState & { tripId?:
     supabase.from("my_trips").select("title, role, primary_tz").eq("id", tripId).maybeSingle(),
     supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
   ]);
-  if (trip.error || brief.error) return { error: message((trip.error ?? brief.error)!) };
+  if (trip.error || brief.error) return { error: dbErrorMessage((trip.error ?? brief.error)!) };
   if (trip.data === null) return { error: "Nie ma takiego wyjazdu." };
   if (trip.data.role !== "owner" && trip.data.role !== "editor") return { error: "Planować z AI może organizator albo edytor." };
   if (brief.data === null) return { error: "Najpierw uzupełnij brief wyjazdu." };
@@ -450,13 +447,12 @@ export async function routeTrip(tripId: string): Promise<FormState> {
     supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle(),
   ]);
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if (data === null) return { error: "Nie ma takiego wyjazdu." };
   if (membership.data?.role !== "owner" && membership.data?.role !== "editor") return { error: "Przeliczać może organizator albo edytor." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   const { doc } = stateFromPayload(payload);
-  const rows = (payload.tables.items ?? []) as unknown as { id: string; ref: string | null; user_locked?: boolean; deleted_at: string | null }[];
-  const locked = new Set(rows.filter((row) => row.user_locked && row.deleted_at === null).map((row) => row.ref ?? `id-${row.id}`));
+  const locked = lockedRefs(payload.tables);
   const refs = new Set(doc.items.filter((item) => item.kind === "transport" && !locked.has(item.ref)).map((item) => item.ref));
 
   const { doc: routed, results } = await routeLegs(doc, route, refs);
@@ -506,9 +502,9 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
     supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 }),
     supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
   ]);
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   const { doc } = stateFromPayload(payload);
   const target = doc.items.find((item) => item.ref === itemRef);
   const geoapify = process.env.GEOAPIFY_API_KEY ?? "";
@@ -537,7 +533,7 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
     const index = { idOf: (ref: string) => ids[ref]!, collectionOf: (ref: string) => owner.get(ref) };
     for (const { place } of located) {
       const { error: placeError } = await supabase.from("places").update(rowForUpdate("places", place, index) as never).eq("id", index.idOf(place.ref));
-      if (placeError) throw new Error(message(placeError));
+      if (placeError) throw new Error(dbErrorMessage(placeError));
     }
     await saveMergeEdit(supabase, tripId, { doc: TripDocument.parse(routed), created: [], changed, others: [], removed: [], kept: [], copied: {} }, ids);
   } catch (e) {
@@ -546,7 +542,7 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
   refresh();
   const minutes = result.after!.durationMin;
   const foundAs = located.map((each) => `„${each.place.name}” to ${each.foundAs}`).join(", ");
-  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${Math.floor(minutes / 60)} h ${Math.round(minutes % 60)} min. Plan dnia się zmienił.${foundAs === "" ? "" : ` Znalezione po nazwie: ${foundAs}. Jeśli to inne miejsce, przypnij je na stronie „Miejsca”.`}` };
+  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${formatMinutes(minutes)}. Plan dnia się zmienił.${foundAs === "" ? "" : ` Znalezione po nazwie: ${foundAs}. Jeśli to inne miejsce, przypnij je na stronie „Miejsca”.`}` };
 }
 
 /**
@@ -566,10 +562,10 @@ export async function groundTrip(tripId: string): Promise<FormState> {
     supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle(),
     supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
   ]);
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if (data === null) return { error: "Nie ma takiego wyjazdu." };
   if (membership.data?.role !== "owner" && membership.data?.role !== "editor") return { error: "Uzupełniać może organizator albo edytor." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   const { doc } = stateFromPayload(payload);
   const brief = TripBrief.safeParse(briefRow.data?.brief);
   const countries = countriesFor(brief.success ? brief.data : null, doc.trip.primaryTz);
@@ -592,7 +588,7 @@ export async function groundTrip(tripId: string): Promise<FormState> {
     const place = missing.find((each) => each.ref === result.ref)!;
     const next = withCoordinates(place, result.hit, { openingHours: true });
     const { error: saveError } = await supabase.from("places").update(rowForUpdate("places", next, index) as never).eq("id", index.idOf(place.ref));
-    if (saveError) return { error: `Zapisano ${filled.length} miejsc, potem błąd: ${message(saveError)}` };
+    if (saveError) return { error: `Zapisano ${filled.length} miejsc, potem błąd: ${dbErrorMessage(saveError)}` };
     filled.push(place.name);
   }
   const named = (status: string) => results.flatMap((result, i) => (result.status === status ? [missing[i]!.name] : []));
@@ -624,7 +620,7 @@ export async function pinPlace(tripId: string, placeId: string, text: string): P
     .eq("id", placeId)
     .eq("trip_id", tripId)
     .select("name");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: `Przypięto „${data[0]!.name}”: ${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}.` };
@@ -659,7 +655,7 @@ export async function searchPlace(tripId: string, placeId: string, query: string
     .eq("id", placeId)
     .eq("trip_id", tripId)
     .select("name");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: `„${data[0]!.name}” → ${hit.displayName}. Jeśli to nie to miejsce, wklej współrzędne.` };

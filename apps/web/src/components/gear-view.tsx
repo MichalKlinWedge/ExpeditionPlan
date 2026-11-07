@@ -96,7 +96,7 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
               return (
                 <li key={load.travelerRef} className="flex flex-col gap-0.5">
                   <div className="flex flex-wrap items-baseline gap-x-2">
-                    <button type="button" onClick={() => setFilter({ person: load.travelerRef })} className="font-medium underline-offset-2 hover:underline">
+                    <button type="button" onClick={() => setFilter({ person: load.travelerRef })} className="font-medium hover:text-sea">
                       {nameOf(load.travelerRef)}
                     </button>
                     {tentative.has(load.travelerRef) && <span className="rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">waha się</span>}

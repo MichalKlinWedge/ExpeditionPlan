@@ -1,59 +1,6 @@
 "use client";
 
-import {
-  activeVariants as resolveVariants,
-  addItem,
-  addItemAtPin,
-  addPoolItem,
-  dayItems,
-  dayLodging,
-  dayMap,
-  documentProblem as problem,
-  dropItem,
-  type DaySchedule,
-  fieldLog,
-  type FieldLog,
-  hasFieldLog,
-  instantToZoned,
-  flightLine,
-  flightOf,
-  itemIcon,
-  legLabel,
-  LODGING_STOP,
-  legRouteLink,
-  stopsLabel,
-  mapCoverage,
-  missingOnMap,
-  movePlace,
-  moveToDay,
-  moveWithinDay,
-  type PlanEdit as Edit,
-  type PlanItem as Item,
-  routeLinkLabel,
-  proposeCuts,
-  removeItemClosingGap,
-  type Scenario,
-  scheduleDay,
-  type TripDocument,
-  updateItem,
-  itemKindLabel,
-  type KindChoice,
-  kindChoices,
-  kindPatch,
-  type DayWeather,
-  fetchWeather,
-  localToday,
-  WEATHER_ATTRIBUTION,
-  weatherIcon,
-  weatherLine,
-  weatherPoints,
-  weatherAlerts,
-  weatherVariantHint,
-  routeStopsLabel,
-  routeStopTarget,
-  routeStopTime,
-  setRouteStop,
-} from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, hasFieldLog, instantToZoned, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, type TripDocument, updateItem, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -75,23 +22,11 @@ import { useRefreshOnReturn } from "@/lib/use-refresh-on-return";
  * przełączenie scenariusza, wariantu albo przeciągnięcie punktu przelicza dzień od razu.
  */
 
-const KIND: Record<string, string> = {
-  visit: "zwiedzanie",
-  activity: "aktywność",
-  meal: "posiłek",
-  transport: "przejazd",
-  lodging: "nocleg",
-  errand: "sprawa",
-  meetup: "spotkanie",
-  free: "czas wolny",
-  decision: "decyzja",
-};
-
 const SLACK: Record<string, { label: string; tone: string }> = {
-  large: { label: "duży zapas", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" },
-  small: { label: "mały zapas", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" },
-  none: { label: "bez zapasu", tone: "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200" },
-  negative: { label: "dzień się nie spina", tone: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200" },
+  large: { label: SLACK_LABEL.large, tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" },
+  small: { label: SLACK_LABEL.small, tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" },
+  none: { label: SLACK_LABEL.none, tone: "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200" },
+  negative: { label: SLACK_LABEL.negative, tone: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200" },
 };
 
 const STATUS: Record<string, string> = {
@@ -105,8 +40,6 @@ const STATUS: Record<string, string> = {
 /** Wybór widoku „pula” zamiast dnia. */
 const POOL = "pool";
 
-const weekday = (date: string) =>
-  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
 const hm = (instant: number | null | undefined, tz: string) => (instant == null ? "—" : instantToZoned(instant, tz).time);
 
@@ -409,7 +342,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                 ) : (
                   <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-2">
                     <p className="text-xs text-zinc-500">
-                      {pick.at === null ? "Kliknij mapę w miejscu nowego punktu" : "Nowy punkt w zaznaczonym miejscu"} — na koniec dnia „{weekday(mapDay.date)}”.
+                      {pick.at === null ? "Kliknij mapę w miejscu nowego punktu" : "Nowy punkt w zaznaczonym miejscu"} — na koniec dnia „{dayLabel(mapDay.date)}”.
                     </p>
                     {pick.at !== null && (
                       <AddItemForm
@@ -492,7 +425,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                         {dnd ? <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} /> : <span aria-hidden="true">•</span>}
                         <span>
                           {itemBase && (!guidedOnly || guided?.includes(item.ref)) ? (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" {...routeHover(item.ref)} className="hover:text-sea hover:underline">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Szczegóły i opis miejsca" {...routeHover(item.ref)} className="hover:text-sea hover:underline">
                               {item.title}
                             </Link>
                           ) : (
@@ -501,7 +434,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                           <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
                           <RouteLink doc={doc} item={item} />
                           {itemBase && item.kind !== "lodging" && guided?.includes(item.ref) && (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Opis miejsca gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                               📖 opis
                             </Link>
                           )}
@@ -575,8 +508,6 @@ function DayTabs({
   dnd: Dnd | null;
   below: boolean;
 }) {
-  const short = (date: string) =>
-    new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
   const alerts = new Set(weatherAlerts(doc, weather, localToday()).map((alert) => alert.dayRef));
   return (
     // Pod paskiem „Zapisuję…” w trybie edycji; przewija się w bok, gdy dni jest dużo.
@@ -592,13 +523,13 @@ function DayTabs({
             onDragOver={dnd ? (event) => dnd.hover({ dayRef: day.ref }, event) : undefined}
             onDrop={dnd ? (event) => dnd.drop({ dayRef: day.ref }, event) : undefined}
             aria-current={active ? "true" : undefined}
-            title={day.title ? `${weekday(day.date)} — ${day.title}` : weekday(day.date)}
+            title={day.title ? `${dayLabel(day.date)} — ${day.title}` : dayLabel(day.date)}
             className={`flex shrink-0 flex-col items-center rounded-lg border px-2.5 py-1 text-xs leading-tight transition-colors ${
               active ? "border-sea bg-sea text-white" : over ? "border-sea bg-sea-light/60 dark:bg-sea/20" : "border-zinc-300 hover:border-sea dark:border-zinc-700"
             }`}>
             <span className="font-semibold">Dzień {index + 1}</span>
             <span className={active ? "text-white/85" : "text-zinc-500"}>
-              {short(day.date)}
+              {dayChip(day.date)}
               {sky ? ` ${weatherIcon(sky.code)}` : ""}
               {alerts.has(day.ref) ? " ⚠" : ""}
             </span>
@@ -679,7 +610,7 @@ function MoveSelect({ doc, current, onMove }: { doc: TripDocument; current: stri
         .filter((day) => day.ref !== current)
         .map((day) => (
           <option key={day.ref} value={day.ref}>
-            {weekday(day.date)}
+            {dayLabel(day.date)}
           </option>
         ))}
       {current !== undefined && <option value="pool">do puli</option>}
@@ -702,7 +633,7 @@ function AddItemForm({ onAdd, autoFocus = false }: { onAdd: (fields: Pick<Item, 
       }}>
       <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nowy punkt" autoFocus={autoFocus} className="flex-1 field px-2 py-1" />
       <select value={kind} onChange={(event) => setKind(event.target.value as KindChoice)} className="field px-2 py-1">
-        {kindChoices(KIND).map(([key, name]) => (
+        {kindChoices(ITEM_KIND).map(([key, name]) => (
           <option key={key} value={key}>
             {name}
           </option>
@@ -757,7 +688,7 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
       <div className="flex flex-wrap gap-2">
         <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Co? np. Park Güell, kolacja na dachu, kajaki" autoFocus className="min-w-48 flex-1 field px-2 py-1" />
         <select value={kind} onChange={(event) => setKind(event.target.value as KindChoice)} className="field px-2 py-1" aria-label="Rodzaj">
-          {kindChoices(KIND).map(([key, name]) => (
+          {kindChoices(ITEM_KIND).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
             </option>
@@ -918,7 +849,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold first-letter:uppercase">
-            {weekday(day.date)}
+            {dayLabel(day.date)}
             {day.title ? ` — ${day.title}` : ""}
           </h2>
           <p className="text-xs text-zinc-500">
@@ -1025,7 +956,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       </span>
                     )}
                     {itemBase && (!guidedOnly || guided?.includes(item.ref)) ? (
-                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Szczegóły i przewodnik" {...routeHover(item.ref)} className="font-medium hover:text-sea hover:underline">
+                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Szczegóły i opis miejsca" {...routeHover(item.ref)} className="font-medium hover:text-sea hover:underline">
                         {item.title}
                       </Link>
                     ) : (
@@ -1034,17 +965,17 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     {source && <RouteLink doc={doc} item={source} />}
                     {item.kind !== "lodging" && guided?.includes(item.ref) &&
                       (itemBase ? (
-                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Opis przewodnika gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
+                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Opis miejsca gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                           📖 opis
                         </Link>
                       ) : (
-                        <span title="Opis przewodnika gotowy" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea">
+                        <span title="Opis miejsca gotowy" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea">
                           📖 opis
                         </span>
                       ))}
                     <span className="text-zinc-500">
                       {" "}
-                      · {source === undefined ? KIND[item.kind] : itemKindLabel(source, KIND)}
+                      · {source === undefined ? ITEM_KIND[item.kind] : itemKindLabel(source, ITEM_KIND)}
                       {place && place !== item.title ? ` · ${place}` : ""}
                       {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ""}
                     </span>

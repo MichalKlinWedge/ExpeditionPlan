@@ -140,6 +140,13 @@ export function formatMoney(amountMinor: number, currency: string): string {
   }
 }
 
+/** „1000 zł” albo „1000 zł – 2000 zł”. */
+export const formatMoneyRange = (minMinor: number, maxMinor: number, currency: string): string =>
+  minMinor === maxMinor ? formatMoney(minMinor, currency) : `${formatMoney(minMinor, currency)} – ${formatMoney(maxMinor, currency)}`;
+
+/** Kwota do pola formularza: 1200 → „12”, 127050 → „1270,50”. Odwrotność `parseMoney`. */
+export const moneyToInput = (amountMinor: number): string => (amountMinor / 100).toFixed(amountMinor % 100 === 0 ? 0 : 2).replace('.', ',');
+
 /** „1 270,50” → 127050; `null` przy nieprawidłowej kwocie. */
 export function parseMoney(text: string): number | null {
   const clean = text.replace(/\s/g, '').replace(',', '.');

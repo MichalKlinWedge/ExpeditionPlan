@@ -1,16 +1,15 @@
 "use server";
 
-import { PlanPatch, TripBrief, TripDocument } from "@expeditionplan/core";
+import { PlanPatch, plural, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { applyPatch, type ChatTurn, geoapifyLookup, groundPlaces, type OpResult, patchDiff, tunePlan, withCoordinates } from "@expeditionplan/planner";
-import { refIndex, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { dbErrorMessage, lockedRefs, type PullPayload, refIndex, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
 import { aiAccessError, plannerDeps } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { countriesFor } from "@/lib/countries";
-import { plural } from "@/lib/plural";
 
 /**
  * Etap 3 AI na webie: polecenie → łatka (ai_runs stage `tune`, rozmowa w ai_messages) → podgląd →
@@ -18,8 +17,6 @@ import { plural } from "@/lib/plural";
  * „Odrzuć”. Punkty zmienione ręcznie (`user_locked`) są nietykalne.
  */
 
-const message = (error: { message: string; code?: string }) => (error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message);
-type Row = { id: string; ref: string | null; user_locked?: boolean; deleted_at: string | null };
 
 async function load(tripId: string) {
   const { supabase } = await requireUser(`/trips/${tripId}/tune`);
@@ -28,12 +25,11 @@ async function load(tripId: string) {
     supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle(),
     supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
   ]);
-  if (pulled.error) return { error: message(pulled.error) } as const;
+  if (pulled.error) return { error: dbErrorMessage(pulled.error) } as const;
   if (pulled.data === null) return { error: "Nie ma takiego wyjazdu." } as const;
   if (membership.data?.role !== "owner" && membership.data?.role !== "editor") return { error: "Dostrajać plan może organizator albo edytor." } as const;
-  const payload = pulled.data as Parameters<typeof stateFromPayload>[0];
-  const rows = (payload.tables.items ?? []) as unknown as Row[];
-  const locked = new Set(rows.filter((row) => row.user_locked && row.deleted_at === null).map((row) => row.ref ?? `id-${row.id}`));
+  const payload = pulled.data as PullPayload;
+  const locked = lockedRefs(payload.tables);
   const brief = TripBrief.safeParse(briefRow.data?.brief);
   return { supabase, payload, doc: stateFromPayload(payload).doc, locked, brief: brief.success ? brief.data : null } as const;
 }
@@ -82,7 +78,7 @@ export async function proposePatch(tripId: string, _prev: FormState, form: FormD
     tokens_out: usage.outputTokens,
     duration_ms: Date.now() - started,
   });
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   // Jawne czasy: oba wpisy w jednym zapytaniu dostałyby ten sam `created_at`, a rozmowa ma iść po kolei.
   const asked = new Date();
   await loaded.supabase.from("ai_messages").insert([
@@ -143,7 +139,7 @@ export async function acceptPatch(tripId: string, runId: string): Promise<FormSt
 export async function rejectPatch(tripId: string, runId: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/tune`);
   const { error } = await supabase.from("ai_runs").update({ status: "rejected" }).eq("id", runId).eq("trip_id", tripId);
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   refresh();
   return { ok: "Odrzucono." };
 }

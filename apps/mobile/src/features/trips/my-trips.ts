@@ -1,6 +1,6 @@
 import { isPostponed } from '@expeditionplan/core';
 import type { Tables } from '@expeditionplan/db';
-import { forgetTrip, pruneLocal, refreshTrip } from '@expeditionplan/sync';
+import { forgetTrip, pruneLocal, refreshTrip, dbErrorMessage, dbLoadError } from '@expeditionplan/sync';
 
 import { localDb, remote, TRIPS_KEY } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
@@ -41,7 +41,7 @@ export async function loadMyTrips(signedIn = true): Promise<MyTrips> {
     return { trips: data, offline: false, error: '' };
   }
   const cached = cachedTrips();
-  if (cached === null) return { trips: [], offline: true, error: error.message };
+  if (cached === null) return { trips: [], offline: true, error: dbLoadError(error) };
   return { trips: cached, offline: true, error: '' };
 }
 
@@ -51,7 +51,7 @@ export async function loadMyTrips(signedIn = true): Promise<MyTrips> {
  */
 export async function removeTrip(trip: Trip): Promise<string | null> {
   const { error } = await supabase.rpc(trip.role === 'owner' ? 'delete_trip' : 'leave_trip', { p_trip: trip.id! });
-  if (error) return error.message;
+  if (error) return dbErrorMessage(error);
   localStorage.setItem(TRIPS_KEY, JSON.stringify((cachedTrips() ?? []).filter((each) => each.id !== trip.id)));
   forgetTrip(localDb, trip.id!);
   return null;

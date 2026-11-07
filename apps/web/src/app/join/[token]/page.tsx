@@ -1,9 +1,10 @@
+import { MEMBER_ROLE } from "@expeditionplan/core";
 import { Suspense } from "react";
 
 import { JoinButton } from "@/components/forms";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { ROLE, tripDates } from "@/lib/labels";
+import { tripDates } from "@/lib/labels";
 
 /**
  * Dołączenie z linku zaproszenia. Dołącza przycisk (akcja), nie samo otwarcie strony — podgląd
@@ -31,7 +32,7 @@ async function Join({ params }: { params: Promise<{ token: string }> }) {
       <section className="topo flex flex-col gap-2 rounded-2xl px-6 py-6 shadow-md">
         <h2 className="text-2xl font-bold text-white">{invite.title}</h2>
         <p className="text-zinc-200">
-          {tripDates(invite.start_date, invite.end_date)} · rola: <strong className="text-white">{ROLE[invite.role] ?? invite.role}</strong>
+          {tripDates(invite.start_date, invite.end_date)} · rola: <strong className="text-white">{MEMBER_ROLE[invite.role] ?? invite.role}</strong>
           {invite.invited_by ? ` · zaprasza ${invite.invited_by}` : ""}
         </p>
       </section>

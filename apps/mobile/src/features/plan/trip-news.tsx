@@ -1,3 +1,4 @@
+import { plural } from '@expeditionplan/core';
 import { NEWS_ACTION, type NewsLine, type NewsSummary } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -25,12 +26,7 @@ function ago(iso: string, now: number): string {
   return `${at.getDate()}.${String(at.getMonth() + 1).padStart(2, '0')}`;
 }
 
-/** 1 zmiana, 2–4 zmiany, 5 zmian (12–14 — „zmian”). */
-function changes(n: number): string {
-  const tens = n % 100;
-  const ones = n % 10;
-  return `${n} ${n === 1 ? 'zmiana' : ones >= 2 && ones <= 4 && (tens < 12 || tens > 14) ? 'zmiany' : 'zmian'}`;
-}
+const changes = (n: number) => plural(n, ['zmiana', 'zmiany', 'zmian']);
 
 function lineText(line: NewsLine): string {
   const fields = line.fields.length > 0 ? ` — ${line.fields.join(', ')}` : '';

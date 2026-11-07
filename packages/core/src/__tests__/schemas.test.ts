@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LocalDateTime, TimeZone } from '../schemas/common.ts';
+import { HttpUrl, Link, LocalDateTime, TimeZone } from '../schemas/common.ts';
 import { Price } from '../schemas/price.ts';
 import { TripBrief } from '../schemas/trip-brief.ts';
 
@@ -70,5 +70,14 @@ describe('TripBrief', () => {
     const result = TripBrief.safeParse({ ...minimal, dates: { kind: 'fixed', start: '2026-11-02', end: '2026-11-01' } });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe('link dla człowieka', () => {
+  it('tylko http(s)', () => {
+    expect(HttpUrl.safeParse('https://example.com/a').success).toBe(true);
+    expect(HttpUrl.safeParse('http://example.com').success).toBe(true);
+    expect(HttpUrl.safeParse('javascript:alert(1)').success).toBe(false);
+    expect(Link.safeParse({ label: 'x', url: 'javascript:alert(1)' }).success).toBe(false);
   });
 });

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -7,6 +8,8 @@ import { BriefForm, type BriefDraft } from "@/components/brief-form";
 import { Loading, Shell } from "@/components/shell";
 import { aiAccessError } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Brief wyjazdu — Expedition Planner" };
 
 /** Kreator briefu wyjazdu (MVP-2) i „Zaplanuj z AI” — gdy brief jest zapisany. */
 
@@ -83,7 +86,7 @@ async function Brief({ params }: { params: Promise<{ id: string }> }) {
       {canEdit ? (
         <BriefForm tripId={id} tripTz={trip.data.primary_tz!} initial={initial} travelers={travelers.count ?? 0} />
       ) : (
-        <p className="text-sm">Brief może zmieniać właściciel albo edytor wyjazdu.</p>
+        <p className="text-sm">Brief może zmieniać organizator albo edytor wyjazdu.</p>
       )}
     </>
   );

@@ -1,3 +1,4 @@
+import { dbErrorMessage } from '@expeditionplan/sync';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { StyleSheet, TextInput } from 'react-native';
@@ -44,7 +45,7 @@ export function LoginCard() {
     setBusy(true);
     const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: AUTH_REDIRECT } });
     setBusy(false);
-    setStatus(error ? error.message : `Wysłałem link na ${email.trim()}. Otwórz go na tym telefonie.`);
+    setStatus(error ? dbErrorMessage(error, 'Nie udało się wysłać linku. Spróbuj za chwilę.') : `Wysłałem link na ${email.trim()}. Otwórz go na tym telefonie.`);
   };
 
   return (

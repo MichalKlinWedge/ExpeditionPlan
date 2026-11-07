@@ -1,4 +1,4 @@
-import { isPostponed, localToday, tripSections } from '@expeditionplan/core';
+import { isPostponed, localToday, MEMBER_ROLE, tripSections } from '@expeditionplan/core';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -21,7 +21,6 @@ import { supabase } from '@/lib/supabase';
  * wyjazdami przed nami (najnowsze na górze). Szkice AI — w zwiniętych „Szkicach” na samym dole.
  */
 
-const ROLE: Record<string, string> = { owner: 'właściciel', editor: 'edytor', viewer: 'widz' };
 
 type Details = {
   travelers: { id: string; name: string; age: number | null }[];
@@ -120,7 +119,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {isPostponed(trip) ? 'orientacyjnie: ' : ''}
-            {trip.start_date} – {trip.end_date} · {ROLE[trip.role!]}
+            {trip.start_date} – {trip.end_date} · {MEMBER_ROLE[trip.role!]}
           </ThemedText>
           <OfflineBadge tripId={trip.id!} />
         </View>
@@ -152,7 +151,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
                 {details.travelers.map((person) => (person.age === null ? person.name : `${person.name} (${person.age})`)).join(', ') || '—'}
               </ThemedText>
               <ThemedText type="small">
-                Dostęp: {details.members.map((member) => `${member.name} — ${ROLE[member.role]}`).join(', ')}
+                Dostęp: {details.members.map((member) => `${member.name} — ${MEMBER_ROLE[member.role]}`).join(', ')}
               </ThemedText>
             </>
           )}

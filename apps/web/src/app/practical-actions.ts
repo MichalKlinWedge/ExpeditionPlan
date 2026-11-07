@@ -3,7 +3,7 @@
 import { PracticalInfo, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { mergePractical, type PracticalDraft, type PracticalPick, practicalInfo } from "@expeditionplan/planner";
-import { type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { dbErrorMessage, type ElementWrite, type PullPayload, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
@@ -15,8 +15,6 @@ import { requireUser } from "@/lib/auth";
  * i dodanie do planu tylko tego, co człowiek zaznaczy (SPECYFIKACJA §4: propozycja → akceptacja).
  */
 
-const message = (error: { message: string; code?: string }) => (error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message);
-
 async function load(tripId: string) {
   const { supabase } = await requireUser(`/trips/${tripId}/practical`);
   const [pulled, membership, briefRow] = await Promise.all([
@@ -24,10 +22,10 @@ async function load(tripId: string) {
     supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle(),
     supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
   ]);
-  if (pulled.error) return { error: message(pulled.error) } as const;
+  if (pulled.error) return { error: dbErrorMessage(pulled.error) } as const;
   if (pulled.data === null) return { error: "Nie ma takiego wyjazdu." } as const;
   if (membership.data?.role !== "owner" && membership.data?.role !== "editor") return { error: "Informacje praktyczne z AI przygotowuje organizator albo edytor." } as const;
-  const payload = pulled.data as Parameters<typeof stateFromPayload>[0];
+  const payload = pulled.data as PullPayload;
   const brief = TripBrief.safeParse(briefRow.data?.brief);
   return { supabase, payload, doc: stateFromPayload(payload).doc, brief: brief.success ? brief.data : null } as const;
 }
@@ -67,7 +65,7 @@ export async function draftPractical(tripId: string): Promise<FormState> {
     tokens_out: usage.outputTokens,
     duration_ms: Date.now() - started,
   });
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   refresh();
   const dead = draft.sources.filter((source) => !source.ok).length;
   return { ok: `Szkic gotowy${dead > 0 ? ` (odrzucone martwe źródła: ${dead})` : ""}. Zaznacz, co dodać do planu.` };
@@ -78,7 +76,7 @@ export async function applyPractical(tripId: string, runId: string, pick: Practi
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
   const { data: run, error: runError } = await loaded.supabase.from("ai_runs").select("output, status").eq("id", runId).eq("trip_id", tripId).maybeSingle();
-  if (runError) return { error: message(runError) };
+  if (runError) return { error: dbErrorMessage(runError) };
   if (run === null) return { error: "Nie ma takiego szkicu." };
   const info = PracticalInfo.safeParse((run.output as { info?: unknown } | null)?.info);
   if (!info.success) return { error: "Szkic jest uszkodzony — przygotuj nowy." };
@@ -97,5 +95,5 @@ export async function applyPractical(tripId: string, runId: string, pick: Practi
   await loaded.supabase.from("ai_runs").update({ status: "accepted" }).eq("id", runId);
   refresh();
   const count = (collection: string) => created.filter((entry) => entry.collection === collection).length;
-  return { ok: `Dodano: notatki ${count("notes")}, kontakty ${count("contacts")}, pakowanie ${count("packing")}, zadania ${count("tasks")}, źródła ${count("sources")}.` };
+  return { ok: `Dodano: notatki ${count("notes")}, kontakty ${count("contacts")}, sprzęt ${count("packing")}, zadania ${count("tasks")}, źródła ${count("sources")}.` };
 }

@@ -3,12 +3,13 @@
 import { editGuideText, GuideContent, GuideDraft, GuideImage, GUIDE_LICENSE, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, putGuideImage, removeGuideImage, type TripDocument, undescribedSights } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { articleImages, commonsImages, coreName, describeFromPage, describePlace, type GuideLibrary, wikiArticleOf } from "@expeditionplan/planner";
-import { refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
+import { dbErrorMessage, refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
 import { aiAccessError, plannerDeps } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+import { pullTrip } from "@/lib/trip-snapshot";
 import { fetchPageText, VenueSiteError } from "@/lib/venue-site";
 
 /**
@@ -21,8 +22,6 @@ type Doc = TripDocument;
 type Item = Doc["items"][number];
 type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
 
-const message = (error: { message: string; code?: string }) => (error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message);
-
 /** Ile opisów najwyżej na jedno kliknięcie „hurtem” (każdy ok. 5–15 s, limit akcji 300 s). */
 const BATCH = 12;
 
@@ -32,10 +31,9 @@ async function load(tripId: string) {
   if (denied) return { error: denied } as const;
   const setup = plannerDeps();
   if ("missing" in setup) return { error: `Serwer nie ma kluczy: ${setup.missing.join(", ")}.` } as const;
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: message(error) } as const;
-  if (data === null) return { error: "Nie ma takiego wyjazdu." } as const;
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error } as const;
+  const { payload } = pulled;
   const guides = ((payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? []) as GuideRow[];
   return { supabase, client: setup.deps.client, doc: stateFromPayload(payload).doc, ids: refIndex(payload.tables), guides } as const;
 }
@@ -147,7 +145,7 @@ async function storeGuide(supabase: Supabase, tripId: string, name: string, cont
     status: "ready",
     deleted_at: null,
   });
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   return { ok: `Opis gotowy (źródło: ${SOURCE_NAME[content.article.site]} „${content.article.title}” (${content.article.lang}), ${content.images.length} zdj.).` };
 }
 
@@ -167,7 +165,8 @@ export async function describeItem(tripId: string, itemRef: string, hint = ""): 
   const itemId = loaded.ids[item.ref];
   const own = loaded.guides.find((row) => !row.deleted_at && row.item_id === itemId && row.place_id === null);
   if ("ok" in result && clean === "" && own !== undefined && placeOf(loaded.doc, item).ref !== undefined) {
-    await loaded.supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", own.id).eq("trip_id", tripId);
+    const { error } = await loaded.supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", own.id).eq("trip_id", tripId);
+    if (error) return { error: dbErrorMessage(error) };
   }
   if ("ok" in result) refresh();
   return result;
@@ -241,7 +240,10 @@ export async function describeFromSource(tripId: string, target: { itemRef?: str
   const result = await storeGuide(supabase, tripId, name, content, itemId, placeRef === undefined ? undefined : ids[placeRef], item?.ref ?? name);
   // Opis miejsca: dawny własny opis punktu (ze wskazówką) by go zasłaniał.
   const own = itemId === undefined || placeRef === undefined ? undefined : loaded.guides.find((row) => !row.deleted_at && row.item_id === itemId && row.place_id === null);
-  if ("ok" in result && own !== undefined) await supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", own.id).eq("trip_id", tripId);
+  if ("ok" in result && own !== undefined) {
+    const { error } = await supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", own.id).eq("trip_id", tripId);
+    if (error) return { error: dbErrorMessage(error) };
+  }
   if ("ok" in result) refresh();
   return result;
 }
@@ -277,7 +279,7 @@ export async function saveGuideText(tripId: string, guideId: string, text: Guide
 
 async function readGuide(supabase: Supabase, tripId: string, guideId: string): Promise<{ content: GuideContent; title: string } | { error: string }> {
   const { data, error } = await supabase.from("audio_guides").select("content, title").eq("id", guideId).eq("trip_id", tripId).is("deleted_at", null).maybeSingle();
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   const current = GuideContent.safeParse(data?.content);
   return current.success && data !== null ? { content: current.data, title: data.title } : { error: "Tego opisu już nie ma — odśwież stronę." };
 }
@@ -294,7 +296,7 @@ async function changeGuide(tripId: string, guideId: string, change: (current: Gu
     .eq("id", guideId)
     .eq("trip_id", tripId)
     .select("id");
-  if (saved.error) return { error: message(saved.error) };
+  if (saved.error) return { error: dbErrorMessage(saved.error) };
   if (saved.data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok };
@@ -332,8 +334,9 @@ export async function dropGuideImage(tripId: string, guideId: string, url: strin
 /** Usunięcie opisu (miękkie) — np. gdy artykuł okazał się o czymś innym. */
 export async function removeGuide(tripId: string, guideId: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}`);
-  const { error } = await supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", guideId).eq("trip_id", tripId);
-  if (error) return { error: message(error) };
+  const { data, error } = await supabase.from("audio_guides").update({ deleted_at: new Date().toISOString() }).eq("id", guideId).eq("trip_id", tripId).select("id");
+  if (error) return { error: dbErrorMessage(error) };
+  if ((data ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: "Usunięto opis." };
 }

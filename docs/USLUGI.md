@@ -264,6 +264,7 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - Limit API: 10 żądań/s na zespół (wspólny dla kluczy). Kwota dzienna resetuje się o północy UTC; po przekroczeniu błąd 429 (`daily_quota_exceeded` / `monthly_quota_exceeded`). Liczą się też e-maile odebrane.
 - **Domena:** do wysyłki trzeba dodać i zweryfikować co najmniej jedną własną domenę. Zalecana subdomena (np. `mail.example.com`), każda weryfikowana osobno. Rekordy: SPF (TXT + MX na subdomenie `send`), DKIM (TXT na `resend._domainkey`); domeny utworzone po sierpniu 2026 mogą dostać rekordy CNAME; DMARC zalecany. Weryfikacja zwykle do 15 min, do 72 h.
 - Wysyłka testowa z `onboarding@resend.dev` bez domeny — **NIEPOTWIERDZONE** (nie znaleziono w odczytanych stronach).
+- **W kodzie:** serwis wysyła przez dowolny serwer SMTP (`apps/web/src/lib/mail.ts`, zmienne `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`), nie przez API Resend ani jego klucz. Resend jest tu tylko jednym z możliwych dostawców SMTP, a limity powyżej dotyczą go, jeśli go wybrano.
 - Źródła: https://resend.com/pricing , https://resend.com/docs/api-reference/rate-limit , https://resend.com/docs/dashboard/domains/introduction , https://resend.com/docs/add-a-domain
 
 ---
@@ -315,6 +316,10 @@ Bez API i bez klucza: `apps/web/src/lib/venue-site.ts` pobiera stronę samego lo
 **NIE:** serwisy pośrednie, nawet gdy są wpisane jako „strona” lokalu (Booking, TripAdvisor, Google, Facebook, Instagram, TheFork, Pyszne, Glovo i inne, lista `NOT_OWN_SITE` w `planner/src/venue-page.ts`). Średniej oceny stąd zwykle nie ma: nadal pochodzi tylko z tekstu wklejonego przez użytkownika (§3, §11).
 
 Na tych samych warunkach działa strona wskazana przez użytkownika jako źródło opisu miejsca (`describeFromSource`), bez podstron. Zapisujemy tylko streszczenie AI własnymi słowami i link do strony; bez licencji CC BY-SA, bez zdjęć z tej strony, a pobrany albo wklejony tekst nie trafia do bazy. Streszczenie jest widoczne także na publicznym linku, więc za wybór źródła odpowiada użytkownik.
+
+### Booking.com (nocleg, 5.11.2026)
+
+Kod nie pobiera stron Booking.com ani nie czyta ich automatycznie: warunki serwisu zabraniają automatycznego odczytu, a API partnerskie jest dla nas niedostępne (SPECYFIKACJA W1). Jedyne, co robi: link do wyszukiwania w serwisie (`planner/src/logistics.ts`, „Szukaj w Booking.com”) i link do obiektu wklejony przez użytkownika (`core/lodging-info.ts`). Dane noclegu pochodzą z tekstu, który użytkownik sam wkleił (`planner/src/lodging.ts`), po podglądzie zmian.
 
 ## Wnioski dla specyfikacji
 

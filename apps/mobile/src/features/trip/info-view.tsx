@@ -1,3 +1,4 @@
+import { capitalized, CONTACT_ROLE, NOTE_TOPIC } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
@@ -12,20 +13,6 @@ import { DocumentsView } from '@/features/trip/documents-view';
  * według tematów i źródła. Na webie: „Informacje praktyczne” (etap 5 AI). Zadania — osobna zakładka.
  */
 
-const TOPIC: Record<string, string> = {
-  documents: 'Dokumenty',
-  money: 'Pieniądze',
-  health: 'Zdrowie',
-  safety: 'Bezpieczeństwo',
-  transport: 'Transport',
-  culture: 'Zwyczaje',
-  rules: 'Przepisy',
-  weather: 'Pogoda',
-  time: 'Czas',
-  packing: 'Pakowanie',
-  other: 'Inne',
-};
-const ROLE: Record<string, string> = { host: 'gospodarz', operator: 'organizator', rental: 'wypożyczalnia', guide: 'przewodnik', venue: 'obiekt', other: 'kontakt' };
 const WARNING = '#b26a00';
 
 function call(phone: string) {
@@ -40,7 +27,7 @@ export function InfoView({ trip, tripId, signedIn = false }: { trip: CachedTrip;
   const notes = doc.notes.filter((note) => note.scope === 'trip' && note.kind !== 'slack_audit' && note.kind !== 'rationale');
   const important = notes.filter((note) => note.kind === 'warning' || note.kind === 'safety');
   const rest = notes.filter((note) => !important.includes(note));
-  const topics = [...new Set(rest.map((note) => note.topic ?? 'other'))].sort((a, b) => Object.keys(TOPIC).indexOf(a) - Object.keys(TOPIC).indexOf(b));
+  const topics = [...new Set(rest.map((note) => note.topic ?? 'other'))].sort((a, b) => Object.keys(NOTE_TOPIC).indexOf(a) - Object.keys(NOTE_TOPIC).indexOf(b));
   const bookingTitle = (ref: string | undefined) => (ref === undefined ? undefined : doc.bookings.find((booking) => booking.ref === ref)?.title);
 
   // Dokumenty i kody na górze — po nie sięga się przy bramce, w pośpiechu.
@@ -80,7 +67,7 @@ export function InfoView({ trip, tripId, signedIn = false }: { trip: CachedTrip;
                   {contact.name}
                   <ThemedText type="small" themeColor="textSecondary">
                     {' '}
-                    · {ROLE[contact.role] ?? contact.role}
+                    · {CONTACT_ROLE[contact.role] ?? contact.role}
                     {bookingTitle(contact.bookingRef) ? ` · ${bookingTitle(contact.bookingRef)}` : ''}
                   </ThemedText>
                 </ThemedText>
@@ -116,7 +103,7 @@ export function InfoView({ trip, tripId, signedIn = false }: { trip: CachedTrip;
 
       {topics.map((topic) => (
         <ThemedView key={topic} type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">{TOPIC[topic] ?? topic}</ThemedText>
+          <ThemedText type="smallBold">{capitalized(NOTE_TOPIC[topic] ?? topic)}</ThemedText>
           {rest
             .filter((note) => (note.topic ?? 'other') === topic)
             .map((note, i) => (

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Currency, IsoDate, Link, LocalDateTime, LocalTime, MinorAmount, TimeZone } from './common.ts';
+import { Currency, HttpUrl, IsoDate, Link, LocalDateTime, LocalTime, MinorAmount, TimeZone } from './common.ts';
 import { Price } from './price.ts';
 
 /**
@@ -128,7 +128,7 @@ export const DocPlace = z.object({
   /** Godziny otwarcia tak, jak podaje źródło („09:00–19:00”, „zimą do 17:00”). */
   openingHours: z.string().optional(),
   elevationM: z.number().int().optional(),
-  website: z.url().optional(),
+  website: HttpUrl.optional(),
   links: z.array(Link).default([]),
   notes: noteText.optional(),
   venue: Venue.optional(),
@@ -273,7 +273,7 @@ export const ItemLeg = z.object({
   /** Czas i dystans z trasy (OpenRouteService), a nie z szacunku AI albo dokumentu. */
   routed: z.boolean().optional(),
   /** Własny link do trasy, np. z punktami pośrednimi. Tylko http(s): trafia do `href` i przeglądarki telefonu. */
-  routeUrl: z.url().regex(/^https?:\/\//i, 'Link musi zaczynać się od https://.').optional(),
+  routeUrl: HttpUrl.optional(),
   /**
    * Linia trasy z OpenRouteService do mapy: zakodowana polilinia (format Google, precyzja 5,
    * uproszczona — `polyline.ts`). Bez niej mapa łączy miejsca prosto. Nie wypełnia jej AI.
@@ -547,10 +547,12 @@ export const DocBooking = z.object({
   notes: z.array(z.string()).default([]),
 });
 
+export const ContactRole = z.enum(['host', 'operator', 'rental', 'guide', 'emergency', 'venue', 'other']);
+
 export const DocContact = z.object({
   ref: Ref,
   name: text,
-  role: z.enum(['host', 'operator', 'rental', 'guide', 'emergency', 'venue', 'other']),
+  role: ContactRole,
   phone: z.string().optional(),
   email: z.email().optional(),
   bookingRef: Ref.optional(),
@@ -650,7 +652,7 @@ export const DocNote = z.object({
 export const DocSource = z.object({
   ref: Ref,
   title: text,
-  url: z.url().optional(),
+  url: HttpUrl.optional(),
   checkedAt: IsoDate.optional(),
   note: z.string().optional(),
   /** Elementy, których dotyczy (ceny, godziny, opisy). */
@@ -668,7 +670,7 @@ export const DocTrack = z.object({
   difficulty: z.string().optional(),
   waymarking: z.string().optional(),
   routeNotes: z.string().optional(),
-  url: z.url().optional(),
+  url: HttpUrl.optional(),
   /** Geometria z pliku GPX (uproszczona, `core/gpx.ts`): GeoJSON LineString, [lng, lat, wysokość?]. */
   geojson: z
     .object({ type: z.literal('LineString'), coordinates: z.array(z.array(z.number()).min(2).max(3)).min(2) })

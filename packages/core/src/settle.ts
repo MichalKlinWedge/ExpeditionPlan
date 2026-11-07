@@ -27,6 +27,18 @@ function divide(amount: number, weights: number[]): number[] {
   return parts;
 }
 
+type SettleRow = Record<string, unknown> & { id: string };
+
+/** Wejście do `settle` z wierszy bazy: te same kolumny na webie i na telefonie. */
+export function settleInputFromRows(rows: { travelers: readonly SettleRow[]; expenses: readonly SettleRow[]; splits: readonly Record<string, unknown>[]; payments: readonly Record<string, unknown>[] }) {
+  return {
+    travelers: rows.travelers.map((row): SettleTraveler => ({ id: row.id, name: String(row.name), household: (row.household as string | null) ?? null, guardianId: (row.guardian_id as string | null) ?? null })),
+    expenses: rows.expenses.map((row): SettleExpense => ({ id: row.id, payerId: (row.payer_traveler_id as string | null) ?? null, amountMinor: Number(row.amount_minor), currency: String(row.currency), note: (row.note as string | null) ?? null })),
+    splits: rows.splits.map((row): SettleSplit => ({ expenseId: String(row.expense_id), travelerId: String(row.traveler_id), weight: (row.weight as number | null) ?? 1 })),
+    payments: rows.payments.map((row): SettlePayment => ({ fromId: String(row.from_traveler_id), toId: String(row.to_traveler_id), amountMinor: Number(row.amount_minor), currency: String(row.currency) })),
+  };
+}
+
 export function settle(input: {
   travelers: SettleTraveler[];
   expenses: SettleExpense[];

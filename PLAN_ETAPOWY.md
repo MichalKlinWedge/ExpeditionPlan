@@ -1,6 +1,6 @@
 # Plan etapowy realizacji — ExpeditionPlan
 
-Na podstawie: [SPECYFIKACJA.md](SPECYFIKACJA.md) v0.2 (z analizą planów z `exaples/`).
+Na podstawie: [SPECYFIKACJA.md](SPECYFIKACJA.md) v0.4 (z analizą planów z `examples/`).
 
 Założenia: jeden deweloper z Claude Code, Android + web, TypeScript w monorepo, Supabase. Szacunki są w **dniach skupionej pracy**. FormaSync pokazał, że realne tempo bywa wielokrotnie szybsze niż plan tygodniowy (W10). Daty nie są obietnicą: obietnicą jest kryterium odbioru na urządzeniu.
 
@@ -16,7 +16,7 @@ Kolejność: **Etap 0 → PoC (6 eksperymentów) → bramka decyzyjna → MVP (4
 - Szkielet monorepo: `apps/web`, `apps/mobile`, `packages/core`, `packages/ai`, `supabase/`. Jest, ESLint, `tsc`, git, `.gitattributes` (stałe końce linii), `CLAUDE.md`.
 - Expo: dev build + `eas.json` z profilami `development` / `preview` / `friends` / `production` i skryptami OTA skopiowanymi z FormaSync (W9).
 - Przeniesienie wzorca `features/ai` z FormaSync do `packages/ai` (adaptery Claude/Gemini/OpenAI, `transport`, `status`, `models`, `rejected`) w wersji uruchamianej w Deno/Node, bez SecureStore.
-- **Wyjazdy referencyjne = własne plany z `exaples/`**: Barcelona, Gruzja, Maroko, Chatka Sylwestrowa, Dinara. Dla każdego spisać `trip_brief`, jaki mógł być na wejściu (cel, daty, uczestnicy z wiekiem, transport, to, co było już kupione). Te same wejścia służą PoC-0, PoC-1 i późniejszym testom regresji AI, a gotowe plany są wzorcem do porównania.
+- **Wyjazdy referencyjne = własne plany z `examples/`**: Barcelona, Gruzja, Maroko, Chatka Sylwestrowa, Dinara. Dla każdego spisać `trip_brief`, jaki mógł być na wejściu (cel, daty, uczestnicy z wiekiem, transport, to, co było już kupione). Te same wejścia służą PoC-0, PoC-1 i późniejszym testom regresji AI, a gotowe plany są wzorcem do porównania.
 
 **Rezultat:** repo z pustymi aplikacjami, które budują się i startują; `packages/ai` odpowiada z każdego dostawcy w teście dymnym; 5 briefów referencyjnych w `fixtures/plans/`.
 
@@ -28,17 +28,21 @@ Cel: przed budową produktu sprawdzić rzeczy, które mogą zmienić architektur
 
 ### PoC-0 — Schemat danych na własnych planach (≈ 2 dni) — **pierwszy**
 - Schematy Zod dla całego modelu z §5 (w tym `Price`, `details` rezerwacji, warianty, ograniczenia, zadania, pakowanie, notatki).
-- Import AI (Etap „Import planu”, wersja CLI): każdy z 5 dokumentów z `exaples/` → JSON zgodny ze schematem → `fixtures/plans/*.json`. Poprawki ręczne tam, gdzie AI się pomyli.
+- Import AI (Etap „Import planu”, wersja CLI): każdy z 5 dokumentów z `examples/` → JSON zgodny ze schematem → `fixtures/plans/*.json`. Poprawki ręczne tam, gdzie AI się pomyli.
 - Lista kontrolna per plan: co z dokumentu **nie ma gdzie trafić** w schemacie, co trafia tylko do notatki tekstowej, choć powinno być polem. Silnik harmonogramu (PoC-5) na tych danych odtwarza godziny z dokumentów.
+
+**Stan:** zrobione, werdykt GO (poprawki A1–A9 wprowadzone), szczegóły w `POC_WYNIKI.md`. Pięć planów i ich `plan.json` leży w `fixtures/plans/`, test `fixtures.test.ts` pilnuje schematu.
 
 **Go:** każdy z 5 planów mieści się w schemacie bez utraty informacji, które w trakcie wyjazdu są potrzebne na telefonie (godziny, rezerwacje i kody, warianty z warunkami, ograniczenia, ceny dla grupy, kontakty). Reszta może zostać notatką. **No-go:** poprawka schematu przed MVP-1, specyfikacja v0.3.
 
 ### PoC-1 — Łańcuch AI z ugruntowaniem (≈ 3–4 dni) — **najważniejszy**
 - Skrypt CLI (bez UI): `trip_brief` (JSON) → Etap 1 (warianty) → Etap 2 (pula + harmonogram + audyt) → ugruntowanie (geokodowanie, godziny otwarcia, święta, słońce) → routing (`legs`) → silnik harmonogramu (§7) → raport.
 - Schematy Zod dla etapów 1 i 2, walidator z jedną próbą naprawy.
-- Uruchomienie na 5 briefach z `exaples/` × 2–3 dostawców × 2 źródła miejsc (OSM/Geoapify vs inne).
+- Uruchomienie na 5 briefach z `examples/` × 2–3 dostawców × 2 źródła miejsc (OSM/Geoapify vs inne).
 - Raport w tabeli: % ugruntowanych punktów, % w godzinach otwarcia, % dni realizowalnych, liczba ostrzeżeń, czas, tokeny i koszt.
 - **Porównanie z planami referencyjnymi:** czy AI widzi te same ryzyka co ręczne plany (zachód słońca i jazda po zmroku, kolejki na lotnisku, godziny biura wypożyczalni, limit km, święto i zamknięte sklepy, „kto pierwszy, ten lepszy” w chatce) i czy proponuje sensowne warianty.
+
+**Stan:** zrobione, werdykt GO z warunkami (`POC_WYNIKI.md`; czas < 90 s niezmierzony na kluczu API). Łańcuch żyje w `packages/planner`, CLI `npm run plan-ai`; produkcja na Gemini (D8).
 
 **Go:** ≥ 90% punktów ugruntowanych, ≥ 80% dni realizowalnych bez ręcznej poprawki, plan 4-dniowy < 90 s, koszt mieszczący się w budżecie z D2, co najmniej połowa ryzyk z planów referencyjnych wykryta.
 **No-go → wariant:** AI tylko wybiera z listy kandydatów pobranych wcześniej z API miejsc (odwrócenie kolejności: najpierw dane, potem model).
@@ -50,6 +54,8 @@ Cel: przed budową produktu sprawdzić rzeczy, które mogą zmienić architektur
 - Wariant zapasowy: paczka `OfflineManager` z OpenFreeMap (≤ 3000 kafli / 50 MB na pobranie, ≤ 4 równoległe żądania, własny User-Agent).
 - Pomiar: rozmiar dla miasta i regionu przy zoom 10–16/17, czas pobrania, płynność, tryb samolotowy, pozycja GPS na mapie, napisy po polsku bez sieci.
 
+**Stan:** kod PoC jest (`apps/mobile/src/poc`), wynik pomiaru w terenie nie jest zapisany w `POC_WYNIKI.md` (tam „w toku”). Produkt użył wariantu zapasowego: paczek OpenFreeMap (`apps/mobile/src/features/map/offline-packs.ts`); PMTiles został w kodzie PoC.
+
 **Go:** miasto ≤ ~150 MB, mapa i pozycja działają w trybie samolotowym, warunki dostawcy pozwalają na ten sposób użycia.
 
 ### PoC-3 — Geofencing i bateria (≈ 2 dni + spacer)
@@ -58,6 +64,8 @@ Cel: przed budową produktu sprawdzić rzeczy, które mogą zmienić architektur
 - Spacer 2–3 h z logiem: które wejścia wykryte, opóźnienie wykrycia, zużycie baterii w obu trybach.
 - Przy okazji: `expo-speech` po polsku offline (jakość głosu, dostępność głosu bez sieci) i odtwarzanie przy wygaszonym ekranie.
 
+**Stan:** kod jest (`apps/mobile/src/poc/tasks.ts`; w produkcie „spacer z przewodnikiem”, `features/walk/guide-walk.ts`, zadanie w tle, powiadomienie w promieniu 100 m). Pomiar baterii i wykrywalności w terenie nie jest zapisany w `POC_WYNIKI.md` (tam „w toku”).
+
 **Go:** ≥ 90% wejść wykrytych w trybie 150 m w ≤ 2 min; „Tryb spaceru” ≤ ~8%/h baterii. Wynik wyznacza, czy autoodtwarzanie jest S czy C.
 
 ### PoC-4 — Synchronizacja Supabase ↔ SQLite (≈ 2–3 dni)
@@ -65,11 +73,15 @@ Cel: przed budową produktu sprawdzić rzeczy, które mogą zmienić architektur
 - Telefon: migawka z `plan_version`, aktualizacja przyrostowa, outbox dla `schedule_events` i `expenses`.
 - Scenariusze: (1) zmiana na webie widoczna na telefonie < 3 s online; (2) telefon offline rejestruje 3 opóźnienia i 2 wydatki, w tym czasie web zmienia plan → po powrocie sieci nic nie ginie i harmonogram liczy się tak samo na obu urządzeniach; (3) zabicie aplikacji w trakcie wysyłki outboxa → brak duplikatów.
 
+**Stan:** zrobione, werdykt GO, wariant własny (`packages/sync`, `npm run test:sync`; `POC_WYNIKI.md`).
+
 **Go:** wszystkie 3 scenariusze przechodzą powtarzalnie. **No-go → wariant:** PowerSync.
 
 ### PoC-5 — Silnik harmonogramu i ograniczeń (≈ 2 dni, równolegle z PoC-0/1)
 - `packages/core/schedule`: funkcja z §7 + fakty dnia (słońce, zmierzch, Księżyc, DST) + ograniczenia + zapas i cięcia + ceny dla grupy z progów wiekowych.
 - Testy: stała godzina, opóźnienie do następnego punktu stałego, godziny otwarcia, zmiana czasu (noc 24/25.10 z Chatki), punkt przez północ, dwie strefy w jednym dniu (lot), przedziały czasu trwania, tryb względny (`+1:20`, Dinara), „bez jazdy po zmroku” (Maroko), limit km auta vs trasa (710 vs 680 km).
+
+**Stan:** zrobione, werdykt GO (`POC_WYNIKI.md`; test `bramka PoC-5` w `packages/core`).
 
 **Go:** testy zielone, a godziny odtworzone z `fixtures/plans/` zgadzają się z dokumentami w granicach ±15 min. Ten kod idzie wprost do MVP.
 
@@ -80,7 +92,7 @@ Krótki dokument `POC_WYNIKI.md`: metryki, wybrani dostawcy (AI, miejsca, routin
 
 ## MVP — „Planuję na laptopie, podróżuję z telefonem” (≈ 22–31 dni)
 
-**Definicja MVP:** organizator planuje na webie realny 3–5-dniowy wyjazd z pomocą AI, zaprasza osobę towarzyszącą jako widza i oboje przeżywają ten wyjazd z telefonem w trybie samolotowym. Plan ma to, co w `exaples/` okazało się niezbędne w trasie: warianty z warunkiem i terminem decyzji, audyt zapasu czasu, rezerwacje z kodami i warunkami, budżet „zapłacone / do wydania”, zadania i kontakty.
+**Definicja MVP:** organizator planuje na webie realny 3–5-dniowy wyjazd z pomocą AI, zaprasza osobę towarzyszącą jako widza i oboje przeżywają ten wyjazd z telefonem w trybie samolotowym. Plan ma to, co w `examples/` okazało się niezbędne w trasie: warianty z warunkiem i terminem decyzji, audyt zapasu czasu, rezerwacje z kodami i warunkami, budżet „zapłacone / do wydania”, zadania i kontakty.
 Zakres MVP = wszystkie punkty **M** ze specyfikacji. Schemat bazy obejmuje od razu **wszystkie** tabele z §5 (także portfel, pakowanie, ślady, audio, AI), nawet jeśli UI powstaje później.
 
 ### MVP-1 — Fundament danych i konto (≈ 4–5 dni)
@@ -91,11 +103,11 @@ Zakres MVP = wszystkie punkty **M** ze specyfikacji. Schemat bazy obejmuje od ra
 
 **Kryterium odbioru:** druga osoba dołącza z linku jako widz, widzi wyjazd i nie może niczego zmienić (sprawdzone testem RLS i ręcznie). Pięć planów referencyjnych jest w bazie.
 
-**Stan (31.10.2026):** część danych gotowa na lokalnym Supabase — pełny schemat §5 (migracje `*_mvp1_*`), RLS z testami pgTAP macierzy uprawnień (52 testy), zaproszenia linkiem, `packages/db` (typy), seed 5 planów (`npm run seed:dev`), test kryterium odbioru w `packages/sync` (`mvp1.integration.test.ts`: widz z linku dostaje z bazy ten sam plan i nie może go zmienić). Zostało: logowanie Google / magic link (projekt Supabase w chmurze, klient OAuth, Resend), ekrany web i mobile.
+**Stan (31.10.2026):** część danych gotowa na lokalnym Supabase — pełny schemat §5 (migracje `*_mvp1_*`), RLS z testami pgTAP macierzy uprawnień (52 testy), zaproszenia linkiem, `packages/db` (typy), seed 5 planów (`npm run seed:dev`), test kryterium odbioru w `packages/sync` (`mvp1.integration.test.ts`: widz z linku dostaje z bazy ten sam plan i nie może go zmienić). Logowanie jest: Google i link z maila (`apps/web/src/app/login`, `apps/mobile/src/features/auth/login-card.tsx`), na projekcie Supabase w chmurze; wysyłka e-mail przez SMTP (`apps/web/src/lib/mail.ts`). Ekrany web i mobile powstały w kolejnych etapach.
 
 ### MVP-2 — Kreator i AI w produkcie (≈ 5–7 dni)
 - Formularz `trip_brief` (Zod) na webie: założenia, uczestnicy, „co już ustalone” (loty, rezerwacje, stałe punkty), ograniczenia (maks. jazdy dziennie, bez jazdy po zmroku).
-- Edge Functions `ai-skeleton`, `ai-poi`, `places-search`, `routes` (logika z PoC-1), zapis w `ai_runs`, limity per użytkownik.
+- Logika z PoC-1 jako akcje serwera Next (`planWithAi`, Geoapify, ORS) na `packages/planner`, nie jako Edge Functions (SPECYFIKACJA §5 „Odstępstwa w MVP-1”); zapis w `ai_runs`, dostęp do AI przez `AI_ALLOWED_EMAILS` (limitu wywołań na użytkownika nie ma).
 - Etap 1: 2–3 warianty układu z tabelą porównania i rekomendacją → wybór.
 - Etap 2: pula, harmonogram, warianty w dniu, ograniczenia, priorytety i audyt zapasu → podgląd draftu (dni + pula + mapa) → akceptacja → zapis.
 - „Przelicz dzień z poleceniem” (uproszczony Etap 3: regeneracja jednego dnia z zachowaniem punktów `user_locked`).
@@ -145,6 +157,8 @@ Kolejność orientacyjna. Po teście w terenie może się zmienić.
 - Punkty dla części grupy (`item_participants`: szpica, ekipy zadaniowe).
 - Link publiczny: strona SSR w układzie wzoru, podgląd OG, ukrywanie zakresów, unieważnianie.
 
+**Stan:** jest link publiczny (`/p/[token]` z przeglądem, `/p/[token]/plan`, RPC `public_trip`, ukrywanie kosztów, imion i adresu noclegu, unieważnianie), rola edytora w UI, dziennik aktywności (`activity_log`) w postaci „Co nowego od ostatniej wizyty” (RPC `trip_news`, karta na `/trips/[id]` i baner na telefonie), punkty dla części grupy (`items.participant_ids`). Nie ma: Realtime Presence, nazwanych wersji planu (`plan_snapshots` bez interfejsu), cofania z dziennika.
+
 **Odbiór:** dwie osoby edytują ten sam dzień na dwóch laptopach i żadna zmiana nie ginie bez ostrzeżenia. Link publiczny nie ujawnia kosztów, sejfu, kodów rezerwacji ani kontaktów (test).
 
 ### Etap 6 — AI: czat, logistyka, informacje praktyczne, importy (≈ 7–9 dni)
@@ -155,6 +169,8 @@ Kolejność orientacyjna. Po teście w terenie może się zmienić.
 - Import istniejącego planu DOCX/PDF (z PoC-0) w UI: podgląd per sekcja, akceptacja.
 - Kontrole automatyczne: alert przed końcem darmowego odwołania, skład osobowy u operatora vs wiek uczestników, limit km vs trasa, godzina zwrotu vs godziny biura → zadania z `source = check`.
 
+**Stan:** etapy AI 3–5 są (patrz Stan w MVP-2: `/tune`, logistyka, `/practical`). Import planu DOCX/PDF działa tylko jako CLI (`tools/import-plan`), w UI jest „Importuj z pliku” dla JSON (`/trips/[id]/brief`).
+
 **Odbiór:** „Zmień obiad w dniu 2 na wegański” i „Dzień 3 jest za męczący” dają poprawne łatki, które nie ruszają punktów zablokowanych. Potwierdzenie z Booking (PDF) zamienia się w kartę noclegu z kodem i terminem darmowego odwołania. Dla Gruzji Etap 4 daje porównanie 2–3 noclegów w Mestii w układzie zbliżonym do ręcznego planu. Import `Plan - Chatka Sylwestrowa` daje wyjazd z uczestnikami, harmonogramem, wariantami awaryjnymi, pakowaniem i TODO.
 
 ### Etap 7 — Pakowanie, ślady GPX, eksport dokumentu (≈ 5–7 dni)
@@ -162,20 +178,28 @@ Kolejność orientacyjna. Po teście w terenie może się zmienić.
 - Ślady GPX: import, statystyki (długość, przewyższenie, czas), mapa offline z własną pozycją i odległością od śladu.
 - Eksport DOCX/PDF według `wzór.docx`, eksport ICS.
 
+**Stan:** jest sprzęt (`/trips/[id]/gear`, zakładka „Sprzęt” na telefonie, wiersze `packing_carriers`), ślady GPX (`core/gpx.ts`, `saveTrack`, karta śladu na telefonie offline), eksport ICS (`/trips/[id]/calendar`), wydruk (`/trips/[id]/print`) i eksport planu do JSON (`/trips/[id]/export`). Nie ma eksportu DOCX/PDF według `wzór.docx`.
+
 **Odbiór:** eksport planu Chatki do DOCX ma te same sekcje co oryginał. Ślad do chatki widać w trybie samolotowym razem z pozycją telefonu.
 
 ### Etap 8 — Audioprzewodnik pełny (≈ 4–6 dni, zakres zależny od PoC-3)
+**Stan:** częściowo: przewodniki z Wikipedii, Wikivoyage i źródeł podanych przez użytkownika (`/trips/[id]/guides`), czytanie na głos `expo-speech`, spacer z przewodnikiem w tle (`features/walk/guide-walk.ts`). Nie ma TTS w chmurze ani odtwarzacza z kontrolkami w powiadomieniu.
+
 - Odtwarzacz w tle z kontrolkami w powiadomieniu, kolejka nagrań dnia.
 - Geofencing punktów dnia (100–150 m) → powiadomienie „Jesteś przy X”. „Tryb spaceru” z autoodtwarzaniem.
 - Wersja transkrypcji dla dzieci. Opcjonalnie TTS w chmurze (MP3 do pakietu offline), wybór głosu, cache per `place_id` + język.
 
 ### Etap 9 — Portfel (≈ 4–5 dni)
+**Stan:** zrobione w kodzie: portfel na telefonie (`features/trip/wallet-view.tsx`, outbox, „Dodaj wydatek”, usuwanie), rozliczenie (`core/settle.ts`, `settle-view.tsx`), kursy, budżet vs wydatki dzień po dniu (`core/budget-pace.ts`), paragon ze zdjęcia przez web (`/api/receipt`).
+
 - Wydatki offline (outbox), podział po równo / udziały / kwoty / na rodziny, kursy z dnia, saldo i minimalne przelewy (`packages/core/settle` z testami), rozliczenia.
 - Budżet planowany vs rzeczywisty, per kategoria i dzień. Paragon ze zdjęcia (opcjonalnie AI).
 
 **Odbiór:** 4 osoby, 3 waluty, 30 wydatków, część dodana offline → saldo zgodne z ręcznym przeliczeniem, każda osoba ma tę samą liczbę na swoim telefonie. Zrzutka „150 zł na rodzinę” (Chatka) rozlicza się per rodzina.
 
 ### Etap 10 — Pogoda, alerty, push (≈ 3–4 dni)
+**Stan:** pogoda i alerty są (Open-Meteo w `core/weather.ts`, `core/weather-alerts.ts` go/no-go, lokalne przypomnienia na telefonie: `features/trip/reminders.ts`, `features/home/weather-alerts.tsx`). Nie ma zdalnego pushu Expo (w kodzie nie ma rejestracji tokenu ani wysyłki), więc zmiany innych widać dopiero po otwarciu aplikacji.
+
 - Open-Meteo dla dni wyjazdu, alert „deszcz → przełączyć wariant?”, zadanie „go / no-go 2 dni przed” z prognozą, alerty czasowe (zamknięcie, ostatni kurs).
 - Push zdalny (Expo Push) o zmianach od innych, zadaniach z terminem i alertach.
 
@@ -183,8 +207,10 @@ Kolejność orientacyjna. Po teście w terenie może się zmienić.
 - Widok kalendarza tygodniowego z drag & drop, przeciąganie pinezek na mapie.
 
 ### Etap 12 — Stabilizacja i wydanie (≈ 4–6 dni)
+**Stan:** niezrobione. Nie ma testów E2E (ani Playwright, ani Maestro), polityki prywatności ani usuwania konta; są testy jednostkowe, integracyjne (`npm run test:sync`) i pgTAP (`npm run test:db`).
+
 - E2E: Playwright (kreator → akceptacja → edycja), Maestro (pobranie offline → dzień w trybie samolotowym).
-- Regresja AI na 5 briefach z `exaples/` przy każdej zmianie poleceń lub modelu.
+- Regresja AI na 5 briefach z `examples/` przy każdej zmianie poleceń lub modelu.
 - Polityka prywatności, eksport i usunięcie konta, przegląd RLS i limitów kosztów.
 - Jeśli D1 = Google Play: deklaracja lokalizacji w tle (wideo z uzasadnieniem), formularz bezpieczeństwa danych, AAB z profilu `production`.
 
@@ -208,7 +234,7 @@ Kolejność orientacyjna. Po teście w terenie może się zmienić.
 
 | Etap | Zakres | Priorytet | Szac. (dni) | Zależności |
 |---|---|---|---|---|
-| 0 | Przygotowanie, monorepo, `packages/ai`, briefy z `exaples/` | — | 2–3 | — |
+| 0 | Przygotowanie, monorepo, `packages/ai`, briefy z `examples/` | — | 2–3 | — |
 | PoC-0 | Schemat danych na 5 własnych planach | krytyczny | 2 | 0 |
 | PoC-1 | Łańcuch AI z ugruntowaniem + porównanie z planami | krytyczny | 3–4 | 0, PoC-0 |
 | PoC-2 | Mapa offline | krytyczny | 2 | 0 |

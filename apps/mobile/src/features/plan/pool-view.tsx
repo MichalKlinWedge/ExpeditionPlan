@@ -1,4 +1,4 @@
-import { formatMoney, itemIcon, itemKindLabel, type PlanItem, priceForGroup } from '@expeditionplan/core';
+import { formatMinutes, formatMoneyRange, ITEM_KIND, itemIcon, itemKindLabel, type PlanItem, priceForGroup } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import * as Location from 'expo-location';
 import { useState } from 'react';
@@ -11,7 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { itemGuide } from '@/features/plan/item-details';
-import { DayPicker, type ItemFields, KIND } from '@/features/plan/item-editor';
+import { DayPicker, type ItemFields } from '@/features/plan/item-editor';
 
 /**
  * Pula w Planie na telefonie: punkty poza dniami — opcje, do których można wrócić. Każdy z opisem,
@@ -20,10 +20,7 @@ import { DayPicker, type ItemFields, KIND } from '@/features/plan/item-editor';
  * „tu, gdzie jestem” — pinezka z GPS); online, jak inne zmiany planu z telefonu.
  */
 
-const duration = (min: number, max?: number) => {
-  const text = (value: number) => (value < 60 ? `${value} min` : `${Math.floor(value / 60)} h${value % 60 ? ` ${value % 60} min` : ''}`);
-  return max !== undefined && max !== min ? `${text(min)}–${text(max)}` : text(min);
-};
+const duration = (min: number, max?: number) => (max !== undefined && max !== min ? `${formatMinutes(min)}–${formatMinutes(max)}` : formatMinutes(min));
 
 type Props = {
   trip: CachedTrip;
@@ -62,10 +59,10 @@ export function PoolView({ trip, onMove, onAdd, onOpen }: Props) {
             const place = places.get(item.leg?.toPlaceRef ?? item.placeRef ?? '');
             const price = item.price === undefined ? null : priceForGroup(item.price, travelers);
             const facts = [
-              itemKindLabel(item, KIND),
+              itemKindLabel(item, ITEM_KIND),
               place && place.name !== item.title ? place.name : null,
               item.durationMin !== undefined ? duration(item.durationMin, item.durationMaxMin) : null,
-              price === null ? null : `${price.approx ? 'ok. ' : ''}${price.minMinor === price.maxMinor ? formatMoney(price.minMinor, price.currency) : `${formatMoney(price.minMinor, price.currency)}–${formatMoney(price.maxMinor, price.currency)}`} dla grupy`,
+              price === null ? null : `${price.approx ? 'ok. ' : ''}${formatMoneyRange(price.minMinor, price.maxMinor, price.currency)} dla grupy`,
             ].filter(Boolean);
             return (
               <ThemedView key={item.ref} type="backgroundElement" style={styles.card}>
@@ -164,7 +161,7 @@ function PoolAdd({ areas, onAdd }: { areas: string[]; onAdd: NonNullable<Props['
       <TextInput value={title} onChangeText={setTitle} style={input} placeholder="Co? np. Kawiarnia z widokiem" placeholderTextColor={theme.textSecondary} autoFocus />
       <View style={styles.chips}>
         {QUICK_KINDS.map((each) => (
-          <Chip key={each} compact active={kind === each} label={KIND[each] ?? each} onPress={() => setKind(each)} />
+          <Chip key={each} compact active={kind === each} label={ITEM_KIND[each] ?? each} onPress={() => setKind(each)} />
         ))}
       </View>
       <TextInput value={description} onChangeText={setDescription} style={input} placeholder="Opis, dlaczego warto (opcjonalnie)" placeholderTextColor={theme.textSecondary} multiline />

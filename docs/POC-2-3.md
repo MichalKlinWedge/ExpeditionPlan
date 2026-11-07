@@ -1,5 +1,7 @@
 # PoC-2 i PoC-3 — instrukcja testu na telefonie
 
+> Dokument historyczny z PoC (stan 31.10.2026). Przyciski i ekrany opisane tu (np. „PMTiles z pliku”) już nie istnieją; aplikacja pobiera mapę przyciskiem „Pobierz mapę wyjazdu” (paczki OpenFreeMap), a werdykty są w `POC_WYNIKI.md`.
+
 Kod jest gotowy w `apps/mobile` (zakładki **Mapa** i **Spacer**). Do zrobienia po Twojej stronie: konto Expo, zbudowanie APK, plik mapy offline i spacer. Wyniki wracają do mnie jako log z aplikacji.
 
 ## 1. Zbudowanie aplikacji (jednorazowo, ok. 15–20 min w chmurze)

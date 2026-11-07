@@ -7,10 +7,12 @@ którą zabierasz (po ostatnim OTA). Zajmuje ok. 20 minut.
 ## 1. Przygotowanie (z internetem)
 
 - [ ] Aplikacja zaktualizowana: Start → ⚙︎ → „Sprawdź aktualizację” mówi, że to najnowsza wersja.
-- [ ] Zalogowany tym kontem, które ma wyjazd (Start pokazuje „Najbliższy wyjazd”).
-- [ ] Wyjazdy → wyjazd → „Plan dzień po dniu” otwiera się — **to pobiera plan na telefon**.
-      Przejdź raz przez wszystkie dni i przełączniki Plan · Wydatki · Pakowanie · Info.
-- [ ] Start → „Na telefonie (offline)” pokazuje ten wyjazd jako pobrany, 0 zapisów czeka na wysłanie.
+- [ ] Zalogowany tym kontem, które ma wyjazd (Start pokazuje kafel „Najbliższy wyjazd” z odliczaniem dni).
+- [ ] Wyjazdy → wyjazd → „Pobierz wyjazd offline”: pobiera plan, mapę, dokumenty i opisy miejsc, z postępem.
+      Na końcu komunikat „Wyjazd jest na telefonie”, a linijka nad przyciskiem zaczyna się od „✓ Offline:”.
+      Przy „Pobrano częściowo” kliknij ponownie. Potem „Plan dzień po dniu →”: przejdź raz przez wszystkie
+      dni i zakładki Plan · Wydatki · Sprzęt · Zadania · Dziennik · Info.
+- [ ] Start → blok „Na telefonie (offline)” pokazuje „N z M planów pobranych”, a zapisów czekających na wysłanie nie ma.
 - [ ] Na webie w „Informacje praktyczne” są numery alarmowe i kontakty (gospodarze, wypożyczalnia) —
       bez nich zakładka Info na telefonie będzie pusta.
 - [ ] Na webie w „Rezerwacje i budżet” loty mają linię i numer lotu (edytuj → „linia lotnicza”, „nr lotu”).
@@ -25,9 +27,9 @@ Włącz tryb samolotowy (i wyłącz Wi-Fi). Zamknij aplikację całkiem (z listy
 - [ ] „Teraz / Następny”: przycisk +15 min przesuwa kolejne punkty (zmiana zostaje po zamknięciu aplikacji).
 - [ ] Info: numery alarmowe; dotknięcie numeru otwiera wybieranie (samo połączenie w trybie
       samolotowym nie wyjdzie — ważne, że numer jest pod ręką).
-- [ ] Wydatki: „Dodaj wydatek” — **1 MAD**, opis „test offline” (usuwania wydatków jeszcze nie ma,
-      więc kwota symboliczna) — pojawia się na liście od razu.
-- [ ] Pakowanie: odhacz jedną rzecz — zostaje odhaczona po ponownym otwarciu.
+- [ ] Wydatki: „+ Dodaj wydatek” — **1 MAD**, opis „test offline” — pojawia się na liście od razu
+      (po próbie możesz go usunąć: „Usuń” w oknie poprawki wydatku).
+- [ ] Sprzęt: odhacz jedną rzecz — zostaje odhaczona po ponownym otwarciu.
 - [ ] Start → „Na telefonie (offline)”: widać zapisy czekające na wysłanie.
 
 ## 3. Powrót sieci
@@ -36,7 +38,7 @@ Wyłącz tryb samolotowy, otwórz aplikację (albo przełącz się do niej).
 
 - [ ] Po chwili zapisy czekające na wysłanie spadają do 0.
 - [ ] Na webie w „Rezerwacje i budżet” podsumowanie wydatków uwzględnia 1 MAD z kroku 2.
-- [ ] Na drugim telefonie (albo po ponownym zalogowaniu) odhaczona rzecz z pakowania jest odhaczona.
+- [ ] Na drugim telefonie (albo po ponownym zalogowaniu) odhaczona rzecz ze Sprzętu jest odhaczona.
 
 ## 4. Mapa wyjazdu
 

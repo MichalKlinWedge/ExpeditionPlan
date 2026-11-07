@@ -37,6 +37,24 @@ export interface Remote {
   push(table: OutboxTable, rows: Record<string, unknown>[]): Promise<void>;
 }
 
+const OWN_ERROR_CODES = new Set(['P0001', 'P0002', 'EP001', '22023']);
+
+/**
+ * Komunikat błędu bazy dla użytkownika. Nasze funkcje SQL rzucają własne, polskie komunikaty (te
+ * przechodzą); odmowa RLS to „brak uprawnień”, a reszta to angielski tekst techniczny, więc
+ * użytkownik dostaje `fallback`, a szczegóły idą do logu.
+ */
+export function dbErrorMessage(error: { message: string; code?: string | undefined }, fallback = 'Nie udało się wykonać tej operacji. Spróbuj jeszcze raz.'): string {
+  if (error.code === '42501') return /row-level security|permission denied/i.test(error.message) ? 'Brak uprawnień do tej zmiany.' : error.message;
+  if (error.code !== undefined && OWN_ERROR_CODES.has(error.code)) return error.message;
+  if (/fetch failed|failed to fetch|network request failed/i.test(error.message)) return 'Brak połączenia z serwerem. Sprawdź internet.';
+  console.warn(error);
+  return fallback;
+}
+
+/** Błąd odczytu na stronie. */
+export const dbLoadError = (error: { message: string; code?: string | undefined }): string => dbErrorMessage(error, 'Nie udało się wczytać danych. Odśwież stronę.');
+
 export class RemoteError extends Error {
   readonly code: string | undefined;
 
@@ -51,14 +69,14 @@ export function supabaseRemote(client: SupabaseClient): Remote {
   return {
     async pull(tripId, since) {
       const { data, error } = await client.rpc('pull_changes', { p_trip: tripId, p_since: since });
-      if (error) throw new RemoteError(error.message, error.code);
+      if (error) throw new RemoteError(dbErrorMessage(error), error.code);
       return (data as PullPayload | null) ?? null;
     },
     async push(table, rows) {
       if (table === 'tasks') {
         for (const row of rows) {
           const { data, error } = await client.from('tasks').update({ status: row.status }).eq('id', row.id).eq('trip_id', row.trip_id).select('id');
-          if (error) throw new RemoteError(error.message, error.code);
+          if (error) throw new RemoteError(dbErrorMessage(error), error.code);
           // RLS po cichu pomija wiersz, którego nie wolno zmienić — dla outboxa to odmowa, nie sukces.
           if ((data ?? []).length === 0) throw new RemoteError('Brak uprawnień do odhaczenia tego zadania', '42501');
         }
@@ -67,7 +85,7 @@ export function supabaseRemote(client: SupabaseClient): Remote {
       const { error } = await client
         .from(table)
         .upsert(rows, { onConflict: 'id', ignoreDuplicates: table === 'schedule_events' });
-      if (error) throw new RemoteError(error.message, error.code);
+      if (error) throw new RemoteError(dbErrorMessage(error), error.code);
     },
   };
 }

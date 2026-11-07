@@ -18,4 +18,4 @@ export async function loadPublicTrip(token: string) {
   return { tripId: payload.trip.id, state, ids, guideOf, hide: { costs: payload.hide?.costs ?? true, names: payload.hide?.names ?? false }, tentative: payload.tentative ?? 0 };
 }
 
-export const EXPIRED_LINK = "Ten link do planu wygasł albo właściciel go wyłączył.";
+export const EXPIRED_LINK = "Ten link do planu wygasł albo organizator go wyłączył.";

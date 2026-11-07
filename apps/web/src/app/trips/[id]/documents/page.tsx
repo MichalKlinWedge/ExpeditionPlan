@@ -1,5 +1,6 @@
-import { type TripDocument, vaultDocument, type VaultDocument } from "@expeditionplan/core";
-import { stateFromPayload } from "@expeditionplan/sync";
+import type { Metadata } from "next";
+import { dayLabelShort, type TripDocument, vaultDocument, type VaultDocument } from "@expeditionplan/core";
+import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -8,6 +9,8 @@ import { EditToggle, editMode } from "@/components/edit-toggle";
 import { Loading, Shell } from "@/components/shell";
 import { Vault } from "@/components/vault";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Sejf dokumentów — Expedition Planner" };
 
 /**
  * Sejf dokumentów (MVP-3, SPECYFIKACJA M11): bilety, vouchery i potwierdzenia przy rezerwacji
@@ -33,9 +36,9 @@ async function Documents({ params, searchParams }: { params: Promise<{ id: strin
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, profiles(display_name)").eq("trip_id", id).order("created_at"),
   ]);
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   let doc: TripDocument;
   try {
     doc = stateFromPayload(payload).doc;
@@ -53,9 +56,8 @@ async function Documents({ params, searchParams }: { params: Promise<{ id: strin
     .filter((booking) => booking.status !== "candidate" && booking.status !== "idea")
     .flatMap((booking) => (rowId.get(`bookings:${booking.ref}`) ? [{ id: rowId.get(`bookings:${booking.ref}`)!, title: booking.title, code: booking.confirmationCode ?? null }] : []));
   // Punkty planu dzień po dniu, w kolejności planu; na końcu dnia nocleg (rezerwacja obejmująca tę noc).
-  const dayName = new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" });
   const items = doc.days.flatMap((day, index) => {
-    const label = `Dzień ${index + 1} · ${dayName.format(new Date(`${day.date}T12:00:00Z`))}`;
+    const label = `Dzień ${index + 1} · ${dayLabelShort(day.date)}`;
     const points = doc.items
       .filter((item) => item.dayRef === day.ref && rowId.has(`items:${item.ref}`))
       .sort((a, b) => (a.sortKey ?? "").localeCompare(b.sortKey ?? ""))

@@ -1,11 +1,12 @@
 "use server";
 
 import { BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, type FxRate, mergeRates, parseMoney, parseWeightKg, PriceBasis, rebaseRates, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
-import { carrierRow, type ElementWrite, expenseSplitRows, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { carrierRow, dbErrorMessage, type ElementWrite, expenseSplitRows, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
+import { pullTrip, validationError } from "@/lib/trip-snapshot";
 
 /**
  * Edycja budżetu, rezerwacji, zadań i listy zakupów (strona „Rezerwacje, budżet i zadania”). Każda zmiana:
@@ -18,14 +19,11 @@ type Doc = TripDocument;
 type Editable = "budgetLines" | "tasks" | "bookings" | "contacts" | "packing" | "items";
 type Element = { ref: string } & Record<string, unknown>;
 
-const message = (error: { message: string; code?: string }) => (error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message);
-
 async function change(tripId: string, collection: Editable, ref: string | null, build: (doc: Doc, current: Element | undefined) => Element | null | string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: message(error) };
-  if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { payload } = pulled;
   const { doc } = stateFromPayload(payload);
   const list = doc[collection] as Element[];
   const current = ref === null ? undefined : list.find((each) => each.ref === ref);
@@ -38,8 +36,7 @@ async function change(tripId: string, collection: Editable, ref: string | null, 
   const updated = { ...doc, [collection]: remove ? list.filter((each) => each.ref !== ref) : current ? list.map((each) => (each.ref === ref ? element : each)) : [...list, element] };
   const checked = TripDocument.safeParse(updated);
   if (!checked.success) {
-    const issue = checked.error.issues[0]!;
-    return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
+    return { error: validationError(checked.error) };
   }
 
   try {
@@ -57,16 +54,14 @@ async function change(tripId: string, collection: Editable, ref: string | null, 
  */
 async function commit(tripId: string, build: (doc: Doc) => { doc: Doc; writes: ElementWrite[]; ok: string } | string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: message(error) };
-  if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { payload } = pulled;
   const result = build(stateFromPayload(payload).doc);
   if (typeof result === "string") return { error: result };
   const checked = TripDocument.safeParse(result.doc);
   if (!checked.success) {
-    const issue = checked.error.issues[0]!;
-    return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
+    return { error: validationError(checked.error) };
   }
   if (result.writes.length > 0) {
     try {
@@ -128,13 +123,13 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
 export async function setExpenseSplits(tripId: string, expenseId: string, chosen: string[]): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
   const [people, existing] = await Promise.all([supabase.from("travelers").select("id").eq("trip_id", tripId).is("deleted_at", null), supabase.from("expense_splits").select("id").eq("expense_id", expenseId)]);
-  if (people.error) return { error: message(people.error) };
-  if (existing.error) return { error: message(existing.error) };
+  if (people.error) return { error: dbErrorMessage(people.error) };
+  if (existing.error) return { error: dbErrorMessage(existing.error) };
   const known = new Set(existing.data.map((row) => row.id));
   const rows = expenseSplitRows(tripId, expenseId, chosen, people.data.map((row) => row.id), (id) => known.has(id));
   if (rows.length > 0) {
     const { error } = await supabase.from("expense_splits").upsert(rows);
-    if (error) return { error: message(error) };
+    if (error) return { error: dbErrorMessage(error) };
   }
   refresh();
   return { ok: "Zapisano." };
@@ -206,7 +201,7 @@ export async function saveTask(tripId: string, ref: string | null, _prev: FormSt
 export async function setTaskStatus(tripId: string, ref: string, status: "open" | "done" | "dropped"): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/tasks`);
   const { data, error } = await supabase.from("tasks").update({ status }).eq("trip_id", tripId).eq("ref", ref).is("deleted_at", null).select("id");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   // RLS po cichu pomija wiersz, którego nie wolno zmienić.
   if ((data ?? []).length === 0) return { error: "Tego zadania nie możesz odhaczyć (albo już go nie ma — odśwież stronę)." };
   refresh();
@@ -356,10 +351,9 @@ export async function setBookingStatus(tripId: string, ref: string, status: stri
  */
 export async function removeCancelledBooking(tripId: string, ref: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: message(error) };
-  if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { payload } = pulled;
   const { doc } = stateFromPayload(payload);
   const booking = doc.bookings.find((each) => each.ref === ref);
   if (booking === undefined) return { error: "Tej rezerwacji już nie ma — odśwież stronę." };
@@ -367,12 +361,11 @@ export async function removeCancelledBooking(tripId: string, ref: string): Promi
   const edit = removeBooking(doc, ref)!;
   const checked = TripDocument.safeParse(edit.doc);
   if (!checked.success) {
-    const issue = checked.error.issues[0]!;
-    return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
+    return { error: validationError(checked.error) };
   }
   const ids = refIndex(payload.tables);
   const unlinked = await supabase.from("documents").update({ booking_id: null }).eq("trip_id", tripId).eq("booking_id", ids[ref]!);
-  if (unlinked.error) return { error: message(unlinked.error) };
+  if (unlinked.error) return { error: dbErrorMessage(unlinked.error) };
   try {
     await saveElements(supabase, tripId, checked.data, edit.writes, ids);
   } catch (e) {
@@ -483,7 +476,7 @@ export async function saveGearItem(tripId: string, ref: string | null, itemId: s
   if (result.error || scope === "shared" || itemId === null) return result;
   const { supabase } = await requireUser(`/trips/${tripId}/gear`);
   const { error } = await supabase.from("packing_carriers").update({ quantity: 0 }).eq("packing_item_id", itemId).gt("quantity", 0);
-  return error ? { error: message(error) } : result;
+  return error ? { error: dbErrorMessage(error) } : result;
 }
 
 /** Usunięcie rzeczy (miękkie) razem z tym, kto ją brał. */
@@ -492,7 +485,7 @@ export async function removeGearItem(tripId: string, ref: string, itemId: string
   if (result.error) return result;
   const { supabase } = await requireUser(`/trips/${tripId}/gear`);
   const { error } = await supabase.from("packing_carriers").update({ deleted_at: new Date().toISOString() }).eq("packing_item_id", itemId);
-  return error ? { error: message(error) } : result;
+  return error ? { error: dbErrorMessage(error) } : result;
 }
 
 /** „Biorę” (`quantity` > 0) albo „nie biorę” (0). Prawo: RLS — za siebie i swoje dzieci, organizator i edytor za każdego. */
@@ -500,7 +493,7 @@ export async function setGearCarrier(tripId: string, itemId: string, travelerId:
   if (!Number.isFinite(quantity) || quantity < 0) return { error: "Ilość: liczba większa od zera." };
   const { supabase } = await requireUser(`/trips/${tripId}/gear`);
   const { error } = await supabase.from("packing_carriers").upsert(carrierRow(tripId, itemId, travelerId, quantity));
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   refresh();
   return { ok: "Zapisano." };
 }
@@ -541,10 +534,10 @@ export async function saveFx(tripId: string, _prev: FormState, form: FormData): 
   }
   const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
   const { data: trip, error: readError } = await supabase.from("trips").select("base_currency").eq("id", tripId).maybeSingle();
-  if (readError) return { error: message(readError) };
+  if (readError) return { error: dbErrorMessage(readError) };
   if (trip && fx.some((each) => each.currency === trip.base_currency)) return { error: `${trip.base_currency} to waluta bazowa wyjazdu — nie potrzebuje kursu.` };
   const { data, error } = await supabase.from("trips").update({ fx }).eq("id", tripId).select("id");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if ((data ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: "Zapisano kursy." };
@@ -559,7 +552,7 @@ export async function setTripCurrency(tripId: string, _prev: FormState, form: Fo
   if (!/^[A-Z]{3}$/.test(to)) return { error: "Waluta: trzy litery, np. PLN, EUR, MAD." };
   const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
   const { data: trip, error: readError } = await supabase.from("trips").select("base_currency, fx").eq("id", tripId).maybeSingle();
-  if (readError) return { error: message(readError) };
+  if (readError) return { error: dbErrorMessage(readError) };
   if (trip === null) return { error: "Nie ma takiego wyjazdu." };
   const from = trip.base_currency as string;
   if (from === to) return { ok: `Wyjazd jest już w ${to}.` };
@@ -574,7 +567,7 @@ export async function setTripCurrency(tripId: string, _prev: FormState, form: Fo
   const fx = rebaseRates(rates, from, to);
   if (fx === null) return { error: `Nie ma kursu ${to} i nie udało się go pobrać. Dodaj go w kursach (1 ${to} = ile ${from}) i spróbuj ponownie.` };
   const { data, error } = await supabase.from("trips").update({ base_currency: to, fx }).eq("id", tripId).select("id");
-  if (error) return { error: message(error) };
+  if (error) return { error: dbErrorMessage(error) };
   if ((data ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: `Sumy są teraz w ${to}.` };
@@ -586,10 +579,9 @@ export async function setTripCurrency(tripId: string, _prev: FormState, form: Fo
  */
 export async function fetchFx(tripId: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/logistics`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: message(error) };
-  if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { payload } = pulled;
   const doc = stateFromPayload(payload).doc;
   const spent = ((payload.tables.expenses ?? []) as { currency?: string; deleted_at: string | null }[]).filter((row) => row.deleted_at === null).map((row) => row.currency ?? "");
   const currencies = tripCurrencies(doc, spent.filter((currency) => /^[A-Z]{3}$/.test(currency)));
@@ -602,7 +594,7 @@ export async function fetchFx(tripId: string): Promise<FormState> {
   }
   const fx = mergeRates(doc.trip.fx, fresh);
   const { data: saved, error: saveError } = await supabase.from("trips").update({ fx }).eq("id", tripId).select("id");
-  if (saveError) return { error: message(saveError) };
+  if (saveError) return { error: dbErrorMessage(saveError) };
   if ((saved ?? []).length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   const missing = currencies.filter((currency) => !fresh.some((rate) => rate.currency === currency));

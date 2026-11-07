@@ -1,4 +1,4 @@
-import { dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, moveToDay, type PlanItem, scheduleDay, tripMapAreas, type TripDocument } from '@expeditionplan/core';
+import { dayChip, dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, moveToDay, type PlanItem, scheduleDay, type TripDocument, tripMapAreas } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip, savePlanEdit } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
@@ -31,7 +31,6 @@ import { supabase } from '@/lib/supabase';
  */
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-const shortDay = (date: string) => new Intl.DateTimeFormat('pl-PL', { weekday: 'short', day: 'numeric', month: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
 
 /** Punkty puli (bez dnia) dopisane do pinezek widoku: w istniejącej pinezce albo nowa szara. */
 function withPool(doc: TripDocument, pins: MapPin[]): MapPin[] {
@@ -177,7 +176,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
       <View style={styles.chips}>
         <Chip compact active={day < 0} label="Cała trasa" onPress={() => setDay(-1)} />
         {doc.days.map((each, index) => (
-          <Chip key={each.ref} compact active={index === day} label={shortDay(each.date)} onPress={() => setDay(index)} />
+          <Chip key={each.ref} compact active={index === day} label={dayChip(each.date)} onPress={() => setDay(index)} />
         ))}
         {poolCount > 0 && <Chip compact active={showPool} label={`Pula (${poolCount})`} onPress={() => setShowPool(!showPool)} />}
       </View>

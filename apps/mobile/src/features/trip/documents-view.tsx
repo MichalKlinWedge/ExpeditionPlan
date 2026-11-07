@@ -147,7 +147,7 @@ export function DocumentsView({ trip, tripId, online, only }: { trip: CachedTrip
 
   return (
     <View style={styles.section} key={version}>
-      <ThemedText type={only === undefined ? 'subtitle' : 'smallBold'}>Dokumenty i kody</ThemedText>
+      <ThemedText type={only === undefined ? 'subtitle' : 'smallBold'}>Sejf dokumentów</ThemedText>
       {status !== '' && (
         <ThemedText type="small" themeColor="textSecondary">
           {status}

@@ -2,7 +2,19 @@ import type { MergeEdit, PlanEdit, TripDocument } from '@expeditionplan/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { type Collection, COLLECTIONS, rowForUpdate, SPECS } from './document.ts';
-import { RemoteError } from './remote.ts';
+import { dbErrorMessage, RemoteError } from './remote.ts';
+
+type Written = { data?: unknown[] | null; error: { message: string; code?: string } | null };
+
+const checkWrite = ({ error }: Written) => {
+  if (error) throw new RemoteError(dbErrorMessage(error), error.code);
+};
+
+/** RLS odrzuca UPDATE bez błędu, więc 0 zmienionych wierszy to brak uprawnień. Zapytanie musi mieć `.select('id')`. */
+const checkUpdated = (written: Written) => {
+  checkWrite(written);
+  if ((written.data ?? []).length === 0) throw new RemoteError('Brak uprawnień do tej zmiany.', '42501');
+};
 
 /**
  * Zapis zmiany planu z edytora (`plan-edits` w packages/core). Zmieniony punkt dostaje
@@ -26,32 +38,28 @@ export async function savePlanEdit(client: SupabaseClient, tripId: string, edit:
     },
     collectionOf: (ref: string) => owner.get(ref),
   };
-  const check = ({ error }: { error: { message: string; code?: string } | null }) => {
-    if (error) throw new RemoteError(error.code === '42501' ? 'Brak uprawnień do zmiany planu.' : error.message, error.code);
-  };
-
   // Własna pinezka: nowe miejsce przed punktem (klucz obcy `place_id`), na końcu listy miejsc.
   for (const { place, created } of edit.places ?? []) {
     const row = rowForUpdate('places', place, index);
-    if (created) check(await client.from('places').insert({ ...row, id: index.idOf(place.ref), trip_id: tripId, sort_key: `z${Date.now().toString(36)}` }));
-    else check(await client.from('places').update(row).eq('id', index.idOf(place.ref)));
+    if (created) checkWrite(await client.from('places').insert({ ...row, id: index.idOf(place.ref), trip_id: tripId, sort_key: `z${Date.now().toString(36)}` }));
+    else checkUpdated(await client.from('places').update(row).eq('id', index.idOf(place.ref)).select('id'));
   }
   if (edit.created) {
     const row = rowForUpdate('items', edit.created, index);
-    check(await client.from('items').insert({ ...row, id: index.idOf(edit.created.ref), trip_id: tripId, source: 'user', user_locked: true }));
+    checkWrite(await client.from('items').insert({ ...row, id: index.idOf(edit.created.ref), trip_id: tripId, source: 'user', user_locked: true }));
   }
   // Przy usuwaniu zmienione punkty to skutki uboczne (zamknięta luka, blok bez rodzica), nie edycja
   // człowieka — nie blokują ich przed AI ani przed „Zastąp dzień”.
   const lock = edit.removed === undefined ? { user_locked: true } : {};
   for (const item of edit.changed) {
-    check(await client.from('items').update({ ...rowForUpdate('items', item, index), ...lock }).eq('id', index.idOf(item.ref)));
+    checkUpdated(await client.from('items').update({ ...rowForUpdate('items', item, index), ...lock }).eq('id', index.idOf(item.ref)).select('id'));
   }
   // Elementy, które wskazywały usuwany punkt (wariant go wyrzucał, źródło go dotyczyło).
   for (const other of edit.others ?? []) {
-    check(await client.from(SPECS[other.collection].table).update(rowForUpdate(other.collection, other.element, index)).eq('id', index.idOf(other.element.ref)));
+    checkUpdated(await client.from(SPECS[other.collection].table).update(rowForUpdate(other.collection, other.element, index)).eq('id', index.idOf(other.element.ref)).select('id'));
   }
   if (edit.removed) {
-    check(await client.from('items').update({ deleted_at: new Date().toISOString() }).eq('id', index.idOf(edit.removed)));
+    checkUpdated(await client.from('items').update({ deleted_at: new Date().toISOString() }).eq('id', index.idOf(edit.removed)).select('id'));
   }
   return known;
 }
@@ -78,10 +86,6 @@ export async function saveMergeEdit(client: SupabaseClient, tripId: string, edit
     },
     collectionOf: (ref: string) => owner.get(ref),
   };
-  const check = ({ error }: { error: { message: string; code?: string } | null }) => {
-    if (error) throw new RemoteError(error.code === '42501' ? 'Brak uprawnień do zmiany planu.' : error.message, error.code);
-  };
-
   // Wiersz bez `ref` dostaje w dokumencie klucz `id-<uuid>` — ten sam, który nadał plan-merge.
   // Dni i punkty mają własną kolejność (data, `sortKey`); reszta idzie na koniec w kolejności zapisu
   // — bez tego warianty wracałyby w przypadkowej kolejności, a silnik bierze pierwszy jako domyślny.
@@ -91,16 +95,16 @@ export async function saveMergeEdit(client: SupabaseClient, tripId: string, edit
     const row: Record<string, unknown> = { ...rowForUpdate(collection, element, index), id: index.idOf(element.ref), trip_id: tripId };
     if (collection === 'items') Object.assign(row, { source: 'ai', user_locked: false });
     else if (!SPECS[collection].ownOrder) row.sort_key = `z${stamp}${String(order++).padStart(3, '0')}`;
-    check(await client.from(SPECS[collection].table).insert(row));
+    checkWrite(await client.from(SPECS[collection].table).insert(row));
   }
   for (const item of edit.changed) {
-    check(await client.from('items').update(rowForUpdate('items', item, index)).eq('id', index.idOf(item.ref)));
+    checkUpdated(await client.from('items').update(rowForUpdate('items', item, index)).eq('id', index.idOf(item.ref)).select('id'));
   }
   for (const other of edit.others) {
-    check(await client.from(SPECS[other.collection].table).update(rowForUpdate(other.collection, other.element, index)).eq('id', index.idOf(other.element.ref)));
+    checkUpdated(await client.from(SPECS[other.collection].table).update(rowForUpdate(other.collection, other.element, index)).eq('id', index.idOf(other.element.ref)).select('id'));
   }
   if (edit.removed.length > 0) {
-    check(await client.from('items').update({ deleted_at: new Date().toISOString() }).in('id', edit.removed.map(index.idOf)));
+    checkUpdated(await client.from('items').update({ deleted_at: new Date().toISOString() }).in('id', edit.removed.map(index.idOf)).select('id'));
   }
   return known;
 }
@@ -145,8 +149,7 @@ export async function saveElements(client: SupabaseClient, tripId: string, doc: 
               .insert({ ...rowForUpdate(collection, element, index), id, trip_id: tripId, ...(SPECS[collection].ownOrder ? {} : { sort_key: `z${stamp}${String(order++).padStart(3, '0')}` }) })
               .select('id')
           : await table.update(rowForUpdate(collection, element, index)).eq('id', id).eq('trip_id', tripId).select('id');
-    if (error) throw new RemoteError(error.code === '42501' ? 'Brak uprawnień do tej zmiany.' : error.message, error.code);
-    if ((data ?? []).length === 0) throw new RemoteError('Brak uprawnień do tej zmiany.', '42501');
+    checkUpdated({ data, error });
   }
   return known;
 }

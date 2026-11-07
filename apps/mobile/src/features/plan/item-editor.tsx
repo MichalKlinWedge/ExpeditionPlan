@@ -1,4 +1,4 @@
-import { type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode, type TripDocument } from '@expeditionplan/core';
+import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode, type TripDocument } from '@expeditionplan/core';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -13,18 +13,6 @@ import { useTheme } from '@/hooks/use-theme';
  * godziny, przedziały, bufor, priorytet) jest na webie — tu godzina inna niż „dokładnie” zostaje
  * nietknięta, dopóki pole się nie zmieni.
  */
-
-export const KIND: Record<string, string> = {
-  visit: 'zwiedzanie',
-  activity: 'aktywność',
-  meal: 'posiłek',
-  transport: 'przejazd',
-  lodging: 'nocleg',
-  errand: 'sprawa',
-  meetup: 'spotkanie',
-  free: 'czas wolny',
-  decision: 'decyzja',
-};
 
 const HHMM = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 
@@ -114,7 +102,7 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
           Rodzaj
         </ThemedText>
         <View style={styles.wrap}>
-          {kindChoices(KIND).map(([key, name]) => (
+          {kindChoices(ITEM_KIND).map(([key, name]) => (
             <Pressable
               key={key}
               onPress={() => setKind(key)}

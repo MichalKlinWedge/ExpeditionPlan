@@ -1,5 +1,6 @@
-import { isRouteStop, type DayMap, dayMap, formatMoney, instantToZoned, itemIcon, itemsForDay, tripMemories, type TripDocument, walletSummary } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import type { Metadata } from "next";
+import { dayLabel, type DayMap, dayMap, formatKm, formatMoney, instantToZoned, isRouteStop, itemIcon, itemsForDay, type TripDocument, tripMemories, walletSummary } from "@expeditionplan/core";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -11,6 +12,8 @@ import { Loading, Shell } from "@/components/shell";
 import { Stat } from "@/components/stat";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
+
+export const metadata: Metadata = { title: "Pamiątka z wyjazdu — Expedition Planner" };
 
 /**
  * Pamiątka z wyjazdu: liczby (punkty, kilometry, wydatki), mapa trasy, dzień po dniu — co zrobione
@@ -31,8 +34,6 @@ type JournalRow = { id: string; day_id: string | null; body: string; photo_path:
 type TravelerRow = { name: string; user_id: string | null; deleted_at: string | null };
 type ExpenseRow = { amount_minor: number; currency: string; category: string | null; deleted_at: string | null };
 
-const weekday = (date: string) =>
-  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)).replace(/^./, (first) => first.toUpperCase());
 
 /** Ślad trasy bez kafelków — do druku: linie i pinezki w rzucie z poprawką na szerokość geograficzną. */
 function RouteTrace({ map }: { map: DayMap }) {
@@ -65,9 +66,9 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, userId } = await requireUser(`/trips/${id}/memories`);
   const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   let doc: TripDocument;
   let inputs: ReturnType<typeof stateFromPayload>["inputs"];
   try {
@@ -100,7 +101,6 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
   const skipped = new Set(inputs.skipRefs);
   const options = { activeVariants: inputs.activeVariants, pulled: inputs.pulled };
   const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
-  const km = (value: number) => `${value.toLocaleString("pl-PL")} km`;
 
   return (
     <>
@@ -123,10 +123,10 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat value={String(stats.days)} label="dni" />
         <Stat value={stats.done > 0 ? `${stats.done} z ${stats.planned}` : String(stats.planned)} label={stats.done > 0 ? "punktów zrobionych" : "punktów w planie"} />
-        {stats.footKm > 0 && <Stat value={km(stats.footKm)} label={stats.ascentM > 0 ? `pieszo · ↑ ${stats.ascentM.toLocaleString("pl-PL")} m` : "pieszo"} />}
-        {stats.driveKm > 0 && <Stat value={km(stats.driveKm)} label="autem" />}
-        {stats.transitKm > 0 && <Stat value={km(stats.transitKm)} label="komunikacją" />}
-        {stats.flightKm > 0 && <Stat value={km(stats.flightKm)} label="samolotem" />}
+        {stats.footKm > 0 && <Stat value={formatKm(stats.footKm)} label={stats.ascentM > 0 ? `pieszo · ↑ ${stats.ascentM.toLocaleString("pl-PL")} m` : "pieszo"} />}
+        {stats.driveKm > 0 && <Stat value={formatKm(stats.driveKm)} label="autem" />}
+        {stats.transitKm > 0 && <Stat value={formatKm(stats.transitKm)} label="komunikacją" />}
+        {stats.flightKm > 0 && <Stat value={formatKm(stats.flightKm)} label="samolotem" />}
         {entries.length > 0 && <Stat value={String(entries.length)} label={`wpisów w dzienniku · 📷 ${paths.length}`} />}
         {spent.count > 0 && <Stat value={money(spent.spentMinor)} label={travelers.length > 1 ? `wydatki · ${money(Math.round(spent.spentMinor / travelers.length))} na osobę` : "wydatki"} />}
       </section>
@@ -148,7 +148,7 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
         return (
           <section key={day.ref} className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold break-after-avoid">
-              Dzień {index + 1} · {weekday(day.date)}
+              Dzień {index + 1} · {dayLabel(day.date)}
               {day.title ? ` — ${day.title}` : ""}
             </h2>
             <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">

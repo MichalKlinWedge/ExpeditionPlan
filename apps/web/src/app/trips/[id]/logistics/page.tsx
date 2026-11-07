@@ -1,5 +1,6 @@
-import { bookingRemovalNote, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, flightLine, formatMoney, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import type { Metadata } from "next";
+import { BOOKING_KIND, bookingRemovalNote, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, flightLine, formatMoney, formatMoneyRange, instantToZoned, LogisticsCandidates, removeBooking, shortDate, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -13,8 +14,9 @@ import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { BOOKING_KIND } from "@/lib/labels";
 import { planChoices } from "@/lib/tasks";
+
+export const metadata: Metadata = { title: "Rezerwacje i budżet — Expedition Planner" };
 
 /**
  * Rezerwacje i budżet „zapłacone / do wydania” (MVP-3); zadania i kontakty — osobne strony (`/tasks`, `/contacts`). Dane tą samą drogą co
@@ -49,8 +51,6 @@ const BOOKING_STATUS: Record<string, { label: string; tone: string }> = {
 };
 
 
-const shortDate = (date: string) =>
-  new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
 function when(booking: Booking): string {
   const part = (time: Booking["start"]) => (time ? `${shortDate(time.date)}${time.time ? ` ${time.precision === "approx" ? "ok. " : ""}${time.time}` : ""}` : "");
@@ -65,7 +65,7 @@ function price(booking: Booking): string | null {
   if (!p) return null;
   const low = formatMoney(p.minMinor, p.currency);
   if (p.from) return `od ${low}`;
-  return `${p.approx ? "ok. " : ""}${p.minMinor === p.maxMinor ? low : `${low} – ${formatMoney(p.maxMinor, p.currency)}`}`;
+  return `${p.approx ? "ok. " : ""}${formatMoneyRange(p.minMinor, p.maxMinor, p.currency)}`;
 }
 
 const PAY_WHEN: Record<string, string> = { prepaid: "płatne z góry", before_arrival: "płatne przed przyjazdem", on_site: "płatność na miejscu" };
@@ -110,9 +110,9 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   // Domyślnie podgląd; formularze po „Edytuj” (`?edit=1`).
   const canEdit = mayEdit && wantsEdit;
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   let doc: Doc;
   try {
     doc = stateFromPayload(payload).doc;
@@ -416,8 +416,6 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-const WEEKDAY = ["nd.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."];
-const dayDate = (date: string) => `${WEEKDAY[new Date(`${date}T12:00:00Z`).getUTCDay()]} ${Number(date.slice(8))}.${date.slice(5, 7)}`;
 
 /** Plan „do wydania” kontra wydatki z telefonu: tempo, prognoza, kategorie i dni ponad plan. */
 function PaceTable({ pace, today, money, range }: { pace: ReturnType<typeof budgetPace>; today: string; money: (minor: number) => string; range: (low: number, high: number) => string }) {
@@ -458,7 +456,7 @@ function PaceTable({ pace, today, money, range }: { pace: ReturnType<typeof budg
             {pace.days.map((day, index) => (
               <tr key={day.dayRef} className={`border-t border-zinc-200 dark:border-zinc-800 ${day.date === today ? "font-semibold" : ""}`}>
                 <td className="py-1">
-                  Dzień {index + 1} · {dayDate(day.date)}
+                  Dzień {index + 1} · {dayChip(day.date)}
                 </td>
                 <td className="py-1 text-right">{money(day.plannedHighMinor)}</td>
                 <td className={`py-1 text-right ${day.over ? "text-signal" : ""}`}>

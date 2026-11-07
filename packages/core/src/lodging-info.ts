@@ -37,7 +37,8 @@ export const LodgingDraft = z.object({
 });
 export type LodgingDraft = z.infer<typeof LodgingDraft>;
 
-export type LodgingField = 'description' | 'address' | 'checkInFrom' | 'checkOutUntil' | 'breakfast' | 'beds' | 'rooms' | 'amenities' | 'confirmationCode' | 'contact';
+export const LODGING_FIELDS = ['description', 'address', 'checkInFrom', 'checkOutUntil', 'breakfast', 'beds', 'rooms', 'amenities', 'confirmationCode', 'contact'] as const;
+export type LodgingField = (typeof LODGING_FIELDS)[number];
 
 /** Wiersz podglądu; `current` — inna wartość, która już jest w planie (nie zaznaczamy jej domyślnie). */
 export type LodgingDraftRow = { key: LodgingField; label: string; value: string; current?: string };

@@ -1,6 +1,6 @@
 "use client";
 
-import { headcount, isEateryPlace, mealDays, mealList, mealMap, mealPlaceRefs, selfCookedTotals, type TripDocument } from "@expeditionplan/core";
+import { headcount, isEateryPlace, mealDays, mealList, mealMap, mealPlaceRefs, pluralForm, selfCookedTotals, type TripDocument } from "@expeditionplan/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { MealEateries } from "@/components/eat-out";
@@ -74,7 +74,7 @@ export function MealsView({ tripId, doc, ids, mayEdit, editing }: { tripId: stri
           {own.meals > 0 && (
             <>
               {" "}
-              🍳 Gotujecie sami: <strong>{own.meals}</strong> {own.meals === 1 ? "posiłek" : own.meals < 5 ? "posiłki" : "posiłków"}, razem porcji: <strong>{people(own)}</strong>.
+              🍳 Gotujecie sami: <strong>{own.meals}</strong> {pluralForm(own.meals, ["posiłek", "posiłki", "posiłków"])}, razem porcji: <strong>{people(own)}</strong>.
             </>
           )}
         </p>

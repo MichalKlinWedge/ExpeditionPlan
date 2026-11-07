@@ -1,5 +1,5 @@
 import { carriesFromRows, defaultTake, formatWeight, gearLoads, gearShare, headcount, isShopping, mealList, selfCookedTotals, SHOPPING_CATEGORY } from '@expeditionplan/core';
-import { type CachedTrip, setCarrying, setPacked, uuidv7 } from '@expeditionplan/sync';
+import { type CachedTrip, setCarrying, setPacked, uuidv7, dbErrorMessage } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -265,13 +265,15 @@ function NewItem({ tripId, shopping, categories, onDone, onSaved }: { tripId: st
     if (title.trim() === '' || (!shopping && category.trim() === '')) return;
     setBusy(true);
     const amount = Number(quantity.replace(',', '.'));
+    // `sort_key` jak w `saveElements`: bez niego nowa rzecz wskakiwałaby na początek listy.
+    const sortKey = `z${Date.now().toString(36)}`;
     const { error } = await supabase.from('packing_items').insert(
       shopping
-        ? { id: uuidv7(), trip_id: tripId, title: title.trim(), category: SHOPPING_CATEGORY, scope: 'shared', quantity: amount > 0 ? amount : null, unit: unit.trim() || null }
-        : { id: uuidv7(), trip_id: tripId, title: title.trim(), category: category.trim(), scope: shared ? 'shared' : 'personal' },
+        ? { id: uuidv7(), trip_id: tripId, sort_key: sortKey, title: title.trim(), category: SHOPPING_CATEGORY, scope: 'shared', quantity: amount > 0 ? amount : null, unit: unit.trim() || null }
+        : { id: uuidv7(), trip_id: tripId, sort_key: sortKey, title: title.trim(), category: category.trim(), scope: shared ? 'shared' : 'personal' },
     );
     setBusy(false);
-    if (error) return Alert.alert('Nie zapisano', `${error.message}\n\nDodawanie rzeczy wymaga połączenia z internetem.`);
+    if (error) return Alert.alert('Nie zapisano', `${dbErrorMessage(error)}\n\nDodawanie rzeczy wymaga połączenia z internetem.`);
     setTitle('');
     setQuantity('');
     setUnit('');

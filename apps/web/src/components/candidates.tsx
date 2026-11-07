@@ -1,6 +1,6 @@
 "use client";
 
-import { formatMoney, type LogisticsCandidates } from "@expeditionplan/core";
+import { BOOKING_KIND, formatMoneyRange, type LogisticsCandidates, PRICE_BASIS } from "@expeditionplan/core";
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
@@ -11,20 +11,7 @@ import { applyCandidates, chooseCandidate } from "@/app/candidates-actions";
  * porównania z planu z tabelą i „Wybieram”. Ceny z AI to szacunki — sprawdza się je w ofercie.
  */
 
-const KIND: Record<string, string> = {
-  lodging: "nocleg",
-  car_rental: "auto",
-  transfer: "transfer",
-  activity: "atrakcja",
-  transit_pass: "karta komunikacji",
-  package: "pakiet",
-  esim: "eSIM",
-  insurance: "ubezpieczenie",
-  other: "inne",
-};
-const BASIS: Record<string, string> = { per_night: "za noc", per_day: "za dzień", per_group: "za grupę", per_person: "za osobę", per_unit: "za sztukę" };
 
-const range = (min: number, max: number, currency: string) => (min === max ? formatMoney(min, currency) : `${formatMoney(min, currency)} – ${formatMoney(max, currency)}`);
 
 export function CandidatesReview({ tripId, runId, info, checks }: { tripId: string; runId: string; info: LogisticsCandidates; checks: string[] }) {
   const [picked, setPicked] = useState<number[]>(info.groups.map((_, i) => i));
@@ -52,7 +39,7 @@ export function CandidatesReview({ tripId, runId, info, checks }: { tripId: stri
             <input type="checkbox" checked={picked.includes(i)} onChange={() => toggle(i)} />
             {group.title}
             <span className="text-xs font-normal text-zinc-500">
-              · {KIND[group.kind]} · {group.area}
+              · {BOOKING_KIND[group.kind]} · {group.area}
               {group.mustHave ? ` · ${group.mustHave}` : ""}
             </span>
           </label>
@@ -83,7 +70,7 @@ export function CandidatesReview({ tripId, runId, info, checks }: { tripId: stri
                       </td>
                     ))}
                     <td className="py-1 whitespace-nowrap">
-                      {range(candidate.priceMinMinor, candidate.priceMaxMinor, candidate.currency)} {BASIS[candidate.priceBasis]}
+                      {formatMoneyRange(candidate.priceMinMinor, candidate.priceMaxMinor, candidate.currency)} {PRICE_BASIS[candidate.priceBasis]}
                     </td>
                   </tr>
                 ))}

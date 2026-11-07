@@ -25,7 +25,7 @@ Dokument bramki decyzyjnej z [PLAN_ETAPOWY.md](PLAN_ETAPOWY.md). Każdy eksperym
 | Miejsca, geokodowanie | **Geoapify** (produkcja), Nominatim + Photon (narzędzia, pojedyncze zapytania) | ugruntowanie 94–97% na OSM; Google Places — NIE |
 | Godziny otwarcia | OSM `opening_hours` (z `extratags`) | składnia OSM tylko przybliżona — pełny parser w MVP-2 |
 | Routing | **OpenRouteService** (pieszo, auto), Geoapify Routing zapasowo, Transitous dla komunikacji | bez zmian względem spec |
-| Kafle | **PMTiles** z buildu Protomaps (offline, własny CDN), **OpenFreeMap** online i małe paczki | potwierdzi PoC-2 |
+| Kafle | **PMTiles** z buildu Protomaps (offline, własny CDN), **OpenFreeMap** online i małe paczki | potwierdzi PoC-2. **Decyzja końcowa:** aplikacja używa paczek OpenFreeMap (`apps/mobile/src/features/map/offline-packs.ts`), PMTiles został tylko w kodzie PoC |
 | Synchronizacja | własna (`packages/sync`) | PowerSync niepotrzebny |
 | Dystrybucja | EAS `preview` + **OTA** (`expo-updates`), sprawdzone na telefonie | nowy APK tylko przy zmianach natywnych |
 

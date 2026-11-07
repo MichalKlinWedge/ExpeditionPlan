@@ -1,3 +1,4 @@
+import { dbErrorMessage } from '@expeditionplan/sync';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -34,7 +35,7 @@ export default function HomeScreen() {
     const code = params.code;
     router.setParams({ code: undefined });
     void supabase.auth.exchangeCodeForSession(code).then(async ({ error }) => {
-      if (error && (await supabase.auth.getSession()).data.session === null) setMessage(`Logowanie nie powiodło się: ${error.message}`);
+      if (error && (await supabase.auth.getSession()).data.session === null) setMessage(dbErrorMessage(error, 'Logowanie nie powiodło się. Spróbuj jeszcze raz.'));
     });
   }, [params.code]);
 

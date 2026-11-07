@@ -1,5 +1,6 @@
-import { bookingContacts, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, flightLine, flightOf, isFootRouteItem, routeLinkLabel, guideLinkTargets, type GuideRow, guideFor, guideRowFor, itemIcon, itemKindLabel, legLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import type { Metadata } from "next";
+import { bookingContacts, dayLabel, flightLine, flightOf, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, type TripDocument } from "@expeditionplan/core";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -13,7 +14,8 @@ import { RouteEstimate } from "@/components/route-estimate";
 import { TrackUpload } from "@/components/track-upload";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { ITEM_KIND } from "@/lib/labels";
+
+export const metadata: Metadata = { title: "Punkt planu — Expedition Planner" };
 
 /**
  * Karta punktu planu: wszystko o punkcie (kiedy, gdzie, opis, notatki, linki, rezerwacja) i przewodnik
@@ -29,8 +31,6 @@ export default function ItemPage(props: PageProps<"/trips/[id]/item/[ref]">) {
   );
 }
 
-const weekday = (date: string) =>
-  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)).replace(/^./, (first) => first.toUpperCase());
 
 async function ItemCard({ params, searchParams }: { params: Promise<{ id: string; ref: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id, ref: rawRef } = await params;
@@ -41,9 +41,9 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   let doc: TripDocument;
   try {
     doc = stateFromPayload(payload).doc;
@@ -88,7 +88,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
         </h1>
         <p className="text-sm text-zinc-500">
           {itemKindLabel(item, ITEM_KIND)}
-          {day ? ` · Dzień ${dayIndex + 1}, ${weekday(day.date)}` : " · w puli (poza dniami)"}
+          {day ? ` · Dzień ${dayIndex + 1}, ${dayLabel(day.date)}` : " · w puli (poza dniami)"}
           {time ? ` · ${time}` : ""}
           {item.durationMin ? ` · ${item.durationMin} min` : ""}
         </p>
@@ -158,7 +158,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
               {track.distanceKm !== undefined ? ` · ${track.distanceKm.toLocaleString("pl-PL")} km` : ""}
               {track.ascentM !== undefined ? ` · ↑ ${track.ascentM} m` : ""}
               {track.descentM !== undefined ? ` ↓ ${track.descentM} m` : ""}
-              {track.durationMin !== undefined ? ` · ok. ${Math.floor(track.durationMin / 60)} h ${track.durationMin % 60} min` : ""}
+              {track.durationMin !== undefined ? ` · ok. ${formatMinutes(track.durationMin)}` : ""}
             </p>
           )}
           {track?.url !== undefined && /^https?:\/\//i.test(track.url) && (
@@ -231,7 +231,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
       {/* Przy noclegu zamiast przewodnika z Wikipedii jest sekcja „Obiekt”. */}
       {item.kind !== "lodging" && (
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Przewodnik</h2>
+        <h2 className="text-lg font-semibold">Opis miejsca</h2>
         {guide === null ? (
           <p className="text-sm text-zinc-500">
             Brak opisu.

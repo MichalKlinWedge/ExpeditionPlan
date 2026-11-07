@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { MEMBER_ROLE } from "@expeditionplan/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -8,7 +10,9 @@ import { type InviteStat, type MemberStat, MemberStats } from "@/components/memb
 import { PublicShare } from "@/components/public-share";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { ROLE, tripDates } from "@/lib/labels";
+import { tripDates } from "@/lib/labels";
+
+export const metadata: Metadata = { title: "Uczestnicy i dostęp — Expedition Planner" };
 
 /**
  * Uczestnicy i dostęp: kto jedzie (uczestnicy), kto ma dostęp do planu (role), zaproszenie linkiem,
@@ -27,7 +31,7 @@ export default function PeoplePage(props: PageProps<"/trips/[id]/people">) {
 }
 
 const section = "card flex flex-col gap-3 p-5";
-const heading = "text-xl font-semibold";
+const heading = "text-lg font-semibold";
 
 async function People({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
@@ -62,7 +66,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
           ← {title}
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h1 className="text-3xl font-bold">Uczestnicy i dostęp</h1>
+          <h1 className="text-2xl font-semibold">Uczestnicy i dostęp</h1>
           {canEdit && <EditToggle href={`/trips/${id}/people`} editing={editing} />}
         </div>
       </div>
@@ -95,7 +99,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
           <ul className="flex flex-col gap-1 text-sm">
             {(members.data ?? []).map((member) => (
               <li key={member.user_id}>
-                {member.profiles?.display_name ?? "?"} <span className="text-zinc-500">· {ROLE[member.role]}</span>
+                {member.profiles?.display_name ?? "?"} <span className="text-zinc-500">· {MEMBER_ROLE[member.role]}</span>
               </li>
             ))}
           </ul>

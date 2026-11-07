@@ -1,3 +1,4 @@
+import { distanceM } from '@expeditionplan/core';
 import { File, Paths } from 'expo-file-system';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
@@ -37,12 +38,6 @@ function writeState(state: State) {
   file.write(JSON.stringify(state));
 }
 
-function distanceM(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const rad = Math.PI / 180;
-  const h = Math.sin(((lat2 - lat1) * rad) / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lng2 - lng1) * rad) / 2) ** 2;
-  return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
-}
-
 type WalkData = { locations: Location.LocationObject[] };
 
 TaskManager.defineTask<WalkData>(GUIDE_WALK_TASK, async ({ data, error }) => {
@@ -55,7 +50,7 @@ TaskManager.defineTask<WalkData>(GUIDE_WALK_TASK, async ({ data, error }) => {
   // Odczyt z dokładnością gorszą niż promień nie przesądza o wejściu (miasto, kanion ulicy).
   if (accuracy !== null && accuracy > GUIDE_RADIUS_M * 1.5) return;
   for (const target of state.targets) {
-    const meters = distanceM(latitude, longitude, target.lat, target.lng);
+    const meters = distanceM([longitude, latitude], [target.lng, target.lat]);
     if (meters <= GUIDE_RADIUS_M && !inside.has(target.key)) {
       inside.add(target.key);
       changed = true;

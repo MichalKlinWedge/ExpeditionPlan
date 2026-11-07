@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
-import { ArticleIcon, BackpackIcon, BookIcon, CartIcon, CompareIcon, CompassIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PhoneIcon, PeopleIcon, PinIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BookIcon, CartIcon, CompareIcon, CompassIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Szybkie przejście między sekcjami wyjazdu: rząd ikon pod górną belką, na każdej podstronie
  * wyjazdu (plan, rezerwacje, sejf…). Nazwa w podpowiedzi i dla czytnika ekranu; bieżąca sekcja
  * wyróżniona. Na stronie samego wyjazdu są duże kafelki, więc tam pasek się nie pokazuje.
- * Linki prowadzą do podglądu (bez `?edit=1`).
+ * Linki prowadzą do podglądu (bez `?edit=1`). Dostrajanie i porównanie są dla organizatora i edytora,
+ * a pamiątka od początku wyjazdu, tak jak kafelki: te pozycje dochodzą po odczytaniu roli i dat.
  */
 
 const SECTIONS = [
@@ -30,12 +33,35 @@ const SECTIONS = [
   { path: "tune", title: "Dostrajanie z AI", Icon: SparkIcon },
   { path: "brief", title: "Brief wyjazdu", Icon: NoteIcon },
   { path: "compare", title: "Porównanie ze szkicem", Icon: CompareIcon },
+  { path: "print", title: "Wydruk / PDF", Icon: PrinterIcon },
+  { path: "memories", title: "Pamiątka z wyjazdu", Icon: PeakIcon },
 ] as const;
+
+type Access = { canEdit: boolean; started: boolean };
 
 export function TripNav({ width }: { width: string }) {
   const params = useParams<{ id?: string }>();
   const pathname = usePathname();
   const id = params.id;
+  const [access, setAccess] = useState<Access | null>(null);
+  useEffect(() => {
+    if (id === undefined) return;
+    let current = true;
+    void createClient()
+      .from("my_trips")
+      .select("role, start_date, status, title")
+      .eq("id", id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!current || data === null) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const started = data.status !== "postponed" && !(data.title ?? "").startsWith("Szkic AI: ") && (data.start_date ?? today) <= today;
+        setAccess({ canEdit: data.role === "owner" || data.role === "editor", started });
+      });
+    return () => {
+      current = false;
+    };
+  }, [id]);
   if (id === undefined) return null;
   const base = `/trips/${id}`;
   const current = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1).split("/")[0] : null;
@@ -43,9 +69,11 @@ export function TripNav({ width }: { width: string }) {
 
   return (
     <nav aria-label="Sekcje wyjazdu" className="border-b border-zinc-200 bg-[var(--background)] dark:border-zinc-800">
-      <ul className={`mx-auto flex w-full ${width} gap-1.5 overflow-x-auto px-4 py-2`}>
+      <ul className={`mx-auto flex w-full ${width} gap-1.5 overflow-x-auto px-4 py-2 sm:flex-wrap sm:gap-1 sm:overflow-visible`}>
         {SECTIONS.map(({ path, title, Icon }) => {
           const active = path === current;
+          const hidden = ((path === "tune" || path === "compare") && !access?.canEdit) || (path === "memories" && !access?.started);
+          if (hidden && !active) return null;
           return (
             <li key={path} className="shrink-0">
               <Link

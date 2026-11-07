@@ -1,7 +1,7 @@
 "use client";
 
 import { CODE_FORMATS, codeLabel, DOCUMENT_MIME, documentPath, type DocumentVisibility, formatBytes, MAX_DOCUMENT_BYTES, VISIBILITY_LABEL, type VaultDocument } from "@expeditionplan/core";
-import { uuidv7 } from "@expeditionplan/sync";
+import { dbErrorMessage, uuidv7 } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
@@ -101,7 +101,7 @@ function DocumentRow({ tripId, document, names, editing, bookings, items, people
   const open = () =>
     start(async () => {
       const { data, error } = await createClient().storage.from(BUCKET).createSignedUrl(document.storagePath, 120);
-      if (error || !data) return setProblem(error?.message ?? "Nie udało się otworzyć pliku.");
+      if (error || !data) return setProblem(error ? dbErrorMessage(error) : "Nie udało się otworzyć pliku.");
       window.open(data.signedUrl, "_blank", "noopener");
     });
   const remove = () =>
@@ -158,7 +158,7 @@ function DocumentRow({ tripId, document, names, editing, bookings, items, people
           onCancel={() => setChanging(false)}
           onSave={async (fields) => {
             const { data, error } = await createClient().from("documents").update(fields).eq("id", document.id).select("id");
-            if (error) return error.message;
+            if (error) return dbErrorMessage(error);
             if ((data ?? []).length === 0) return "Brak uprawnień do tej zmiany.";
             setChanging(false);
             router.refresh();
@@ -378,11 +378,11 @@ function UploadForm({ tripId, bookings, items, people, userId, owner, onDone }: 
         const id = uuidv7();
         const path = documentPath(tripId, id, file.name);
         const upload = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
-        if (upload.error) return `Nie wgrano pliku: ${upload.error.message}`;
+        if (upload.error) return dbErrorMessage(upload.error, "Nie wgrano pliku. Spróbuj jeszcze raz.");
         const { error } = await supabase.from("documents").insert({ ...fields, file_name: fields.file_name || file.name, id, trip_id: tripId, storage_path: path, mime: file.type, size: file.size, sha256: await sha256(file) });
         if (error) {
           await supabase.storage.from(BUCKET).remove([path]);
-          return `Nie zapisano dokumentu: ${error.message}`;
+          return dbErrorMessage(error, "Nie zapisano dokumentu. Spróbuj jeszcze raz.");
         }
         onDone();
         router.refresh();

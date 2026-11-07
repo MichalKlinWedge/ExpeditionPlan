@@ -1,5 +1,6 @@
+import type { Metadata } from "next";
 import { carriesFromRows, type TripDocument } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -8,6 +9,8 @@ import { EditToggle, editMode } from "@/components/edit-toggle";
 import { GearView } from "@/components/gear-view";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Sprzęt — Expedition Planner" };
 
 /** Sprzęt: co zabrać, kto bierze rzeczy wspólne i ile kto niesie. „Biorę” bez trybu edycji; listę i przydział za innych poprawia się po „Edytuj”. */
 
@@ -29,9 +32,9 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   let doc: TripDocument;
   try {
     doc = stateFromPayload(payload).doc;

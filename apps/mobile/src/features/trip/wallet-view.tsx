@@ -1,4 +1,4 @@
-import { BUDGET_CATEGORY, budgetSummary, formatMoney, lineTravelerNames, lineTravelers, parseMoney, walletSummary } from '@expeditionplan/core';
+import { BUDGET_CATEGORY, BUDGET_LINE_STATUS, budgetSummary, formatMoney, fxLine, lineTravelerNames, lineTravelers, localToday, moneyToInput, parseMoney, walletSummary } from '@expeditionplan/core';
 import { type CachedTrip, type NewExpense, removeExpense, saveExpense, saveExpenseSplits, uuidv7 } from '@expeditionplan/sync';
 import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
@@ -141,7 +141,7 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
         ))}
         {fx.length > 0 && (
           <ThemedText type="small" themeColor="textSecondary">
-            Kursy: {fx.map((rate) => `1 ${rate.currency} = ${rate.rateToBase.toLocaleString('pl-PL', { maximumFractionDigits: 4 })} ${budget.currency}${rate.date ? ` (${rate.date})` : ''}`).join(' · ')}
+            Kursy: {fx.map((rate) => fxLine(rate, budget.currency)).join(' · ')}
           </ThemedText>
         )}
         {Object.entries(wallet.byCategory)
@@ -237,7 +237,6 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
 
 const range = (money: (minor: number) => string, low: number, high: number) => (low === high ? money(low) : `${money(low)} – ${money(high)}`);
 
-const LINE_STATUS: Record<string, string> = { estimate: 'szacunek', committed: 'zobowiązanie', paid: 'zapłacone' };
 
 /**
  * Szczegóły budżetu: kategorie z planem (oszczędnie – wygodnie), zapłaconym i wydanym na miejscu,
@@ -290,7 +289,7 @@ function BudgetDetails({ doc, budget, spent, money }: { doc: CachedTrip['state']
                     </View>
                     <ThemedText type="small" themeColor="textSecondary">
                       {[
-                        LINE_STATUS[line.status],
+                        BUDGET_LINE_STATUS[line.status],
                         line.perPerson ? `na osobę × ${Math.max(lineTravelers(doc, line).length, 1)}` : null,
                         lineTravelerNames(doc.travelers, line) ? `dotyczy: ${lineTravelerNames(doc.travelers, line)!.join(', ')}` : null,
                         line.bookingRef ? bookings.get(line.bookingRef) : null,
@@ -361,7 +360,7 @@ function ExpenseForm({
   const doc = trip.state.doc;
   const [extraCurrency, setExtraCurrency] = useState<string | null>(null);
   const currencies = [...new Set([doc.trip.baseCurrency, ...doc.trip.fx.map((each) => each.currency), ...(initial ? [initial.currency] : []), ...(extraCurrency ? [extraCurrency] : [])])];
-  const [amount, setAmount] = useState(initial ? (Number(initial.amount_minor) / 100).toFixed(2).replace('.', ',') : '');
+  const [amount, setAmount] = useState(initial ? moneyToInput(Number(initial.amount_minor)) : '');
   const [currency, setCurrency] = useState(initial?.currency ?? currencies[0]!);
   const [category, setCategory] = useState(initial?.category ?? 'food');
   const [payer, setPayer] = useState<string | null>(initial?.payer_traveler_id ?? null);
@@ -396,7 +395,7 @@ function ExpenseForm({
     try {
       const draft = await readReceiptPhoto(tripId, currencies, { mimeType, data: asset.base64 });
       if (draft === null) return Alert.alert('Paragon', 'Na zdjęciu nie widzę paragonu.');
-      if (draft.amountMinor !== null) setAmount((draft.amountMinor / 100).toFixed(2).replace('.', ','));
+      if (draft.amountMinor !== null) setAmount(moneyToInput(draft.amountMinor));
       if (draft.currency !== null) {
         if (!currencies.includes(draft.currency)) setExtraCurrency(draft.currency);
         setCurrency(draft.currency);
@@ -404,7 +403,7 @@ function ExpenseForm({
       if (draft.category !== null && draft.category in BUDGET_CATEGORY) setCategory(draft.category);
       if (draft.merchant !== null && note.trim() === '') setNote(draft.merchant);
       // Data z paragonu (południe czasu telefonu), gdy to nie dziś — wydatek dopisany po fakcie.
-      const today = new Date().toLocaleDateString('sv-SE');
+      const today = localToday();
       setPaidAt(draft.date !== null && draft.date !== today ? new Date(`${draft.date}T12:00:00`).toISOString() : undefined);
       if (draft.amountMinor === null) Alert.alert('Paragon', 'Nie odczytałem kwoty — wpisz ją ręcznie.');
     } catch (e) {

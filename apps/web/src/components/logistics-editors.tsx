@@ -1,6 +1,6 @@
 "use client";
 
-import { BUDGET_CATEGORY, type BudgetSuggestion, formatMoney, lineTravelerNames, type TripDocument } from "@expeditionplan/core";
+import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestion, CONTACT_ROLE, formatMoneyRange, fxLine, lineTravelerNames, moneyToInput, PRICE_BASIS, type TripDocument } from "@expeditionplan/core";
 import { type ReactNode, startTransition, useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
@@ -42,7 +42,6 @@ const input = "field min-w-0 px-2 py-1 text-sm";
 const small = "btn-mini";
 const danger = "btn-mini btn-mini-danger";
 const primary = "btn-primary btn-sm";
-const minorText = (minor: number) => (minor / 100).toLocaleString("pl-PL", { useGrouping: false, maximumFractionDigits: 2 });
 
 function Status({ state }: { state: FormState }) {
   if (state.error) return <p className="text-xs text-red-600">{state.error}</p>;
@@ -63,7 +62,6 @@ function useAction() {
 
 // --- Budżet ---------------------------------------------------------------------------------
 
-const LINE_STATUS: Record<string, string> = { estimate: "szacunek", committed: "zobowiązanie", paid: "zapłacone" };
 
 type Person = { ref: string; name: string };
 
@@ -161,7 +159,7 @@ function BudgetForm({ tripId, line, currency, people, onDone }: { tripId: string
           ))}
         </select>
         <select name="status" defaultValue={line?.status ?? "estimate"} className={input} aria-label="Status">
-          {Object.entries(LINE_STATUS).map(([key, name]) => (
+          {Object.entries(BUDGET_LINE_STATUS).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
             </option>
@@ -169,9 +167,9 @@ function BudgetForm({ tripId, line, currency, people, onDone }: { tripId: string
         </select>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <input name="low" required defaultValue={line ? minorText(line.lowMinor) : ""} placeholder="kwota" inputMode="decimal" className={`${input} w-28`} aria-label="Kwota od" />
+        <input name="low" required defaultValue={line ? moneyToInput(line.lowMinor) : ""} placeholder="kwota" inputMode="decimal" className={`${input} w-28`} aria-label="Kwota od" />
         <span className="text-xs text-zinc-500">do</span>
-        <input name="high" defaultValue={line && line.highMinor !== line.lowMinor ? minorText(line.highMinor) : ""} placeholder="(opcjonalnie)" inputMode="decimal" className={`${input} w-28`} aria-label="Kwota do" />
+        <input name="high" defaultValue={line && line.highMinor !== line.lowMinor ? moneyToInput(line.highMinor) : ""} placeholder="(opcjonalnie)" inputMode="decimal" className={`${input} w-28`} aria-label="Kwota do" />
         <input name="currency" required defaultValue={line?.currency ?? currency} maxLength={3} className={`${input} w-16 uppercase`} aria-label="Waluta" />
         <label className="flex items-center gap-1 text-xs">
           <input name="perPerson" type="checkbox" defaultChecked={line?.perPerson ?? false} /> na osobę
@@ -226,15 +224,15 @@ export function BudgetLines({ tripId, lines, currency, people, canEdit }: { trip
                     {line.perPerson ? <span className="text-zinc-500"> · na osobę</span> : null}
                     {/* Na telefonie kategoria i status pod nazwą — pięć kolumn się nie mieści. */}
                     <span className="block text-xs text-zinc-500 sm:hidden">
-                      {BUDGET_CATEGORY[line.category] ?? line.category} · {LINE_STATUS[line.status]}
+                      {BUDGET_CATEGORY[line.category] ?? line.category} · {BUDGET_LINE_STATUS[line.status]}
                     </span>
                     {lineTravelerNames(people, line) !== null && <span className="block text-xs text-zinc-500">dotyczy: {lineTravelerNames(people, line)!.join(", ")}</span>}
                     {line.note ? <span className="block text-xs text-zinc-500">{line.note}</span> : null}
                   </td>
                   <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{BUDGET_CATEGORY[line.category] ?? line.category}</td>
-                  <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{LINE_STATUS[line.status]}</td>
+                  <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{BUDGET_LINE_STATUS[line.status]}</td>
                   <td className="py-1 text-right font-mono whitespace-nowrap">
-                    {line.lowMinor === line.highMinor ? formatMoney(line.lowMinor, line.currency) : `${formatMoney(line.lowMinor, line.currency)} – ${formatMoney(line.highMinor, line.currency)}`}
+                    {formatMoneyRange(line.lowMinor, line.highMinor, line.currency)}
                   </td>
                   {canEdit && (
                     <td className="py-1 pl-2 text-right whitespace-nowrap text-zinc-500">
@@ -486,25 +484,6 @@ export function TaskList({ tripId, tasks, describe, choices, canEdit, checkable 
 
 // --- Rezerwacje -----------------------------------------------------------------------------
 
-const KINDS: Record<string, string> = {
-  flight: "lot",
-  train: "pociąg",
-  bus: "autobus",
-  ferry: "prom",
-  lodging: "nocleg",
-  car_rental: "wynajem auta",
-  transfer: "transfer",
-  driver_hire: "kierowca",
-  activity: "atrakcja",
-  package: "pakiet",
-  ticket: "bilet",
-  transit_pass: "karta komunikacji",
-  insurance: "ubezpieczenie",
-  esim: "eSIM",
-  luggage: "bagaż",
-  other: "inne",
-};
-const BASIS: Record<string, string> = { per_group: "za całość", per_person: "za osobę", per_night: "za noc", per_day: "za dobę", per_unit: "za sztukę" };
 const label = "flex min-w-0 flex-col gap-1 text-xs text-zinc-500";
 
 /** Rezerwacja: nowa albo zmiana. Pola zależne od rodzaju (lot, auto, nocleg) pokazują się po wyborze rodzaju. */
@@ -581,7 +560,7 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
         <label className={label}>
           Rodzaj
           <select name="kind" value={kind} onChange={(event) => setKind(event.target.value as Booking["kind"])} className={input}>
-            {Object.entries(KINDS).map(([key, name]) => (
+            {Object.entries(BOOKING_KIND).map(([key, name]) => (
               <option key={key} value={key}>
                 {name}
               </option>
@@ -633,11 +612,11 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
       <div className="flex flex-wrap items-end gap-2">
         <label className={label}>
           Cena od
-          <input name="priceLow" defaultValue={price ? minorText(price.minMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
+          <input name="priceLow" defaultValue={price ? moneyToInput(price.minMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
         </label>
         <label className={label}>
           do
-          <input name="priceHigh" defaultValue={price && price.maxMinor !== price.minMinor ? minorText(price.maxMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
+          <input name="priceHigh" defaultValue={price && price.maxMinor !== price.minMinor ? moneyToInput(price.maxMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
         </label>
         <label className={label}>
           waluta
@@ -646,7 +625,7 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
         <label className={label}>
           za
           <select name="priceBasis" defaultValue={price?.basis ?? "per_group"} className={input}>
-            {Object.entries(BASIS).map(([key, name]) => (
+            {Object.entries(PRICE_BASIS).map(([key, name]) => (
               <option key={key} value={key}>
                 {name}
               </option>
@@ -661,7 +640,7 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
       <div className="flex flex-wrap items-end gap-2">
         <label className={label}>
           Zapłacono
-          <input name="paidAmount" defaultValue={booking?.paid ? minorText(booking.paid.amountMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
+          <input name="paidAmount" defaultValue={booking?.paid ? moneyToInput(booking.paid.amountMinor) : ""} inputMode="decimal" className={`${input} w-28`} />
         </label>
         <label className={label}>
           waluta
@@ -954,7 +933,6 @@ function BookingItemsForm({ tripId, bookingRef, items, chosen, onDone }: { tripI
 
 // --- Kontakty -------------------------------------------------------------------------------
 
-const ROLE: Record<string, string> = { host: "gospodarz", operator: "operator", rental: "wypożyczalnia", guide: "przewodnik", emergency: "alarmowy", venue: "miejsce", other: "inny" };
 
 function ContactForm({ tripId, contact, bookings, onDone, defaultRole = "host" }: { tripId: string; contact?: Contact; bookings: { ref: string; title: string }[]; onDone: () => void; defaultRole?: Contact["role"] }) {
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
@@ -967,7 +945,7 @@ function ContactForm({ tripId, contact, bookings, onDone, defaultRole = "host" }
       <div className="flex flex-wrap gap-2">
         <input name="name" required defaultValue={contact?.name} placeholder="np. Youssef (riad)" className={`${input} min-w-40 flex-1`} aria-label="Nazwa" />
         <select name="role" defaultValue={contact?.role ?? defaultRole} className={input} aria-label="Rola">
-          {Object.entries(ROLE).map(([key, name]) => (
+          {Object.entries(CONTACT_ROLE).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
             </option>
@@ -1031,7 +1009,7 @@ export function Contacts({
           ) : (
             <li key={contact.ref} className="flex flex-wrap items-baseline gap-x-2">
               <span className="font-medium">{contact.name}</span>
-              <span className="text-xs text-zinc-500">{ROLE[contact.role]}</span>
+              <span className="text-xs text-zinc-500">{CONTACT_ROLE[contact.role]}</span>
               {contact.phone && (
                 <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="underline">
                   {contact.phone}
@@ -1086,11 +1064,11 @@ export function BudgetSuggestions({ tripId, suggestions }: { tripId: string; sug
           <li key={`${each.source}:${each.ref}`} className="flex flex-wrap items-baseline gap-x-2">
             <span>{each.title}</span>
             <span className="text-xs text-zinc-500">
-              {each.source === "booking" ? "rezerwacja" : "punkt planu"} · {BUDGET_CATEGORY[each.line.category]} · {LINE_STATUS[each.line.status]}
+              {each.source === "booking" ? "rezerwacja" : "punkt planu"} · {BUDGET_CATEGORY[each.line.category]} · {BUDGET_LINE_STATUS[each.line.status]}
               {each.note ? ` · ${each.note}` : ""}
             </span>
             <span className="font-mono text-xs">
-              {each.line.lowMinor === each.line.highMinor ? formatMoney(each.line.lowMinor, each.line.currency) : `${formatMoney(each.line.lowMinor, each.line.currency)} – ${formatMoney(each.line.highMinor, each.line.currency)}`}
+              {formatMoneyRange(each.line.lowMinor, each.line.highMinor, each.line.currency)}
             </span>
             <button disabled={action.pending} onClick={() => action.run(() => addSuggestedBudgetLine(tripId, each.source, each.ref))} className={small}>
               dodaj
@@ -1162,7 +1140,7 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
   }, {});
   const [fetched, setFetched] = useState<FormState>({});
   const [fetching, startFetch] = useTransition();
-  const summary = fx.length === 0 ? "brak kursów" : fx.map((each) => `1 ${each.currency} = ${each.rateToBase.toLocaleString("pl-PL", { maximumFractionDigits: 4 })} ${base}${each.date ? ` (${each.date})` : ""}`).join(" · ");
+  const summary = fx.length === 0 ? "brak kursów" : fx.map((each) => fxLine(each, base)).join(" · ");
   if (!open) {
     return (
       <p className="text-xs text-zinc-500">

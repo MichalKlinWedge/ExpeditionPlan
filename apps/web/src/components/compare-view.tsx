@@ -1,17 +1,6 @@
 "use client";
 
-import {
-  copyFromDraft,
-  type DaySchedule,
-  documentProblem,
-  inAllVariants,
-  type MergeEdit,
-  pairDays,
-  type PlanItem as Item,
-  replaceDayFromDraft,
-  scheduleDay,
-  type TripDocument,
-} from "@expeditionplan/core";
+import { copyFromDraft, dayLabel, type DaySchedule, documentProblem, inAllVariants, type MergeEdit, pairDays, type PlanItem as Item, replaceDayFromDraft, scheduleDay, SLACK_LABEL, type TripDocument } from "@expeditionplan/core";
 import { saveMergeEdit, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useState } from "react";
@@ -37,14 +26,12 @@ type Props = {
 };
 
 const SLACK: Record<string, { label: string; tone: string }> = {
-  large: { label: "duży zapas", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" },
-  small: { label: "mały zapas", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" },
-  none: { label: "bez zapasu", tone: "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200" },
-  negative: { label: "nie spina się", tone: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200" },
+  large: { label: SLACK_LABEL.large, tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" },
+  small: { label: SLACK_LABEL.small, tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" },
+  none: { label: SLACK_LABEL.none, tone: "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200" },
+  negative: { label: SLACK_LABEL.negative, tone: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200" },
 };
 
-const weekday = (date: string) =>
-  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
 const button = "btn-secondary btn-sm";
 const key = (title: string) => title.trim().toLocaleLowerCase("pl");
@@ -90,8 +77,8 @@ export function CompareView({ tripId, plan: initialPlan, ids: initialIds, locked
     apply(copyFromDraft(plan, draft, refs, date, uuidv7), refs.length === 1 ? "Przeniesiono punkt do planu." : `Przeniesiono ${refs.length} punktów do planu.`);
 
   const replace = (date: string, planCount: number) => {
-    if (planCount > 0 && !window.confirm(`Zastąpić ${planCount} punktów planu z ${weekday(date)} punktami szkicu? Punkty zmienione ręcznie i powiązane z budżetem, zadaniami czy ograniczeniami zostaną.`)) return;
-    apply(replaceDayFromDraft(plan, draft, date, locked, uuidv7), `Dzień ${weekday(date)} zastąpiony szkicem.`);
+    if (planCount > 0 && !window.confirm(`Zastąpić ${planCount} punktów planu z ${dayLabel(date)} punktami szkicu? Punkty zmienione ręcznie i powiązane z budżetem, zadaniami czy ograniczeniami zostaną.`)) return;
+    apply(replaceDayFromDraft(plan, draft, date, locked, uuidv7), `Dzień ${dayLabel(date)} zastąpiony szkicem.`);
   };
 
   const pairs = pairDays(plan, draft);
@@ -115,7 +102,7 @@ export function CompareView({ tripId, plan: initialPlan, ids: initialIds, locked
         return (
           <section key={pair.date} className="flex flex-col gap-3 card p-4">
             <header className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-semibold first-letter:uppercase">{weekday(pair.date)}</h2>
+              <h2 className="text-lg font-semibold first-letter:uppercase">{dayLabel(pair.date)}</h2>
               {pair.draft.length > 0 && (
                 <div className="flex gap-2">
                   <button disabled={status.pending || missing.length === 0} onClick={() => copy(missing.map((item) => item.ref), pair.date)} className={button}>

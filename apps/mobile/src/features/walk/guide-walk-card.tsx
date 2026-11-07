@@ -1,3 +1,4 @@
+import { plural } from '@expeditionplan/core';
 import { cachedTrip } from '@expeditionplan/sync';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
@@ -89,7 +90,7 @@ export function GuideWalkCard({ blocked }: { blocked: boolean }) {
           ? 'Wybierz wyjazd w zakładce Wyjazdy.'
           : targets.length === 0
             ? `„${title}”: żadne miejsce nie ma jeszcze przewodnika ze współrzędnymi — opisy przygotowuje się na webie.`
-            : `„${title}”: ${targets.length} ${targets.length === 1 ? 'miejsce' : 'miejsc'} z przewodnikiem. Gdy podejdziesz na ok. ${GUIDE_RADIUS_M} m, przyjdzie powiadomienie — dotknij, żeby posłuchać.`}
+            : `„${title}”: ${plural(targets.length, ['miejsce', 'miejsca', 'miejsc'])} z przewodnikiem. Gdy podejdziesz na ok. ${GUIDE_RADIUS_M} m, przyjdzie powiadomienie — dotknij, żeby posłuchać.`}
       </ThemedText>
       {running ? (
         <>

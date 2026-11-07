@@ -1,4 +1,4 @@
-import { type DaySchedule, nowAndNext, type TripDocument } from '@expeditionplan/core';
+import { type DaySchedule, formatMinutes, nowAndNext, type TripDocument } from '@expeditionplan/core';
 import type { DayEvent } from '@expeditionplan/sync';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
@@ -34,7 +34,6 @@ type Props = {
 /** Wolny czas co najmniej tyle minut — dopiero wtedy proponujemy coś z puli. */
 const MIN_GAP = 30;
 
-const duration = (value: number) => (value < 60 ? `${value} min` : `${Math.floor(value / 60)} h ${value % 60} min`);
 
 export function NowCard({ schedule, now, onEvent, lastEvent, pool }: Props) {
   const { current, next, leftMin, untilNextMin } = nowAndNext(schedule, now);
@@ -65,7 +64,7 @@ export function NowCard({ schedule, now, onEvent, lastEvent, pool }: Props) {
       {current !== null && (
         <View style={styles.block}>
           <ThemedText type="small" themeColor="textSecondary">
-            TERAZ · do {current.endLocal} (zostało {duration(leftMin!)})
+            TERAZ · do {current.endLocal} (zostało {formatMinutes(leftMin!)})
           </ThemedText>
           <ThemedText type="smallBold">{current.title}</ThemedText>
           {onEvent && (
@@ -81,7 +80,7 @@ export function NowCard({ schedule, now, onEvent, lastEvent, pool }: Props) {
       {next !== null && (
         <View style={styles.block}>
           <ThemedText type="small" themeColor="textSecondary">
-            NASTĘPNY · {next.startLocal} (za {duration(untilNextMin!)})
+            NASTĘPNY · {next.startLocal} (za {formatMinutes(untilNextMin!)})
           </ThemedText>
           <ThemedText type="smallBold">{next.title}</ThemedText>
           {onEvent && (

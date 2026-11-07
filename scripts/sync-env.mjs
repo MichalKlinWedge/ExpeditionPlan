@@ -3,7 +3,7 @@
  * Jeden `.env.local` w katalogu głównym → `.env.local` aplikacji. Next i Expo czytają pliki env
  * tylko ze swojego katalogu (apps/web, apps/mobile), a trzymanie trzech kopii kończy się
  * rozjazdem. Do aplikacji trafiają zmienne publiczne (`NEXT_PUBLIC_` / `EXPO_PUBLIC_`), a do weba
- * także klucze serwerowe „Zaplanuj z AI” (Gemini, Geoapify, ORS) — bez przedrostka `NEXT_PUBLIC_`
+ * także klucze serwerowe („Zaplanuj z AI”: Gemini, Geoapify, ORS; SMTP; `FRIENDS_APK_URL`) — bez przedrostka `NEXT_PUBLIC_`
  * Next nie wpuszcza ich do przeglądarki. `SUPABASE_SERVICE_ROLE_KEY` zostaje w katalogu głównym,
  * a do telefonu nie idzie żaden klucz.
  *
@@ -37,7 +37,7 @@ if (local) {
   source.NEXT_PUBLIC_SUPABASE_ANON_KEY = status.PUBLISHABLE_KEY ?? status.ANON_KEY;
 }
 
-const SERVER_KEYS = ['GEMINI_API_KEY', 'AI_MODEL_GEMINI', 'GEOAPIFY_API_KEY', 'OPENROUTESERVICE_API_KEY', 'AI_ALLOWED_EMAILS', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM'];
+const SERVER_KEYS = ['GEMINI_API_KEY', 'AI_MODEL_GEMINI', 'GEOAPIFY_API_KEY', 'OPENROUTESERVICE_API_KEY', 'AI_ALLOWED_EMAILS', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM', 'FRIENDS_APK_URL'];
 
 const targets = [
   { file: 'apps/web/.env.local', prefix: 'NEXT_PUBLIC_', server: SERVER_KEYS },

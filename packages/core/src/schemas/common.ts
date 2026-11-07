@@ -46,4 +46,7 @@ export const Coordinates = z.object({
   lng: z.number().min(-180).max(180),
 });
 
-export const Link = z.object({ label: z.string().min(1), url: z.url() });
+/** Link dla człowieka: tylko http(s), bo trafia do `href` (`z.url()` przepuszcza też `javascript:`). */
+export const HttpUrl = z.url().regex(/^https?:\/\//i, 'Link musi zaczynać się od https://.');
+
+export const Link = z.object({ label: z.string().min(1), url: HttpUrl });

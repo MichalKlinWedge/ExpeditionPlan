@@ -1,6 +1,6 @@
 "use client";
 
-import { parseMoney, VENUE_POINT_LIMIT, type TripDocument, type VenuePrice, venuePoints, venuePriceLabel, venueRatingLabel } from "@expeditionplan/core";
+import { moneyToInput, parseMoney, type TripDocument, VENUE_POINT_LIMIT, venuePoints, type VenuePrice, venuePriceLabel, venueRatingLabel } from "@expeditionplan/core";
 import { type ReactNode, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
@@ -14,7 +14,6 @@ import { dropVenueRating, saveVenuePoint, saveVenuePrice } from "@/app/venue-act
 type Place = TripDocument["places"][number];
 
 const input = "field min-w-0 px-2 py-1 text-sm";
-const plain = (minor: number) => (minor / 100).toFixed(minor % 100 === 0 ? 0 : 2).replace(".", ",");
 
 export function VenueEntries({ tripId, place, editing }: { tripId: string; place: Place; editing: boolean }) {
   const { venue } = place;
@@ -147,8 +146,8 @@ function PointForm({ initial, pending, onCancel, onSave }: { initial: string; pe
 
 function PriceForm({ initial, pending, onCancel, onSave }: { initial: VenuePrice | null; pending: boolean; onCancel: () => void; onSave: (price: VenuePrice) => void }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [low, setLow] = useState(initial ? plain(initial.minMinor) : "");
-  const [high, setHigh] = useState(initial && initial.maxMinor !== initial.minMinor ? plain(initial.maxMinor) : "");
+  const [low, setLow] = useState(initial ? moneyToInput(initial.minMinor) : "");
+  const [high, setHigh] = useState(initial && initial.maxMinor !== initial.minMinor ? moneyToInput(initial.maxMinor) : "");
   const [currency, setCurrency] = useState(initial?.currency ?? "PLN");
   const minMinor = parseMoney(low);
   const maxMinor = high.trim() === "" ? minMinor : parseMoney(high);

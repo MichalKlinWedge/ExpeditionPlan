@@ -1,5 +1,5 @@
-import { guideFor, guideLinkTargets, type GuideRow, itemIcon, itemKindLabel } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import { dayLabel, guideFor, guideLinkTargets, type GuideRow, ITEM_KIND, itemIcon, itemKindLabel } from "@expeditionplan/core";
+import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,7 +7,6 @@ import { Suspense } from "react";
 
 import { GuideArticle } from "@/components/guide-article";
 import { Loading, Shell } from "@/components/shell";
-import { ITEM_KIND } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -28,17 +27,15 @@ export default function PublicItemPage(props: PageProps<"/p/[token]/item/[ref]">
   );
 }
 
-const weekday = (date: string) =>
-  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)).replace(/^./, (first) => first.toUpperCase());
 
 async function PublicItem({ params }: { params: Promise<{ token: string; ref: string }> }) {
   const { token, ref: rawRef } = await params;
   const ref = decodeURIComponent(rawRef);
   const { data, error } = await (await createClient()).rpc("public_trip", { p_token: token });
   if (error || data === null) {
-    return <p className="card p-5 text-zinc-600 dark:text-zinc-400">Ten link do planu wygasł albo właściciel go wyłączył.</p>;
+    return <p className="card p-5 text-zinc-600 dark:text-zinc-400">Ten link do planu wygasł albo organizator go wyłączył.</p>;
   }
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   const doc = stateFromPayload(payload).doc;
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined) notFound();
@@ -61,7 +58,7 @@ async function PublicItem({ params }: { params: Promise<{ token: string; ref: st
         </h1>
         <p className="text-sm text-zinc-500">
           {itemKindLabel(item, ITEM_KIND)}
-          {day ? ` · Dzień ${dayIndex + 1}, ${weekday(day.date)}` : " · w puli (poza dniami)"}
+          {day ? ` · Dzień ${dayIndex + 1}, ${dayLabel(day.date)}` : " · w puli (poza dniami)"}
           {place ? ` · ${place.name}` : ""}
         </p>
       </div>

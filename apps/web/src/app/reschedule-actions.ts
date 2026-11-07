@@ -1,7 +1,7 @@
 "use server";
 
 import { isRealDate, shiftTripDates, type TripShiftReview } from "@expeditionplan/core";
-import { type PullPayload, refIndex, rescheduleTrip, stateFromPayload } from "@expeditionplan/sync";
+import { dbErrorMessage, type PullPayload, refIndex, rescheduleTrip, stateFromPayload } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { refresh } from "next/cache";
 
@@ -30,7 +30,7 @@ const STALE = "Plan zmienił się w międzyczasie — sprawdź podgląd jeszcze 
 
 async function snapshot(supabase: SupabaseClient, tripId: string, startDate: string) {
   const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(dbErrorMessage(error));
   if (data === null) throw new Error("Nie ma takiego wyjazdu.");
   const payload = data as PullPayload;
   const shift = shiftTripDates(stateFromPayload(payload).doc, startDate);

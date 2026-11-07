@@ -40,9 +40,9 @@ export function ItemPlaceEditor({ doc, item, onEdit, disabled = false }: { doc: 
               onClick={() => {
                 if (window.confirm(`Zastąpić „${place.name}” przez „${typed}” wszędzie w planie? Adres i pinezka starego miejsca znikną, nową pinezkę postawisz na mapie.`)) onEdit(replacePlace(doc, place.ref, typed));
               }}
-              title="Pod tą pozycją planu jest teraz inny lokal: stare współrzędne i adres znikają"
+              title="Pod tą pozycją planu jest teraz inne miejsce: stare współrzędne i adres znikają"
               className="btn-secondary btn-sm">
-              To inny lokal
+              To inne miejsce
             </button>
           </>
         )}

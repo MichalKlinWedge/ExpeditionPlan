@@ -1,5 +1,9 @@
 import type { TripDocument } from './schemas/trip-document.ts';
 
+/** „1 EUR = 4,31 PLN (2026-11-01)”: kurs w jednym wierszu. */
+export const fxLine = (rate: { currency: string; rateToBase: number; date?: string | undefined }, base: string): string =>
+  `1 ${rate.currency} = ${rate.rateToBase.toLocaleString('pl-PL', { maximumFractionDigits: 4 })} ${base}${rate.date ? ` (${rate.date})` : ''}`;
+
 /**
  * Kursy walut wyjazdu: Frankfurter API v2 (docs/USLUGI.md — kursy „blended” banków centralnych,
  * MAD i GEL dostępne, bez klucza; v1 ma tylko kursy EBC). `rateToBase` = ile waluty bazowej za

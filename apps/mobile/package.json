@@ -1,6 +1,6 @@
 {
   "name": "@expeditionplan/mobile",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@expeditionplan/core": "*",
@@ -58,8 +58,6 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "ota": "npx eas-cli@latest update --branch preview --environment preview --platform android",

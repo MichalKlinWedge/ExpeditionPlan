@@ -1,11 +1,14 @@
-import { instantToZoned, type TripDocument } from "@expeditionplan/core";
-import { refIndex, stateFromPayload } from "@expeditionplan/sync";
+import type { Metadata } from "next";
+import { dayLabel, instantToZoned, type TripDocument } from "@expeditionplan/core";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Dziennik — Expedition Planner" };
 
 /**
  * Dziennik wyjazdu: wpisy i zdjęcia z telefonów złożone w relację dzień po dniu. Wpisy powstają
@@ -25,16 +28,14 @@ export default function JournalPage(props: PageProps<"/trips/[id]/journal">) {
 type Row = { id: string; day_id: string | null; body: string; photo_path: string | null; taken_at: string; created_by: string | null; deleted_at: string | null };
 type TravelerRow = { name: string; user_id: string | null; deleted_at: string | null };
 
-const weekday = (date: string) =>
-  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`)).replace(/^./, (first) => first.toUpperCase());
 
 async function Journal({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, userId } = await requireUser(`/trips/${id}/journal`);
   const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const payload = data as PullPayload;
   let doc: TripDocument;
   try {
     doc = stateFromPayload(payload).doc;
@@ -55,7 +56,7 @@ async function Journal({ params }: { params: Promise<{ id: string }> }) {
 
   const ids = refIndex(payload.tables);
   const groups = [
-    ...doc.days.map((day, index) => ({ key: day.ref, title: `Dzień ${index + 1} · ${weekday(day.date)}${day.title ? ` — ${day.title}` : ""}`, tz: day.tz, rows: rows.filter((row) => row.day_id === ids[day.ref]) })),
+    ...doc.days.map((day, index) => ({ key: day.ref, title: `Dzień ${index + 1} · ${dayLabel(day.date)}${day.title ? ` — ${day.title}` : ""}`, tz: day.tz, rows: rows.filter((row) => row.day_id === ids[day.ref]) })),
     { key: "none", title: "Bez dnia", tz: doc.trip.primaryTz, rows: rows.filter((row) => row.day_id === null || !doc.days.some((day) => ids[day.ref] === row.day_id)) },
   ].filter((group) => group.rows.length > 0);
 
@@ -65,7 +66,7 @@ async function Journal({ params }: { params: Promise<{ id: string }> }) {
         <Link href={`/trips/${id}`} className="back-link">
           ← {doc.trip.title}
         </Link>
-        <h1 className="text-2xl font-semibold">Dziennik wyjazdu</h1>
+        <h1 className="text-2xl font-semibold">Dziennik</h1>
         <p className="text-sm text-zinc-500">Wpisy i zdjęcia dodaje się w aplikacji na telefonie (zakładka Plan → Dziennik) — także bez internetu.</p>
       </div>
       {groups.length === 0 && <p className="text-sm text-zinc-500">Dziennik jest jeszcze pusty.</p>}

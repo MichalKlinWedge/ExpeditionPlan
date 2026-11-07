@@ -1,6 +1,5 @@
-import { missingOnMap, type TripDocument } from "@expeditionplan/core";
+import { ITEM_KIND, missingOnMap, type TripDocument } from "@expeditionplan/core";
 
-import { ITEM_KIND } from "@/lib/labels";
 
 /**
  * Lista puli na webie: grupowanie (obszar, rodzaj, status) i filtry (opis przewodnika, brak na mapie,

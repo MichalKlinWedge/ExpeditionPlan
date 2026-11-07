@@ -1,11 +1,12 @@
-import { DRAFT_PREFIX, isDraft, tripSections } from "@expeditionplan/core";
+import { dbLoadError } from "@expeditionplan/sync";
+import { DRAFT_PREFIX, isDraft, MEMBER_ROLE, tripSections } from "@expeditionplan/core";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { PeakIcon, PinIcon, PlusIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
-import { ROLE, tripDates } from "@/lib/labels";
+import { tripDates } from "@/lib/labels";
 
 /**
  * Lista moich wyjazdów z moją rolą (widok `my_trips`). „Nowy wyjazd” i przykłady tylko dla kont,
@@ -27,7 +28,7 @@ export default function Home() {
 async function TripList() {
   const { supabase, canCreateTrips } = await requireUser("/");
   const { data, error } = await supabase.from("my_trips").select("*").order("start_date");
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   const today = new Date().toISOString().slice(0, 10);
   const { ahead, postponed, archive, drafts } = tripSections(data, today);
   return (
@@ -114,7 +115,7 @@ function TripGrid({ trips, memories = false, postponed = false }: { trips: TripR
               </span>
               <span className="mt-auto text-sm text-zinc-500">
                 {postponed && "orientacyjnie: "}
-                {tripDates(trip.start_date!, trip.end_date!)} · {ROLE[trip.role!]}
+                {tripDates(trip.start_date!, trip.end_date!)} · {MEMBER_ROLE[trip.role!]}
               </span>
             </Link>
             {memories && (

@@ -21,7 +21,9 @@ Web jest wspólny: https://expedition-plan.vercel.app.
    albo **edytor**, „Ile osób” (domyślnie 1) → „Utwórz link” → „Kopiuj link”. Link `…/join/<token>` jest ważny
    14 dni i pokazuje się tylko raz (w bazie zostaje sam skrót).
 
-3. **Aktualizacja u znajomych** — po sprawdzeniu zmiany u siebie (`npm run ota --workspace apps/mobile`):
+3. **Zaproszenie imienne** (zamiast ogólnego linku): strona wyjazdu → „Uczestnicy i dostęp” → „Zaproś” przy osobie bez konta. Link jest jednorazowy i po przyjęciu łączy konto z tą osobą na liście uczestników; strona daje gotową wiadomość do skopiowania, a „Wyślij e-mailem” wysyła ją z serwisu (potrzebne `SMTP_*` i `MAIL_FROM`, też w Vercel; bez nich zostaje kopiowanie). Jeśli ustawisz `FRIENDS_APK_URL` (link instalacyjny EAS z kroku 1, zmienna serwera, też w Vercel), wiadomość zawiera link do APK.
+
+4. **Aktualizacja u znajomych** — po sprawdzeniu zmiany u siebie (`npm run ota --workspace apps/mobile`):
 
    ```bash
    npm run ota:friends --workspace apps/mobile
@@ -51,7 +53,7 @@ poprawiają zaproszone plany.
    - nowa wersja instaluje się na starą — plany, wydatki i dziennik zostają.
 3. **Zaloguj się w aplikacji „Expedition Planner”** tym samym kontem (Google albo ten sam e-mail).
    Wyjazd pojawi się w zakładce „Wyjazdy”.
-4. **Przed wyjazdem otwórz plan raz z internetem** — od tej chwili działa offline: plan dnia,
+4. **Przed wyjazdem otwórz plan raz z internetem** (najlepiej „Pobierz wyjazd offline” na karcie wyjazdu) — od tej chwili działa offline: plan dnia,
    mapa, informacje praktyczne (numery alarmowe), wydatki. Wydatki dodane bez zasięgu wyślą się same,
    gdy wróci internet.
 5. **Aktualizacje** przychodzą same: aplikacja pokaże znaczek aktualizacji i zaproponuje restart.

@@ -1,3 +1,4 @@
+import { shortDate } from "@expeditionplan/core";
 import type { TripDocument } from "@expeditionplan/core";
 
 import type { Choices } from "@/components/logistics-editors";
@@ -10,7 +11,6 @@ import type { Choices } from "@/components/logistics-editors";
 type Doc = TripDocument;
 type Task = Doc["tasks"][number];
 
-const shortDate = (date: string) => new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 
 function due(task: Task, doc: Doc): string | null {
   const d = task.due;

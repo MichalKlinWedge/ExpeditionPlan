@@ -1,4 +1,4 @@
-import { dayLodging, instantToZoned, nowAndNext, type PlanItem, scheduleDay, type TripDocument, weatherIcon, weatherLine } from '@expeditionplan/core';
+import { dayLodging, formatMinutes, instantToZoned, nowAndNext, type PlanItem, scheduleDay, type TripDocument, weatherIcon, weatherLine } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip } from '@expeditionplan/sync';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -19,7 +19,6 @@ import { localDb } from '@/lib/local-db';
  * Godziny jak w planie: scenariusz optymistyczny, warianty i zdarzenia dnia z bazy.
  */
 
-const duration = (value: number) => (value < 60 ? `${value} min` : `${Math.floor(value / 60)} h ${value % 60} min`);
 const navigate = (at: { lat: number; lng: number }) => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${at.lat},${at.lng}`);
 
 /** Miejsce, do którego się jedzie: cel przejazdu albo miejsce punktu (ze współrzędnymi). */
@@ -101,7 +100,7 @@ export function OnTrip({ tripId }: { tripId: string }) {
           <ThemedText type="smallBold" style={styles.text}>
             Następny:
           </ThemedText>{' '}
-          {view.next.startLocal} {view.next.title} · za {duration(view.untilNextMin!)}
+          {view.next.startLocal} {view.next.title} · za {formatMinutes(view.untilNextMin!)}
         </ThemedText>
       )}
       {view !== null && view.current === null && view.next === null && (

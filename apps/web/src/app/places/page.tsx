@@ -1,3 +1,4 @@
+import { dbLoadError } from "@expeditionplan/sync";
 import { isDraft, placesAcrossTrips } from "@expeditionplan/core";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -18,7 +19,7 @@ async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data
   const rows: T[] = [];
   for (;;) {
     const { data, error } = await page(rows.length, rows.length + PAGE - 1);
-    if (error !== null) throw new Error(error.message);
+    if (error !== null) throw new Error(dbLoadError(error));
     rows.push(...(data ?? []));
     if ((data ?? []).length < PAGE) return rows;
   }
@@ -37,7 +38,7 @@ export default function AllPlacesPage() {
 async function View() {
   const { supabase } = await requireUser("/places");
   const { data: mine, error } = await supabase.from("my_trips").select("id, title, start_date").order("start_date", { ascending: false });
-  if (error) return <p className="text-sm text-red-600">{error.message}</p>;
+  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   const trips = mine.filter((trip) => !isDraft(trip)).map((trip) => ({ id: trip.id!, title: trip.title! }));
   const ids = trips.map((trip) => trip.id);
 

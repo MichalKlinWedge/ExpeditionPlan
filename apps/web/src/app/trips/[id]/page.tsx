@@ -1,5 +1,6 @@
-import { carriesFromRows, instantToZoned, isPostponed, tripReadiness } from "@expeditionplan/core";
-import { fetchTripNews, newsRows, type NewsSummary, refIndex, stateFromPayload, summarizeNews } from "@expeditionplan/sync";
+import type { Metadata } from "next";
+import { carriesFromRows, instantToZoned, isPostponed, MEMBER_ROLE, tripReadiness } from "@expeditionplan/core";
+import { fetchTripNews, newsRows, type NewsSummary, type PullPayload, refIndex, stateFromPayload, summarizeNews } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,7 +14,9 @@ import { TripRescheduleButton } from "@/components/trip-reschedule";
 import { TripStatusButton } from "@/components/trip-status-button";
 import { TripNews } from "@/components/trip-news";
 import { requireUser } from "@/lib/auth";
-import { ROLE, tripDates } from "@/lib/labels";
+import { tripDates } from "@/lib/labels";
+
+export const metadata: Metadata = { title: "Wyjazd — Expedition Planner" };
 
 /**
  * Wyjazd: podsumowanie i kafelki wejść (plan, rezerwacje, informacje, uczestnicy i dostęp,
@@ -76,7 +79,7 @@ async function loadReadiness(client: SupabaseClient, tripId: string) {
   try {
     const { data, error } = await client.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
     if (error || data === null) return null;
-    const payload = data as Parameters<typeof stateFromPayload>[0];
+    const payload = data as PullPayload;
     const { doc } = stateFromPayload(payload);
     const today = instantToZoned(new Date().getTime(), doc.trip.primaryTz).date;
     if (today > doc.trip.endDate) return null;
@@ -149,7 +152,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           <span>·</span>
           <span>{trip.data.base_currency}</span>
           <span>·</span>
-          <span>Twoja rola: {ROLE[role]}</span>
+          <span>Twoja rola: {MEMBER_ROLE[role]}</span>
           <span>·</span>
           <span>
             {days.count ?? 0} dni, {items.count ?? 0} punktów

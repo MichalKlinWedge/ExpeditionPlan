@@ -1,5 +1,6 @@
 "use server";
 
+import { dbErrorMessage } from "@expeditionplan/sync";
 import { createHash } from "node:crypto";
 
 import { refresh } from "next/cache";
@@ -23,7 +24,7 @@ export async function createShare(tripId: string, _prev: ShareState, form: FormD
   const { supabase } = await requireUser(`/trips/${tripId}`);
   const hide = { costs: form.get("costs") === "on", names: form.get("names") === "on", lodgingAddress: form.get("lodgingAddress") === "on", vault: true };
   const { data, error } = await supabase.rpc("create_public_share", { p_trip: tripId, p_hide: hide });
-  if (error) return { error: error.code === "42501" ? "Publiczny link tworzy tylko właściciel wyjazdu." : error.message };
+  if (error) return { error: error.code === "42501" ? "Publiczny link tworzy tylko organizator wyjazdu." : dbErrorMessage(error) };
   refresh();
   return { ok: "Link gotowy — skopiuj go teraz, później już się nie pokaże.", token: data as string };
 }
@@ -31,7 +32,7 @@ export async function createShare(tripId: string, _prev: ShareState, form: FormD
 export async function disableShare(tripId: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}`);
   const { error } = await supabase.rpc("disable_public_share", { p_trip: tripId });
-  if (error) return { error: error.message };
+  if (error) return { error: dbErrorMessage(error) };
   refresh();
   return { ok: "Link wyłączony — nikt już z niego nie otworzy planu." };
 }
@@ -44,7 +45,7 @@ export async function linkTravelerAccount(tripId: string, travelerId: string, us
   if (travelerId === "") return {};
   const { supabase } = await requireUser(`/trips/${tripId}/people`);
   const { error } = await supabase.rpc("link_traveler_account", { p_trip: tripId, p_traveler: travelerId, p_user: userId as string });
-  if (error) return { error: error.code === "42501" ? "Konto do uczestnika przypisuje organizator." : error.message };
+  if (error) return { error: error.code === "42501" ? "Konto do uczestnika przypisuje organizator." : dbErrorMessage(error) };
   refresh();
   return { ok: "Zapisano." };
 }
@@ -63,7 +64,7 @@ export async function setMemberAccess(tripId: string, userId: string, role: "edi
     .eq("user_id", userId)
     .neq("role", "owner")
     .select("user_id");
-  if (error) return { error: error.message };
+  if (error) return { error: dbErrorMessage(error) };
   if ((data ?? []).length === 0) return { error: "Tego dostępu nie możesz zmienić (zmienia organizator; jego roli się nie zmienia)." };
   refresh();
   return { ok: "Zapisano." };
@@ -73,7 +74,7 @@ export async function setMemberAccess(tripId: string, userId: string, role: "edi
 export async function removeMember(tripId: string, userId: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/people`);
   const { data, error } = await supabase.from("trip_members").delete().eq("trip_id", tripId).eq("user_id", userId).neq("role", "owner").select("user_id");
-  if (error) return { error: error.message };
+  if (error) return { error: dbErrorMessage(error) };
   if ((data ?? []).length === 0) return { error: "Tego dostępu nie możesz odebrać." };
   refresh();
   return { ok: "Dostęp odebrany." };
@@ -88,7 +89,7 @@ export type TravelerInviteState = FormState & { token?: string; apkUrl?: string;
 export async function inviteTraveler(tripId: string, travelerId: string, role: "editor" | "viewer"): Promise<TravelerInviteState> {
   const { supabase } = await requireUser(`/trips/${tripId}/people`);
   const { data, error } = await supabase.rpc("create_invite", { p_trip: tripId, p_role: role === "editor" ? "editor" : "viewer", p_days: 14, p_max_uses: 1, p_traveler: travelerId });
-  if (error) return { error: error.code === "42501" ? "Zaprasza tylko organizator." : error.message };
+  if (error) return { error: error.code === "42501" ? "Zaprasza tylko organizator." : dbErrorMessage(error) };
   refresh();
   const apkUrl = process.env.FRIENDS_APK_URL;
   return { token: data, canEmail: mailConfigured(), ...(apkUrl ? { apkUrl } : {}) };

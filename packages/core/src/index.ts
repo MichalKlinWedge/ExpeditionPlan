@@ -3,6 +3,8 @@ export * from './schemas/price.ts';
 export * from './schemas/trip-brief.ts';
 export * from './schemas/trip-document.ts';
 export * from './schemas/ai-stages.ts';
+export * from './format.ts';
+export * from './labels.ts';
 export * from './plan-edits.ts';
 export * from './plan-rules.ts';
 export * from './sort-key.ts';

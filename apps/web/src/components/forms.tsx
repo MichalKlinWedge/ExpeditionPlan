@@ -54,7 +54,7 @@ export function NewTripForm() {
           </datalist>
         </label>
         <label className={label}>
-          Waluta budżetu
+          Waluta wyjazdu
           <input name="baseCurrency" required defaultValue="PLN" maxLength={3} className={`${input} uppercase`} />
         </label>
       </div>
@@ -175,11 +175,11 @@ export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone
       </datalist>
       <p className="col-span-2 text-xs text-zinc-500 sm:col-span-6">Puste daty oznaczają cały wyjazd. Start i koniec wybierz z listy miejsc albo wpisz nowe: pojawi się na stronie „Miejsca”.</p>
       <div className="col-span-2 flex gap-2 sm:col-span-5">
-        <button disabled={pending} className={button}>
+        <button disabled={pending} className="btn-primary btn-sm">
           {pending ? "Zapisuję…" : traveler ? "Zapisz" : "Dodaj"}
         </button>
         {traveler && onDone && (
-          <button type="button" onClick={onDone} className="btn-secondary">
+          <button type="button" onClick={onDone} className="btn-secondary btn-sm">
             Anuluj
           </button>
         )}
@@ -332,7 +332,7 @@ export function RemoveTripForm({ tripId, title, owner }: { tripId: string; title
     : `Opuścić wyjazd „${title}”? Zniknie z Twojej listy; wrócić można tylko z nowego zaproszenia.`;
   return (
     <form action={action} onSubmit={(event) => !window.confirm(question) && event.preventDefault()} className="flex flex-col gap-2">
-      <button disabled={pending} className="self-start rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/70">
+      <button disabled={pending} className="btn-mini btn-mini-danger self-start">
         {pending ? (owner ? "Usuwam…" : "Wychodzę…") : owner ? "Usuń wyjazd" : "Opuść wyjazd"}
       </button>
       <Status state={state} />

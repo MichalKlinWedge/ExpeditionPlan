@@ -1,7 +1,7 @@
 import { shiftBriefDates, type TripShift } from '@expeditionplan/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { RemoteError } from './remote.ts';
+import { dbErrorMessage, RemoteError } from './remote.ts';
 
 /**
  * Zapis zmiany terminu (`shiftTripDates` w core) przez RPC `reschedule_trip`: jedna transakcja na
@@ -54,5 +54,5 @@ export async function rescheduleTrip(client: SupabaseClient, tripId: string, inp
     p_changes: rescheduleChanges(input),
     p_restore: input.restore ?? false,
   });
-  if (error) throw new RemoteError(error.code === '42501' ? 'Brak uprawnień do zmiany terminu.' : error.message, error.code);
+  if (error) throw new RemoteError(dbErrorMessage(error), error.code);
 }

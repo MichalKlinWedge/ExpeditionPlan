@@ -1,4 +1,4 @@
-import { formatMoney, type FxRate, settle, toBase } from '@expeditionplan/core';
+import { formatMoney, type FxRate, settle, settleInputFromRows, toBase } from '@expeditionplan/core';
 import { type CachedTrip, recordSettlement } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
@@ -28,13 +28,11 @@ export function SettleView({ trip, tripId, canEdit, fx, onChanged }: { trip: Cac
   const theme = useTheme();
   const [households, setHouseholds] = useState(false);
   const doc = { ...trip.state.doc, trip: { ...trip.state.doc.trip, fx } };
-  const travelers = trip.live.travelers.map((row) => ({ id: row.id, name: String(row.name), household: (row.household as string | null) ?? null, guardianId: (row.guardian_id as string | null) ?? null }));
+  const input = settleInputFromRows({ travelers: trip.live.travelers, expenses: trip.live.expenses as Row[], splits: rowsOf(tripId, 'expense_splits'), payments: rowsOf(tripId, 'settlements') });
+  const { travelers, expenses } = input;
   if (travelers.length < 2) return null;
-  const expenses = (trip.live.expenses as Row[]).map((row) => ({ id: row.id, payerId: (row.payer_traveler_id as string | null) ?? null, amountMinor: Number(row.amount_minor), currency: String(row.currency), note: (row.note as string | null) ?? null }));
   if (expenses.length === 0) return null;
-  const splits = rowsOf(tripId, 'expense_splits').map((row) => ({ expenseId: String(row.expense_id), travelerId: String(row.traveler_id), weight: (row.weight as number | null) ?? 1 }));
-  const payments = rowsOf(tripId, 'settlements').map((row) => ({ fromId: String(row.from_traveler_id), toId: String(row.to_traveler_id), amountMinor: Number(row.amount_minor), currency: String(row.currency) }));
-  const result = settle({ travelers, expenses, splits, payments, toBase: (amount, currency) => toBase(doc, amount, currency), households });
+  const result = settle({ ...input, toBase: (amount, currency) => toBase(doc, amount, currency), households });
   const money = (minor: number) => formatMoney(minor, doc.trip.baseCurrency);
   const hasHouseholds = travelers.some((each) => each.household);
   // Przelew zapisuje się między dorosłymi: pierwszy członek strony bez opiekuna.

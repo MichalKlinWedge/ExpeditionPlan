@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { FormState } from "@/app/actions";
 import { aiAccessError, geminiClient } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+import { pullTrip, validationError } from "@/lib/trip-snapshot";
 import { fetchVenueSiteText, VenueSiteError } from "@/lib/venue-site";
 
 /**
@@ -23,17 +24,16 @@ const GONE = "Tego już nie ma albo taki punkt już jest — odśwież stronę."
 
 async function loadTrip(tripId: string) {
   const { supabase } = await requireUser(`/trips/${tripId}/meals`);
-  const { data, error } = await supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-  if (error) return { error: error.code === "42501" ? "Brak uprawnień do tej zmiany." : error.message };
-  if (data === null) return { error: "Nie ma takiego wyjazdu." };
-  const payload = data as Parameters<typeof stateFromPayload>[0];
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { payload } = pulled;
   return { supabase, doc: stateFromPayload(payload).doc, ids: refIndex(payload.tables) };
 }
 
 /** Czyta wklejony tekst i zwraca szkic do podglądu; nic jeszcze nie zapisuje. */
 export async function readVenue(tripId: string, placeRef: string, text: string): Promise<VenueReadState> {
   const pasted = text.trim();
-  if (pasted === "") return { error: "Wklej tekst ze strony lokalu." };
+  if (pasted === "") return { error: "Wklej tekst ze strony knajpy." };
   if (pasted.length > VENUE_TEXT_LIMIT) return { error: `Tekst jest za długi: wklej najwyżej ${VENUE_TEXT_LIMIT.toLocaleString("pl-PL")} znaków, bez komentarzy gości.` };
   return draftFrom(tripId, placeRef, () => pasted, "pasted");
 }
@@ -44,7 +44,7 @@ export async function readVenueSite(tripId: string, placeRef: string): Promise<V
     tripId,
     placeRef,
     async (website) => {
-      if (website === undefined) throw new VenueSiteError("Ten lokal nie ma zapisanej strony.");
+      if (website === undefined) throw new VenueSiteError("Ta knajpa nie ma zapisanej strony.");
       return fetchVenueSiteText(website);
     },
     "site",
@@ -63,7 +63,7 @@ async function draftFrom(tripId: string, placeRef: string, source: (website: str
   try {
     const text = await source(place.website);
     const draft = await readVenueText(gemini.client, place.name, text, { known: venuePoints(place.venue), source: kind, timeoutMs: 60_000 });
-    if (draft === null) return { error: kind === "site" ? "Na tej stronie nie ma danych lokalu." : "W tym tekście nie ma danych lokalu." };
+    if (draft === null) return { error: kind === "site" ? "Na tej stronie nie ma danych knajpy." : "W tym tekście nie ma danych knajpy." };
     const rows = venueDraftRows(place, draft);
     if (rows.length === 0) return { ok: kind === "site" ? "Na stronie nie ma nic nowego względem tego, co już jest zapisane." : "W tekście nie ma nic nowego względem tego, co już jest zapisane." };
     return { draft, rows };
@@ -76,8 +76,7 @@ async function save(tripId: string, edit: ReturnType<typeof removeVenue>, loaded
   if (edit === null) return { error: GONE };
   const checked = TripDocument.safeParse(edit.doc);
   if (!checked.success) {
-    const issue = checked.error.issues[0]!;
-    return { error: `Nie zapisano: ${issue.message}${issue.path.length > 0 ? ` (${issue.path.join(".")})` : ""}` };
+    return { error: validationError(checked.error) };
   }
   try {
     await saveElements(loaded.supabase, tripId, checked.data, edit.writes, loaded.ids);
@@ -92,7 +91,7 @@ async function save(tripId: string, edit: ReturnType<typeof removeVenue>, loaded
 export async function saveVenue(tripId: string, placeRef: string, input: VenueDraft, fields: string[]): Promise<FormState> {
   const draft = VenueDraft.safeParse(input);
   const picked = FIELDS.safeParse(fields);
-  if (!draft.success || !picked.success) return { error: "Niepoprawne dane lokalu." };
+  if (!draft.success || !picked.success) return { error: "Niepoprawne dane knajpy." };
   if (picked.data.length === 0) return { error: "Zaznacz, co zapisać." };
   const loaded = await loadTrip(tripId);
   if ("error" in loaded) return { error: loaded.error };
@@ -127,5 +126,5 @@ export async function dropVenueRating(tripId: string, placeRef: string): Promise
 export async function clearVenue(tripId: string, placeRef: string): Promise<FormState> {
   const loaded = await loadTrip(tripId);
   if ("error" in loaded) return { error: loaded.error };
-  return save(tripId, removeVenue(loaded.doc, placeRef), loaded, "Usunięto dane lokalu.");
+  return save(tripId, removeVenue(loaded.doc, placeRef), loaded, "Usunięto dane knajpy.");
 }

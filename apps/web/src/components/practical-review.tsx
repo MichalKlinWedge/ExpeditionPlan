@@ -1,5 +1,6 @@
 "use client";
 
+import { NOTE_TOPIC } from "@expeditionplan/core";
 import type { PracticalInfo } from "@expeditionplan/core";
 import type { PracticalPick, SourceCheck } from "@expeditionplan/planner";
 import { type ReactNode, useState, useTransition } from "react";
@@ -13,19 +14,6 @@ import { applyPractical } from "@/app/practical-actions";
  */
 
 type Key = keyof PracticalPick;
-const TOPIC: Record<string, string> = {
-  weather: "pogoda",
-  documents: "dokumenty",
-  money: "pieniądze",
-  health: "zdrowie",
-  safety: "bezpieczeństwo",
-  culture: "zwyczaje",
-  transport: "transport",
-  rules: "przepisy",
-  packing: "pakowanie",
-  time: "czas",
-  other: "inne",
-};
 
 export function PracticalReview({ tripId, runId, info, checks }: { tripId: string; runId: string; info: PracticalInfo; checks: SourceCheck[] }) {
   const all = (list: unknown[]) => list.map((_, i) => i);
@@ -64,7 +52,7 @@ export function PracticalReview({ tripId, runId, info, checks }: { tripId: strin
             <li key={i} className="flex gap-2">
               {box("notes", i)}
               <span>
-                <span className="font-medium">{note.title}</span> <span className="text-xs text-zinc-500">· {TOPIC[note.topic]}</span>
+                <span className="font-medium">{note.title}</span> <span className="text-xs text-zinc-500">· {NOTE_TOPIC[note.topic]}</span>
                 <span className="block whitespace-pre-line text-zinc-600 dark:text-zinc-400">{note.body}</span>
               </span>
             </li>
@@ -88,7 +76,7 @@ export function PracticalReview({ tripId, runId, info, checks }: { tripId: strin
         </ul>,
       )}
       {section(
-        "Pakowanie",
+        "Sprzęt",
         info.packing.length,
         <ul className="grid gap-1 sm:grid-cols-2">
           {info.packing.map((item, i) => (

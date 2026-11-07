@@ -111,7 +111,7 @@ describe('PoC-4 — synchronizacja Supabase ↔ SQLite', () => {
     saveExpense(phone.db, { tripId, amountMinor: 12_000, currency: 'MAD', category: 'food', note: 'lunch' });
 
     const offlineTry = await syncTrip(phone.db, phone.remote, tripId);
-    expect(offlineTry.flush.error).toContain('fetch failed');
+    expect(offlineTry.flush.error).toContain('Brak połączenia');
     expect(pendingCount(phone.db)).toBe(5);
 
     // W tym czasie organizator zmienia plan na webie.
