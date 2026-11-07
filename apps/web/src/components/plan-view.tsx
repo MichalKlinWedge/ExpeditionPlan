@@ -70,11 +70,12 @@ type Props = {
 
 /**
  * Siatka strony planu dla `PlanView beside`: na szerokim ekranie dwie kolumny, wąsko jedna pod drugą
- * (nagłówek, przyciski, plan).
+ * (nagłówek, przyciski, plan). Kolumny jak w planie pod spodem (plan | mapa), więc pasek dni
+ * nad planem ma szerokość planu, a przyciski stoją nad mapą.
  */
 export function PlanPageGrid({ header, actions, children }: { header: ReactNode; actions: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-6">
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start lg:gap-x-6">
       <div className="lg:col-start-1 lg:row-start-1">{header}</div>
       <div className="flex flex-col items-end gap-2 lg:col-start-2 lg:row-span-2 lg:row-start-1">{actions}</div>
       {children}
