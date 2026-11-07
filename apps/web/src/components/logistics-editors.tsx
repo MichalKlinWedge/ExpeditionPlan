@@ -1103,7 +1103,7 @@ export function Contacts({
                 <span className="text-xs text-zinc-500">
                   ·{" "}
                   {bookingHrefs[contact.bookingRef] ? (
-                    <Link href={bookingHrefs[contact.bookingRef]!} title="Szczegóły rezerwacji na „Rezerwacje i budżet”" className="underline hover:text-sea">
+                    <Link href={bookingHrefs[contact.bookingRef]!} title="Szczegóły rezerwacji na „Rezerwacje i budżet”" className="btn-mini">
                       {titles.get(contact.bookingRef) ?? "rezerwacja"}
                     </Link>
                   ) : (
