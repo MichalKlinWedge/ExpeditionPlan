@@ -131,13 +131,13 @@ export function PinCard({ pin, times, onClose, small = false, guide, pool }: { p
 
 const styles = StyleSheet.create({
   transit: { position: 'absolute', left: Spacing.two, top: Spacing.two, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: 6, elevation: 3 },
-  pin: { minWidth: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, elevation: 3 },
-  pinWide: { paddingHorizontal: 7 },
-  poolPin: { minWidth: 20, height: 20, borderRadius: 10, opacity: 0.9 },
+  pin: { minWidth: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, elevation: 3 },
+  pinWide: { paddingHorizontal: 8 },
+  poolPin: { minWidth: 24, height: 24, borderRadius: 12, opacity: 0.9 },
   poolRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
   poolTitle: { flexShrink: 1 },
-  pinText: { color: '#FFFFFF', fontSize: 12, lineHeight: 16, fontWeight: 800 },
-  pinBox: { paddingTop: 9, paddingRight: 11 },
+  pinText: { color: '#FFFFFF', fontSize: 14, lineHeight: 18, fontWeight: 800 },
+  pinBox: { paddingTop: 10, paddingRight: 12 },
   badge: { position: 'absolute', top: 0, right: 0, borderRadius: 9, paddingHorizontal: 1, elevation: 4 },
   badgeText: { fontSize: 11, lineHeight: 15 },
   block: { gap: Spacing.one },
