@@ -3,7 +3,7 @@ import { BOOKING_KIND, BOOKING_STATUS, bookingFacts, bookingLine, bookingPrice, 
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
@@ -337,7 +337,19 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
                               {place.lat === undefined || place.lng === undefined ? " · bez współrzędnych, nie ma go na mapie" : ""}
                             </span>
                           )}
-                          {packaged.get(booking.ref) && <span className="block">w pakiecie: {packaged.get(booking.ref)!.map((item) => item.title).join(", ")}</span>}
+                          {packaged.get(booking.ref) && (
+                            <span className="block">
+                              w pakiecie:{" "}
+                              {packaged.get(booking.ref)!.map((item, index) => (
+                                <Fragment key={item.ref}>
+                                  {index > 0 && ", "}
+                                  <Link href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="underline hover:text-sea">
+                                    {item.title}
+                                  </Link>
+                                </Fragment>
+                              ))}
+                            </span>
+                          )}
                         </>
                       ) : null
                     }
