@@ -12,7 +12,7 @@ import {
   dayNotes,
   dayVariantGroups,
   groupVariants,
-  itemVariant,
+  itemVariants,
   removeConstraint,
   removeNote,
   removeVariant,
@@ -21,7 +21,7 @@ import {
   type ScheduleWarning,
   setDayEnd,
   setDayScenarios,
-  setItemVariant,
+  setItemVariants,
   type TripDocument,
   type Note,
   type NoteFields,
@@ -32,7 +32,7 @@ import {
   type VariantGroup,
 } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Warianty, ograniczenia i notatki dnia w edytorze planu (MVP-3). Zmiany idą przez `plan-rules`
@@ -336,27 +336,68 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
   );
 }
 
-/** Przy punkcie dnia z wariantami: we wszystkich czy tylko w jednym (osobno dla każdej grupy). */
+/** Przy punkcie dnia z wariantami: w których wariantach jest (osobno dla każdej grupy, kilka naraz). */
 export function ItemVariants({ doc, dayRef, itemRef, onRules }: { doc: Doc; dayRef: string; itemRef: string; onRules: OnRules }) {
-  return dayVariantGroups(doc, dayRef).map((group) => {
-    const current = itemVariant(doc, itemRef, group.ref) ?? "";
-    return (
-      <select
-        key={group.ref}
-        value={current}
-        onChange={(event) => onRules((next) => setItemVariant(next, itemRef, group.ref, event.target.value || null))}
-        title={group.title}
-        aria-label={`W którym wariancie: ${group.title}`}
-        className="ml-2 max-w-40 rounded border border-zinc-300 bg-transparent px-1 text-xs text-zinc-500 dark:border-zinc-700">
-        <option value="">wszystkie warianty</option>
-        {groupVariants(doc, group.ref).map((variant) => (
-          <option key={variant.ref} value={variant.ref}>
-            tylko: {variant.label}
-          </option>
-        ))}
-      </select>
-    );
-  });
+  return dayVariantGroups(doc, dayRef).map((group) => <ItemVariantPicker key={group.ref} doc={doc} group={group} itemRef={itemRef} onRules={onRules} />);
+}
+
+function ItemVariantPicker({ doc, group, itemRef, onRules }: { doc: Doc; group: VariantGroup; itemRef: string; onRules: OnRules }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !box.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  const variants = groupVariants(doc, group.ref);
+  const current = itemVariants(doc, itemRef, group.ref);
+  const has = (ref: string) => current === null || current.includes(ref);
+  const summary = current === null ? "wszystkie warianty" : `tylko: ${variants.filter((variant) => current.includes(variant.ref)).map((variant) => variant.label).join(", ")}`;
+  const toggle = (ref: string, on: boolean) => {
+    const next = variants.filter((variant) => (variant.ref === ref ? on : has(variant.ref))).map((variant) => variant.ref);
+    if (next.length > 0) onRules((latest) => setItemVariants(latest, itemRef, group.ref, next));
+  };
+  return (
+    <span ref={box} className="relative ml-2 inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((was) => !was)}
+        title={`${group.title}: ${summary}`}
+        aria-label={`W których wariantach: ${group.title}`}
+        aria-expanded={open}
+        className="max-w-48 truncate rounded border border-zinc-300 bg-transparent px-1 text-left text-xs text-zinc-500 dark:border-zinc-700">
+        {summary} ▾
+      </button>
+      {open && (
+        <span className="absolute left-0 top-full z-20 mt-1 flex w-max max-w-80 flex-col gap-1 rounded border border-zinc-300 bg-white p-2 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+          <span className="text-zinc-500">{group.title}</span>
+          {variants.map((variant) => (
+            <label key={variant.ref} className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={has(variant.ref)}
+                disabled={has(variant.ref) && variants.filter((each) => has(each.ref)).length === 1}
+                onChange={(event) => toggle(variant.ref, event.target.checked)}
+              />
+              {variant.label}
+            </label>
+          ))}
+          {current !== null && (
+            <button type="button" onClick={() => onRules((latest) => setItemVariants(latest, itemRef, group.ref, null))} className="btn-mini self-start">
+              we wszystkich
+            </button>
+          )}
+        </span>
+      )}
+    </span>
+  );
 }
 
 // --- Koniec dnia ------------------------------------------------------------------------------

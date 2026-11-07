@@ -57,7 +57,7 @@ export type GroupFields = Pick<VariantGroup, 'title' | 'conditionKind'> & Partia
 
 /**
  * Plan B dnia: grupa z dwoma wariantami. Punkty dnia zostają w obu — dopiero przypisanie
- * (`setItemVariant`) robi z nich „tylko A” albo „tylko B”. Pierwszy wariant jest domyślny,
+ * (`setItemVariants`) robi z nich „tylko A” albo „tylko B”. Pierwszy wariant jest domyślny,
  * więc dzień liczy się tak jak przed dodaniem grupy.
  */
 export function addDayVariantGroup(doc: Doc, dayRef: string, newId: () => string, fields: GroupFields, labels: [string, string]): RulesEdit {
@@ -187,30 +187,44 @@ export function removeVariantGroup(doc: Doc, groupRef: string, keepRef: string):
   };
 }
 
-/** W którym wariancie grupy jest punkt: `null` = we wszystkich. */
+/** Jedyny wariant grupy z punktem: `null` = we wszystkich albo w kilku (`itemVariants`). */
 export function itemVariant(doc: Doc, itemRef: string, groupRef: string): string | null {
+  const own = itemVariants(doc, itemRef, groupRef);
+  return own?.length === 1 ? own[0]! : null;
+}
+
+/**
+ * Warianty grupy, w których jest punkt (kolejność grupy), albo `null` = we wszystkich.
+ * „Wariant B wyrzuca X” = X w pozostałych.
+ */
+export function itemVariants(doc: Doc, itemRef: string, groupRef: string): string[] | null {
   const variants = groupVariants(doc, groupRef);
   const item = doc.items.find((each) => each.ref === itemRef);
   if (item === undefined) return null;
   const own = variants.filter((variant) => item.variantRefs.includes(variant.ref));
-  if (own.length === 1) return own[0]!.ref;
-  // „Wariant B wyrzuca X” = X tylko w pozostałych; przy dwóch wariantach to „tylko A”.
+  if (own.length > 0) return own.length < variants.length ? own.map((variant) => variant.ref) : null;
   const keeping = variants.filter((variant) => !variant.excludesRefs.includes(itemRef));
-  return own.length === 0 && keeping.length === 1 && keeping.length < variants.length ? keeping[0]!.ref : null;
+  return keeping.length > 0 && keeping.length < variants.length ? keeping.map((variant) => variant.ref) : null;
+}
+
+/** Punkt „tylko w wariancie X” albo we wszystkich (`variantRef: null`). */
+export function setItemVariant(doc: Doc, itemRef: string, groupRef: string, variantRef: string | null): RulesEdit | null {
+  return setItemVariants(doc, itemRef, groupRef, variantRef === null ? null : [variantRef]);
 }
 
 /**
- * Punkt „tylko w wariancie X” albo we wszystkich (`variantRef: null`). Odwołania do innych
- * grup zostają; „wyrzuca” w wariantach tej grupy jest czyszczone — przynależność trzyma
- * odtąd `variantRefs` punktu.
+ * Punkt w wybranych wariantach grupy albo we wszystkich (`null`, też gdy wybrano komplet).
+ * Odwołania do innych grup zostają; „wyrzuca” w wariantach tej grupy jest czyszczone —
+ * przynależność trzyma odtąd `variantRefs` punktu.
  */
-export function setItemVariant(doc: Doc, itemRef: string, groupRef: string, variantRef: string | null): RulesEdit | null {
+export function setItemVariants(doc: Doc, itemRef: string, groupRef: string, variantRefs: string[] | null): RulesEdit | null {
   const item = doc.items.find((each) => each.ref === itemRef);
   const variants = groupVariants(doc, groupRef);
   if (item === undefined || variants.length === 0) return null;
-  if (variantRef !== null && !variants.some((variant) => variant.ref === variantRef)) return null;
+  if (variantRefs !== null && (variantRefs.length === 0 || variantRefs.some((ref) => !variants.some((variant) => variant.ref === ref)))) return null;
+  const chosen = variantRefs === null || variantRefs.length >= variants.length ? [] : variants.filter((variant) => variantRefs.includes(variant.ref)).map((variant) => variant.ref);
   const own = new Set(variants.map((variant) => variant.ref));
-  const nextItem = inPlan({ ...item, variantRefs: [...item.variantRefs.filter((ref) => !own.has(ref)), ...(variantRef === null ? [] : [variantRef])] });
+  const nextItem = inPlan({ ...item, variantRefs: [...item.variantRefs.filter((ref) => !own.has(ref)), ...chosen] });
   const nextVariants = variants.filter((variant) => variant.excludesRefs.includes(itemRef)).map((variant) => ({ ...variant, excludesRefs: variant.excludesRefs.filter((ref) => ref !== itemRef) }));
   const itemChanged = nextItem.variantRefs.join() !== item.variantRefs.join() || nextItem.planStatus !== item.planStatus;
   if (!itemChanged && nextVariants.length === 0) return null;

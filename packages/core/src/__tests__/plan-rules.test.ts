@@ -14,6 +14,7 @@ import {
   dayConstraints,
   dayNotes,
   itemVariant,
+  itemVariants,
   removeConstraint,
   removeNote,
   removeVariant,
@@ -22,6 +23,7 @@ import {
   setDayEnd,
   setDayScenarios,
   setItemVariant,
+  setItemVariants,
   updateConstraint,
   updateNote,
   updateVariant,
@@ -60,6 +62,21 @@ describe('warianty w edytorze', () => {
     expect(itemVariant(always.doc, item, group)).toBeNull();
     expect(visible(always.doc, 'd3', { [group]: a! })).toContain(item);
     expect(setItemVariant(always.doc, item, group, null)).toBeNull();
+  });
+
+  it('punkt w kilku wariantach: widoczny w każdym z nich, komplet = we wszystkich', () => {
+    const third = addVariant(maroko, 'd4-wariant', newId, 'C · leniwy dzień')!;
+    const c = third.writes[0]!.element.ref;
+    const ac = setItemVariants(third.doc, 'd4-plaza', 'd4-wariant', [c, 'd4-v-a'])!;
+    expect(itemVariants(ac.doc, 'd4-plaza', 'd4-wariant')).toEqual(['d4-v-a', c]);
+    expect(itemVariant(ac.doc, 'd4-plaza', 'd4-wariant')).toBeNull();
+    expect(visible(ac.doc, 'd4', { 'd4-wariant': c })).toContain('d4-plaza');
+    expect(visible(ac.doc, 'd4', { 'd4-wariant': 'd4-v-b' })).not.toContain('d4-plaza');
+    expect(documentProblem(ac.doc)).toBeNull();
+    expect(itemVariants(third.doc, 'd4-plaza', 'd4-wariant')).toEqual(['d4-v-a', c]);
+    const all = setItemVariants(ac.doc, 'd4-plaza', 'd4-wariant', ['d4-v-a', 'd4-v-b', c])!;
+    expect(itemVariants(all.doc, 'd4-plaza', 'd4-wariant')).toBeNull();
+    expect(setItemVariants(ac.doc, 'd4-plaza', 'd4-wariant', [])).toBeNull();
   });
 
   it('„wyrzuca” z planu wzorcowego czyta się jako „tylko A”, a przypisanie je czyści', () => {
