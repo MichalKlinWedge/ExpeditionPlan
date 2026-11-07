@@ -2,9 +2,11 @@
 
 import { isFootRouteItem, isTransit, isTransitItem, type PlanEdit, type PlanItem as Item, setLegRoute, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
+import Link from "next/link";
 import { useId, useState, useTransition } from "react";
 
 import { type FormState, routeItem } from "@/app/actions";
+import { PinIcon } from "@/components/icons";
 
 /**
  * Przejazd w edycji: skąd, dokąd i własny link do trasy. Zmiana miejsc od razu przelicza trasę
@@ -40,17 +42,33 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
     });
   };
 
-  const field = "field w-full px-2 py-1 text-sm";
+  const field = "field w-full min-w-0 px-2 py-1 text-sm";
+  // Przycisk z pinezką do miejsca na stronie Miejsc — gdy wpisana nazwa to miejsce z tego wyjazdu.
+  const placeOf = (typed: string) => doc.places.find((each) => each.name.trim().toLowerCase() === typed.trim().toLowerCase());
+  const pin = (typed: string) => {
+    const place = typed.trim() === "" ? undefined : placeOf(typed);
+    return place === undefined ? null : (
+      <Link href={`/trips/${tripId}/places?miejsce=${encodeURIComponent(place.ref)}`} title={`„${place.name}” w Miejscach`} aria-label={`Pokaż „${place.name}” w Miejscach`} className="btn-mini shrink-0">
+        <PinIcon className="size-4" />
+      </Link>
+    );
+  };
   return (
     <div className="mt-2 flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs text-zinc-500">
           Skąd
-          <input value={from} onChange={(event) => setFrom(event.target.value)} list={listId} placeholder="Nazwa miejsca" disabled={busy} className={field} />
+          <span className="flex items-center gap-1">
+            <input value={from} onChange={(event) => setFrom(event.target.value)} list={listId} placeholder="Nazwa miejsca" disabled={busy} className={field} />
+            {pin(from)}
+          </span>
         </label>
         <label className="flex flex-col gap-1 text-xs text-zinc-500">
           Dokąd
-          <input value={to} onChange={(event) => setTo(event.target.value)} list={listId} placeholder="Nazwa miejsca" disabled={busy} className={field} />
+          <span className="flex items-center gap-1">
+            <input value={to} onChange={(event) => setTo(event.target.value)} list={listId} placeholder="Nazwa miejsca" disabled={busy} className={field} />
+            {pin(to)}
+          </span>
         </label>
         <datalist id={listId}>
           {doc.places.map((each) => (
