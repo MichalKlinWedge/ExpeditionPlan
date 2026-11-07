@@ -582,6 +582,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           tripId={tripId}
           online={signedIn}
           onSaveEatOut={signedIn && canAct ? saveEatOut : undefined}
+          plan={{ scenario, variants }}
           onContacts={() => {
             setDetail(null);
             showContacts();

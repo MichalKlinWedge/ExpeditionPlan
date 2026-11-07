@@ -33,6 +33,7 @@ import { Spacing } from '@/constants/theme';
 import { EateriesCard } from '@/features/plan/eateries-card';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ItemFactsCard } from '@/features/plan/item-facts';
+import { type PlanChoice, PlanPlace } from '@/features/plan/plan-place';
 import { TrackCard } from '@/features/plan/track-card';
 
 /**
@@ -62,6 +63,8 @@ type Props = {
   onContacts?: () => void;
   /** Przy posiłku: knajpa prowadzi do tego posiłku w zakładce Posiłki (szczegóły się zamykają). */
   onMeal?: (itemRef: string) => void;
+  /** Wybór z planu (scenariusz, warianty) — godziny i sąsiednie punkty jak w planie. Bez — domyślne warianty. */
+  plan?: PlanChoice;
 };
 
 /** Przewodnik punktu z wierszy `audio_guides` telefonu. */
@@ -94,15 +97,25 @@ export function prefetchGuideImages(trip: CachedTrip) {
   if (urls.length > 0) void Image.prefetch(urls, 'disk').catch(() => undefined);
 }
 
-export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online, onSaveEatOut, onContacts, onMeal }: Props) {
+export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online, onSaveEatOut, onContacts, plan, onMeal }: Props) {
   // Przejścia po odnośnikach: stos punktów nad otwartym; nowy `item` z zewnątrz zaczyna od zera.
-  const [path, setPath] = useState<{ root: string | null; stack: Item[] }>({ root: null, stack: [] });
-  const stack = path.root === (item?.ref ?? null) ? path.stack : [];
-  const current = stack.at(-1) ?? item;
-  const back = () => (stack.length > 0 ? setPath({ root: item?.ref ?? null, stack: stack.slice(0, -1) }) : onClose());
+  // „Poprzedni” / „Następny” zastępują oglądany punkt (`base` albo szczyt stosu) — „← Wróć” nadal zamyka.
+  const [path, setPath] = useState<{ root: string | null; base?: Item; stack: Item[] }>({ root: null, stack: [] });
+  const fresh = path.root === (item?.ref ?? null);
+  const stack = fresh ? path.stack : [];
+  const base = fresh ? path.base : undefined;
+  const current = stack.at(-1) ?? base ?? item;
+  const root = item?.ref ?? null;
+  const back = () => (stack.length > 0 ? setPath({ root, base, stack: stack.slice(0, -1) }) : onClose());
+  const find = (ref: string) => trip.state.doc.items.find((each) => each.ref === ref);
   const go = (ref: string) => {
-    const next = trip.state.doc.items.find((each) => each.ref === ref);
-    if (next) setPath({ root: item?.ref ?? null, stack: [...stack, next] });
+    const next = find(ref);
+    if (next) setPath({ root, base, stack: [...stack, next] });
+  };
+  const jump = (ref: string) => {
+    const next = find(ref);
+    if (next === undefined) return;
+    setPath(stack.length > 0 ? { root, base, stack: [...stack.slice(0, -1), next] } : { root, base: next, stack: [] });
   };
   return (
     <Modal visible={item !== null} animationType="slide" onRequestClose={back}>
@@ -110,7 +123,7 @@ export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, onl
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
             {current !== null && (
-              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0} tripId={tripId} online={online} onSaveEatOut={onSaveEatOut} onContacts={onContacts} onMeal={onMeal} />
+              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0 && base === undefined} tripId={tripId} online={online} onSaveEatOut={onSaveEatOut} onContacts={onContacts} onMeal={onMeal} plan={plan} onJump={jump} />
             )}
           </SafeAreaView>
         </ThemedView>
@@ -132,9 +145,11 @@ type DetailsProps = {
   onContacts?: () => void;
   /** Przy posiłku: knajpa prowadzi do tego posiłku w zakładce Posiłki (szczegóły się zamykają). */
   onMeal?: (itemRef: string) => void;
+  plan?: PlanChoice;
+  onJump: (ref: string) => void;
 };
 
-function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online, onSaveEatOut, onContacts, onMeal }: DetailsProps) {
+function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online, onSaveEatOut, onContacts, plan, onJump, onMeal }: DetailsProps) {
   const doc = trip.state.doc;
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
@@ -186,6 +201,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         <ThemedText type="subtitle">
           {itemIcon(doc, item)} {item.title}
         </ThemedText>
+        <PlanPlace trip={trip} item={item} plan={plan} onJump={onJump} />
         {place && (
           <View style={styles.row}>
             <View style={styles.grow}>
