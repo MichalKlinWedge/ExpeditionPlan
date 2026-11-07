@@ -535,7 +535,21 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           onSaveEatOut={signedIn && canAct ? saveEatOut : undefined}
         />
       )}
-      {trip !== null && <BookingSheet trip={trip} bookingRef={booking} onClose={() => setBooking(null)} tripId={tripId} online={signedIn} />}
+      {trip !== null && (
+        <BookingSheet
+          trip={trip}
+          bookingRef={booking}
+          onClose={() => setBooking(null)}
+          tripId={tripId}
+          online={signedIn}
+          onOpenItem={(ref) => {
+            const item = trip.state.doc.items.find((each) => each.ref === ref);
+            if (item === undefined) return;
+            setDetailPlay(false);
+            setDetail(item);
+          }}
+        />
+      )}
     </View>
   );
 }

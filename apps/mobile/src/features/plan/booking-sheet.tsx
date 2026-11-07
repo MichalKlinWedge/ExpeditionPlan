@@ -23,9 +23,11 @@ type Props = {
   /** Bez `tripId` okno nie pokazuje dokumentów (pliki leżą w katalogu wyjazdu). */
   tripId?: string;
   online?: boolean;
+  /** Szczegóły punktu z pakietu; okno rezerwacji zamyka się samo. */
+  onOpenItem?: (itemRef: string) => void;
 };
 
-export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false }: Props) {
+export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false, onOpenItem }: Props) {
   const details = bookingRef === null ? null : bookingDetails(trip.state.doc, bookingRef, localToday());
   return (
     <Modal visible={details !== null} animationType="slide" onRequestClose={onClose}>
@@ -58,11 +60,23 @@ export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false
                   {details.items.length > 0 && (
                     <View style={styles.block}>
                       <ThemedText type="smallBold">W pakiecie</ThemedText>
-                      {details.items.map((item) => (
-                        <ThemedText key={item.ref} type="small">
-                          · {item.title}
-                        </ThemedText>
-                      ))}
+                      {details.items.map((item) =>
+                        onOpenItem ? (
+                          <Pressable
+                            key={item.ref}
+                            hitSlop={6}
+                            onPress={() => {
+                              onClose();
+                              onOpenItem(item.ref);
+                            }}>
+                            <ThemedText type="linkPrimary">· {item.title} ›</ThemedText>
+                          </Pressable>
+                        ) : (
+                          <ThemedText key={item.ref} type="small">
+                            · {item.title}
+                          </ThemedText>
+                        ),
+                      )}
                     </View>
                   )}
                   {details.booking.notes.length > 0 && (

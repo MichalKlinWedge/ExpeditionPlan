@@ -223,7 +223,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
           </Pressable>
         ))}
         <ItemFactsCard trip={trip} item={item} tripId={tripId} online={online} onBooking={setBooking} />
-        <BookingSheet trip={trip} bookingRef={booking} onClose={() => setBooking(null)} tripId={tripId} online={online} />
+        <BookingSheet trip={trip} bookingRef={booking} onClose={() => setBooking(null)} tripId={tripId} online={online} onOpenItem={(ref) => ref !== item.ref && onOpen(ref)} />
         {item.kind === 'meal' && !item.selfCooked && online && tripId !== undefined && <EateriesCard trip={trip} tripId={tripId} item={item} onSave={onSaveEatOut} />}
         <TrackCard doc={doc} item={item} />
 
