@@ -10,7 +10,7 @@ import { describeTrip } from "@/app/guide-actions";
 import { EditToggle, editMode } from "@/components/edit-toggle";
 import { PlacePinner } from "@/components/place-pinner";
 import { PlanActionButton } from "@/components/plan-action-button";
-import { PlanView } from "@/components/plan-view";
+import { PlanPageGrid, PlanView } from "@/components/plan-view";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 
@@ -63,16 +63,21 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
   // Dokumenty rezerwacji z sejfu do okna rezerwacji (RLS już odcięło te, których ktoś nie widzi).
   const bookingDocuments = ((data as PullPayload).tables.documents ?? []).map((row) => vaultDocument(row as Record<string, unknown>)).filter((each): each is VaultDocument => each !== null && each.bookingId !== null);
   return (
-    <>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <Link href={`/trips/${id}`} className="back-link">
-            ← {state.doc.trip.title}
-          </Link>
-          <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
+    <PlanPageGrid
+      header={
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <Link href={`/trips/${id}`} className="back-link self-start">
+              ← {state.doc.trip.title}
+            </Link>
+            <h1 className="text-2xl font-semibold">Plan dzień po dniu</h1>
+          </div>
+          {editing && <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />}
         </div>
-        {/* Narzędzia edycji pod „Zakończ edycję”, przy prawej krawędzi — nie spychają planu w dół. */}
-        <div className="ml-auto flex flex-col items-end gap-2">
+      }
+      // Narzędzia edycji pod „Zakończ edycję”, przy prawej krawędzi, obok scenariusza i dni.
+      actions={
+        <>
           <div className="flex items-center gap-3">
             <Link href={`/trips/${id}/print`} className="btn-secondary btn-sm">
               Wydruk / PDF
@@ -89,11 +94,12 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
               </Link>
             </>
           )}
-        </div>
-      </div>
-      {editing && <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />}
+        </>
+      }>
       <PlanView
-        // Nowa wersja danych z serwera = nowy stan widoku (patrz `useRefreshOnReturn`).
+        beside
+        // Nowa wersja danych z serwera = nowy stan widoku (patrz `useRefreshOnReturn`); nagłówek i narzędzia
+        // (z wynikiem ostatniej akcji) są poza nim, w `PlanPageGrid`.
         key={(data as { version: number }).version}
         state={state}
         tripId={id}
@@ -104,6 +110,6 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         initialDay={typeof day === "string" ? day : undefined}
         bookingDocuments={bookingDocuments}
       />
-    </>
+    </PlanPageGrid>
   );
 }

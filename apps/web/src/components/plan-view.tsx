@@ -3,7 +3,7 @@
 import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, hasFieldLog, instantToZoned, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
 import { SparkIcon } from "@/components/icons";
@@ -59,7 +59,27 @@ type Props = {
   initialDay?: string;
   /** Rezerwacje punktów otwierają okno ze szczegółami i dokumentami tych rezerwacji z sejfu; link publiczny bez tego. */
   bookingDocuments?: VaultDocument[];
+  /**
+   * Widok w siatce strony (`PlanPageGrid`): nagłówek w 1. wierszu po lewej, przyciski w prawej kolumnie
+   * przez dwa wiersze, a scenariusz i dni w 2. wierszu po lewej — wysoka kolumna narzędzi nie zostawia
+   * pustego miejsca. Nagłówek i przyciski są poza widokiem, bo widok odtwarza się przy nowej wersji danych.
+   */
+  beside?: boolean;
 };
+
+/**
+ * Siatka strony planu dla `PlanView beside`: na szerokim ekranie dwie kolumny, wąsko jedna pod drugą
+ * (nagłówek, przyciski, plan).
+ */
+export function PlanPageGrid({ header, actions, children }: { header: ReactNode; actions: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-6">
+      <div className="lg:col-start-1 lg:row-start-1">{header}</div>
+      <div className="flex flex-col items-end gap-2 lg:col-start-2 lg:row-span-2 lg:row-start-1">{actions}</div>
+      {children}
+    </div>
+  );
+}
 
 const variantsKey = (tripId: string) => `plan-variants:${tripId}`;
 
@@ -81,7 +101,7 @@ function saveChosenVariants(tripId: string, chosen: Record<string, string>) {
   }
 }
 
-export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay, bookingDocuments }: Props) {
+export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay, bookingDocuments, beside = false }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
@@ -269,13 +289,13 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
       }
     : null;
 
-  return (
-    <div className="flex flex-col gap-6">
-      {canEdit && (
-        <p className="sticky top-0 z-10 -mx-4 bg-[var(--background)] px-4 py-1 text-xs text-zinc-500">
-          {saving.pending > 0 ? "Zapisuję…" : saving.error ? <span className="text-red-600">{saving.error}</span> : saving.ok ? `Zapisano.${saving.note ? ` ${saving.note}` : ""}` : "Zmiany zapisują się od razu."}
-        </p>
-      )}
+  const status = canEdit && (
+    <p className="sticky top-0 z-10 -mx-4 bg-[var(--background)] px-4 py-1 text-xs text-zinc-500">
+      {saving.pending > 0 ? "Zapisuję…" : saving.error ? <span className="text-red-600">{saving.error}</span> : saving.ok ? `Zapisano.${saving.note ? ` ${saving.note}` : ""}` : "Zmiany zapisują się od razu."}
+    </p>
+  );
+  const top = (
+    <>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span>Scenariusz:</span>
         {(["optimistic", "pessimistic"] as const).map((each) => (
@@ -305,8 +325,25 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
           below={canEdit}
         />
       )}
+    </>
+  );
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start">
+  return (
+    // `beside`: elementy widoku stają w siatce strony (`contents`); pasek zapisu przykleja się wtedy w całej siatce.
+    <div className={beside ? "contents" : "flex flex-col gap-6"}>
+      {beside ? (
+        <>
+          <div className="flex flex-col gap-6 lg:col-start-1 lg:row-start-2">{top}</div>
+          {status && <div className="sticky top-0 z-10 lg:col-span-2 lg:row-start-3">{status}</div>}
+        </>
+      ) : (
+        <>
+          {status}
+          {top}
+        </>
+      )}
+
+      <div className="flex flex-col gap-6 lg:col-span-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start">
         {(mapDay !== undefined || showPool) && (
           <aside className="flex flex-col gap-2 lg:sticky lg:top-24 lg:order-last">
             <PlanMap
