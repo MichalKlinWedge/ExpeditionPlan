@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -33,7 +33,7 @@ import { DayMap, useDayStops } from '@/features/plan/day-map';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ContactList } from '@/features/plan/item-facts';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
-import { DayPicker, ItemEditor, type ItemFields } from '@/features/plan/item-editor';
+import { DayPicker, ItemEditor, type ItemFields, type LegEnds } from '@/features/plan/item-editor';
 import { PoolView } from '@/features/plan/pool-view';
 import { TripNewsBanner } from '@/features/plan/trip-news';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
@@ -278,7 +278,16 @@ ${fresh.rejected[0]!.error}`);
       ? {
           move: (ref, direction) => apply(moveWithinDay(trip.state.doc, ref, direction)),
           moveTo: (ref, dayRef) => apply(moveToDay(trip.state.doc, ref, dayRef)),
-          update: (ref, fields) => apply(updateItem(trip.state.doc, ref, fields)),
+          update: (ref, fields, ends) => {
+            const edit = updateItem(trip.state.doc, ref, fields);
+            if (ends === undefined) return apply(edit);
+            // „Skąd” / „Dokąd” na dokumencie po zmianie pól — jeden zapis z oboma zmianami.
+            const doc = edit?.doc ?? trip.state.doc;
+            const routeUrl = doc.items.find((each) => each.ref === ref)?.leg?.routeUrl ?? '';
+            const leg = setLegRoute(doc, ref, { fromId: uuidv7(), toId: uuidv7() }, { ...ends, routeUrl });
+            if (leg === null) return apply(edit);
+            apply({ ...leg, changed: [...(edit?.changed ?? []).filter((each) => !leg.changed.some((other) => other.ref === each.ref)), ...leg.changed] });
+          },
           add: (dayRef, fields) => apply(addItem(trip.state.doc, dayRef, uuidv7(), fields)),
           addToPool: (fields, placeName, at) => apply(addPoolItem(trip.state.doc, { itemId: uuidv7(), placeId: uuidv7() }, fields, placeName, at)),
           remove: (ref) => {
@@ -656,7 +665,7 @@ type DayProps = {
 type Actions = {
   move: (ref: string, direction: -1 | 1) => void;
   moveTo: (ref: string, dayRef: string | null) => void;
-  update: (ref: string, fields: ItemFields) => void;
+  update: (ref: string, fields: ItemFields, ends?: LegEnds) => void;
   add: (dayRef: string, fields: ItemFields) => void;
   /** Nowy punkt w puli; `at` — pozycja telefonu („tu, gdzie jestem”). */
   addToPool: (fields: ItemFields, placeName?: string, at?: { lat: number; lng: number }) => void;
@@ -923,10 +932,11 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
           <ItemEditor
             item={editing === 'new' ? null : editing}
             visible={editing !== null}
+            doc={doc}
             onCancel={() => setEditing(null)}
-            onSave={(fields) => {
+            onSave={(fields, ends) => {
               if (editing === 'new') actions.add(dayRef, fields);
-              else if (editing !== null) actions.update(editing.ref, fields);
+              else if (editing !== null) actions.update(editing.ref, fields, ends);
               setEditing(null);
             }}
           />

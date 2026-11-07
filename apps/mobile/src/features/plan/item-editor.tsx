@@ -1,6 +1,6 @@
 import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode, type TripDocument } from '@expeditionplan/core';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -9,21 +9,29 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
- * Edycja punktu na telefonie: nazwa, rodzaj, godzina i czas trwania. Pełny edytor (precyzja
- * godziny, przedziały, bufor, priorytet) jest na webie — tu godzina inna niż „dokładnie” zostaje
- * nietknięta, dopóki pole się nie zmieni.
+ * Edycja punktu na telefonie: nazwa, rodzaj, godzina i czas trwania, a przy przejeździe „Skąd” i „Dokąd”
+ * (nazwa miejsca z planu albo nowa, `setLegRoute`; pinezka pokazuje znane miejsce w Mapach Google, nic nie
+ * zapisując). Pełny edytor (precyzja godziny, przedziały, bufor, priorytet, przeliczenie trasy) jest na webie —
+ * tu godzina inna niż „dokładnie” zostaje nietknięta, dopóki pole się nie zmieni.
  */
 
 const HHMM = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 
 export type ItemFields = Pick<Item, 'title' | 'kind'> & Partial<Item>;
 
+/** Wpisane „Skąd” i „Dokąd” przejazdu — tylko gdy się zmieniły. */
+export type LegEnds = { from: string; to: string };
+
+const TRAVEL: KindChoice[] = ['transport', 'public', 'hike', 'walk'];
+
 type EditorProps = {
   /** `null` = nowy punkt. */
   item: Item | null;
   visible: boolean;
   onCancel: () => void;
-  onSave: (fields: ItemFields) => void;
+  onSave: (fields: ItemFields, ends?: LegEnds) => void;
+  /** Plan — podpowiedzi miejsc i pinezka przy „Skąd” / „Dokąd”; bez niego (i przy nowym punkcie) pól nie ma. */
+  doc?: TripDocument;
 };
 
 function timeText(item: Item | null): string {
@@ -31,13 +39,13 @@ function timeText(item: Item | null): string {
   return time && 'start' in time && time.start ? time.start : '';
 }
 
-export function ItemEditor({ item, visible, onCancel, onSave }: EditorProps) {
+export function ItemEditor({ item, visible, onCancel, onSave, doc }: EditorProps) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
       <SafeAreaProvider>
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
-            {visible && <Form key={item?.ref ?? 'new'} item={item} onCancel={onCancel} onSave={onSave} />}
+            {visible && <Form key={item?.ref ?? 'new'} item={item} onCancel={onCancel} onSave={onSave} doc={doc} />}
           </SafeAreaView>
         </ThemedView>
       </SafeAreaProvider>
@@ -45,8 +53,13 @@ export function ItemEditor({ item, visible, onCancel, onSave }: EditorProps) {
   );
 }
 
-function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
+function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
   const theme = useTheme();
+  const placeName = (ref: string | undefined) => doc?.places.find((each) => each.ref === ref)?.name ?? '';
+  const [fromStart] = useState(() => placeName(item?.leg?.fromPlaceRef));
+  const [toStart] = useState(() => placeName(item?.leg?.toPlaceRef ?? item?.placeRef));
+  const [from, setFrom] = useState(fromStart);
+  const [to, setTo] = useState(toStart);
   const [title, setTitle] = useState(item?.title ?? '');
   const [kind, setKind] = useState<KindChoice>(item === null ? 'visit' : kindChoice(item));
   const [vehicle, setVehicle] = useState<PublicMode>((item === null ? undefined : publicMode(item)) ?? PUBLIC_MODES[0]![0]);
@@ -77,7 +90,8 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
       const start = time.trim().padStart(5, '0');
       fields.time = time.trim() === '' ? undefined : { precision: 'exact', start, ...(tz ? { tz } : {}) };
     }
-    onSave(fields);
+    const travel = TRAVEL.includes(kind) && item !== null && doc !== undefined;
+    onSave(fields, travel && (from.trim() !== fromStart || to.trim() !== toStart) ? { from: from.trim(), to: to.trim() } : undefined);
   };
 
   return (
@@ -127,6 +141,15 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
             ))}
           </View>
         )}
+        {TRAVEL.includes(kind) && item !== null && doc !== undefined && (
+          <>
+            <PlaceField label="Skąd" value={from} onChange={setFrom} doc={doc} input={input} />
+            <PlaceField label="Dokąd" value={to} onChange={setTo} doc={doc} input={input} />
+            <ThemedText type="small" themeColor="textSecondary">
+              Nazwa z planu wskazuje to miejsce, nowa tworzy miejsce bez współrzędnych. Inne końce kasują policzoną trasę: czas zostaje szacunkiem, a trasę przelicza web („Przelicz trasę”).
+            </ThemedText>
+          </>
+        )}
         {kind === 'meal' && (
           <Pressable
             onPress={() => setSelfCooked(!selfCooked)}
@@ -157,6 +180,45 @@ function Form({ item, onCancel, onSave }: Omit<EditorProps, 'visible'>) {
           Pozostałe ustawienia (przedziały, bufor, priorytet) — w edytorze na webie.
         </ThemedText>
       </ScrollView>
+    </View>
+  );
+}
+
+/** Pinezka: znane miejsce w Mapach Google (współrzędne, a bez nich nazwa); nic się nie zapisuje. */
+function showPlace(place: TripDocument['places'][number]) {
+  const query = place.lat !== undefined && place.lng !== undefined ? `${place.lat},${place.lng}` : place.name;
+  void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
+}
+
+/** „Skąd” / „Dokąd”: pole z pinezką (gdy nazwa to miejsce z planu) i podpowiedziami miejsc planu przy pisaniu. */
+function PlaceField({ label, value, onChange, doc, input }: { label: string; value: string; onChange: (value: string) => void; doc: TripDocument; input: object[] }) {
+  const theme = useTheme();
+  const [focused, setFocused] = useState(false);
+  const typed = value.trim().toLowerCase();
+  const place = typed === '' ? undefined : doc.places.find((each) => each.name.trim().toLowerCase() === typed);
+  const hints = focused && typed !== '' && place === undefined ? doc.places.filter((each) => each.name.toLowerCase().includes(typed)).slice(0, 4) : [];
+  return (
+    <View style={styles.field}>
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+      <View style={styles.placeRow}>
+        <TextInput value={value} onChangeText={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} style={[...input, styles.grow]} placeholder="Nazwa miejsca" placeholderTextColor={theme.textSecondary} />
+        {place !== undefined && (
+          <Pressable onPress={() => showPlace(place)} accessibilityLabel={`Pokaż „${place.name}” w Mapach Google`} hitSlop={4} style={[styles.pin, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}>
+            <ThemedText style={styles.pinIcon}>📍</ThemedText>
+          </Pressable>
+        )}
+      </View>
+      {hints.length > 0 && (
+        <View style={styles.wrap}>
+          {hints.map((each) => (
+            <Pressable key={each.ref} onPress={() => onChange(each.name)} style={[styles.chip, { borderColor: theme.backgroundSelected }]}>
+              <ThemedText type="small">{each.name}</ThemedText>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -192,6 +254,12 @@ export function DayPicker({ doc, current, visible, onCancel, onPick }: { doc: Tr
 
 const styles = StyleSheet.create({
   self: { alignSelf: 'flex-start' },
+  field: { gap: Spacing.one },
+  // Pinezka ma wysokość pola (`stretch`), jak na webie.
+  placeRow: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.two },
+  grow: { flex: 1 },
+  pin: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, alignItems: 'center', justifyContent: 'center' },
+  pinIcon: { fontSize: 20, lineHeight: 24 },
   fill: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   title: { flex: 1, textAlign: 'center' },
