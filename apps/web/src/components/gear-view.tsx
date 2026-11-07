@@ -1,7 +1,7 @@
 "use client";
 
 import { defaultTake, formatWeight, type GearCarry, gearLoads, gearShare, type GearShare, isGear, type TripDocument } from "@expeditionplan/core";
-import { useActionState, useState, useTransition } from "react";
+import { type ReactNode, useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { removeGearItem, saveGearItem, setGearCarrier } from "@/app/logistics-actions";
@@ -22,6 +22,7 @@ const danger = "btn-mini btn-mini-danger";
 const SUGGESTED = ["ubrania", "sprzęt", "biwak", "kuchnia", "apteczka", "elektronika", "dokumenty"];
 const number = (value: number) => value.toLocaleString("pl-PL", { maximumFractionDigits: 2 });
 const amount = (item: Pick<Item, "unit">, value: number) => `${number(value)}${item.unit ? ` ${item.unit}` : ""}`;
+const row = "border-t border-zinc-100 dark:border-zinc-900";
 
 function Status({ state }: { state: FormState }) {
   if (state.error) return <p className="text-xs text-red-600">{state.error}</p>;
@@ -83,6 +84,10 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
   const anyWeight = loads.some((load) => load.weightG > 0);
   const measure = (load: (typeof loads)[number]) => (anyWeight ? load.weightG : load.shared.length);
   const top = Math.max(1, ...loads.map(measure));
+  // Kolumna wagi tylko wtedy, gdy któraś rzecz ją ma.
+  const weights = gear.some((item) => item.weightG !== undefined);
+  const sharedSpan = 3 + (weights ? 1 : 0) + (canEdit ? 1 : 0);
+  const personalSpan = 3 + (person !== undefined ? 1 : 0) + (weights ? 1 : 0) + (canEdit ? 1 : 0);
 
   return (
     <>
@@ -135,23 +140,35 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
           <p className="text-xs text-zinc-500">Wystarczy jedno na grupę albo dzielicie się ilością: ustalcie, kto bierze.</p>
           {allowed.length === 0 && !mayEdit && <p className="text-xs text-zinc-500">Twoje konto nie jest połączone z żadnym uczestnikiem, więc nie możesz tu niczego wziąć. Poproś organizatora o zaproszenie imienne.</p>}
         </div>
-        {shownShared.length === 0 && <p className="text-zinc-500">{filter === "open" ? "Każda wspólna rzecz ma już osobę." : person !== undefined ? "Ta osoba nie bierze nic wspólnego." : "Brak wspólnych rzeczy."}</p>}
-        {byCategory(shownShared).map(([category, items]) => (
-          <div key={category} className="flex flex-col gap-2">
-            <h3 className="text-xs font-medium tracking-wide text-zinc-500 uppercase">{category}</h3>
-            <ul className="flex flex-col gap-3">
-              {items.map((item) =>
-                editing === item.ref ? (
-                  <li key={item.ref}>
-                    <GearForm tripId={tripId} doc={doc} item={item} itemId={ids[item.ref]} categories={categories} onDone={() => setEditing(null)} />
-                  </li>
-                ) : (
-                  <SharedRow key={item.ref} tripId={tripId} item={item} itemId={ids[item.ref] ?? ""} share={gearShare(item, carries)} ids={ids} allowed={allowed} me={mine[0]} tentative={tentative} nameOf={nameOf} canEdit={canEdit} onEdit={() => setEditing(item.ref)} />
-                ),
-              )}
-            </ul>
-          </div>
-        ))}
+        {shownShared.length === 0 ? (
+          <p className="text-zinc-500">{filter === "open" ? "Każda wspólna rzecz ma już osobę." : person !== undefined ? "Ta osoba nie bierze nic wspólnego." : "Brak wspólnych rzeczy."}</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-zinc-500">
+              <tr>
+                <th className="py-1 font-normal">Rzecz</th>
+                <th className="hidden py-1 font-normal sm:table-cell">Ilość</th>
+                {weights && <th className="hidden py-1 font-normal sm:table-cell">Waga</th>}
+                <th className="py-1 font-normal">Kto bierze</th>
+                {canEdit && <th className="py-1" />}
+              </tr>
+            </thead>
+            {byCategory(shownShared).map(([category, items]) => (
+              <tbody key={category}>
+                <CategoryRow category={category} span={sharedSpan} />
+                {items.map((item) =>
+                  editing === item.ref ? (
+                    <FormRow key={item.ref} span={sharedSpan}>
+                      <GearForm tripId={tripId} doc={doc} item={item} itemId={ids[item.ref]} categories={categories} onDone={() => setEditing(null)} />
+                    </FormRow>
+                  ) : (
+                    <SharedRow key={item.ref} tripId={tripId} item={item} itemId={ids[item.ref] ?? ""} share={gearShare(item, carries)} ids={ids} allowed={allowed} me={mine[0]} tentative={tentative} nameOf={nameOf} weights={weights} canEdit={canEdit} onEdit={() => setEditing(item.ref)} />
+                  ),
+                )}
+              </tbody>
+            ))}
+          </table>
+        )}
       </section>
 
       {filter !== "open" && (
@@ -160,28 +177,53 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
             <h2 className="font-semibold">Osobiste</h2>
             <p className="text-xs text-zinc-500">Każdy pakuje swoje.</p>
           </div>
-          {shownPersonal.length === 0 && <p className="text-zinc-500">Brak rzeczy osobistych.</p>}
-          {byCategory(shownPersonal).map(([category, items]) => (
-            <div key={category} className="flex flex-col gap-1">
-              <h3 className="text-xs font-medium tracking-wide text-zinc-500 uppercase">{category}</h3>
-              <ul className="flex flex-col gap-1">
-                {items.map((item) =>
-                  editing === item.ref ? (
-                    <li key={item.ref}>
-                      <GearForm tripId={tripId} doc={doc} item={item} itemId={ids[item.ref]} categories={categories} onDone={() => setEditing(null)} />
-                    </li>
-                  ) : (
-                    <li key={item.ref} className="flex flex-wrap items-baseline gap-x-2">
-                      {person !== undefined && <span aria-label={packedSet.has(`${item.ref}|${person.travelerRef}`) ? "spakowane" : "do spakowania"}>{packedSet.has(`${item.ref}|${person.travelerRef}`) ? "☑" : "☐"}</span>}
-                      <ItemText item={item} />
-                      {item.assigneeRef !== undefined && <span className="text-xs text-zinc-500">· tylko {nameOf(item.assigneeRef)}</span>}
-                      {canEdit && <ItemActions tripId={tripId} item={item} itemId={ids[item.ref] ?? ""} onEdit={() => setEditing(item.ref)} />}
-                    </li>
-                  ),
-                )}
-              </ul>
-            </div>
-          ))}
+          {shownPersonal.length === 0 ? (
+            <p className="text-zinc-500">Brak rzeczy osobistych.</p>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs text-zinc-500">
+                <tr>
+                  {person !== undefined && (
+                    <th className="w-6 py-1 font-normal">
+                      <span className="sr-only">Spakowane</span>
+                    </th>
+                  )}
+                  <th className="py-1 font-normal">Rzecz</th>
+                  <th className="hidden py-1 font-normal sm:table-cell">Ilość</th>
+                  {weights && <th className="hidden py-1 font-normal sm:table-cell">Waga</th>}
+                  <th className="py-1 font-normal">Kto</th>
+                  {canEdit && <th className="py-1" />}
+                </tr>
+              </thead>
+              {byCategory(shownPersonal).map(([category, items]) => (
+                <tbody key={category}>
+                  <CategoryRow category={category} span={personalSpan} />
+                  {items.map((item) => {
+                    if (editing === item.ref) {
+                      return (
+                        <FormRow key={item.ref} span={personalSpan}>
+                          <GearForm tripId={tripId} doc={doc} item={item} itemId={ids[item.ref]} categories={categories} onDone={() => setEditing(null)} />
+                        </FormRow>
+                      );
+                    }
+                    const isPacked = person !== undefined && packedSet.has(`${item.ref}|${person.travelerRef}`);
+                    return (
+                      <tr key={item.ref} className={row}>
+                        {person !== undefined && (
+                          <td className="py-1.5 pr-2 align-top" aria-label={isPacked ? "spakowane" : "do spakowania"}>
+                            {isPacked ? "☑" : "☐"}
+                          </td>
+                        )}
+                        <ItemCells item={item} weights={weights} />
+                        <td className="py-1.5 pr-3 align-top text-zinc-500">{item.assigneeRef !== undefined ? `tylko ${nameOf(item.assigneeRef)}` : "każdy"}</td>
+                        {canEdit && <ItemActions tripId={tripId} item={item} itemId={ids[item.ref] ?? ""} onEdit={() => setEditing(item.ref)} />}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              ))}
+            </table>
+          )}
         </section>
       )}
 
@@ -199,18 +241,41 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
   );
 }
 
-function ItemText({ item }: { item: Item }) {
+function CategoryRow({ category, span }: { category: string; span: number }) {
+  return (
+    <tr>
+      <th colSpan={span} scope="colgroup" className="pt-3 pb-1 text-xs font-medium tracking-wide text-zinc-500 uppercase">
+        {category}
+      </th>
+    </tr>
+  );
+}
+
+function FormRow({ span, children }: { span: number; children: ReactNode }) {
+  return (
+    <tr className={row}>
+      <td colSpan={span} className="py-2">
+        {children}
+      </td>
+    </tr>
+  );
+}
+
+const quantityText = (item: Item) => (item.quantity === undefined ? "" : amount(item, item.quantity));
+const weightText = (item: Item) => (item.weightG === undefined ? "" : `${formatWeight(item.weightG)}${item.quantity !== undefined ? ` / ${item.unit ?? "szt."}` : ""}`);
+
+/** Nazwa z uwagą, ilość i waga. Na telefonie ilość i waga są pod nazwą: kolumny się nie mieszczą. */
+function ItemCells({ item, weights }: { item: Item; weights: boolean }) {
+  const below = [quantityText(item), weightText(item)].filter((text) => text !== "").join(" · ");
   return (
     <>
-      <span className="font-medium">{item.title}</span>
-      {item.quantity !== undefined && <span>× {amount(item, item.quantity)}</span>}
-      {item.weightG !== undefined && (
-        <span className="text-xs text-zinc-500">
-          · {formatWeight(item.weightG)}
-          {item.quantity !== undefined ? ` / ${item.unit ?? "szt."}` : ""}
-        </span>
-      )}
-      {item.note && <span className="text-xs text-zinc-500">· {item.note}</span>}
+      <td className="py-1.5 pr-3 align-top break-words">
+        <span className="font-medium">{item.title}</span>
+        {below !== "" && <span className="block text-xs text-zinc-500 sm:hidden">{below}</span>}
+        {item.note && <span className="block text-xs text-zinc-500">{item.note}</span>}
+      </td>
+      <td className="hidden py-1.5 pr-3 align-top whitespace-nowrap sm:table-cell">{quantityText(item)}</td>
+      {weights && <td className="hidden py-1.5 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{weightText(item)}</td>}
     </>
   );
 }
@@ -218,15 +283,16 @@ function ItemText({ item }: { item: Item }) {
 function ItemActions({ tripId, item, itemId, onEdit }: { tripId: string; item: Item; itemId: string; onEdit: () => void }) {
   const remove = useAction();
   return (
-    <span className="text-zinc-500">
+    <td className="py-1.5 pl-2 text-right align-top whitespace-nowrap">
       <button type="button" onClick={onEdit} className={small}>
         edytuj
-      </button>{" "}
+      </button>
+      <br className="sm:hidden" />{" "}
       <button type="button" disabled={remove.pending} onClick={() => remove.run(() => removeGearItem(tripId, item.ref, itemId), `Usunąć „${item.title}” z listy?`)} className={danger}>
         usuń
       </button>
       <Status state={remove.state} />
-    </span>
+    </td>
   );
 }
 
@@ -254,11 +320,12 @@ type SharedRowProps = {
   me: string | undefined;
   tentative: Set<string>;
   nameOf: (ref: string) => string;
+  weights: boolean;
   canEdit: boolean;
   onEdit: () => void;
 };
 
-function SharedRow({ tripId, item, itemId, share, ids, allowed, me, tentative, nameOf, canEdit, onEdit }: SharedRowProps) {
+function SharedRow({ tripId, item, itemId, share, ids, allowed, me, tentative, nameOf, weights, canEdit, onEdit }: SharedRowProps) {
   const action = useAction();
   const set = (traveler: string, quantity: number) => action.run(() => setGearCarrier(tripId, itemId, ids[traveler] ?? "", quantity));
   const take = defaultTake(share);
@@ -267,76 +334,76 @@ function SharedRow({ tripId, item, itemId, share, ids, allowed, me, tentative, n
   const split = (item.quantity ?? 1) !== 1;
 
   return (
-    <li className="flex flex-col gap-1">
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <ItemText item={item} />
-        <ShareBadge item={item} share={share} />
-        {canEdit && <ItemActions tripId={tripId} item={item} itemId={itemId} onEdit={onEdit} />}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {share.carriers.map((carrier) => {
-          const mayChange = allowed.includes(carrier.travelerRef);
-          return (
-            <span key={carrier.travelerRef} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800">
-              {nameOf(carrier.travelerRef)}
-              {tentative.has(carrier.travelerRef) && <span className="text-amber-700 dark:text-amber-400">(waha się)</span>}
-              {split &&
-                (mayChange ? (
-                  <input
-                    key={carrier.quantity}
-                    defaultValue={number(carrier.quantity)}
-                    inputMode="decimal"
-                    aria-label={`Ile bierze ${nameOf(carrier.travelerRef)}`}
-                    className="w-12 rounded border border-zinc-300 bg-transparent px-1 text-center dark:border-zinc-600"
-                    onBlur={(event) => {
-                      const next = Number(event.target.value.replace(",", "."));
-                      if (Number.isFinite(next) && next > 0 && next !== carrier.quantity) set(carrier.travelerRef, next);
-                    }}
-                  />
-                ) : (
-                  <span>× {number(carrier.quantity)}</span>
-                ))}
-              {split && item.unit && <span>{item.unit}</span>}
-              {mayChange && (
-                <button type="button" disabled={action.pending} onClick={() => set(carrier.travelerRef, 0)} title="Nie bierze" aria-label={`${nameOf(carrier.travelerRef)} nie bierze`} className="text-zinc-500 hover:text-red-600 disabled:opacity-50">
-                  ×
-                </button>
-              )}
-            </span>
-          );
-        })}
-        {me !== undefined &&
-          !carrying.has(me) &&
-          // Komplet: bez wyraźnego przycisku, żeby nie zachęcać do dublowania.
-          (share.left > 0 ? (
-            <button type="button" disabled={action.pending} onClick={() => set(me, take)} className="btn-primary btn-sm">
-              Biorę
-            </button>
-          ) : (
-            <button type="button" disabled={action.pending} onClick={() => set(me, take)} className={small}>
-              też biorę
-            </button>
-          ))}
-        {others.length > 0 && (
-          <select
-            value=""
-            disabled={action.pending}
-            aria-label={`Kto bierze: ${item.title}`}
-            onChange={(event) => {
-              if (event.target.value !== "") set(event.target.value, take);
-            }}
-            className={input}>
-            <option value="">{canEdit ? "Przypisz osobę…" : "Bierze moje dziecko…"}</option>
-            {others.map((ref) => (
-              <option key={ref} value={ref}>
-                {nameOf(ref)}
-              </option>
+    <tr className={row}>
+      <ItemCells item={item} weights={weights} />
+      <td className="py-1.5 pr-3 align-top">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ShareBadge item={item} share={share} />
+          {share.carriers.map((carrier) => {
+            const mayChange = allowed.includes(carrier.travelerRef);
+            return (
+              <span key={carrier.travelerRef} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800">
+                {nameOf(carrier.travelerRef)}
+                {tentative.has(carrier.travelerRef) && <span className="text-amber-700 dark:text-amber-400">(waha się)</span>}
+                {split &&
+                  (mayChange ? (
+                    <input
+                      key={carrier.quantity}
+                      defaultValue={number(carrier.quantity)}
+                      inputMode="decimal"
+                      aria-label={`Ile bierze ${nameOf(carrier.travelerRef)}`}
+                      className="w-12 rounded border border-zinc-300 bg-transparent px-1 text-center dark:border-zinc-600"
+                      onBlur={(event) => {
+                        const next = Number(event.target.value.replace(",", "."));
+                        if (Number.isFinite(next) && next > 0 && next !== carrier.quantity) set(carrier.travelerRef, next);
+                      }}
+                    />
+                  ) : (
+                    <span>× {number(carrier.quantity)}</span>
+                  ))}
+                {split && item.unit && <span>{item.unit}</span>}
+                {mayChange && (
+                  <button type="button" disabled={action.pending} onClick={() => set(carrier.travelerRef, 0)} title="Nie bierze" aria-label={`${nameOf(carrier.travelerRef)} nie bierze`} className="text-zinc-500 hover:text-red-600 disabled:opacity-50">
+                    ×
+                  </button>
+                )}
+              </span>
+            );
+          })}
+          {me !== undefined &&
+            !carrying.has(me) &&
+            // Komplet: bez wyraźnego przycisku, żeby nie zachęcać do dublowania.
+            (share.left > 0 ? (
+              <button type="button" disabled={action.pending} onClick={() => set(me, take)} className="btn-primary btn-sm">
+                Biorę
+              </button>
+            ) : (
+              <button type="button" disabled={action.pending} onClick={() => set(me, take)} className={small}>
+                też biorę
+              </button>
             ))}
-          </select>
-        )}
-      </div>
-      <Status state={action.state.error ? action.state : {}} />
-    </li>
+          {others.length > 0 && (
+            <select
+              value=""
+              disabled={action.pending}
+              aria-label={`Kto bierze: ${item.title}`}
+              onChange={(event) => {
+                if (event.target.value !== "") set(event.target.value, take);
+              }}
+              className={input}>
+              <option value="">{canEdit ? "Przypisz osobę…" : "Bierze moje dziecko…"}</option>
+              {others.map((ref) => (
+                <option key={ref} value={ref}>
+                  {nameOf(ref)}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <Status state={action.state.error ? action.state : {}} />
+      </td>
+      {canEdit && <ItemActions tripId={tripId} item={item} itemId={itemId} onEdit={onEdit} />}
+    </tr>
   );
 }
 
