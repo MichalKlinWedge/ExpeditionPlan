@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { TripDocument } from "@expeditionplan/core";
+import { itemsOfBooking, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -52,6 +52,9 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
   const emergency = doc.contacts.filter((contact) => contact.role === "emergency");
   const others = doc.contacts.filter((contact) => contact.role !== "emergency");
   const bookings = planChoices(doc).bookings;
+  const bookingItems = Object.fromEntries(
+    [...new Set(doc.contacts.flatMap((contact) => (contact.bookingRef ? [contact.bookingRef] : [])))].map((ref) => [ref, itemsOfBooking(doc, ref).map((item) => ({ ref: item.ref, title: item.title }))]),
+  );
   const bookingHrefs = Object.fromEntries(doc.bookings.flatMap((booking) => (bookingHref(id, booking) === null ? [] : [[booking.ref, bookingHref(id, booking)!]])));
 
   return (
@@ -71,7 +74,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
           <h2 className="text-lg font-semibold">Numery alarmowe</h2>
           {/* W edycji — lista z „edytuj / usuń” i dodawaniem; w podglądzie — duże numery do wybrania jednym dotknięciem. */}
           {canEdit ? (
-            <Contacts tripId={id} contacts={emergency} bookings={bookings} canEdit defaultRole="emergency" addLabel="+ Dodaj numer alarmowy" bookingHrefs={bookingHrefs} />
+            <Contacts tripId={id} contacts={emergency} bookings={bookings} canEdit defaultRole="emergency" addLabel="+ Dodaj numer alarmowy" bookingHrefs={bookingHrefs} bookingItems={bookingItems} />
           ) : (
             <ul className="flex flex-wrap gap-3">
               {emergency
@@ -91,7 +94,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
 
       <section className="flex flex-col gap-3 card p-4">
         <h2 className="text-lg font-semibold">Gospodarze, wypożyczalnie i inne ({others.length})</h2>
-        <Contacts tripId={id} contacts={others} bookings={bookings} canEdit={canEdit} bookingHrefs={bookingHrefs} />
+        <Contacts tripId={id} contacts={others} bookings={bookings} canEdit={canEdit} bookingHrefs={bookingHrefs} bookingItems={bookingItems} />
       </section>
       <HashFocus />
     </>

@@ -1063,6 +1063,7 @@ export function Contacts({
   defaultRole,
   addLabel = "+ Dodaj kontakt",
   bookingHrefs = {},
+  bookingItems = {},
 }: {
   tripId: string;
   contacts: Contact[];
@@ -1072,6 +1073,8 @@ export function Contacts({
   addLabel?: string;
   /** Ref rezerwacji → jej wiersz na „Rezerwacje i budżet”; bez wpisu sama nazwa. */
   bookingHrefs?: Record<string, string>;
+  /** Ref rezerwacji → punkty planu, które do niej prowadzą (`itemsOfBooking`). */
+  bookingItems?: Record<string, { ref: string; title: string }[]>;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const remove = useAction();
@@ -1120,6 +1123,19 @@ export function Contacts({
                   <button disabled={remove.pending} onClick={() => remove.run(() => removeContact(tripId, contact.ref), `Usunąć kontakt „${contact.name}”?`)} className={danger}>
                     usuń
                   </button>
+                </span>
+              )}
+              {contact.bookingRef && (bookingItems[contact.bookingRef] ?? []).length > 0 && (
+                <span className="basis-full text-xs text-zinc-500">
+                  w planie:{" "}
+                  {bookingItems[contact.bookingRef]!.map((item, index) => (
+                    <Fragment key={item.ref}>
+                      {index > 0 && ", "}
+                      <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="underline hover:text-sea">
+                        {item.title}
+                      </Link>
+                    </Fragment>
+                  ))}
                 </span>
               )}
             </li>
