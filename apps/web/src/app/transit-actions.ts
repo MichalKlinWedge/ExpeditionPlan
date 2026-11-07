@@ -33,9 +33,10 @@ async function osmLine(doc: TripDocument, itemRef: string): Promise<{ doc: TripD
   try {
     const routes = await fetchOsmRoutes(request.refs, bboxAround([request.start, request.end]), { url: process.env.OVERPASS_URL || OVERPASS_URL });
     const drawn = applyTransitShape(doc, itemRef, routes)!;
-    if (drawn.shape === null) return { doc: drawn.doc, note: "OpenStreetMap nie ma tych linii albo przystanków, więc mapa łączy miejsca prostą." };
+    const missed = drawn.misses.map((miss) => `${miss.line} (${miss.why === "line" ? "brak tej linii w okolicy" : "nie znalazłem przystanków wsiadania i wysiadania"})`).join(", ");
+    if (drawn.shape === null) return { doc: drawn.doc, note: `Nie narysowałem linii z OpenStreetMap: ${missed}. Mapa łączy miejsca prostą.` };
     const { matched, total } = drawn.shape;
-    return { doc: drawn.doc, note: matched === total ? "Linia z OpenStreetMap jest na mapie dnia." : `Na mapie dnia jest linia z OpenStreetMap dla ${matched} z ${total} odcinków, resztę łączy prosta.` };
+    return { doc: drawn.doc, note: matched === total ? "Linia z OpenStreetMap jest na mapie dnia." : `Na mapie dnia jest linia z OpenStreetMap dla ${matched} z ${total} odcinków, resztę łączy prosta: ${missed}.` };
   } catch (e) {
     return { error: `Linii z OpenStreetMap nie pobrano: ${e instanceof Error ? e.message : String(e)}` };
   }
@@ -87,8 +88,8 @@ export async function saveTransit(tripId: string, itemRef: string, input: Transi
   if ("error" in loaded) return { error: loaded.error };
   const edit = applyTransitDraft(loaded.doc, itemRef, draft.data, picked.data);
   if (edit === null) return { error: "Tego punktu już nie ma albo nie jest przejazdem komunikacją — odśwież stronę." };
-  // Nowe odcinki: od razu linia z OpenStreetMap; jej brak nie blokuje zapisu.
-  const line = picked.data.includes("segments") ? await osmLine(edit.doc, itemRef) : null;
+  // Nowe odcinki albo przejazd jeszcze bez linii: od razu linia z OpenStreetMap; jej brak nie blokuje zapisu.
+  const line = picked.data.includes("segments") || edit.item.leg?.geometry === undefined ? await osmLine(edit.doc, itemRef) : null;
   const checked = TripDocument.safeParse(line !== null && "doc" in line ? line.doc : edit.doc);
   if (!checked.success) return { error: validationError(checked.error) };
   try {

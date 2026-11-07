@@ -20,7 +20,7 @@ export function transitPrompt(text: string, trip: { title: string; from?: string
     `Przejazd w planie: „${trip.title}”${trip.from ? `, skąd: ${trip.from}` : ''}${trip.to ? `, dokąd: ${trip.to}` : ''}.`,
     'Jeśli w tekście jest kilka wariantów połączenia, weź pierwszy pasujący do tego przejazdu, a drugi opisz krótko w alternative. Odczytaj:',
     '- isRoute: czy tekst w ogóle opisuje połączenie komunikacją publiczną;',
-    '- segments: odcinki po kolei; mode to walk, bus, tram, metro, train, ferry albo cable_car; line to numer albo nazwa linii (np. „L5”, „V17”, „R2 Nord”, „IC 3504”); from i to to przystanki; durationMin to czas odcinka; dojście pieszo na początku, przy przesiadce i na końcu jako walk;',
+    '- segments: odcinki po kolei; mode to walk, bus, tram, metro, train, ferry albo cable_car; line to numer albo nazwa linii (np. „L5”, „V17”, „R2 Nord”, „IC 3504”); from i to to przystanki, przepisane dokładnie jak w tekście, bez tłumaczenia (np. „Aeroport T2”, nie „Lotnisko T2”); durationMin to czas odcinka; dojście pieszo na początku, przy przesiadce i na końcu jako walk;',
     '- durationMin: czas całego przejazdu od wyjścia do dotarcia, w minutach;',
     '- frequencyMin: co ile minut kursuje główna linia, tylko jeśli tekst to podaje;',
     '- departures: godziny odjazdów z pierwszego przystanku jako HH:MM, tylko te, które są w tekście, po kolei;',

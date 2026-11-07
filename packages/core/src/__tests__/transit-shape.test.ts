@@ -38,21 +38,28 @@ describe('linia komunikacji z OpenStreetMap', () => {
   });
 
   it('kawałek między przystankami, z relacji jadącej we właściwą stronę', () => {
-    const line = segmentLine([west, east], { mode: 'metro', line: 'L3', from: 'Paral·lel', to: 'Palau Reial' })!;
+    const line = segmentLine([west, east], { mode: 'metro', line: 'L3', from: 'Paral·lel', to: 'Palau Reial' }) as LngLat[];
     expect(line[0]).toEqual([0.01, 0.0005]);
     expect(line.at(-1)).toEqual([0.03, 0.0005]);
     expect(line.slice(1, -1)).toEqual([[0.01, 0], [0.015, 0], [0.02, 0], [0.03, 0]]);
   });
 
-  it('inny środek, inna linia albo nieznany przystanek — brak', () => {
-    expect(segmentLine([east], { mode: 'bus', line: 'L3', from: 'Paral·lel', to: 'Espanya' })).toBeNull();
-    expect(segmentLine([east], { mode: 'metro', line: 'L5', from: 'Paral·lel', to: 'Espanya' })).toBeNull();
-    expect(segmentLine([east], { mode: 'metro', line: 'L3', from: 'Paral·lel', to: 'Sagrada Família' })).toBeNull();
+  it('inny środek, inna linia albo nieznany przystanek — brak, z powodem', () => {
+    expect(segmentLine([east], { mode: 'bus', line: 'L3', from: 'Paral·lel', to: 'Espanya' })).toBe('line');
+    expect(segmentLine([east], { mode: 'metro', line: 'L5', from: 'Paral·lel', to: 'Espanya' })).toBe('line');
+    expect(segmentLine([east], { mode: 'metro', line: 'L3', from: 'Paral·lel', to: 'Sagrada Família' })).toBe('stops');
   });
 
   it('bez „skąd” wsiada na przystanku najbliżej poprzedniego punktu', () => {
-    const line = segmentLine([east], { mode: 'metro', line: 'L3', to: 'Espanya' }, [0.0101, 0.001])!;
+    const line = segmentLine([east], { mode: 'metro', line: 'L3', to: 'Espanya' }, [0.0101, 0.001]) as LngLat[];
     expect(line[0]).toEqual([0.01, 0.0005]);
+  });
+
+  it('przetłumaczona nazwa przystanku: najbliższy przystanek przy znanym miejscu', () => {
+    const line = segmentLine([east], { mode: 'metro', line: 'L3', from: 'Stacja Drassanes', to: 'Pałac Królewski' }, [0.0003, 0.0008], [0.0302, 0.001]) as LngLat[];
+    expect(line[0]).toEqual([0, 0.0005]);
+    expect(line.at(-1)).toEqual([0.03, 0.0005]);
+    expect(segmentLine([east], { mode: 'metro', line: 'L3', from: 'Stacja Drassanes', to: 'Pałac Królewski' }, [0.0003, 0.0008], [0.05, 0.001])).toBe('stops');
   });
 
   it('cały przejazd: start, linia z OSM, koniec; bez trafienia — null', () => {
@@ -63,12 +70,14 @@ describe('linia komunikacji z OpenStreetMap', () => {
       { mode: 'metro' as const, line: 'L3', from: 'Drassanes', to: 'Palau Reial' },
       { mode: 'bus' as const, line: 'H12', from: 'Palau Reial', to: 'Gornal' },
     ];
-    const shape = transitShape(segments, start, end, [east])!;
+    const { shape: found, misses } = transitShape(segments, start, end, [east]);
+    const shape = found!;
+    expect(misses).toEqual([{ line: 'H12', why: 'line' }]);
     expect(shape).toMatchObject({ matched: 1, total: 2 });
     const points = decodePolyline(shape.geometry);
     expect(points[0]).toEqual(start);
     expect(points.at(-1)).toEqual(end);
-    expect(transitShape(segments.slice(2), start, end, [east])).toBeNull();
+    expect(transitShape(segments.slice(2), start, end, [east]).shape).toBeNull();
     expect(transitRefs(segments)).toEqual(['L3', 'H12']);
   });
 });

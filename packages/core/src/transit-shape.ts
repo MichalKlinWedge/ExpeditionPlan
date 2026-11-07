@@ -93,27 +93,49 @@ function nearestIndex(line: readonly LngLat[], point: LngLat, maxM: number): num
 
 /** Przystanek nie dalej niż tyle od linii relacji (peron obok torów). */
 const STOP_ON_LINE_M = 400;
-/** Przystanek bez nazwy w odcinku: najbliższy temu miejscu, jeśli jest blisko. */
+/** Przystanek, którego nazwy OSM nie zna (tłumaczenie, inny zapis): najbliższy znanemu miejscu, jeśli jest blisko. */
 const NEAREST_STOP_M = 800;
+
+/** Indeks przystanku po nazwie, a bez trafienia najbliższy punktowi `near`; tylko w zakresie `[min, max)`. */
+function stopIndex(stops: OsmRoute['stops'], name: string | undefined, near: LngLat | undefined, min: number, max: number): number {
+  if (name !== undefined) {
+    const named = stops.findIndex((stop, index) => index >= min && index < max && sameStop(stop.name, name));
+    if (named !== -1) return named;
+  }
+  if (near === undefined) return -1;
+  let best = -1;
+  let bestM = NEAREST_STOP_M;
+  stops.forEach((stop, index) => {
+    if (index < min || index >= max) return;
+    const m = distanceM(stop.at, near);
+    if (m <= bestM) {
+      best = index;
+      bestM = m;
+    }
+  });
+  return best;
+}
+
+/** Dlaczego odcinek nie ma linii: OSM nie zna linii w okolicy albo jej przystanków. */
+export type SegmentMiss = 'line' | 'stops';
 
 /**
  * Kawałek linii jednego odcinka: relacja o tym numerze i środku, z oboma przystankami w dobrej
- * kolejności (relacje bywają osobne dla każdego kierunku). `near` = gdzie jesteśmy, gdy odcinek nie
- * podaje „skąd”. `null` = OSM nie ma tej linii albo przystanków.
+ * kolejności (relacje bywają osobne dla każdego kierunku). Przystanek szukany po nazwie, a gdy nazwa
+ * nie pasuje (np. przetłumaczona przez AI) — najbliższy znanemu miejscu: `near` przy wsiadaniu
+ * (start albo koniec poprzedniego odcinka), `nearTo` przy wysiadaniu (cel przejazdu).
  */
-export function segmentLine(routes: readonly OsmRoute[], segment: Pick<Segment, 'mode' | 'line' | 'from' | 'to'>, near?: LngLat): LngLat[] | null {
-  if (segment.line === undefined || segment.to === undefined) return null;
+export function segmentLine(routes: readonly OsmRoute[], segment: Pick<Segment, 'mode' | 'line' | 'from' | 'to'>, near?: LngLat, nearTo?: LngLat): LngLat[] | SegmentMiss {
+  if (segment.line === undefined) return 'line';
   const types = ROUTE_TYPES[segment.mode] ?? [];
   let best: { line: LngLat[]; m: number } | null = null;
+  let known = false;
   for (const route of routes) {
     if (!types.includes(route.route) || !sameLine(route.ref, segment.line)) continue;
-    const toIndex = route.stops.findIndex((stop) => sameStop(stop.name, segment.to!));
+    known = true;
+    const toIndex = stopIndex(route.stops, segment.to, nearTo, 1, route.stops.length);
     if (toIndex === -1) continue;
-    let fromIndex = segment.from === undefined ? -1 : route.stops.findIndex((stop, index) => index < toIndex && sameStop(stop.name, segment.from!));
-    if (fromIndex === -1 && segment.from === undefined && near !== undefined) {
-      const candidates = route.stops.slice(0, toIndex).map((stop, index) => ({ index, m: distanceM(stop.at, near) })).filter((each) => each.m <= NEAREST_STOP_M);
-      fromIndex = candidates.sort((a, b) => a.m - b.m)[0]?.index ?? -1;
-    }
+    const fromIndex = stopIndex(route.stops, segment.from, near, 0, toIndex);
     if (fromIndex === -1) continue;
     const line = chainWays(route.ways);
     const a = nearestIndex(line, route.stops[fromIndex]!.at, STOP_ON_LINE_M);
@@ -125,29 +147,31 @@ export function segmentLine(routes: readonly OsmRoute[], segment: Pick<Segment, 
     const m = cut.slice(1).reduce((sum, point, index) => sum + distanceM(cut[index]!, point), 0);
     if (best === null || m < best.m) best = { line: cut, m };
   }
-  return best?.line ?? null;
+  return best?.line ?? (known ? 'stops' : 'line');
 }
 
 export type TransitShape = { geometry: string; matched: number; total: number };
+/** Odcinek bez linii z OSM, do komunikatu („R2 Nord: nie ma przystanków”). */
+export type TransitMiss = { line: string; why: SegmentMiss };
 
 /**
  * Linia całego przejazdu: od `start` przez kawałki linii z OSM do `end`. Dojścia pieszo i odcinki,
- * których OSM nie zna, łączą sąsiednie punkty prostą. `null` = żaden odcinek nie dał się znaleźć —
- * wtedy mapa zostaje przy prostej, jak dotąd.
+ * których OSM nie zna, łączą sąsiednie punkty prostą. `shape: null` = żaden odcinek nie dał się
+ * znaleźć — wtedy mapa zostaje przy prostej, jak dotąd.
  */
-export function transitShape(segments: readonly Segment[], start: LngLat, end: LngLat, routes: readonly OsmRoute[]): TransitShape | null {
+export function transitShape(segments: readonly Segment[], start: LngLat, end: LngLat, routes: readonly OsmRoute[]): { shape: TransitShape | null; misses: TransitMiss[] } {
   const points: LngLat[] = [start];
   const rides = segments.filter((segment) => segment.mode !== 'walk');
-  let matched = 0;
-  for (const segment of rides) {
-    const line = segmentLine(routes, segment, points.at(-1));
-    if (line === null) continue;
-    matched += 1;
-    points.push(...line);
-  }
-  if (matched === 0) return null;
+  const misses: TransitMiss[] = [];
+  rides.forEach((segment, index) => {
+    const line = segmentLine(routes, segment, points.at(-1), index === rides.length - 1 ? end : undefined);
+    if (typeof line === 'string') misses.push({ line: segment.line ?? segment.mode, why: line });
+    else points.push(...line);
+  });
+  const matched = rides.length - misses.length;
+  if (matched === 0) return { shape: null, misses };
   points.push(end);
-  return { geometry: encodePolyline(simplifyPath(points, 8)), matched, total: rides.length };
+  return { shape: { geometry: encodePolyline(simplifyPath(points, 8)), matched, total: rides.length }, misses };
 }
 
 /** Linie do zapytania o relacje: numery odcinków, które nie są pieszo. */
@@ -164,12 +188,12 @@ export function transitShapeRequest(doc: TripDocument, item: Item): { refs: stri
 }
 
 /** Zapisuje linię z OSM w przejeździe. `null` = nie ma czego rysować; `shape: null` = OSM nie zna żadnej linii, stara linia znika. */
-export function applyTransitShape(doc: TripDocument, itemRef: string, routes: readonly OsmRoute[]): { doc: TripDocument; item: Item; shape: TransitShape | null } | null {
+export function applyTransitShape(doc: TripDocument, itemRef: string, routes: readonly OsmRoute[]): { doc: TripDocument; item: Item; shape: TransitShape | null; misses: TransitMiss[] } | null {
   const item = doc.items.find((each) => each.ref === itemRef);
   const request = item === undefined ? null : transitShapeRequest(doc, item);
   if (item === undefined || request === null || item.leg === undefined) return null;
-  const shape = transitShape(item.leg.segments ?? [], request.start, request.end, routes);
+  const { shape, misses } = transitShape(item.leg.segments ?? [], request.start, request.end, routes);
   const { geometry: _geometry, ...leg } = item.leg;
   const next: Item = { ...item, leg: shape === null ? leg : { ...leg, geometry: shape.geometry } };
-  return { doc: { ...doc, items: doc.items.map((each) => (each.ref === itemRef ? next : each)) }, item: next, shape };
+  return { doc: { ...doc, items: doc.items.map((each) => (each.ref === itemRef ? next : each)) }, item: next, shape, misses };
 }
