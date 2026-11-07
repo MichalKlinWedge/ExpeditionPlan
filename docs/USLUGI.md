@@ -157,6 +157,13 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - https://cloud.google.com/terms/maps-platform/eea/maps-service-terms (część B, §15, §16)
 - https://cloud.google.com/terms/maps-platform/eea-places-api-permitted-uses
 
+### (c) Linki do tras (sprawdzone 7.11.2026)
+- **Maps URLs** (link `https://www.google.com/maps/dir/?api=1&origin=…&destination=…&waypoints=a|b`, do 9 punktów pośrednich): bez klucza API i bez opłat. Tak budujemy linki „Trasa w Mapach Google” (`drivingRouteUrl`, `transitRouteUrl`), nic nie zapisując.
+- **Własny link użytkownika** (`leg.routeUrl`, zwykle skrócony `maps.app.goo.gl/…`): po „Przelicz trasę” serwer rozwija go jednym zapytaniem HEAD, czytając tylko nagłówek `Location` przekierowania, bez otwierania strony (`planner/src/google-link.ts`). Z rozwiniętego adresu bierzemy tylko współrzędne, które wskazał sam użytkownik: przystanki i przeciągnięte punkty trasy (`core/google-route.ts`). Trasę przez nie liczy openrouteservice. Z Google nie zapisujemy nazw, adresów, linii trasy ani czasu.
+- Warunki Map Google (Additional Terms, ost. zmiana 27.01.2026), §2: nie wolno kopiować treści, masowo jej pobierać ani budować z niej zbioru danych map. Nie ma tam zakazu odczytu przekierowania z linku, który wkleił użytkownik, a my nie bierzemy treści Google. ToS Maps Platform §3.2.3 (zakaz scrapingu i cache) dotyczy treści uzyskanej przez usługi Platformy (API), z których tu nie korzystamy.
+- Format `/maps/dir/…/data=…` po rozwinięciu **nie jest udokumentowany**: czytamy go ostrożnie (współrzędne w ścieżce i bloki `!3m…!1m2!1d<lng>!2d<lat>`), a niezrozumiały link liczy się jak bez punktów pośrednich.
+- Źródła: https://developers.google.com/maps/documentation/urls/get-started, https://www.google.com/help/terms_maps/
+
 ---
 
 ## 4. Miejsca i geokodowanie

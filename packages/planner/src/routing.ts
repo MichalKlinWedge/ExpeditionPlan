@@ -23,8 +23,8 @@ export type LatLng = { lat: number; lng: number };
 export type RouteProfile = 'driving-car' | 'foot-walking' | 'foot-hiking' | 'cycling-regular';
 /** `geometry` = polilinia z ORS (format Google, precyzja 5), pełna — upraszcza ją `routeLegs`. */
 export type Route = { distanceKm: number; durationMin: number; geometry?: string };
-/** `null` = ORS nie zna trasy (punkt poza drogami, morze między). */
-export type RouteLookup = (from: LatLng, to: LatLng, profile: RouteProfile) => Promise<Route | null>;
+/** `null` = ORS nie zna trasy (punkt poza drogami, morze między). `via` = punkty pośrednie po kolei (z linku użytkownika). */
+export type RouteLookup = (from: LatLng, to: LatLng, profile: RouteProfile, via?: readonly LatLng[]) => Promise<Route | null>;
 
 export const PROFILE: Partial<Record<LegMode, RouteProfile>> = {
   car: 'driving-car',
@@ -86,7 +86,8 @@ export async function locateLegEnds(doc: Doc, item: Item, lookup: Lookup, countr
 const sameSpot = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lng - b.lng) < 1e-4;
 
 /** Przejazdy dokumentu przeliczone trasami ORS; `refs` = tylko te punkty (domyślnie wszystkie). */
-export async function routeLegs(doc: Doc, lookup: RouteLookup, refs?: ReadonlySet<string>): Promise<{ doc: Doc; results: RouteResult[] }> {
+/** `vias` — punkty pośrednie przejazdu (ref → punkty po kolei), np. z jego linku Google (`googleRouteVias`). */
+export async function routeLegs(doc: Doc, lookup: RouteLookup, refs?: ReadonlySet<string>, vias: Readonly<Record<string, readonly LatLng[]>> = {}): Promise<{ doc: Doc; results: RouteResult[] }> {
   const results: RouteResult[] = [];
   const changed = new Map<string, Item>();
   let used = 0;
@@ -108,7 +109,8 @@ export async function routeLegs(doc: Doc, lookup: RouteLookup, refs?: ReadonlySe
     used += 1;
     let route: Route | null;
     try {
-      route = await lookup(from, to, profile);
+      const via = vias[item.ref] ?? [];
+      route = await (via.length > 0 ? lookup(from, to, profile, via) : lookup(from, to, profile));
     } catch (error) {
       results.push({ ...base, status: 'failed', error: error instanceof Error ? error.message : String(error) });
       continue;
@@ -166,14 +168,14 @@ export function orsRoute(apiKey: string, fetchImpl: typeof fetch = fetch): Route
     queue = turn;
     return turn;
   };
-  return async (from, to, profile) => {
+  return async (from, to, profile, via = []) => {
     await throttle();
     // Domyślnie ORS szuka drogi 350 m od punktu — parking pod szczytem, szlak czy plaża bywają dalej.
     const snap = profile === 'driving-car' ? SNAP_CAR_M : SNAP_FOOT_M;
     const response = await fetchImpl(`${ENDPOINT}/${profile}`, {
       method: 'POST',
       headers: { Authorization: apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ coordinates: [[from.lng, from.lat], [to.lng, to.lat]], radiuses: [snap, snap], instructions: false }),
+      body: JSON.stringify({ coordinates: [from, ...via, to].map((point) => [point.lng, point.lat]), radiuses: [from, ...via, to].map(() => snap), instructions: false }),
     });
     // 404 = punkt poza siecią dróg (np. szczyt, środek jeziora) — trasy nie ma, to nie awaria.
     if (response.status === 404) return null;

@@ -37,7 +37,8 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
     if (edit === null) return setState({ ok: "Bez zmian." });
     setState({});
     onEdit(edit, () => {
-      if (edit.placesChanged && routable) recalculate();
+      // Nowy link Google może mieć punkty pośrednie — trasa liczy się od nowa.
+      if ((edit.placesChanged || link !== (item.leg?.routeUrl ?? "")) && routable) recalculate();
       else setState({ ok: "Zapisano." });
     });
   };
@@ -104,7 +105,7 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
           : wklej tam połączenie z Map Google, Jakdojade albo ze strony przewoźnika.
         </p>
       ) : (
-        <p className="text-xs text-zinc-500">Własny link tylko otwiera trasę: długość i czas przejazdu nadal liczymy ze „skąd” i „dokąd”.</p>
+        <p className="text-xs text-zinc-500">Długość, czas i linię na mapie liczymy ze „skąd” i „dokąd”. Link do Map Google z punktami pośrednimi (przeciągnięta trasa, przystanki) prowadzi trasę przez nie po „Przelicz trasę”.</p>
       )}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={save} disabled={busy} className="btn-primary btn-sm">

@@ -1,8 +1,8 @@
 "use server";
 
-import { Currency, formatMinutes, IsoDate, parseCoordinates, PLANNING, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
+import { Currency, formatMinutes, IsoDate, parseCoordinates, PLANNING, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { geoapifyLookup, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
+import { geoapifyLookup, googleLinkVias, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, dbErrorMessage, importTrip, lockedRefs, type PullPayload, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { refresh } from "next/cache";
@@ -516,7 +516,9 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
     places: doc.places.map((place) => placed.get(place.ref) ?? place),
     items: doc.items.map((item) => (item.ref === itemRef && item.leg !== undefined ? { ...item, leg: { ...item.leg, distanceKm: undefined } } : item)),
   };
-  const { doc: routed, results } = await routeLegs(open, route, new Set([itemRef]));
+  // Własny link Google do trasy: jego punkty pośrednie (przeciągnięta trasa, przystanki) prowadzą trasę z openrouteservice.
+  const link = await googleLinkVias(target?.leg?.routeUrl);
+  const { doc: routed, results } = await routeLegs(open, route, new Set([itemRef]), link.vias.length > 0 ? { [itemRef]: link.vias } : {});
   const result = results[0];
   if (result?.status !== "routed") {
     const why: Record<string, string> = {
@@ -542,7 +544,13 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
   refresh();
   const minutes = result.after!.durationMin;
   const foundAs = located.map((each) => `„${each.place.name}” to ${each.foundAs}`).join(", ");
-  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${formatMinutes(minutes)}. Plan dnia się zmienił.${foundAs === "" ? "" : ` Znalezione po nazwie: ${foundAs}. Jeśli to inne miejsce, przypnij je na stronie „Miejsca”.`}` };
+  const viaNote = {
+    vias: ` Trasa idzie przez ${link.vias.length} ${pluralForm(link.vias.length, ["punkt pośredni", "punkty pośrednie", "punktów pośrednich"])} z Twojego linku Google.`,
+    none: " Twój link Google ma tylko start i cel, bez punktów pośrednich, więc drogę wybrał openrouteservice. Żeby trasa szła Twoją drogą, przeciągnij ją w Mapach Google i wklej nowy link.",
+    unresolved: " Nie udało się rozwinąć Twojego linku Google, więc trasa idzie od „skąd” do „dokąd”.",
+    not_google: "",
+  }[link.status];
+  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${formatMinutes(minutes)}. Plan dnia się zmienił.${viaNote}${foundAs === "" ? "" : ` Znalezione po nazwie: ${foundAs}. Jeśli to inne miejsce, przypnij je na stronie „Miejsca”.`}` };
 }
 
 /**
