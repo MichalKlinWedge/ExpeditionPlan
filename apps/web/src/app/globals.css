@@ -39,6 +39,8 @@
   --btn-bg-hover: color-mix(in srgb, var(--color-sea) 30%, var(--surface));
   --btn-line: color-mix(in srgb, var(--color-sea) 50%, var(--surface));
   --btn-danger: #b42318;
+  /* Przejście na inną stronę: jasna pigułka z morskim tekstem (przycisk funkcji jest wypełniony). */
+  --nav-fg: var(--color-sea);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,6 +53,7 @@
     --btn-bg-hover: color-mix(in srgb, var(--color-sea) 60%, var(--surface));
     --btn-line: var(--color-sea);
     --btn-danger: #fda29b;
+    --nav-fg: #9fd8cf;
   }
 }
 
@@ -157,6 +160,22 @@ h2 {
     border-color: var(--btn-danger);
     background: color-mix(in srgb, var(--btn-danger) 18%, var(--surface));
   }
+  /* Przycisk przejścia (link na inną stronę, `<a>`) wygląda inaczej niż przycisk funkcji (`<button>`):
+     pigułka z jasnym tłem i morskim tekstem, jak „← powrót”. Pobranie pliku (`download`) to funkcja. */
+  a.btn-mini:not([download]),
+  a.btn-secondary:not([download]) {
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--nav-fg);
+    border-color: var(--btn-line);
+    box-shadow: none;
+  }
+  a.btn-mini:not([download]):hover,
+  a.btn-secondary:not([download]):hover {
+    background: var(--color-sea);
+    border-color: var(--color-sea);
+    color: #fff;
+  }
   .btn-mini:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -215,8 +234,8 @@ h2 {
     font-size: 0.8rem;
     font-weight: 600;
     line-height: 1.25rem;
-    background: var(--btn-bg);
-    color: var(--foreground);
+    background: var(--surface);
+    color: var(--nav-fg);
     border: 1.5px solid var(--btn-line);
     transition:
       background-color 120ms,

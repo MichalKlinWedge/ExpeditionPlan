@@ -188,11 +188,11 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       </nav>
 
       {/* Eksport to plik (route handler), nie strona — zwykłe <a>. */}
-      <a href={`/trips/${id}/export`} className="btn-secondary btn-sm self-start">
+      <a href={`/trips/${id}/export`} download className="btn-secondary btn-sm self-start">
         <DownloadIcon className="size-4" />
         Pobierz kopię całego planu (JSON)
       </a>
-      <a href={`/trips/${id}/calendar`} className="btn-secondary btn-sm self-start">
+      <a href={`/trips/${id}/calendar`} download className="btn-secondary btn-sm self-start">
         <DownloadIcon className="size-4" />
         Dodaj plan do kalendarza (.ics — Google Calendar, telefon)
       </a>
