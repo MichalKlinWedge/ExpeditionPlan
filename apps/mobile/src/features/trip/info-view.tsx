@@ -5,6 +5,7 @@ import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { PlacePin } from '@/features/plan/place-pin';
 import { DocumentsView } from '@/features/trip/documents-view';
 
 /**
@@ -47,6 +48,12 @@ export function InfoView({
   const rest = notes.filter((note) => !important.includes(note));
   const topics = [...new Set(rest.map((note) => note.topic ?? 'other'))].sort((a, b) => Object.keys(NOTE_TOPIC).indexOf(a) - Object.keys(NOTE_TOPIC).indexOf(b));
   const bookingTitle = (ref: string | undefined) => (ref === undefined ? undefined : doc.bookings.find((booking) => booking.ref === ref)?.title);
+  // Miejsce kontaktu = miejsce jego rezerwacji (nocleg), a bez niego miejsce pierwszego punktu tej rezerwacji.
+  const contactPlace = (bookingRef: string | undefined) => {
+    if (bookingRef === undefined) return undefined;
+    const ref = doc.bookings.find((booking) => booking.ref === bookingRef)?.startPlaceRef ?? itemsOfBooking(doc, bookingRef).find((item) => item.placeRef !== undefined)?.placeRef;
+    return ref === undefined ? undefined : doc.places.find((place) => place.ref === ref);
+  };
 
   // Dokumenty i kody na górze — po nie sięga się przy bramce, w pośpiechu.
   const vault = tripId ? <DocumentsView trip={trip} tripId={tripId} online={signedIn} /> : null;
@@ -80,46 +87,50 @@ export function InfoView({
           {others.length > 0 && (
             <ThemedView type="backgroundElement" style={styles.card}>
               <ThemedText type="smallBold">Kontakty</ThemedText>
-              {others.map((contact) => (
-                <View key={contact.ref} style={styles.block}>
-                  <View style={styles.row}>
-                    <ThemedText style={styles.grow}>
-                      {contact.name}
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {' '}
-                        · {CONTACT_ROLE[contact.role] ?? contact.role}
-                        {!onBooking && bookingTitle(contact.bookingRef) ? ` · ${bookingTitle(contact.bookingRef)}` : ''}
+              {others.map((contact) => {
+                const place = contactPlace(contact.bookingRef);
+                return (
+                  <View key={contact.ref} style={styles.block}>
+                    <View style={styles.row}>
+                      <ThemedText style={styles.grow}>
+                        {contact.name}
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {' '}
+                          · {CONTACT_ROLE[contact.role] ?? contact.role}
+                          {!onBooking && bookingTitle(contact.bookingRef) ? ` · ${bookingTitle(contact.bookingRef)}` : ''}
+                        </ThemedText>
                       </ThemedText>
-                    </ThemedText>
-                    {contact.phone && (
-                      <Pressable onPress={() => call(contact.phone!)} hitSlop={6}>
-                        <ThemedText type="linkPrimary">{contact.phone}</ThemedText>
-                      </Pressable>
-                    )}
-                  </View>
-                  {onBooking && contact.bookingRef && bookingTitle(contact.bookingRef) ? (
-                    <Pressable onPress={() => onBooking(contact.bookingRef!)} hitSlop={6}>
-                      <ThemedText type="linkPrimary">🎫 {bookingTitle(contact.bookingRef)} ›</ThemedText>
-                    </Pressable>
-                  ) : null}
-                  {onOpenItem && contact.bookingRef ? (
-                    <View style={styles.items}>
-                      {itemsOfBooking(doc, contact.bookingRef).map((item) => (
-                        <Pressable key={item.ref} onPress={() => onOpenItem(item.ref)} hitSlop={4}>
-                          <ThemedText type="small" themeColor="accent">
-                            {item.title} ›
-                          </ThemedText>
+                      {contact.phone && (
+                        <Pressable onPress={() => call(contact.phone!)} hitSlop={6}>
+                          <ThemedText type="linkPrimary">{contact.phone}</ThemedText>
                         </Pressable>
-                      ))}
+                      )}
+                      {place && <PlacePin place={place} />}
                     </View>
-                  ) : null}
-                  {contact.notes ? (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {contact.notes}
-                    </ThemedText>
-                  ) : null}
-                </View>
-              ))}
+                    {onBooking && contact.bookingRef && bookingTitle(contact.bookingRef) ? (
+                      <Pressable onPress={() => onBooking(contact.bookingRef!)} hitSlop={6}>
+                        <ThemedText type="linkPrimary">🎫 {bookingTitle(contact.bookingRef)} ›</ThemedText>
+                      </Pressable>
+                    ) : null}
+                    {onOpenItem && contact.bookingRef ? (
+                      <View style={styles.items}>
+                        {itemsOfBooking(doc, contact.bookingRef).map((item) => (
+                          <Pressable key={item.ref} onPress={() => onOpenItem(item.ref)} hitSlop={4}>
+                            <ThemedText type="small" themeColor="accent">
+                              {item.title} ›
+                            </ThemedText>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
+                    {contact.notes ? (
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {contact.notes}
+                      </ThemedText>
+                    ) : null}
+                  </View>
+                );
+              })}
             </ThemedView>
           )}
         </View>
