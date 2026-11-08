@@ -5,6 +5,7 @@ import { type ReactNode, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { dropVenueRating, saveVenuePoint, saveVenuePrice } from "@/app/venue-actions";
+import { IconAction } from "@/components/icon-action";
 
 /**
  * Ocena, punkty opisu i przykładowe ceny knajpy. W trybie edycji każdy punkt i każdą cenę można zmienić albo usunąć,
@@ -39,13 +40,9 @@ export function VenueEntries({ tripId, place, editing }: { tripId: string; place
       {editing && (
         <span className="text-xs text-zinc-500">
           {onEdit && (
-            <button type="button" disabled={pending} onClick={onEdit} className="btn-mini">
-              zmień
-            </button>
+            <IconAction kind="change" disabled={pending} onClick={onEdit} />
           )}
-          <button type="button" disabled={pending} onClick={onRemove} className="btn-mini btn-mini-danger">
-            usuń
-          </button>
+          <IconAction kind="remove" disabled={pending} onClick={onRemove} />
         </span>
       )}
     </span>

@@ -8,6 +8,7 @@ import type { FormState } from "@/app/actions";
 import { dropGuideImage, findGuideImages, pickGuideImage, removeGuide, saveGuideText } from "@/app/guide-actions";
 import { GuideArticle, GuideFigure } from "@/components/guide-article";
 import { GuideButtons, PlaceGuideButtons } from "@/components/guide-button";
+import { IconAction } from "@/components/icon-action";
 
 /** Lista opisów na stronie „Opisy miejsc”: skrót, a po rozwinięciu cały opis, nowa wersja z AI, ręczna poprawka tekstu i zdjęć oraz usunięcie. */
 
@@ -170,9 +171,7 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
                 <button type="button" disabled={pending} onClick={() => setPicking({ replace: image.url })} className="btn-mini">
                   wymień
                 </button>
-                <button type="button" disabled={pending} onClick={() => remove(image.url)} className="btn-mini btn-mini-danger">
-                  usuń
-                </button>
+                <IconAction kind="remove" disabled={pending} onClick={() => remove(image.url)} />
               </div>
             </li>
           ))}

@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import type { FormState } from "@/app/actions";
 import { drawTransit, readTransit, removeTransit, saveTransit } from "@/app/transit-actions";
 import { SparkIcon } from "@/components/icons";
+import { IconAction } from "@/components/icon-action";
 
 const DETAIL_NAME: Record<TransitDetailField, string> = { segments: "trasę", frequencyMin: "częstotliwość", departures: "odjazdy", instructions: "wskazówki", alternative: "plan B" };
 
@@ -22,9 +23,7 @@ export function TransitDetails({ tripId, itemRef, rows }: { tripId: string; item
       {rows.map((row) => (
         <p key={row.key}>
           {row.text}{" "}
-          <button type="button" disabled={pending} onClick={() => remove(row.key)} className="btn-mini btn-mini-danger">
-            usuń
-          </button>
+          <IconAction kind="remove" disabled={pending} onClick={() => remove(row.key)} />
         </p>
       ))}
       {state.error && <p className="text-xs text-red-600">{state.error}</p>}

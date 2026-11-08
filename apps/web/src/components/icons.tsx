@@ -217,3 +217,23 @@ export const SpeakerIcon = (props: Props) => (
     <path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
   </Svg>
 );
+
+export const TrashIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" />
+    <path d="M10 11v5.5M14 11v5.5" />
+  </Svg>
+);
+
+/** „Zmień”: wybór z listy (jak strzałki pola wyboru). */
+export const SelectIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
+  </Svg>
+);
+
+export const CloseIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Svg>
+);

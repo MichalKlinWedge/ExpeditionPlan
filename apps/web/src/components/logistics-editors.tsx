@@ -6,6 +6,7 @@ import { Fragment, type ReactNode, startTransition, useActionState, useEffect, u
 
 import type { FormState } from "@/app/actions";
 import { PlacePin } from "@/components/place-pin";
+import { IconAction } from "@/components/icon-action";
 import { bookingAnchor, contactAnchor } from "@/lib/booking-link";
 import {
   addSuggestedBudgetLine,
@@ -44,7 +45,6 @@ type Contact = Doc["contacts"][number];
 // `min-w-0`: lista wyboru ma szerokość najdłuższej opcji i bez tego rozpycha kartę na telefonie.
 const input = "field min-w-0 px-2 py-1 text-sm";
 const small = "btn-mini";
-const danger = "btn-mini btn-mini-danger";
 const primary = "btn-primary btn-sm";
 
 function Status({ state }: { state: FormState }) {
@@ -111,15 +111,11 @@ export function ExpenseSplitEditor({ tripId, expenseId, people, chosen, canEdit,
         {canEdit && (
           <>
             {" "}
-            <button
+            <IconAction kind="change"
               onClick={() => {
                 setValue(chosen);
                 setEditing(true);
-              }}
-              className={small}
-            >
-              zmień
-            </button>
+              }} />
           </>
         )}
       </span>
@@ -289,13 +285,9 @@ export function BudgetLines({ tripId, lines, currency, people, cars = [], canEdi
                   </td>
                   {canEdit && (
                     <td className="py-1 pl-2 text-right whitespace-nowrap text-zinc-500">
-                      <button onClick={() => setEditing(line.ref)} className={small}>
-                        edytuj
-                      </button>
+                      <IconAction kind="edit" onClick={() => setEditing(line.ref)} />
                       <br className="sm:hidden" />{" "}
-                      <button disabled={remove.pending} onClick={() => remove.run(() => removeBudgetLine(tripId, line.ref), `Usunąć pozycję „${line.title}”?`)} className={danger}>
-                        usuń
-                      </button>
+                      <IconAction kind="remove" disabled={remove.pending} onClick={() => remove.run(() => removeBudgetLine(tripId, line.ref), `Usunąć pozycję „${line.title}”?`)} />
                     </td>
                   )}
                 </tr>
@@ -482,12 +474,8 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
   const span = 4 + (checkColumn ? 1 : 0) + (canEdit ? 1 : 0);
   const buttons = (task: Task) => (
     <>
-      <button onClick={() => setEditing(task.ref)} className={small}>
-        edytuj
-      </button>
-      <button disabled={action.pending} onClick={() => action.run(() => removeTask(tripId, task.ref), `Usunąć zadanie „${task.title}”?`)} className={danger}>
-        usuń
-      </button>
+      <IconAction kind="edit" onClick={() => setEditing(task.ref)} />
+      <IconAction kind="remove" disabled={action.pending} onClick={() => action.run(() => removeTask(tripId, task.ref), `Usunąć zadanie „${task.title}”?`)} />
     </>
   );
   const row = (task: Task) => {
@@ -933,9 +921,7 @@ export function BookingRow({
   const [open, setOpen] = useState<"edit" | "items" | null>(null);
   const buttons = canEdit ? (
     <>
-      <button onClick={() => setOpen(open === "edit" ? null : "edit")} className={small}>
-        edytuj
-      </button>
+      <IconAction kind="edit" onClick={() => setOpen(open === "edit" ? null : "edit")} />
       <button onClick={() => setOpen(open === "items" ? null : "items")} title="Punkty planu w pakiecie tej rezerwacji" className={small}>
         pakiet{chosen.length > 0 ? ` (${chosen.length})` : ""}
       </button>
@@ -1173,12 +1159,8 @@ export function Contacts({
               {contact.notes && <span className="text-xs text-zinc-500">· {contact.notes}</span>}
               {canEdit && (
                 <span className="text-zinc-500">
-                  <button onClick={() => setEditing(contact.ref)} className={small}>
-                    edytuj
-                  </button>{" "}
-                  <button disabled={remove.pending} onClick={() => remove.run(() => removeContact(tripId, contact.ref), `Usunąć kontakt „${contact.name}”?`)} className={danger}>
-                    usuń
-                  </button>
+                  <IconAction kind="edit" onClick={() => setEditing(contact.ref)} />{" "}
+                  <IconAction kind="remove" disabled={remove.pending} onClick={() => remove.run(() => removeContact(tripId, contact.ref), `Usunąć kontakt „${contact.name}”?`)} />
                 </span>
               )}
               {contact.bookingRef && (bookingItems[contact.bookingRef] ?? []).length > 0 && (
@@ -1256,9 +1238,7 @@ export function TripCurrency({ tripId, base, known, canEdit }: { tripId: string;
         {canEdit && (
           <>
             {" "}
-            <button onClick={() => setOpen(true)} className={small}>
-              zmień
-            </button>
+            <IconAction kind="change" onClick={() => setOpen(true)} />
           </>
         )}
         {state.ok && <span className="text-green-700 dark:text-green-400"> {state.ok}</span>}
@@ -1308,9 +1288,7 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
         {canEdit && (
           <>
             {" "}
-            <button onClick={() => setOpen(true)} className={small}>
-              zmień
-            </button>{" "}
+            <IconAction kind="change" onClick={() => setOpen(true)} />{" "}
             <button disabled={fetching} onClick={() => startFetch(async () => setFetched(await fetchFx(tripId)))} className={small}>
               {fetching ? "pobieram…" : "pobierz aktualne kursy"}
             </button>
@@ -1332,9 +1310,7 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
           <input name="fxRate" defaultValue={row.rateToBase > 0 ? String(row.rateToBase).replace(".", ",") : ""} inputMode="decimal" placeholder="4,27" className={`${input} w-24`} aria-label="Kurs" />
           <span className="text-xs text-zinc-500">{base}</span>
           <input name="fxDate" type="date" defaultValue={row.date ?? ""} className={input} aria-label="Data kursu" />
-          <button type="button" onClick={() => setRows(rows.filter((each) => each.key !== row.key))} className={danger}>
-            usuń
-          </button>
+          <IconAction kind="remove" onClick={() => setRows(rows.filter((each) => each.key !== row.key))} />
         </div>
       ))}
       <button type="button" onClick={() => setRows([...rows, { currency: "", rateToBase: 0, date: undefined, key: Math.max(-1, ...rows.map((each) => each.key)) + 1 }])} className={`${small} self-start`}>
@@ -1423,12 +1399,8 @@ export function ShoppingList({ tripId, items, canEdit }: { tripId: string; items
               {item.note && <span className="text-xs text-zinc-500">· {item.note}</span>}
               {canEdit && (
                 <span className="text-zinc-500">
-                  <button onClick={() => setEditing(item.ref)} className={small}>
-                    edytuj
-                  </button>{" "}
-                  <button disabled={remove.pending} onClick={() => remove.run(() => removeShoppingItem(tripId, item.ref), `Usunąć „${item.title}” z listy?`)} className={danger}>
-                    usuń
-                  </button>
+                  <IconAction kind="edit" onClick={() => setEditing(item.ref)} />{" "}
+                  <IconAction kind="remove" disabled={remove.pending} onClick={() => remove.run(() => removeShoppingItem(tripId, item.ref), `Usunąć „${item.title}” z listy?`)} />
                 </span>
               )}
             </li>

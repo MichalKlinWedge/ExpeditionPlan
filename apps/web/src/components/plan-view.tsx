@@ -13,6 +13,7 @@ import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
 import { ItemPlaceEditor } from "@/components/item-place";
 import { highlightRoute, type LatLng, PlanMap } from "@/components/plan-map";
+import { IconAction } from "@/components/icon-action";
 import { readChosenVariants, saveChosenVariants } from "@/lib/plan-variants";
 import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
 import { createClient } from "@/lib/supabase/client";
@@ -1114,14 +1115,9 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     <button onClick={() => actions.move(item.ref, 1)} aria-label="Niżej" className="px-1 hover:text-zinc-900 dark:hover:text-zinc-100">
                       ↓
                     </button>
-                    <button onClick={() => setEditing(editing === item.ref ? null : item.ref)} className="btn-mini">
-                      edytuj
-                    </button>
-                    <button
-                      onClick={() => window.confirm(`Usunąć „${item.title}” z planu?`) && actions.remove(item.ref)}
-                      className="btn-mini btn-mini-danger">
-                      usuń
-                    </button>
+                    <IconAction kind="edit" onClick={() => setEditing(editing === item.ref ? null : item.ref)} />
+                    <IconAction kind="remove"
+                      onClick={() => window.confirm(`Usunąć „${item.title}” z planu?`) && actions.remove(item.ref)} />
                     <MoveSelect doc={doc} current={dayRef} onMove={(target) => actions.moveTo(item.ref, target)} />
                     {item.routeStop ? (
                       <button onClick={() => actions.edit(setRouteStop(doc, item.ref, false, options))} title="Punkt wraca do zwykłej kolejności dnia" className="btn-mini">

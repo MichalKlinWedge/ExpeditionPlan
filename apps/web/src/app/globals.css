@@ -150,6 +150,11 @@ h2 {
       background-color 120ms,
       border-color 120ms;
   }
+  /* Sama ikona (`IconAction`, „głosuj” w planie): kwadratowa, dymek z `title`. */
+  .btn-icon {
+    padding-inline: 0.25rem;
+    padding-block: 0.05rem;
+  }
   .btn-mini + .btn-mini {
     margin-left: 0.25rem;
   }

@@ -5,6 +5,7 @@ import { type ReactNode, useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { removeGearItem, saveGearItem, setGearCarrier } from "@/app/logistics-actions";
+import { IconAction } from "@/components/icon-action";
 
 /**
  * Sprzęt: rzeczy osobiste (każdy pakuje swoje) i wspólne (kto bierze, żeby nie dublować) z podziałem
@@ -18,7 +19,6 @@ type Filter = "all" | "open" | { person: string };
 
 const input = "field min-w-0 px-2 py-1 text-sm";
 const small = "btn-mini";
-const danger = "btn-mini btn-mini-danger";
 const SUGGESTED = ["ubrania", "sprzęt", "biwak", "kuchnia", "apteczka", "elektronika", "dokumenty"];
 const number = (value: number) => value.toLocaleString("pl-PL", { maximumFractionDigits: 2 });
 const amount = (item: Pick<Item, "unit">, value: number) => `${number(value)}${item.unit ? ` ${item.unit}` : ""}`;
@@ -284,13 +284,9 @@ function ItemActions({ tripId, item, itemId, onEdit }: { tripId: string; item: I
   const remove = useAction();
   return (
     <td className="py-1.5 pl-2 text-right align-top whitespace-nowrap">
-      <button type="button" onClick={onEdit} className={small}>
-        edytuj
-      </button>
+      <IconAction kind="edit" onClick={onEdit} />
       <br className="sm:hidden" />{" "}
-      <button type="button" disabled={remove.pending} onClick={() => remove.run(() => removeGearItem(tripId, item.ref, itemId), `Usunąć „${item.title}” z listy?`)} className={danger}>
-        usuń
-      </button>
+      <IconAction kind="remove" disabled={remove.pending} onClick={() => remove.run(() => removeGearItem(tripId, item.ref, itemId), `Usunąć „${item.title}” z listy?`)} />
       <Status state={remove.state} />
     </td>
   );

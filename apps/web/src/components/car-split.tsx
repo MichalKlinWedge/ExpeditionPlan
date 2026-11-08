@@ -6,6 +6,7 @@ import { useActionState, useState, useTransition } from "react";
 import type { FormState } from "@/app/actions";
 import { removeVehicle, saveVehicle, seatInVehicle } from "@/app/vehicle-actions";
 import { travelerPresence } from "@/lib/labels";
+import { IconAction } from "@/components/icon-action";
 
 /**
  * Podział na auta (`core/vehicles.ts`): kto z kim jedzie, wolne miejsca, kogo odebrać po drodze (miejsce startu
@@ -135,12 +136,8 @@ export function CarSplit({ tripId, people, cars, places, canEdit }: { tripId: st
                 <span className="flex-1" />
                 {canEdit && (
                   <span className="flex gap-1">
-                    <button onClick={() => setEditing(seat.car.id)} className="btn-mini">
-                      edytuj
-                    </button>
-                    <button onClick={() => run(() => removeVehicle(tripId, seat.car.id), `Usunąć auto „${seat.car.label}”? Jego paliwo i wydatki wrócą do podziału na wszystkich.`)} disabled={pending} className="btn-mini btn-mini-danger">
-                      usuń
-                    </button>
+                    <IconAction kind="edit" onClick={() => setEditing(seat.car.id)} />
+                    <IconAction kind="remove" onClick={() => run(() => removeVehicle(tripId, seat.car.id), `Usunąć auto „${seat.car.label}”? Jego paliwo i wydatki wrócą do podziału na wszystkich.`)} disabled={pending} />
                   </span>
                 )}
               </div>

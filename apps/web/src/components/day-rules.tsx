@@ -37,6 +37,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { BallotIcon } from "@/components/icons";
+import { IconAction } from "@/components/icon-action";
 
 /**
  * Warianty, ograniczenia i notatki dnia w edytorze planu (MVP-3). Zmiany idą przez `plan-rules`
@@ -100,14 +101,11 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules, field, vot
               <span className="text-zinc-500">{group.title}:</span>
               <VariantChoice group={group} variants={variants} active={active} onChoose={onChoose} />
               {onRules && (
-                <button onClick={() => setEditing(editing === group.ref ? null : group.ref)} className="btn-mini">
-                  {editing === group.ref ? "zamknij edycję" : "edytuj"}
-                </button>
+                <IconAction kind={editing === group.ref ? "close" : "edit"} tip={editing === group.ref ? "zamknij edycję" : undefined} onClick={() => setEditing(editing === group.ref ? null : group.ref)} />
               )}
               {votesHref && group.votingOpen === true && variants.length > 1 && (
-                <Link href={`${votesHref}#glos-${group.ref}`} className="btn-mini inline-flex items-center gap-1" title="Głosowanie nad tym wyborem">
-                  <BallotIcon className="h-3.5 w-3.5" />
-                  głosuj
+                <Link href={`${votesHref}#glos-${group.ref}`} className="btn-mini btn-icon" title="głosowanie" aria-label="głosowanie">
+                  <BallotIcon className="size-3.5" />
                 </Link>
               )}
             </div>
@@ -151,9 +149,7 @@ function VariantChoice({ group, variants, active, onChoose }: { group: VariantGr
         {chosen === undefined ? "nie wybrano" : name(chosen)}
       </span>
       {variants.length > 1 && (
-        <button type="button" onClick={() => setOpen(true)} className="btn-mini">
-          Zmień
-        </button>
+        <IconAction kind="change" onClick={() => setOpen(true)} />
       )}
       {open && (
         <VariantDialog
@@ -353,12 +349,8 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
               </td>
               <td>
                 {variants.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => window.confirm(`Usunąć wariant „${variant.label}”? Punkty tylko z tego wariantu wrócą do puli.`) && onRules((current) => removeVariant(current, variant.ref))}
-                    className="btn-mini btn-mini-danger">
-                    usuń
-                  </button>
+                  <IconAction kind="remove"
+                    onClick={() => window.confirm(`Usunąć wariant „${variant.label}”? Punkty tylko z tego wariantu wrócą do puli.`) && onRules((current) => removeVariant(current, variant.ref))} />
                 )}
               </td>
             </tr>
@@ -586,12 +578,8 @@ export function DayConstraints({ doc, dayRef, items, warnings, onRules }: Constr
                 {violation && <span className={`text-xs ${violation.severity === "hard" ? "text-red-600" : "text-amber-600"}`}>naruszone o {violation.minutes} min</span>}
                 {onRules && constraint.ref && (
                   <span className="text-xs text-zinc-500">
-                    <button onClick={() => setEditing(editing === ref ? null : ref)} className="btn-mini">
-                      {editing === ref ? "zamknij" : "zmień"}
-                    </button>
-                    <button onClick={() => window.confirm(`Usunąć ograniczenie „${KIND[constraint.kind]}”?`) && onRules((current) => removeConstraint(current, constraint.ref!))} className="btn-mini btn-mini-danger">
-                      usuń
-                    </button>
+                    <IconAction kind={editing === ref ? "close" : "change"} onClick={() => setEditing(editing === ref ? null : ref)} />
+                    <IconAction kind="remove" onClick={() => window.confirm(`Usunąć ograniczenie „${KIND[constraint.kind]}”?`) && onRules((current) => removeConstraint(current, constraint.ref!))} />
                   </span>
                 )}
               </div>
@@ -783,12 +771,8 @@ export function DayNotes({ doc, dayRef, onRules }: { doc: Doc; dayRef: string; o
                   {note.body}
                   {onRules && note.ref && (
                     <span className="ml-1 text-xs text-zinc-500">
-                      <button onClick={() => setEditing(key)} className="btn-mini">
-                        zmień
-                      </button>
-                      <button onClick={() => window.confirm("Usunąć tę notatkę?") && onRules((current) => removeNote(current, note.ref!))} className="btn-mini btn-mini-danger">
-                        usuń
-                      </button>
+                      <IconAction kind="change" onClick={() => setEditing(key)} />
+                      <IconAction kind="remove" onClick={() => window.confirm("Usunąć tę notatkę?") && onRules((current) => removeNote(current, note.ref!))} />
                     </span>
                   )}
                 </div>

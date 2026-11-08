@@ -5,6 +5,7 @@ import { useActionState, useId, useState, useTransition } from "react";
 
 import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTraveler, removeTrip, updateTraveler } from "@/app/actions";
 import { PlacePin } from "@/components/place-pin";
+import { IconAction } from "@/components/icon-action";
 import { travelerPresence } from "@/lib/labels";
 
 /** Formularze MVP-1 — stan i błędy z akcji serwera przez `useActionState`. */
@@ -269,12 +270,8 @@ export function TravelerList({ tripId, trip, people, places, canEdit }: { tripId
                 {person.tentative && <span className="rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">waha się</span>}
                 {canEdit && (
                   <span className="text-xs text-zinc-500">
-                    <button onClick={() => { setResult({}); setEditing(person.id); }} className="btn-mini">
-                      edytuj
-                    </button>{" "}
-                    <button onClick={() => remove(person)} disabled={pending} className="btn-mini btn-mini-danger">
-                      usuń
-                    </button>
+                    <IconAction kind="edit" onClick={() => { setResult({}); setEditing(person.id); }} />{" "}
+                    <IconAction kind="remove" onClick={() => remove(person)} disabled={pending} />
                   </span>
                 )}
                 {(person.start_place_id || person.end_place_id) && (

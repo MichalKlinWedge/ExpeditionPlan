@@ -9,6 +9,7 @@ import { useEffect, useState, useTransition } from "react";
 import { codeSvg, type DetectedCode, detectCode } from "@/lib/barcode";
 import { createClient } from "@/lib/supabase/client";
 import { uploadToVault, VAULT_BUCKET, type VaultFields } from "@/lib/vault-upload";
+import { IconAction } from "@/components/icon-action";
 
 /**
  * Sejf w przeglądarce: lista dokumentów pogrupowana po rezerwacjach i punktach, „Pokaż kod” na
@@ -36,7 +37,6 @@ type Props = {
 const input = "field min-w-0 px-2 py-1 text-sm";
 const label = "flex min-w-0 flex-col gap-1 text-xs text-zinc-500";
 const small = "btn-mini";
-const danger = "btn-mini btn-mini-danger";
 const BUCKET = VAULT_BUCKET;
 
 export function Vault({ tripId, documents, bookings, items, people, userId, owner, editing }: Props) {
@@ -145,12 +145,8 @@ function DocumentRow({ tripId, document, names, editing, bookings, items, people
         </button>
         {editing && (
           <>
-            <button onClick={() => setChanging(!changing)} className={small}>
-              {changing ? "zamknij" : "zmień"}
-            </button>
-            <button disabled={pending} onClick={remove} className={danger}>
-              usuń
-            </button>
+            <IconAction kind={changing ? "close" : "change"} onClick={() => setChanging(!changing)} />
+            <IconAction kind="remove" disabled={pending} onClick={remove} />
           </>
         )}
       </div>

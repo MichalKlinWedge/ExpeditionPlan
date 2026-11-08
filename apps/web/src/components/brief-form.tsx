@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { type FormState, saveBrief } from "@/app/actions";
 import { FlagIcon, ListIcon, RouteIcon, ShieldIcon, TicketIcon } from "@/components/icons";
+import { IconAction } from "@/components/icon-action";
 
 /**
  * Kreator briefu (SPECYFIKACJA M2) w pięciu krokach. Stan trzyma cały szkic w jednym obiekcie,
@@ -323,9 +324,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers }: { tripId: stri
                 Uwagi
                 <input className={input} value={each.note ?? ""} onChange={(event) => setFixed(index, { note: event.target.value })} />
               </label>
-              <button type="button" className="btn-mini btn-mini-danger justify-self-start" onClick={() => update({ fixed: draft.fixed.filter((_, i) => i !== index) })}>
-                usuń
-              </button>
+              <IconAction kind="remove" className="justify-self-start" onClick={() => update({ fixed: draft.fixed.filter((_, i) => i !== index) })} />
             </fieldset>
           ))}
           <button type="button" className={`${secondary} self-start`} onClick={() => update({ fixed: [...draft.fixed, { kind: "flight", title: "", startTz: tripTz }] })}>

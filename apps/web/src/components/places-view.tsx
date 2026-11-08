@@ -9,6 +9,7 @@ import { mergePlace, removePlace, savePlaceDetails } from "@/app/place-actions";
 import { GuideArticle } from "@/components/guide-article";
 import { PlaceGuideButtons } from "@/components/guide-button";
 import { type LatLng, PlanMap } from "@/components/plan-map";
+import { IconAction } from "@/components/icon-action";
 
 /**
  * Wszystkie miejsca wyjazdu: lista i mapa z tymi samymi numerami. Organizator i edytor poprawiają nazwę,
@@ -318,20 +319,14 @@ function PlaceRow({
         )}
         {canEdit && (
           <span className="ml-auto flex gap-1">
-            <button type="button" onClick={onToggle} aria-expanded={open} className="btn-mini">
-              {open ? "zwiń" : "zmień"}
-            </button>
+            <IconAction kind={open ? "close" : "change"} tip={open ? "zwiń" : undefined} onClick={onToggle} aria-expanded={open} />
             {usage.total === 0 && (
-              <button
-                type="button"
+              <IconAction kind="remove"
                 disabled={pending}
                 title="Nic w planie z niego nie korzysta"
                 onClick={() => {
                   if (window.confirm(`Usunąć miejsce „${place.name}”? Nic w planie z niego nie korzysta. Jego opis też zniknie. W aplikacji nie da się tego cofnąć.`)) run(() => removePlace(tripId, place.ref));
-                }}
-                className="btn-mini btn-mini-danger">
-                usuń
-              </button>
+                }} />
             )}
           </span>
         )}
