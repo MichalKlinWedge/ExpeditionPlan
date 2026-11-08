@@ -36,6 +36,7 @@ import { PlacePin } from '@/features/plan/place-pin';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, type PlaceChange } from '@/features/plan/item-editor';
 import { PoolView } from '@/features/plan/pool-view';
+import { VariantChoice } from '@/features/plan/variant-choice';
 import { TripNewsBanner } from '@/features/plan/trip-news';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
@@ -803,18 +804,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
       ) : null}
 
       {groups.map((group) => (
-        <View key={group.ref} style={styles.group}>
-          <ThemedText type="small" themeColor="textSecondary">
-            {group.title}:
-          </ThemedText>
-          <View style={styles.wrap}>
-            {doc.variants
-              .filter((variant) => variant.groupRef === group.ref)
-              .map((variant) => (
-                <Chip key={variant.ref} active={active.has(variant.ref)} label={`${variant.label}${variant.recommended ? ' ★' : ''}`} onPress={() => onChoose(group.ref, variant.ref)} />
-              ))}
-          </View>
-        </View>
+        <VariantChoice key={group.ref} doc={doc} group={group} active={active} onChoose={onChoose} />
       ))}
 
       {schedule && top?.(schedule)}
@@ -1040,7 +1030,6 @@ const styles = StyleSheet.create({
   day: { gap: Spacing.two },
   badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three },
   group: { gap: Spacing.one },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   item: { padding: Spacing.three, borderRadius: 14, gap: 2, borderWidth: 1, borderLeftWidth: 5 },
   time: { fontSize: 15, lineHeight: 20, fontWeight: 800, fontVariant: ['tabular-nums'] },
   itemTitle: { fontSize: 16, lineHeight: 22 },
