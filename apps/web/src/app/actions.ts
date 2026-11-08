@@ -1,6 +1,6 @@
 "use server";
 
-import { Currency, formatMinutes, IsoDate, parseCoordinates, PLANNING, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
+import { Currency, formatMinutes, IsoDate, localToday, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { geoapifyLookup, googleLinkVias, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, dbErrorMessage, importTrip, lockedRefs, type PullPayload, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -12,6 +12,7 @@ import { z } from "zod";
 import { aiAccessError, plannerDeps, routeLookup } from "@/lib/ai";
 import { countriesFor } from "@/lib/countries";
 import { NO_CREATE, requireUser } from "@/lib/auth";
+import { loadPlacesAcross } from "@/lib/places-across";
 import { SAMPLE_PLANS } from "@/lib/sample-plans";
 
 /**
@@ -398,12 +399,22 @@ export async function planWithAi(tripId: string): Promise<FormState & { tripId?:
   const setup = plannerDeps();
   if ("missing" in setup) return { error: `Serwer nie ma kluczy: ${setup.missing.join(", ")}.` };
 
+  // Pamięć miejsc z moich wcześniejszych wyjazdów (oceny, notatki, wizyty); jej błąd nie zatrzymuje planowania.
+  let memory: PlannerPlaceMemory[] = [];
+  try {
+    const across = await loadPlacesAcross(supabase);
+    memory = plannerMemory(across.places, across.memories, localToday(), tripId);
+  } catch {
+    memory = [];
+  }
+
   const usage = { inputTokens: 0, outputTokens: 0 };
   const started = Date.now();
   let planned: Awaited<ReturnType<typeof planTrip>>;
   try {
     planned = await planTrip(parsed.data, {
       ...setup.deps,
+      memory,
       primaryTz: trip.data.primary_tz ?? undefined,
       onUsage: (each) => {
         usage.inputTokens += each.inputTokens;
@@ -428,7 +439,7 @@ export async function planWithAi(tripId: string): Promise<FormState & { tripId?:
     stage: "plan",
     provider: "GEMINI",
     model: setup.model,
-    input: { sourceTripId: tripId } as Json,
+    input: { sourceTripId: tripId, memoryPlaces: memory.length } as Json,
     status: "ok",
     tokens_in: usage.inputTokens,
     tokens_out: usage.outputTokens,

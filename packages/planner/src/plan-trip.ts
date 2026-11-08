@@ -1,5 +1,5 @@
 import { type AiClient, type AiUsage, AiValidationError, askStructured } from '@expeditionplan/ai';
-import { type StagePlan, type TripBrief, TripDocument, TripSkeleton } from '@expeditionplan/core';
+import { type PlannerPlaceMemory, rememberedInPlan, type StagePlan, type TripBrief, TripDocument, TripSkeleton, visitLabel } from '@expeditionplan/core';
 
 import { assemble, chunksFor, stagePlanSchema, tripContext, tripDates } from './assemble.ts';
 import { COUNTRY_TZ, type DayFact, dayFact, type Holiday } from './facts.ts';
@@ -32,6 +32,8 @@ export type PlannerDeps = {
   onUsage?: (usage: AiUsage) => void;
   /** Postęp do logu albo interfejsu: „etap 1”, „bazy”, „etap 2”, „miejsca”, „trasy”. */
   onStep?: (step: string) => void;
+  /** Pamięć miejsc z wcześniejszych wyjazdów (`plannerMemory`): idzie do promptów, a powtórki trafiają do ostrzeżenia. */
+  memory?: PlannerPlaceMemory[];
 };
 
 export type PlannedTrip = {
@@ -82,7 +84,7 @@ export async function planTrip(brief: TripBrief, deps: PlannerDeps): Promise<Pla
   step('etap 1');
   let started = performance.now();
   const skeleton = await freshRetry(() =>
-    askStructured(deps.client, TripSkeleton, stage1Prompt(brief), { ...ask, maxTokens: 12_000, label: `${brief.title} etap 1` }),
+    askStructured(deps.client, TripSkeleton, stage1Prompt(brief, deps.memory), { ...ask, maxTokens: 12_000, label: `${brief.title} etap 1` }),
   );
   const variant = skeleton.data.variants.find((each) => each.recommended) ?? skeleton.data.variants[0]!;
   let aiMs = performance.now() - started;
@@ -117,7 +119,7 @@ export async function planTrip(brief: TripBrief, deps: PlannerDeps): Promise<Pla
         askStructured(
           deps.client,
           stagePlanSchema(context, chunk),
-          stage2Prompt(brief, variant, chunk, facts.filter((fact) => chunk.dates.includes(fact.date)), dates.length),
+          stage2Prompt(brief, variant, chunk, facts.filter((fact) => chunk.dates.includes(fact.date)), dates.length, deps.memory),
           { ...ask, maxTokens: 32_000, label: `${brief.title} etap 2 część ${chunk.index + 1}` },
         ),
       ),
@@ -144,6 +146,7 @@ export async function planTrip(brief: TripBrief, deps: PlannerDeps): Promise<Pla
     }),
   });
   groundMs += performance.now() - started;
+  doc = withMemoryWarning(doc, deps.memory ?? []);
 
   let routing: RouteResult[] = [];
   let routeMs = 0;
@@ -168,4 +171,29 @@ export async function planTrip(brief: TripBrief, deps: PlannerDeps): Promise<Pla
     groundMs,
     routeMs,
   };
+}
+
+/**
+ * Szkic, który mimo pamięci proponuje miejsca do unikania („nie warto” albo już odwiedzone), dostaje ostrzeżenie
+ * na poziomie wyjazdu z listą tych miejsc — człowiek decyduje, czy uzasadnienie AI wystarcza.
+ */
+export function withMemoryWarning(doc: TripDocument, memory: readonly PlannerPlaceMemory[]): TripDocument {
+  const repeated = rememberedInPlan(doc.places, memory);
+  if (repeated.length === 0) return doc;
+  const lines = repeated.map((each) => {
+    const why = [visitLabel(each.years), each.notWorth > each.worth ? `${each.notWorth} × nie warto` : undefined].filter(Boolean).join(', ');
+    return `${each.name} (${why})`;
+  });
+  return TripDocument.parse({
+    ...doc,
+    notes: [
+      ...doc.notes,
+      {
+        scope: 'trip',
+        kind: 'warning',
+        title: 'Miejsca z pamięci wyjazdów',
+        body: `Szkic proponuje miejsca, które pamięć miejsc każe omijać: ${lines.join('; ')}. Sprawdź, czy AI podało powód, a jeśli nie — wymień je.`,
+      },
+    ],
+  });
 }

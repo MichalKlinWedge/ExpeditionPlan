@@ -79,7 +79,7 @@ export const plainName = (name: string) =>
     .trim();
 
 /** Ta sama nazwa dalej niż tyle to już raczej inne miejsce („Orle” w dwóch krajach). */
-const SAME_NAME_M = 1000;
+export const SAME_NAME_M = 1000;
 
 /**
  * Możliwe duplikaty: ta sama nazwa (chyba że współrzędne są daleko od siebie) albo te same współrzędne.
@@ -102,7 +102,8 @@ export function similarPlaces(doc: Doc): Record<string, string[]> {
 
 /** Wiersze z bazy do listy miejsc ze wszystkich wyjazdów. Kolejność `trips` to kolejność wyjazdów przy miejscu. */
 export type AcrossTripsRows = {
-  trips: readonly { id: string; title: string }[];
+  /** `startDate` i `status` dają lata wizyt w pamięci miejsc (`placeVisitYears`); bez nich ich nie ma. */
+  trips: readonly { id: string; title: string; startDate?: string | null; status?: string | null }[];
   places: readonly { id: string; trip_id: string; ref: string | null; name: string; address: string | null; lat: number | null; lng: number | null }[];
   items: readonly { id: string; trip_id: string; kind: string; place_id: string | null; leg: unknown }[];
   guides: readonly { place_id: string | null; item_id: string | null; audience: string }[];
@@ -111,8 +112,12 @@ export type AcrossTripsRows = {
 export type SharedPlace = {
   name: string;
   address?: string;
+  /** Pierwsze znane współrzędne grupy `[lng, lat]`: z nimi pamięć miejsc łączy wpisy (`memoriesOf`). */
+  at?: [number, number];
+  /** Wystąpienie, przez które zapisuje się pamięć miejsca: pierwsze ze współrzędnymi, inaczej pierwsze. */
+  placeId: string;
   /** Wystąpienia miejsca: w każdym wyjeździe to osobny wiersz z własnym opisem. */
-  trips: { tripId: string; tripTitle: string; ref: string; guide: boolean }[];
+  trips: { tripId: string; tripTitle: string; ref: string; placeId: string; guide: boolean; startDate?: string; postponed?: true }[];
 };
 
 /**
@@ -139,8 +144,7 @@ export function placesAcrossTrips({ trips, places, items, guides }: AcrossTripsR
     if (placeId) guided.add(placeId);
   }
 
-  type Group = SharedPlace & { at?: [number, number] };
-  const groups = new Map<string, Group[]>();
+  const groups = new Map<string, SharedPlace[]>();
   for (const trip of trips) {
     for (const place of places) {
       if (place.trip_id !== trip.id) continue;
@@ -149,18 +153,28 @@ export function placesAcrossTrips({ trips, places, items, guides }: AcrossTripsR
       const named = groups.get(key) ?? [];
       let group = named.find((each) => each.at === undefined || at === undefined || distanceM(each.at, at) <= SAME_NAME_M);
       if (group === undefined) {
-        group = { name: place.name, trips: [] };
+        group = { name: place.name, placeId: place.id, trips: [] };
         named.push(group);
         groups.set(key, named);
       }
-      if (group.at === undefined && at !== undefined) group.at = at;
+      if (group.at === undefined && at !== undefined) {
+        group.at = at;
+        group.placeId = place.id;
+      }
       if (group.address === undefined && place.address) group.address = place.address;
-      group.trips.push({ tripId: trip.id, tripTitle: trip.title, ref: refOf(place), guide: guided.has(place.id) });
+      group.trips.push({
+        tripId: trip.id,
+        tripTitle: trip.title,
+        ref: refOf(place),
+        placeId: place.id,
+        guide: guided.has(place.id),
+        ...(trip.startDate ? { startDate: trip.startDate } : {}),
+        ...(trip.status === 'postponed' ? { postponed: true as const } : {}),
+      });
     }
   }
   return [...groups.values()]
     .flat()
-    .map(({ at: _at, ...shared }) => shared)
     .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
 }
 

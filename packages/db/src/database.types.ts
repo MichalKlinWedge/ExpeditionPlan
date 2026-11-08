@@ -795,6 +795,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"place_memories": {
+                  Row: {
+                    "author_name": string,"created_at": string,"id": string,"lat": number | null,"lng": number | null,"name": string,"name_key": string,"note": string | null,"updated_at": string,"user_id": string,"verdict": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author_name": string,"created_at"?: string,"id"?: string,"lat"?: number | null,"lng"?: number | null,"name": string,"name_key": string,"note"?: string | null,"updated_at"?: string,"user_id": string,"verdict"?: string | null
+                  }
+                  Update: {
+                    "author_name"?: string,"created_at"?: string,"id"?: string,"lat"?: number | null,"lng"?: number | null,"name"?: string,"name_key"?: string,"note"?: string | null,"updated_at"?: string,"user_id"?: string,"verdict"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "place_memories_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"places": {
                   Row: {
                     "address": string | null,"category": string | null,"created_at": string,"deleted_at": string | null,"elevation_m": number | null,"fetched_at": string | null,"id": string,"lat": number | null,"links": NonNullable<Json>,"lng": number | null,"name": string,"notes": string | null,"opening_hours": string | null,"opening_hours_parsed": Json | null,"provider": string,"provider_id": string | null,"raw": Json | null,"ref": string | null,"row_version": number,"search_name": string | null,"sort_key": string | null,"trip_id": string,"updated_at": string,"updated_by": string | null,"venue": Json | null,"website": string | null
@@ -1455,6 +1475,9 @@ isOneToOne: false
 "can_see_document":
 { Args: { "p_trip": string,"p_visibility": string,"p_visible_to": (string)[] }; Returns: boolean
                            },
+"can_see_place_memory":
+{ Args: { "p_key": string,"p_lat": number,"p_lng": number }; Returns: boolean
+                           },
 "create_invite":
 { Args: { "p_days"?: number,"p_max_uses"?: number,"p_role"?: string,"p_traveler"?: string,"p_trip": string }; Returns: string
                            },
@@ -1466,6 +1489,9 @@ isOneToOne: false
                            },
 "disable_public_share":
 { Args: { "p_trip": string }; Returns: undefined
+                           },
+"distance_m":
+{ Args: { "p_lat1": number,"p_lat2": number,"p_lng1": number,"p_lng2": number }; Returns: number
                            },
 "import_trip":
 { Args: { "p_tables": Json,"p_trip": Json }; Returns: string
@@ -1499,6 +1525,9 @@ isOneToOne: false
 "owns_expense":
 { Args: { "p_expense": string }; Returns: boolean
                            },
+"place_key":
+{ Args: { "p_name": string }; Returns: string
+                           },
 "public_trip":
 { Args: { "p_token": string }; Returns: Json
                            },
@@ -1507,6 +1536,9 @@ isOneToOne: false
                            },
 "reschedule_trip":
 { Args: { "p_changes": Json,"p_end": string,"p_restore"?: boolean,"p_start": string,"p_trip": string,"p_version": number }; Returns: undefined
+                           },
+"set_place_memory":
+{ Args: { "p_note": string,"p_place": string,"p_verdict": string }; Returns: string
                            },
 "storage_trip":
 { Args: { "p_name": string }; Returns: string

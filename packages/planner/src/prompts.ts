@@ -1,4 +1,4 @@
-import { StagePlan, type SkeletonVariant, type TripBrief, TripSkeleton } from '@expeditionplan/core';
+import { type PlannerPlaceMemory, plannerMemoryLine, StagePlan, type SkeletonVariant, type TripBrief, TripSkeleton } from '@expeditionplan/core';
 import { z } from 'zod';
 
 import type { Chunk } from './assemble.ts';
@@ -14,7 +14,21 @@ export const SYSTEM = [
 
 const schemaOf = (schema: z.ZodType) => JSON.stringify(z.toJSONSchema(schema, { io: 'input', unrepresentable: 'any' }));
 
-export function stage1Prompt(brief: TripBrief): string {
+/**
+ * Pamięć miejsc z wcześniejszych wyjazdów (`plannerMemory` w core): „[unikaj]” = ocenione „nie warto” albo już
+ * odwiedzone; takie miejsce wraca tylko z wyraźnym uzasadnieniem. Bez pamięci — nic.
+ */
+export function memorySection(memory: readonly PlannerPlaceMemory[] = []): string[] {
+  if (memory.length === 0) return [];
+  return [
+    'Pamięć miejsc z naszych wcześniejszych wyjazdów (oceny uczestników „warto / nie warto”, notatki na przyszłość, lata wizyt):',
+    ...memory.map((each) => `- ${plannerMemoryLine(each)}`),
+    'Miejsc oznaczonych „[unikaj]” (przeważa „nie warto” albo już tam byliśmy) nie proponuj ponownie. Wyjątek tylko z wyraźnym uzasadnieniem (jedyna baza albo przejazd w okolicy, życzenie z briefu, coś nowego do zrobienia na miejscu) — napisz je wtedy wprost w notatce przy punkcie albo w `rationale`. Notatki uwzględnij w planie (godziny, tłumy, parking, ceny). Miejsca ocenione „warto” możesz polecić, gdy pasują do briefu.',
+    '',
+  ];
+}
+
+export function stage1Prompt(brief: TripBrief, memory: readonly PlannerPlaceMemory[] = []): string {
   return [
     'Etap 1 — szkielet wyjazdu. Zaproponuj 2–3 RÓŻNE warianty układu wyjazdu (bazy, kolejność, noclegi, przejazdy).',
     '',
@@ -26,6 +40,7 @@ export function stage1Prompt(brief: TripBrief): string {
     '5. `risks`: konkretne ryzyka wyjazdu (zmrok i jazda po ciemku, godziny biur, limity km, święta i zamknięte sklepy, kolejki na lotnisku, pogoda, miejsca bez rezerwacji…).',
     '6. `bases`: każda baza użyta w `days` z `searchName` — nazwą, pod którą miejscowość jest w OpenStreetMap (lokalna albo angielska, np. „Marrakech”, „Mestia”).',
     '',
+    ...memorySection(memory),
     'JSON Schema:',
     schemaOf(TripSkeleton),
     '',
@@ -34,7 +49,7 @@ export function stage1Prompt(brief: TripBrief): string {
   ].join('\n');
 }
 
-export function stage2Prompt(brief: TripBrief, variant: SkeletonVariant, chunk: Chunk, facts: DayFact[], allDays: number): string {
+export function stage2Prompt(brief: TripBrief, variant: SkeletonVariant, chunk: Chunk, facts: DayFact[], allDays: number, memory: readonly PlannerPlaceMemory[] = []): string {
   const dayList = chunk.dates.map((date, i) => `${chunk.dayRefs[i]} = ${date}`).join(', ');
   const part = chunk.refPrefix === '' ? '' : ` To część ${chunk.index + 1} wyjazdu (dni ${dayList} z ${allDays}); inne części planuje osobne zapytanie.`;
   return [
@@ -52,6 +67,7 @@ export function stage2Prompt(brief: TripBrief, variant: SkeletonVariant, chunk: 
     '9. Fakty dni poniżej są policzone kodem — używaj ich (zachód słońca, zmierzch, święta, zmiana czasu), nie zgaduj z pamięci.',
     '10. Bez rezerwacji: nie wypełniaj `lodgingRef`, `bookingRef` ani `leg.ticketBookingRef` — rezerwacje i porównanie noclegów to osobny etap; nocleg opisz punktem `kind: "lodging"`.',
     '',
+    ...memorySection(memory),
     'JSON Schema:',
     schemaOf(StagePlan),
     '',
