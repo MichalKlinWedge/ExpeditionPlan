@@ -1,7 +1,8 @@
-import { tripMapAreas, vaultDocument, type VaultDocument } from '@expeditionplan/core';
+import { vaultDocument, type VaultDocument } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip } from '@expeditionplan/sync';
 import { Image } from 'expo-image';
 
+import { offlineAreas } from '@/features/map/map-transit';
 import { areaStatuses, downloadAreas } from '@/features/map/offline-packs';
 import { guideImageUrls } from '@/features/plan/item-details';
 import { savedVaultFiles, syncVaultFiles } from '@/features/trip/documents-view';
@@ -42,6 +43,11 @@ export function onOfflineChange(listener: (tripId: string) => void): () => void 
   return () => listeners.delete(listener);
 }
 
+/** Stan offline wyjazdu zmienił się poza tym modułem (np. przełącznik dojazdu zmienił obszary mapy). */
+export function offlineChanged(tripId: string): void {
+  for (const listener of listeners) listener(tripId);
+}
+
 export type OfflineState = {
   /** Plan na telefonie (chwila ostatniej synchronizacji) albo `null`, gdy nigdy nie pobrany. */
   syncedAt: string | null;
@@ -62,7 +68,7 @@ const offlineDocuments = (trip: CachedTrip): VaultDocument[] =>
 export async function offlineState(tripId: string): Promise<OfflineState> {
   const trip = cachedTrip(localDb, tripId);
   if (trip === null) return { syncedAt: null, map: { done: 0, total: 0 }, documents: { done: 0, total: 0 }, guides: 0, complete: false, stale: false };
-  const areas = tripMapAreas(trip.state.doc);
+  const areas = offlineAreas(tripId, trip.state.doc);
   const statuses = await areaStatuses(tripId, areas).catch(() => []);
   const documents = offlineDocuments(trip);
   const map = { done: statuses.filter((status) => status.done).length, total: areas.length };
@@ -101,7 +107,7 @@ export async function downloadTripOffline(tripId: string, onProgress: (text: str
     await Image.prefetch(urls, 'disk').catch(() => false);
   }
 
-  const areas = tripMapAreas(trip.state.doc);
+  const areas = offlineAreas(tripId, trip.state.doc);
   if (areas.length > 0) await downloadAreas(tripId, areas, (text) => onProgress(`Mapa ${text}`));
 
   const state = await offlineState(tripId);

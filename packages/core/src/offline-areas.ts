@@ -1,3 +1,4 @@
+import { transitPlaceRefs } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
@@ -57,11 +58,13 @@ const median = (values: number[]) => {
 
 export type AreaOptions = {
   tileLimit?: number;
-  /** Miejsca dalej niż tyle od środka wyjazdu (mediana) nie wchodzą — np. lotnisko w domu. */
+  /** Miejsca dalej niż tyle od środka wyjazdu (mediana) nie wchodzą — np. lotnisko w domu; przy `transit` domyślnie bez progu. */
   outlierKm?: number;
   /** Miejsca bliżej siebie niż tyle łączą się w jedno skupisko (jedna paczka dokładna). */
   clusterKm?: number;
   maxDetailAreas?: number;
+  /** Z miejscami tylko dojazdu i powrotu (`transitPlaceRefs`, np. lotnisko w domu); domyślnie bez nich. */
+  transit?: boolean;
 };
 
 /**
@@ -69,15 +72,21 @@ export type AreaOptions = {
  * mieście). Skupisko nazywa się od bazy noclegowej, inaczej od miejsca z największą liczbą punktów.
  */
 export function tripMapAreas(doc: Doc, options: AreaOptions = {}): MapArea[] {
-  const { tileLimit = 3000, outlierKm = 600, clusterKm = 12, maxDetailAreas = 8 } = options;
+  const { tileLimit = 3000, clusterKm = 12, maxDetailAreas = 8, transit = false } = options;
+  // Z dojazdem na życzenie — wtedy także daleko od środka wyjazdu.
+  const outlierKm = options.outlierKm ?? (transit ? Number.POSITIVE_INFINITY : 600);
+  const skipped = transit ? new Set<string>() : transitPlaceRefs(doc);
   const uses = new Map<string, number>();
   for (const item of doc.items) {
     for (const ref of [item.placeRef, item.leg?.fromPlaceRef, item.leg?.toPlaceRef]) if (ref !== undefined) uses.set(ref, (uses.get(ref) ?? 0) + 1);
   }
   const bases = new Set(doc.days.flatMap((day) => (day.baseRef === undefined ? [] : [day.baseRef])));
-  const located = doc.places.flatMap((place) =>
+  const all = doc.places.flatMap((place) =>
     place.lat !== undefined && place.lng !== undefined && (uses.has(place.ref) || bases.has(place.ref)) ? [{ ref: place.ref, name: place.name, lat: place.lat, lng: place.lng }] : [],
   );
+  // Plan z samym dojazdem (bez miejsc na miejscu) — wtedy mapa dojazdu, a nie żadna.
+  const kept = all.filter((place) => !skipped.has(place.ref));
+  const located = kept.length > 0 ? kept : all;
   if (located.length === 0) return [];
   const center = { lat: median(located.map((place) => place.lat)), lng: median(located.map((place) => place.lng)) };
   const places = located.filter((place) => distanceKm(place, center) <= outlierKm);

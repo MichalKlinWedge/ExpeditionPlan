@@ -178,6 +178,21 @@ export function isTransit(doc: Doc, item: Item): boolean {
   return item.leg.mode === 'flight' || (item.leg.distanceKm ?? 0) >= TRANSIT_KM;
 }
 
+/**
+ * Miejsca tylko dojazdu i powrotu w całym planie (np. lotnisko w domu): każdy punkt, który ich
+ * używa, to `isTransit`, i nie są bazą noclegową. Mapa wyjazdu może je ukryć, a mapa offline pominąć.
+ */
+export function transitPlaceRefs(doc: Doc): Set<string> {
+  const transit = new Set<string>();
+  const local = new Set(doc.days.flatMap((day) => (day.baseRef === undefined ? [] : [day.baseRef])));
+  for (const item of doc.items) {
+    const refs = [item.placeRef, item.leg?.fromPlaceRef, item.leg?.toPlaceRef].filter((ref): ref is string => ref !== undefined);
+    for (const ref of refs) (isTransit(doc, item) ? transit : local).add(ref);
+  }
+  for (const ref of local) transit.delete(ref);
+  return transit;
+}
+
 export type DayMap = {
   pins: MapPin[];
   /** Linia dnia po kolei: trasy przejazdów, gdy są zapisane, a między resztą miejsc — proste. */

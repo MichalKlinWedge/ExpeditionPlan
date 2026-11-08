@@ -1,4 +1,4 @@
-import { dayChip, dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, moveToDay, type PlanItem, scheduleDay, type TripDocument, tripMapAreas } from '@expeditionplan/core';
+import { dayChip, dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, moveToDay, type PlanItem, scheduleDay, transitPlaceRefs, type TripDocument, tripMapAreas } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip, savePlanEdit } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
@@ -17,7 +17,9 @@ import { DayPicker } from '@/features/plan/item-editor';
 import { PoolDrop } from '@/features/map/pool-drop';
 import { cachedTrips } from '@/features/trips/my-trips';
 import { useMapStyle } from '@/features/map/map-style';
+import { mapTransit, setMapTransit } from '@/features/map/map-transit';
 import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
+import { offlineChanged } from '@/features/trip/offline-download';
 import { useTheme } from '@/hooks/use-theme';
 import { localDb, remote } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
@@ -25,7 +27,9 @@ import { supabase } from '@/lib/supabase';
 /**
  * Mapa wyjazdu: pinezki dnia z numerami kolejności (ta sama `dayMap` co na webie), cała trasa,
  * nawigacja do miejsca i mapa offline — obszary liczone z miejsc planu (`tripMapAreas`),
- * pobierane jednym przyciskiem. Plan z pamięci telefonu, więc działa bez sieci. Organizator i edytor
+ * pobierane jednym przyciskiem. „✈ Dojazd i powrót” (zapamiętany dla wyjazdu, `map-transit.ts`)
+ * chowa lotnisko w domu itp.: wyłączony skupia mapę na miejscu i pobiera tylko obszar podróży.
+ * Plan z pamięci telefonu, więc działa bez sieci. Organizator i edytor
  * długim przytrzymaniem dodają w tym miejscu punkt do puli (online). „Pula” pokazuje szare pinezki
  * punktów spoza dni — opis z przewodnikiem i „Wstaw do dnia…”.
  */
@@ -46,13 +50,14 @@ function withPool(doc: TripDocument, pins: MapPin[]): MapPin[] {
   return [...out.values()];
 }
 
-/** Wszystkie miejsca planu ze współrzędnymi (widok „Cała trasa”), bazy noclegowe wyróżnione. */
+/** Wszystkie miejsca planu ze współrzędnymi (widok „Cała trasa”), bazy noclegowe wyróżnione, miejsca tylko dojazdu — `transit`. */
 function tripPins(doc: TripDocument): MapPin[] {
-  const used = new Set(doc.items.flatMap((item) => [item.placeRef, item.leg?.toPlaceRef].filter((ref): ref is string => ref !== undefined)));
+  const used = new Set(doc.items.flatMap((item) => [item.placeRef, item.leg?.fromPlaceRef, item.leg?.toPlaceRef].filter((ref): ref is string => ref !== undefined)));
   const bases = new Set(doc.days.flatMap((day) => (day.baseRef ? [day.baseRef] : [])));
+  const transit = transitPlaceRefs(doc);
   return doc.places.flatMap((place) =>
     place.lat !== undefined && place.lng !== undefined && (used.has(place.ref) || bases.has(place.ref))
-      ? [{ placeRef: place.ref, name: place.name, lat: place.lat, lng: place.lng, stops: [], ...(bases.has(place.ref) ? { base: true } : {}) }]
+      ? [{ placeRef: place.ref, name: place.name, lat: place.lat, lng: place.lng, stops: [], ...(bases.has(place.ref) ? { base: true } : {}), ...(transit.has(place.ref) ? { transit: true } : {}) }]
       : [],
   );
 }
@@ -90,14 +95,14 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   }, [tripId, signedIn]);
 
   const doc = trip?.state.doc ?? null;
-  const areas = useMemo(() => (doc ? tripMapAreas(doc) : []), [doc]);
+  const [showTransit, setShowTransit] = useState(() => mapTransit(tripId));
+  const areas = useMemo(() => (doc ? tripMapAreas(doc, { transit: showTransit }) : []), [doc, showTransit]);
   const refreshStatuses = useCallback(() => {
     void areaStatuses(tripId, areas).then(setStatuses, () => setStatuses([]));
   }, [tripId, areas]);
   useEffect(refreshStatuses, [refreshStatuses]);
 
   const dayRef = doc && day >= 0 ? doc.days[day]?.ref : undefined;
-  const [showTransit, setShowTransit] = useState(false);
   const [showPool, setShowPool] = useState(false);
   /** „Wstaw do dnia…” z karty pinezki puli — wybór dnia. */
   const [inserting, setInserting] = useState<string | null>(null);
@@ -114,9 +119,12 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   const transit = full !== null && hasTransit(full);
   const view = useMemo(() => {
     if (full === null || doc === null) return null;
-    const shown = withoutTransit(full, showTransit);
+    // Dzień złożony z samego dojazdu — pokazujemy go mimo wyłączonego przełącznika.
+    const shown = withoutTransit(full, showTransit || full.pins.every((pin) => pin.transit));
     return showPool ? { ...shown, pins: withPool(doc, shown.pins) } : shown;
   }, [full, showTransit, showPool, doc]);
+  /** Miejsca tylko dojazdu i powrotu — przełącznik ma sens także w widoku dnia bez dojazdu (obszary offline). */
+  const transitPlaces = useMemo(() => (doc ? transitPlaceRefs(doc).size : 0), [doc]);
   const poolCount = doc === null ? 0 : doc.items.filter((item) => item.dayRef === undefined && item.parentRef === undefined).length;
 
   // Kamera obejmuje pinezki dnia (albo całą trasę) przy każdej zmianie widoku.
@@ -200,7 +208,17 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
           <DayLines lines={view.lines} id="day-lines" />
           <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} guided={new Set(guides.keys())} />
         </MapView>
-        {transit && <TransitToggle value={showTransit} onChange={setShowTransit} />}
+        {(transit || transitPlaces > 0) && (
+          <TransitToggle
+            value={showTransit}
+            onChange={(value) => {
+              setShowTransit(value);
+              setMapTransit(tripId, value);
+              offlineChanged(tripId);
+              if (!value && full?.pins.some((each) => each.placeRef === selected && each.transit)) setSelected(null);
+            }}
+          />
+        )}
         <Pressable onPress={() => void centerOnMe()} style={[styles.me, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]} hitSlop={6}>
           <ThemedText type="smallBold">◎</ThemedText>
         </Pressable>
@@ -241,6 +259,11 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
                   ? 'Miejsca planu nie mają współrzędnych — uzupełnij je na webie („Uzupełnij współrzędne”).'
                   : `${done.length} z ${areas.length} obszarów na telefonie${done.length > 0 ? ` (${mb(done.reduce((sum, status) => sum + status.bytes, 0))})` : ''}: ${areas.map((area) => area.label).join(', ')}`}
             </ThemedText>
+            {transitPlaces > 0 && areas.length > 0 && (
+              <ThemedText type="small" themeColor="textSecondary">
+                {showTransit ? 'Z dojazdem i powrotem (lotnisko w domu itp.).' : 'Bez dojazdu i powrotu — tylko obszar podróży.'} Zmienia to „✈ Dojazd i powrót” na mapie.
+              </ThemedText>
+            )}
             {busy && <ThemedText type="small">{progress}</ThemedText>}
             {areas.length > 0 && (
               <View style={styles.row}>

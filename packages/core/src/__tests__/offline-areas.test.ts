@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { maxZoomWithin, tileCount, tripMapAreas } from '../offline-areas.ts';
+import { transitPlaceRefs } from '../plan-info.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const load = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
@@ -32,6 +33,18 @@ describe('obszary mapy offline wyjazdu', () => {
     }
     // Paczka dokładna pozwala chodzić po mieście (zoom co najmniej 14).
     expect(Math.max(...detail.map((area) => area.maxZoom))).toBeGreaterThanOrEqual(14);
+  });
+
+  it('Maroko: lotnisko we Wrocławiu to miejsce tylko dojazdu — poza obszarami, chyba że `transit`', () => {
+    const doc = load('maroko');
+    const wroclaw = doc.places.find((place) => place.name === 'Lotnisko Wrocław')!;
+    const transit = transitPlaceRefs(doc);
+    expect(transit.has(wroclaw.ref)).toBe(true);
+    // Bazy noclegowe nigdy nie są dojazdem.
+    for (const day of doc.days) if (day.baseRef !== undefined) expect(transit.has(day.baseRef)).toBe(false);
+    // Bez progu odległości o obszarze decyduje sam dojazd.
+    expect(tripMapAreas(doc, { outlierKm: 10_000 })[0]!.bounds[3]).toBeLessThan(36);
+    expect(tripMapAreas(doc, { transit: true })[0]!.bounds[3]).toBeGreaterThan(51);
   });
 
   it('każdy wzorcowy plan daje obszary w limicie (albo żadnych, gdy brak współrzędnych)', () => {
