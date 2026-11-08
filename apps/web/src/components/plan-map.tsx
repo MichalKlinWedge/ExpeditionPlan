@@ -59,9 +59,11 @@ type Props = {
   square?: boolean;
   /** Prostokąt na szerokość strony: połowa zwykłej wysokości. */
   banner?: boolean;
+  /** Dopasowanie widoku na ten punkt zamiast na wszystkie (wejście z odnośnikiem do miejsca, także powrót na zachowaną stronę). */
+  focus?: string | null;
 };
 
-export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null, emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.", square = false, banner = false }: Props) {
+export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null, emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.", square = false, banner = false, focus = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
   // Dojazd i powrót (lot, długa droga) domyślnie ukryte — skala kraju gubi szczegóły na miejscu.
   const [showTransit, setShowTransit] = useState(false);
@@ -140,6 +142,8 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
             layout: { "line-cap": "round", "line-join": "round" },
             paint: { "line-color": "#e0662f", "line-width": 6 },
           });
+          // Strona zachowana przez Next tworzy mapę od nowa po powrocie: nowa też musi dostać dopasowanie.
+          fitted.current = null;
           setMap(created);
         });
       },
@@ -160,6 +164,11 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
     });
     target.fitBounds(bounds, { ...FIT, duration: 600 });
   };
+
+  // Ponowne wejście z innym miejscem na zachowanej stronie: dopasowanie od nowa, na to miejsce.
+  useEffect(() => {
+    if (focus !== null) fitted.current = null;
+  }, [focus]);
 
   // Dane dnia: linia, pinezki, a przy zmianie dnia — dopasowanie widoku.
   const movable = editing !== null;
@@ -189,12 +198,13 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       // Ukryty kontener (powrót na stronę zachowaną przez Next, zwinięty układ) ma rozmiar 0 —
       // dopasowanie dałoby widok całego świata; czekamy, aż kontener się pokaże.
       if (container.current === null || container.current.clientWidth === 0 || container.current.clientHeight === 0) return;
-      const bounds = boundsOf(data.pins);
+      const focused = data.pins.filter((pin) => focus !== null && pin.stops.some((stop) => stop.ref === focus));
+      const bounds = boundsOf(focused.length > 0 ? focused : data.pins);
       if (bounds === null) return;
       fitted.current = fitKey;
       fitTo(map, bounds);
     });
-  }, [map, data, fitKey, movable, shown]);
+  }, [map, data, fitKey, movable, shown, focus]);
 
   // Najechanie na link do trasy: ślad, trasa po drogach albo kawałek prostej tego punktu w kolorze sygnałowym.
   useEffect(() => {

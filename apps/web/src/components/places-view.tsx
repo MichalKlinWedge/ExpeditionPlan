@@ -53,13 +53,19 @@ export function PlacesView({ tripId, places, canEdit, hasRouted, initial = null 
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(initial);
+  // Strona zachowana przez Next dostaje nowe `?miejsce=` bez montowania od nowa.
+  const [entry, setEntry] = useState(initial);
+  if (entry !== initial) {
+    setEntry(initial);
+    if (initial !== null) setSelected(initial);
+  }
   const [open, setOpen] = useState<string | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
   const [picked, setPicked] = useState<LatLng | null>(null);
   const mapBox = useRef<HTMLDivElement>(null);
-  // Wejście z listy wszystkich miejsc: wiersz wybranego miejsca ma być na ekranie.
+  // Wejście z pinezką albo z listy wszystkich miejsc: wiersz wybranego miejsca na środku ekranu, mapa na tym miejscu.
   useEffect(() => {
-    if (initial !== null) document.getElementById(`miejsce-${initial}`)?.scrollIntoView({ block: "nearest" });
+    if (initial !== null) document.getElementById(`miejsce-${initial}`)?.scrollIntoView({ block: "center" });
   }, [initial]);
   // Nowe miejsce: kolumna wraca na górę, żeby mapa z pinezką była widoczna po czytaniu długiego opisu.
   useEffect(() => {
@@ -140,6 +146,7 @@ export function PlacesView({ tripId, places, canEdit, hasRouted, initial = null 
           map={map}
           fitKey="miejsca"
           square
+          focus={initial}
           selected={selected}
           onSelect={select}
           emptyText="Żadne miejsce nie ma jeszcze współrzędnych."
