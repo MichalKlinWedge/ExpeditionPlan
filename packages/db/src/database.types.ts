@@ -1522,11 +1522,19 @@ isOneToOne: false
 "mark_changes_seen":
 { Args: { "p_trip": string }; Returns: undefined
                            },
+"my_visited_places":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "lat": number,"lng": number,"name": string,"place_id": string,"trip_id": string,"visited_on": string
+            }[]
+                           },
 "owns_expense":
 { Args: { "p_expense": string }; Returns: boolean
                            },
 "place_key":
 { Args: { "p_name": string }; Returns: string
+                           },
+"place_visited":
+{ Args: { "p_key": string,"p_lat": number,"p_lng": number }; Returns: boolean
                            },
 "public_show":
 { Args: { "p_token": string }; Returns: Json

@@ -102,8 +102,7 @@ export function similarPlaces(doc: Doc): Record<string, string[]> {
 
 /** Wiersze z bazy do listy miejsc ze wszystkich wyjazdów. Kolejność `trips` to kolejność wyjazdów przy miejscu. */
 export type AcrossTripsRows = {
-  /** `startDate` i `status` dają lata wizyt w pamięci miejsc (`placeVisitYears`); bez nich ich nie ma. */
-  trips: readonly { id: string; title: string; startDate?: string | null; status?: string | null }[];
+  trips: readonly { id: string; title: string }[];
   places: readonly { id: string; trip_id: string; ref: string | null; name: string; address: string | null; lat: number | null; lng: number | null }[];
   items: readonly { id: string; trip_id: string; kind: string; place_id: string | null; leg: unknown }[];
   guides: readonly { place_id: string | null; item_id: string | null; audience: string }[];
@@ -117,7 +116,7 @@ export type SharedPlace = {
   /** Wystąpienie, przez które zapisuje się pamięć miejsca: pierwsze ze współrzędnymi, inaczej pierwsze. */
   placeId: string;
   /** Wystąpienia miejsca: w każdym wyjeździe to osobny wiersz z własnym opisem. */
-  trips: { tripId: string; tripTitle: string; ref: string; placeId: string; guide: boolean; startDate?: string; postponed?: true }[];
+  trips: { tripId: string; tripTitle: string; ref: string; placeId: string; guide: boolean }[];
 };
 
 /**
@@ -162,15 +161,7 @@ export function placesAcrossTrips({ trips, places, items, guides }: AcrossTripsR
         group.placeId = place.id;
       }
       if (group.address === undefined && place.address) group.address = place.address;
-      group.trips.push({
-        tripId: trip.id,
-        tripTitle: trip.title,
-        ref: refOf(place),
-        placeId: place.id,
-        guide: guided.has(place.id),
-        ...(trip.startDate ? { startDate: trip.startDate } : {}),
-        ...(trip.status === 'postponed' ? { postponed: true as const } : {}),
-      });
+      group.trips.push({ tripId: trip.id, tripTitle: trip.title, ref: refOf(place), placeId: place.id, guide: guided.has(place.id) });
     }
   }
   return [...groups.values()]

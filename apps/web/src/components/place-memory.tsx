@@ -10,13 +10,14 @@ import { IconAction } from "@/components/icon-action";
 /**
  * Pamięć miejsca (`place_memories`): moja ocena „warto / nie warto” i notatka na przyszłość oraz wpisy innych
  * uczestników. Na stronie „Wszystkie miejsca” i przy wybranym miejscu na stronie „Miejsca” wyjazdu. To głos
- * osoby, nie zmiana planu, więc nie czeka na tryb edycji.
+ * osoby, nie zmiana planu, więc nie czeka na tryb edycji. Ocena tylko po wizycie (`canRatePlace`; bazę pilnuje
+ * `set_place_memory`), notatka zawsze; własną dawną ocenę da się cofnąć.
  */
 
 export const VERDICT_ICON: Record<PlaceVerdict, string> = { worth: "👍", not_worth: "👎" };
 
 /** Oceny i notatki uczestników oraz moje: „warto” / „nie warto” (drugi klik cofa) i notatka. */
-export function PlaceMemory({ placeId, summary }: { placeId: string; summary: PlaceMemorySummary }) {
+export function PlaceMemory({ placeId, summary, canRate }: { placeId: string; summary: PlaceMemorySummary; canRate: boolean }) {
   const mine = summary.mine;
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState(mine?.note ?? "");
@@ -36,6 +37,7 @@ export function PlaceMemory({ placeId, summary }: { placeId: string; summary: Pl
       <div className="flex flex-wrap items-center gap-1.5">
         {(["worth", "not_worth"] as const).map((verdict) => {
           const active = mine?.verdict === verdict;
+          if (!canRate && !active) return null;
           return (
             <button
               key={verdict}
@@ -63,6 +65,7 @@ export function PlaceMemory({ placeId, summary }: { placeId: string; summary: Pl
         )}
         {total !== undefined && <span className="text-xs text-zinc-500">{total}</span>}
       </div>
+      {!canRate && <p className="text-xs text-zinc-500">Ocenisz po wizycie: gdy minie data i godzina punktu planu w tym miejscu. Notatkę możesz dodać już teraz.</p>}
       {editing ? (
         <div className="flex flex-col gap-1">
           <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000} rows={2} aria-label="Notatka na przyszłość" placeholder="Np. „rano tłumy, wejść przed 8:00”, „parking tylko za gotówkę”" className="field px-2 py-1 text-sm" />

@@ -6,7 +6,8 @@ import { distanceM } from './polyline.ts';
  * Pamięć miejsc między wyjazdami (strona „Wszystkie miejsca”): każdy uczestnik ocenia miejsce „warto / nie
  * warto” i zostawia notatkę na przyszłość; lata wizyt liczą się z dat wyjazdów, w których miejsce było w planie.
  * Wpisy są w tabeli `place_memories` (poza `TripDocument`), po jednym na osobę i miejsce. Miejsce łączy
- * się jak w `placesAcrossTrips`: ta sama nazwa, chyba że współrzędne są dalej niż `SAME_NAME_M`.
+ * się jak w `placesAcrossTrips`: ta sama nazwa, chyba że współrzędne są dalej niż `SAME_NAME_M`. Ocenić można
+ * tylko miejsce odwiedzone: z punktem planu, którego data i godzina minęły (`my_visited_places`, `canRatePlace`).
  * Pamięć trafia też do „Zaplanuj z AI” (`plannerMemory`).
  */
 
@@ -71,16 +72,32 @@ export function memorySummary(rows: readonly PlaceMemoryRow[], me?: string): Pla
   return { worth, notWorth, ...(verdict ? { verdict } : {}), entries, ...(mine ? { mine } : {}) };
 }
 
-/**
- * Lata, w których byliśmy w miejscu: wyjazdy, które już się zaczęły (`startDate` ≤ dziś), bez odłożonych.
- * `skipTripId` pomija wyjazd, który właśnie planujemy.
- */
-export function placeVisitYears(place: Pick<SharedPlace, 'trips'>, today: string, skipTripId?: string): number[] {
-  const years = place.trips
-    .filter((trip) => trip.tripId !== skipTripId && trip.postponed !== true && trip.startDate !== undefined && trip.startDate <= today)
-    .map((trip) => Number(trip.startDate!.slice(0, 4)));
-  return [...new Set(years)].sort((a, b) => a - b);
+/** Wiersz RPC `my_visited_places`: wystąpienie miejsca w moim wyjeździe, w którym punkt planu już minął. */
+export type VisitedPlaceRow = {
+  place_id: string;
+  trip_id: string;
+  name: string;
+  lat: number | null;
+  lng: number | null;
+  /** Dzień pierwszej minionej wizyty w tym wyjeździe. */
+  visited_on: string;
+};
+
+/** Wizyty w tym miejscu (ta sama nazwa i bliskie współrzędne, jak wpisy pamięci); `skipTripId` pomija planowany wyjazd. */
+export function visitsOf(place: Pick<SharedPlace, 'name' | 'at'>, visited: readonly VisitedPlaceRow[], skipTripId?: string): VisitedPlaceRow[] {
+  return visited.filter((row) => row.trip_id !== skipTripId && memoryMatches(place, row));
 }
+
+/**
+ * Lata, w których byliśmy w miejscu: z dat punktów planu, które już minęły (`my_visited_places`), nie z samego
+ * terminu wyjazdu. Miejsce z puli albo z dnia, który jeszcze nie nadszedł, się nie liczy.
+ */
+export function placeVisitYears(place: Pick<SharedPlace, 'name' | 'at'>, visited: readonly VisitedPlaceRow[], skipTripId?: string): number[] {
+  return [...new Set(visitsOf(place, visited, skipTripId).map((row) => Number(row.visited_on.slice(0, 4))))].sort((a, b) => a - b);
+}
+
+/** Ocenić „warto / nie warto” można tylko miejsce, w którym już byliśmy (tak samo pilnuje baza w `set_place_memory`). */
+export const canRatePlace = (place: Pick<SharedPlace, 'name' | 'at'>, visited: readonly VisitedPlaceRow[]): boolean => visitsOf(place, visited).length > 0;
 
 /** „byliśmy w 2025”, „byliśmy w 2023 i 2025”, „byliśmy w 2021, 2023 i 2025”. */
 export function visitLabel(years: readonly number[]): string | undefined {
@@ -114,11 +131,11 @@ export const PLANNER_MEMORY_LIMIT = 60;
  * Pamięć miejsc jako kontekst planowania: miejsca z oceną, notatką albo wizytą w poprzednich wyjazdach.
  * Samo „warto” bez wizyty i notatki też idzie (to podpowiedź, co się podobało).
  */
-export function plannerMemory(places: readonly SharedPlace[], rows: readonly PlaceMemoryRow[], today: string, skipTripId?: string): PlannerPlaceMemory[] {
+export function plannerMemory(places: readonly SharedPlace[], rows: readonly PlaceMemoryRow[], visited: readonly VisitedPlaceRow[], skipTripId?: string): PlannerPlaceMemory[] {
   const found: PlannerPlaceMemory[] = [];
   for (const place of places) {
     const summary = memorySummary(memoriesOf(place, rows));
-    const years = placeVisitYears(place, today, skipTripId);
+    const years = placeVisitYears(place, visited, skipTripId);
     const notes = summary.entries.flatMap((entry) => (entry.note ? [entry.note] : []));
     if (years.length === 0 && summary.entries.length === 0) continue;
     found.push({

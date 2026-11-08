@@ -1,6 +1,6 @@
 "use client";
 
-import { type DayMap, distanceM, type PlaceGuide, type PlaceMemorySummary, type PlaceUsage } from "@expeditionplan/core";
+import { capitalized, type DayMap, distanceM, type PlaceGuide, type PlaceMemorySummary, type PlaceUsage, visitLabel } from "@expeditionplan/core";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 
@@ -39,6 +39,9 @@ export type PlaceRowData = {
   guide: PlaceGuide | null;
   /** Oceny i notatki z pamięci miejsc (`memorySummary`), wspólne z innymi wyjazdami z tym miejscem. */
   memory: PlaceMemorySummary;
+  /** Byliśmy tu (punkt planu z minioną datą i godziną, w dowolnym moim wyjeździe): dopiero wtedy ocena. */
+  canRate: boolean;
+  years: number[];
 };
 
 type Filter = "all" | "missing" | "unused";
@@ -161,8 +164,10 @@ export function PlacesView({ tripId, places, canEdit, hasRouted, initial = null 
         {chosen && (
           <section key={`ocena-${chosen.ref}`} className="card flex flex-col gap-2 p-4 text-sm">
             <h2 className="card-title">Czy warto? {chosen.name}</h2>
-            <p className="text-xs text-zinc-500">Każdy uczestnik ocenia za siebie. Oceny i notatki widać też w innych wyjazdach z tym miejscem i bierze je pod uwagę „Zaplanuj z AI”.</p>
-            <PlaceMemory placeId={chosen.id} summary={chosen.memory} />
+            <p className="text-xs text-zinc-500">
+              {chosen.years.length > 0 && `${capitalized(visitLabel(chosen.years)!)}. `}Każdy uczestnik ocenia za siebie. Oceny i notatki widać też w innych wyjazdach z tym miejscem i bierze je pod uwagę „Zaplanuj z AI”.
+            </p>
+            <PlaceMemory placeId={chosen.id} summary={chosen.memory} canRate={chosen.canRate} />
           </section>
         )}
         {chosen && <PlaceDescription key={chosen.ref} tripId={tripId} place={chosen} canEdit={canEdit} />}

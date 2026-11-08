@@ -1,9 +1,10 @@
 -- Pamięć miejsc (migracja *_place_memories): wpis widzi uczestnik każdego wyjazdu z tym samym miejscem (nazwa
 -- bez wielkości liter i ogonków, współrzędne ≤ 1 km), obcy i uczestnik wyjazdu z dalekim imiennikiem nie;
--- widz też ocenia; jeden wpis na osobę i miejsce; pisze się tylko przez set_place_memory. Uruchomienie: npm run test:db
+-- widz też ocenia; jeden wpis na osobę i miejsce; pisze się tylko przez set_place_memory. Ocena tylko po wizycie
+-- (punkt planu z minioną datą i godziną, migracja *_place_visits), notatka zawsze. Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(19);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000000e1', 'pamiec-owner@test.local'),
@@ -31,7 +32,22 @@ insert into public.travelers (id, trip_id, name, user_id) values
   ('2e000000-0000-4000-8000-000000000001', '1e000000-0000-4000-8000-000000000001', 'Ola', '00000000-0000-4000-8000-0000000000e1');
 insert into public.places (id, trip_id, ref, name, lat, lng) values
   ('3e000000-0000-4000-8000-000000000001', '1e000000-0000-4000-8000-000000000001', 'oko', 'Morskie Oko', 49.2, 20.07),
-  ('3e000000-0000-4000-8000-000000000002', '1e000000-0000-4000-8000-000000000002', 'oko', 'MORSKIE OKO', 49.2005, 20.0705);
+  ('3e000000-0000-4000-8000-000000000002', '1e000000-0000-4000-8000-000000000002', 'oko', 'MORSKIE OKO', 49.2005, 20.0705),
+  ('3e000000-0000-4000-8000-000000000004', '1e000000-0000-4000-8000-000000000001', 'giewont', 'Giewont', 49.25, 19.93);
+-- Wyjazd A był: Morskie Oko w planie 2025-07-01 o 10:00. Giewont tylko w puli (kandydat), nie w planie.
+insert into public.days (id, trip_id, ref, date, tz) values
+  ('4e000000-0000-4000-8000-000000000001', '1e000000-0000-4000-8000-000000000001', 'd1', '2025-07-01', 'Europe/Warsaw'),
+  ('4e000000-0000-4000-8000-000000000002', '1e000000-0000-4000-8000-000000000002', 'd1', '2027-07-01', 'Europe/Warsaw');
+insert into public.items (id, trip_id, ref, day_id, sort_key, kind, title, place_id, time_precision, start_time, plan_status) values
+  ('5e000000-0000-4000-8000-000000000001', '1e000000-0000-4000-8000-000000000001', 'i1', '4e000000-0000-4000-8000-000000000001', '0010', 'visit', 'Oko', '3e000000-0000-4000-8000-000000000001', 'exact', '10:00', 'scheduled'),
+  ('5e000000-0000-4000-8000-000000000002', '1e000000-0000-4000-8000-000000000001', 'i2', null, '0020', 'visit', 'Giewont', '3e000000-0000-4000-8000-000000000004', null, null, 'candidate'),
+  ('5e000000-0000-4000-8000-000000000003', '1e000000-0000-4000-8000-000000000002', 'i1', '4e000000-0000-4000-8000-000000000002', '0010', 'visit', 'Oko', '3e000000-0000-4000-8000-000000000002', null, null, 'scheduled');
+select is((select count(*) from public.my_visited_places()), 1::bigint, 'odwiedzone: tylko punkt planu z minioną datą');
+select throws_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-000000000004', 'worth', null) $$, '23514', null,
+  'miejsca tylko z puli nie da się ocenić');
+select lives_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-000000000004', null, 'następnym razem') $$,
+  'notatkę można zostawić bez wizyty');
+select public.set_place_memory('3e000000-0000-4000-8000-000000000004', null, null);
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000e4');
 insert into public.trips (id, title, start_date, end_date, primary_tz, base_currency) values
@@ -43,8 +59,10 @@ select throws_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-0000
 select throws_ok($$ insert into public.place_memories (user_id, author_name, name, name_key, verdict)
   values ('00000000-0000-4000-8000-0000000000e4', 'X', 'Morskie Oko', 'morskie oko', 'worth') $$, '42501', null,
   'bezpośredni zapis do tabeli zablokowany');
-select lives_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-000000000003', 'worth', 'inne Morskie Oko') $$,
-  'obcy ocenia imiennika ze swojego wyjazdu');
+select throws_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-000000000003', 'worth', null) $$, '23514', null,
+  'bez wizyty w planie nie ma oceny (wizyta imiennika obok się nie liczy)');
+select lives_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-000000000003', null, 'inne Morskie Oko') $$,
+  'obcy zostawia notatkę o imienniku ze swojego wyjazdu');
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000e1');
 select lives_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-000000000001', 'not_worth', '  tłumy od 8:00  ') $$,
@@ -52,7 +70,7 @@ select lives_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-00000
 select is((select author_name || '|' || note from public.place_memories where user_id = '00000000-0000-4000-8000-0000000000e1'),
   'Ola|tłumy od 8:00', 'autor to imię z wyjazdu, notatka przycięta');
 select lives_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-000000000002', 'worth', null) $$,
-  'ocena z drugiego wyjazdu nadpisuje ten sam wpis');
+  'ocena z przyszłego wyjazdu w to samo miejsce: wizyta z wyjazdu A się liczy, nadpisuje ten sam wpis');
 select is((select count(*) || '|' || min(verdict) from public.place_memories where user_id = '00000000-0000-4000-8000-0000000000e1'),
   '1|worth', 'jeden wpis na osobę i miejsce');
 select is((select count(*) from public.place_memories), 1::bigint, 'nie widać wpisu o dalekim imienniku');
@@ -63,6 +81,8 @@ select is((select count(*) from public.place_memories), 2::bigint, 'widz wyjazdu
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000e3');
 select is((select count(*) from public.place_memories), 2::bigint, 'edytor tylko wyjazdu B widzi oceny z wyjazdu A (to samo miejsce)');
+select throws_ok($$ select public.set_place_memory('3e000000-0000-4000-8000-000000000002', 'worth', null) $$, '23514', null,
+  'edytor tylko przyszłego wyjazdu jeszcze nie ocenia');
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000e2');
 select public.set_place_memory('3e000000-0000-4000-8000-000000000001', null, ' ');

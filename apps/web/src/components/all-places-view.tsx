@@ -1,6 +1,6 @@
 "use client";
 
-import { memoriesOf, memorySummary, type PlaceMemoryRow, type PlaceMemorySummary, placeVisitYears, type SharedPlace, visitLabel } from "@expeditionplan/core";
+import { memoriesOf, memorySummary, type PlaceMemoryRow, type PlaceMemorySummary, placeVisitYears, type SharedPlace, type VisitedPlaceRow, visitLabel } from "@expeditionplan/core";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -20,12 +20,12 @@ type Row = { place: SharedPlace; summary: PlaceMemorySummary; years: number[] };
 
 /**
  * Lista miejsc ze wszystkich wyjazdów z wyszukiwaniem. Przy każdym wyjeździe widać, czy miejsce ma tam opis;
- * przy miejscu pamięć: lata wizyt (z dat wyjazdów), oceny uczestników i notatki na przyszłość.
+ * przy miejscu pamięć: lata wizyt (z minionych punktów planu), oceny uczestników i notatki na przyszłość.
  */
-export function AllPlacesView({ places, memories, me, today }: { places: SharedPlace[]; memories: PlaceMemoryRow[]; me: string; today: string }) {
+export function AllPlacesView({ places, memories, me, visited }: { places: SharedPlace[]; memories: PlaceMemoryRow[]; me: string; visited: VisitedPlaceRow[] }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const rows = useMemo<Row[]>(() => places.map((place) => ({ place, summary: memorySummary(memoriesOf(place, memories), me), years: placeVisitYears(place, today) })), [places, memories, me, today]);
+  const rows = useMemo<Row[]>(() => places.map((place) => ({ place, summary: memorySummary(memoriesOf(place, memories), me), years: placeVisitYears(place, visited) })), [places, memories, me, visited]);
   const needle = query.trim().toLowerCase();
   const shown = rows.filter(({ place, summary, years }) => {
     if (filter === "visited" && years.length === 0) return false;
@@ -72,7 +72,7 @@ export function AllPlacesView({ places, memories, me, today }: { places: SharedP
                   </Link>
                 ))}
               </span>
-              <PlaceMemory placeId={place.placeId} summary={summary} />
+              <PlaceMemory placeId={place.placeId} summary={summary} canRate={years.length > 0} />
             </li>
           ))}
         </ul>

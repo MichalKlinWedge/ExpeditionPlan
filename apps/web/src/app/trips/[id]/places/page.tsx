@@ -1,6 +1,6 @@
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
-import { type GuideRow, memoriesOf, memorySummary, type PlaceMemoryRow, placeGuide, placeList, similarPlaces, type TripDocument } from "@expeditionplan/core";
+import { canRatePlace, type GuideRow, memoriesOf, memorySummary, type PlaceMemoryRow, placeGuide, placeList, placeVisitYears, similarPlaces, type TripDocument, type VisitedPlaceRow } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { Suspense } from "react";
 import { PlacesView } from "@/components/places-view";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
+import { loadVisited } from "@/lib/places-across";
 
 /**
  * Miejsca wyjazdu w jednym miejscu: co jest na mapie, skąd pochodzi i co z niego korzysta. Organizator
@@ -35,10 +36,11 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
   const { miejsce, wroc } = query;
   const { supabase, userId } = await requireUser(`/trips/${id}/places`);
   // Pamięć miejsc (RLS: moje wpisy i te o miejscach z moich wyjazdów); jej błąd nie blokuje strony.
-  const [{ data, error }, membership, memories] = await Promise.all([
+  const [{ data, error }, membership, memories, visited] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase.from("place_memories").select("id, user_id, author_name, name, lat, lng, verdict, note, updated_at").limit(5000),
+    loadVisited(supabase).catch((): VisitedPlaceRow[] => []),
   ]);
   if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
@@ -58,8 +60,10 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
   const places = placeList(doc).flatMap(({ place, usage, n }) => {
     const rowId = ids[place.ref];
     const at: [number, number] | undefined = place.lat !== undefined && place.lng !== undefined ? [place.lng, place.lat] : undefined;
-    const memory = memorySummary(memoriesOf({ name: place.name, ...(at ? { at } : {}) }, memoryRows), userId);
-    return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, similar: similar[place.ref] ?? [], guide: placeGuide(doc.items, rows, ids, place.ref), memory }];
+    const where = { name: place.name, ...(at ? { at } : {}) };
+    const memory = memorySummary(memoriesOf(where, memoryRows), userId);
+    const visits = { canRate: canRatePlace(where, visited), years: placeVisitYears(where, visited) };
+    return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, similar: similar[place.ref] ?? [], guide: placeGuide(doc.items, rows, ids, place.ref), memory, ...visits }];
   });
 
   const back = backLink(id, doc, wroc);

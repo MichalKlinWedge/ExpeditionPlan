@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  canRatePlace,
   memoriesOf,
   memorySummary,
   type PlaceMemoryRow,
@@ -9,6 +10,7 @@ import {
   plannerMemory,
   plannerMemoryLine,
   rememberedInPlan,
+  type VisitedPlaceRow,
   visitLabel,
 } from '../index.ts';
 
@@ -26,10 +28,15 @@ const row = (id: string, user: string, name: string, extra: Partial<PlaceMemoryR
 });
 
 const trips = [
-  { id: 't1', title: 'Tatry 2024', startDate: '2024-07-01' },
-  { id: 't2', title: 'Tatry 2025', startDate: '2025-08-10' },
-  { id: 't3', title: 'Tatry 2027', startDate: '2027-02-01' },
-  { id: 't4', title: 'Odłożone', startDate: '2023-05-01', status: 'postponed' },
+  { id: 't1', title: 'Tatry 2024' },
+  { id: 't2', title: 'Tatry 2025' },
+  { id: 't3', title: 'Tatry 2027' },
+  { id: 't4', title: 'Odłożone' },
+];
+// Z RPC `my_visited_places`: punkty planu, które już minęły (Kasprowy z odłożonego wyjazdu i przyszłe dni tu nie trafiają).
+const visited: VisitedPlaceRow[] = [
+  { place_id: 'a', trip_id: 't1', name: 'Morskie Oko', lat: 49.2, lng: 20.07, visited_on: '2024-07-02' },
+  { place_id: 'b', trip_id: 't2', name: 'morskie oko', lat: 49.2005, lng: 20.0705, visited_on: '2025-08-11' },
 ];
 const place = (id: string, trip_id: string, name: string, at?: [number, number]) => ({ id, trip_id, ref: `${id}-ref`, name, address: null, lat: at?.[0] ?? null, lng: at?.[1] ?? null });
 const shared = placesAcrossTrips({
@@ -83,10 +90,14 @@ describe('pamięć miejsc', () => {
     expect(memorySummary([]).verdict).toBeUndefined();
   });
 
-  it('lata wizyt z wyjazdów, które już się zaczęły, bez odłożonych i bez planowanego', () => {
-    expect(placeVisitYears(oko, '2026-11-08')).toEqual([2024, 2025]);
-    expect(placeVisitYears(oko, '2026-11-08', 't2')).toEqual([2024]);
-    expect(placeVisitYears(shared.find((each) => each.name === 'Kasprowy Wierch')!, '2026-11-08')).toEqual([]);
+  it('lata wizyt z minionych punktów planu, bez planowanego wyjazdu; ocenić można tylko odwiedzone', () => {
+    expect(placeVisitYears(oko, visited)).toEqual([2024, 2025]);
+    expect(placeVisitYears(oko, visited, 't2')).toEqual([2024]);
+    const kasprowy = shared.find((each) => each.name === 'Kasprowy Wierch')!;
+    expect(placeVisitYears(kasprowy, visited)).toEqual([]);
+    expect(canRatePlace(oko, visited)).toBe(true);
+    expect(canRatePlace(kasprowy, visited)).toBe(false);
+    expect(canRatePlace({ name: 'Morskie Oko', at: [10, 45] }, visited)).toBe(false);
     expect(visitLabel([2025])).toBe('byliśmy w 2025');
     expect(visitLabel([2021, 2023, 2025])).toBe('byliśmy w 2021, 2023 i 2025');
     expect(visitLabel([])).toBeUndefined();
@@ -94,7 +105,7 @@ describe('pamięć miejsc', () => {
 
   it('kontekst dla AI: „nie warto” na górze, odwiedzone do unikania, samo „warto” bez wizyty to podpowiedź', () => {
     const rows = [row('1', 'ola', 'Gubałówka', { verdict: 'not_worth', note: 'komercja' }), row('2', 'ola', 'Kasprowy Wierch', { verdict: 'worth' })];
-    const memory = plannerMemory(shared, rows, '2026-11-08', 't3');
+    const memory = plannerMemory(shared, rows, visited, 't3');
     expect(memory.map((each) => [each.name, each.avoid])).toEqual([
       ['Gubałówka', true],
       ['Morskie Oko', true],
@@ -105,7 +116,7 @@ describe('pamięć miejsc', () => {
   });
 
   it('miejsca szkicu do unikania wyłapuje po nazwie i bliskości', () => {
-    const memory = plannerMemory(shared, [], '2026-11-08', 't3');
+    const memory = plannerMemory(shared, [], visited, 't3');
     expect(rememberedInPlan([{ name: 'Morskie oko', lat: 49.2, lng: 20.07 }, { name: 'Gubałówka' }], memory).map((each) => each.name)).toEqual(['Morskie Oko']);
     expect(rememberedInPlan([{ name: 'Morskie Oko', lat: 40, lng: 20 }], memory)).toEqual([]);
   });

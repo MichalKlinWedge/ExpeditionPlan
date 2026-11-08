@@ -1,6 +1,6 @@
 "use server";
 
-import { Currency, formatMinutes, IsoDate, localToday, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
+import { Currency, formatMinutes, IsoDate, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { geoapifyLookup, googleLinkVias, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, dbErrorMessage, importTrip, lockedRefs, type PullPayload, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -403,7 +403,7 @@ export async function planWithAi(tripId: string): Promise<FormState & { tripId?:
   let memory: PlannerPlaceMemory[] = [];
   try {
     const across = await loadPlacesAcross(supabase);
-    memory = plannerMemory(across.places, across.memories, localToday(), tripId);
+    memory = plannerMemory(across.places, across.memories, across.visited, tripId);
   } catch {
     memory = [];
   }
