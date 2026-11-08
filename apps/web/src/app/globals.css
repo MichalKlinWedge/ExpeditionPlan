@@ -246,8 +246,8 @@ h2 {
   .card-title {
     margin: -1rem -1rem 0.25rem;
     padding: 0.55rem 1rem;
-    background: color-mix(in srgb, var(--line) 45%, var(--surface));
-    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--line) 90%, var(--surface));
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, var(--foreground));
     border-radius: calc(1rem - 1px) calc(1rem - 1px) 0 0;
     font-size: 1.05rem;
     font-weight: 600;
