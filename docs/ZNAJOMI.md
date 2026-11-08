@@ -53,7 +53,7 @@ poprawiają zaproszone plany.
    - nowa wersja instaluje się na starą — plany, wydatki i dziennik zostają.
 3. **Zaloguj się w aplikacji „Expedition Planner”** tym samym kontem (Google albo ten sam e-mail).
    Wyjazd pojawi się w zakładce „Wyjazdy”.
-4. **Przed wyjazdem otwórz plan raz z internetem** (najlepiej „Pobierz wyjazd offline” na karcie wyjazdu) — od tej chwili działa offline: plan dnia,
+4. **Przed wyjazdem otwórz plan raz z internetem** (najlepiej „Pobierz offline” na karcie wyjazdu) — od tej chwili działa offline: plan dnia,
    mapa, informacje praktyczne (numery alarmowe), wydatki. Wydatki dodane bez zasięgu wyślą się same,
    gdy wróci internet.
 5. **Aktualizacje** przychodzą same: aplikacja pokaże znaczek aktualizacji i zaproponuje restart.

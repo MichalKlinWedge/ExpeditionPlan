@@ -8,7 +8,7 @@ którą zabierasz (po ostatnim OTA). Zajmuje ok. 20 minut.
 
 - [ ] Aplikacja zaktualizowana: Start → ⚙︎ → „Sprawdź aktualizację” mówi, że to najnowsza wersja.
 - [ ] Zalogowany tym kontem, które ma wyjazd (Start pokazuje kafel „Najbliższy wyjazd” z odliczaniem dni).
-- [ ] Wyjazdy → wyjazd → „Pobierz wyjazd offline”: pobiera plan, mapę, dokumenty i opisy miejsc, z postępem.
+- [ ] Wyjazdy → wyjazd → „Pobierz offline”: pobiera plan, mapę, dokumenty i opisy miejsc, z postępem.
       Na końcu komunikat „Wyjazd jest na telefonie”, a linijka nad przyciskiem zaczyna się od „✓ Offline:”.
       Przy „Pobrano częściowo” kliknij ponownie. Potem „Plan dzień po dniu →”: przejdź raz przez wszystkie
       dni i zakładki Plan · Wydatki · Sprzęt · Zadania · Dziennik · Info.

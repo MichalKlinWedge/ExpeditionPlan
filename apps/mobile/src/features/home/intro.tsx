@@ -35,7 +35,7 @@ const PAGES: { icon: string; title: string; points: string[] }[] = [
   {
     icon: '🧳',
     title: 'Wyjazdy',
-    points: ['Tu są Twoje wyjazdy.', 'Przed wyjazdem, najlepiej na Wi-Fi: „Pobierz wyjazd offline” — plan, mapa okolicy, dokumenty i opisy miejsc zostaną w telefonie.'],
+    points: ['Tu są Twoje wyjazdy.', 'Przed wyjazdem, najlepiej na Wi-Fi: „Pobierz offline” — plan, mapa okolicy, dokumenty i opisy miejsc zostaną w telefonie.'],
   },
   {
     icon: '🗓',

@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { downloadTripOffline, onOfflineChange, type OfflineState, offlineState } from '@/features/trip/offline-download';
 
 /**
- * „Pobierz wyjazd offline” na karcie wyjazdu: stan (plan z dnia…, mapa, dokumenty) i jeden przycisk,
- * który dociąga braki z postępem. Ekran nie musi być otwarty do końca kroku mapy — MapLibre pobiera
+ * „Pobierz offline” na karcie wyjazdu: jeden przycisk, który dociąga braki z postępem, a przy
+ * dacie wyjazdu — kiedy plan był ostatnio doczytany (`OfflineStamp`). Ekran nie musi być otwarty do końca kroku mapy — MapLibre pobiera
  * paczkę dalej, a następne kliknięcie wznawia od miejsca przerwania.
  */
 
@@ -25,6 +24,13 @@ function summary(state: OfflineState): string {
   ]
     .filter(Boolean)
     .join(' · ');
+}
+
+/** Do wstawienia w wiersz z datą i rolą: „ · offline z 7.11, 10:30” albo „ · offline: nic”. */
+export function OfflineStamp({ tripId }: { tripId: string }) {
+  const [state] = useOfflineState(tripId);
+  if (state === null) return null;
+  return <>{state.syncedAt === null ? ' · offline: nic' : ` · offline z ${stamp(state.syncedAt)}`}</>;
 }
 
 /** Stan offline wyjazdu, odświeżany po pobraniu (z karty albo z innego miejsca). */
@@ -61,7 +67,7 @@ export function OfflineBadge({ tripId }: { tripId: string }) {
   );
 }
 
-export function OfflineButton({ tripId, online }: { tripId: string; online: boolean }) {
+export function OfflineButton({ tripId }: { tripId: string }) {
   const [state, refresh, setState] = useOfflineState(tripId);
   const [progress, setProgress] = useState('');
 
@@ -81,24 +87,12 @@ export function OfflineButton({ tripId, online }: { tripId: string; online: bool
 
   const busy = progress !== '';
   return (
-    <View style={styles.box}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {state === null
-          ? 'Sprawdzam, co jest na telefonie…'
-          : `${state.complete ? '✓ Offline: ' : state.stale ? 'Plan zmienił się od pobrania — dociągnij brakujące. Offline: ' : 'Offline: '}${summary(state)}`}
-      </ThemedText>
-      {online && (
-        <Button
-          label={busy ? progress : state?.complete ? 'Odśwież wyjazd offline' : 'Pobierz wyjazd offline'}
-          variant={state?.complete ? 'secondary' : 'primary'}
-          disabled={busy}
-          onPress={() => void download()}
-        />
-      )}
-    </View>
+    <Button
+      label={busy ? progress : state?.complete ? 'Odśwież offline' : 'Pobierz offline'}
+      variant={state?.complete ? 'secondary' : 'primary'}
+      disabled={busy}
+      small
+      onPress={() => void download()}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  box: { gap: Spacing.one },
-});

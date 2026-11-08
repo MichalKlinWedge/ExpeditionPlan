@@ -1,6 +1,6 @@
 import { isPostponed } from '@expeditionplan/core';
 import type { Tables } from '@expeditionplan/db';
-import { forgetTrip, pruneLocal, refreshTrip, dbErrorMessage, dbLoadError } from '@expeditionplan/sync';
+import { pruneLocal, refreshTrip, dbLoadError } from '@expeditionplan/sync';
 
 import { localDb, remote, TRIPS_KEY } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
@@ -45,22 +45,38 @@ export async function loadMyTrips(signedIn = true): Promise<MyTrips> {
   return { trips: cached, offline: true, error: '' };
 }
 
+const ARCHIVED_KEY = 'archived_trips';
+
 /**
- * Właściciel usuwa wyjazd, pozostali z niego wychodzą — tylko z siecią (decyduje serwer). Po
- * sukcesie wyjazd znika z listy w `localStorage` i z bazy telefonu. Zwraca komunikat błędu albo `null`.
+ * Wyjazdy przeniesione do archiwum na tym telefonie („Do archiwum” na karcie). Telefon nigdy nie
+ * usuwa wyjazdu ani z niego nie wychodzi — to robi się na webie; tu wyjazd tylko zmienia sekcję.
  */
-export async function removeTrip(trip: Trip): Promise<string | null> {
-  const { error } = await supabase.rpc(trip.role === 'owner' ? 'delete_trip' : 'leave_trip', { p_trip: trip.id! });
-  if (error) return dbErrorMessage(error);
-  localStorage.setItem(TRIPS_KEY, JSON.stringify((cachedTrips() ?? []).filter((each) => each.id !== trip.id)));
-  forgetTrip(localDb, trip.id!);
-  return null;
+export function archivedTrips(): Set<string> {
+  try {
+    const stored = localStorage.getItem(ARCHIVED_KEY);
+    return new Set(stored === null ? [] : (JSON.parse(stored) as string[]));
+  } catch {
+    return new Set();
+  }
 }
 
-/** Domyślny wyjazd: trwający dziś, inaczej najbliższy nadchodzący, inaczej ostatni. Odłożony — tylko gdy nie ma innych. */
+export function setTripArchived(id: string, archived: boolean): Set<string> {
+  const ids = archivedTrips();
+  if (archived) ids.add(id);
+  else ids.delete(id);
+  try {
+    localStorage.setItem(ARCHIVED_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Bez zapisu wyjazd wróci na swoje miejsce przy następnym otwarciu.
+  }
+  return ids;
+}
+
+/** Domyślny wyjazd: trwający dziś, inaczej najbliższy nadchodzący, inaczej ostatni. Odłożony i zarchiwizowany na telefonie — tylko gdy nie ma innych. */
 export function pickTrip(trips: Trip[]): string | null {
   const today = new Date().toISOString().slice(0, 10);
-  const planned = trips.filter((trip) => !isPostponed(trip));
+  const archived = archivedTrips();
+  const planned = trips.filter((trip) => !isPostponed(trip) && !archived.has(trip.id!));
   const ongoing = planned.find((trip) => trip.start_date! <= today && today <= trip.end_date!);
   const upcoming = planned.find((trip) => trip.start_date! > today);
   return (ongoing ?? upcoming ?? planned.at(-1) ?? trips.at(-1))?.id ?? null;

@@ -3,7 +3,7 @@ import { type MapArea, tripMapAreas, type TripDocument } from '@expeditionplan/c
 /**
  * „✈ Dojazd i powrót” w zakładce Mapa — zapamiętany dla wyjazdu. Wyłączony (domyślnie) chowa
  * miejsca tylko dojazdu i powrotu (lotnisko w domu), więc mapa skupia się na miejscu, a mapa
- * offline (`tripMapAreas`) pobiera tylko obszar podróży. Ten sam wybór czyta „Pobierz wyjazd offline”.
+ * offline (`tripMapAreas`) pobiera tylko obszar podróży. Ten sam wybór czyta „Pobierz offline”.
  */
 
 const KEY = (tripId: string) => `map_transit_${tripId}`;

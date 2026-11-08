@@ -1,29 +1,30 @@
 import { isPostponed, localToday, MEMBER_ROLE, tripSections } from '@expeditionplan/core';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
-import { OfflineBadge, OfflineButton } from '@/features/trips/offline-button';
+import { OfflineBadge, OfflineButton, OfflineStamp } from '@/features/trips/offline-button';
 import { useTheme } from '@/hooks/use-theme';
-import { loadMyTrips, removeTrip, setCurrentTrip, type Trip } from '@/features/trips/my-trips';
+import { archivedTrips, loadMyTrips, setCurrentTrip, setTripArchived, type Trip } from '@/features/trips/my-trips';
 import { supabase } from '@/lib/supabase';
 
 /**
  * Moje wyjazdy (MVP-1): lista z rolą, po dotknięciu — plan w liczbach, uczestnicy, kto ma dostęp
  * i wejście w plan dnia albo na mapę. Rozwinięty wyjazd staje się wybranym także w zakładkach Plan i Mapa. Bez logowania (`signedIn = false`) — lista i plany z telefonu, do odczytu.
- * Z siecią właściciel usuwa wyjazd, pozostali z niego wychodzą. Odłożone (status ustawiany na webie) —
- * w zwiniętej sekcji bez względu na datę. Wyjazdy po dacie końca — w zwiniętym „Archiwum” pod
+ * „Do archiwum” przenosi wyjazd do „Archiwum” tylko na tym telefonie (nigdy nie usuwa; usunąć albo
+ * opuścić wyjazd można na webie), „Przywróć” cofa. Odłożone (status ustawiany na webie) —
+ * w zwiniętej sekcji bez względu na datę. Wyjazdy po dacie końca i zarchiwizowane — w zwiniętym „Archiwum” pod
  * wyjazdami przed nami (najnowsze na górze). Szkice AI — w zwiniętych „Szkicach” na samym dole.
  */
 
 
 type Details = {
-  travelers: { id: string; name: string; age: number | null }[];
+  travelers: { id: string; name: string }[];
   members: { role: string; name: string }[];
   days: number;
   items: number;
@@ -40,6 +41,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [postponedOpen, setPostponedOpen] = useState(false);
   const [draftsOpen, setDraftsOpen] = useState(false);
+  const [archived, setArchived] = useState(archivedTrips);
 
   const load = useCallback(async () => {
     const result = await loadMyTrips(signedIn);
@@ -61,7 +63,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
     setDetails(null);
     if (!signedIn) return;
     const [travelers, members, days, items] = await Promise.all([
-      supabase.from('travelers').select('id, name, age').eq('trip_id', id).is('deleted_at', null).order('sort_key'),
+      supabase.from('travelers').select('id, name').eq('trip_id', id).is('deleted_at', null).order('sort_key'),
       supabase.from('trip_members').select('role, profiles(display_name)').eq('trip_id', id),
       supabase.from('days').select('id', { count: 'exact', head: true }).eq('trip_id', id).is('deleted_at', null),
       supabase.from('items').select('id', { count: 'exact', head: true }).eq('trip_id', id).is('deleted_at', null),
@@ -84,31 +86,14 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
     router.navigate('/map');
   };
 
-  const remove = (trip: Trip) => {
-    const owner = trip.role === 'owner';
-    Alert.alert(
-      owner ? 'Usunąć wyjazd?' : 'Opuścić wyjazd?',
-      owner
-        ? `„${trip.title}” zniknie u wszystkich uczestników — na webie i na telefonach.`
-        : `„${trip.title}” zniknie z Twojej listy. Wrócić można tylko z nowego zaproszenia.`,
-      [
-        { text: 'Anuluj', style: 'cancel' },
-        {
-          text: owner ? 'Usuń' : 'Opuść',
-          style: 'destructive',
-          onPress: async () => {
-            const failure = await removeTrip(trip);
-            if (failure !== null) return Alert.alert(owner ? 'Nie usunięto wyjazdu' : 'Nie opuszczono wyjazdu', failure);
-            setOpen(null);
-            setPlan((current) => (current === trip.id ? null : current));
-            setTrips((current) => current?.filter((each) => each.id !== trip.id) ?? null);
-          },
-        },
-      ],
-    );
+  const archiveTrip = (trip: Trip, value: boolean) => {
+    setArchived(setTripArchived(trip.id!, value));
+    setOpen(null);
   };
 
-  const { ahead, postponed, archive, drafts } = tripSections(trips ?? [], localToday());
+  const sections = tripSections((trips ?? []).filter((trip) => !archived.has(trip.id!)), localToday());
+  const { ahead, postponed, drafts } = sections;
+  const archive = [...sections.archive, ...(trips ?? []).filter((trip) => archived.has(trip.id!))].sort((a, b) => (b.start_date ?? '').localeCompare(a.start_date ?? ''));
 
   const tripCard = (trip: Trip) => (
     <ThemedView key={trip.id} type="backgroundElement" style={[styles.trip, { borderColor: open === trip.id ? theme.accent : theme.backgroundSelected }]}>
@@ -120,6 +105,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
           <ThemedText type="small" themeColor="textSecondary">
             {isPostponed(trip) ? 'orientacyjnie: ' : ''}
             {trip.start_date} – {trip.end_date} · {MEMBER_ROLE[trip.role!]}
+            {open === trip.id && <OfflineStamp tripId={trip.id!} />}
           </ThemedText>
           <OfflineBadge tripId={trip.id!} />
         </View>
@@ -148,17 +134,21 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
               )}
               <ThemedText type="small">
                 Uczestnicy:{' '}
-                {details.travelers.map((person) => (person.age === null ? person.name : `${person.name} (${person.age})`)).join(', ') || '—'}
+                {details.travelers.map((person) => person.name).join(', ') || '—'}
               </ThemedText>
               <ThemedText type="small">
                 Dostęp: {details.members.map((member) => `${member.name} — ${MEMBER_ROLE[member.role]}`).join(', ')}
               </ThemedText>
             </>
           )}
-          <OfflineButton tripId={trip.id!} online={signedIn && !offline} />
-          {signedIn && !offline && (
-            <AppButton label={trip.role === 'owner' ? 'Usuń wyjazd' : 'Opuść wyjazd'} onPress={() => remove(trip)} small danger />
-          )}
+          <View style={styles.actions}>
+            {signedIn && !offline && <OfflineButton tripId={trip.id!} />}
+            {archived.has(trip.id!) ? (
+              <AppButton label="Przywróć z archiwum" onPress={() => archiveTrip(trip, false)} small />
+            ) : (
+              <AppButton label="Do archiwum" onPress={() => archiveTrip(trip, true)} small />
+            )}
+          </View>
         </View>
       )}
     </ThemedView>
