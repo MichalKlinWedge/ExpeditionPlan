@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { speakGemini, speechModel, wavDurationMs } from '../speech.ts';
+import { speakFirst, speakGemini, SpeechLimitError, speechLimit, speechModel, speechModels, wavDurationMs } from '../speech.ts';
 import { AiError } from '../transport.ts';
 
 /** Mowa z Gemini: wybór modelu z listy, długość nagrania z nagłówka WAV, kształt zapytania i odpowiedzi. */
@@ -93,5 +93,68 @@ describe('speakGemini', () => {
   it('odpowiedź bez dźwięku to błąd do powtórzenia', async () => {
     respond(200, { candidates: [{ content: { parts: [{ text: 'nie umiem' }] } }] });
     await expect(speakGemini('klucz', 'm', 'Tekst')).rejects.toMatchObject({ retryable: true });
+  });
+});
+
+const quota = (quotaId: string, retryDelay?: string) => ({
+  error: {
+    code: 429,
+    message: 'You exceeded your current quota.',
+    status: 'RESOURCE_EXHAUSTED',
+    details: [
+      { '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId, quotaValue: '15' }] },
+      ...(retryDelay ? [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay }] : []),
+    ],
+  },
+});
+
+describe('limity Gemini TTS', () => {
+  it('rozpoznaje limit dzienny i minutowy z czasem do odczekania', () => {
+    expect(speechLimit(quota('GenerateRequestsPerDayPerProjectPerModel-FreeTier', '37s'))).toEqual({ daily: true, retryAfterS: 37, perDay: 15 });
+    expect(speechLimit(quota('GenerateRequestsPerMinutePerProjectPerModel-FreeTier', '12.4s'))).toEqual({ daily: false, retryAfterS: 13, perDay: null });
+    expect(speechLimit({ error: { message: 'Please retry in 8.2s.' } })).toEqual({ daily: false, retryAfterS: 9, perDay: null });
+  });
+
+  it('modele mowy: najpierw Flash-Lite, potem Flash, każdy najnowszy', () => {
+    const list = (...ids: string[]) => ids.map((id) => ({ id, label: id }));
+    expect(speechModels(list('gemini-3.5-flash-tts', 'gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts', 'gemini-3.5-flash-lite-tts'))).toEqual(['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts']);
+  });
+
+  it('limit dzienny jednego modelu przechodzi do drugiego', async () => {
+    const seen: string[] = [];
+    globalThis.fetch = (async (url: string) => {
+      seen.push(url);
+      return url.includes('-lite-tts')
+        ? new Response(JSON.stringify(quota('GenerateRequestsPerDayPerProjectPerModel-FreeTier')), { status: 429 })
+        : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/wav', data: base64(wav(24_000)) } }] } }] }), { status: 200 });
+    }) as typeof fetch;
+    const limits: string[] = [];
+    const result = await speakFirst('klucz', ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'], 'Tekst', 'Sulafat', { onLimit: (model, limit) => limits.push(`${model}:${limit.daily}`) });
+    expect(result.model).toBe('gemini-3.8-flash-tts');
+    expect(limits).toEqual(['gemini-3.8-flash-lite-tts:true']);
+  });
+
+  it('wszystkie dzienne: bez czekania; któryś minutowy: najkrótsze czekanie', async () => {
+    globalThis.fetch = (async () => new Response(JSON.stringify(quota('GenerateRequestsPerDayPerProjectPerModel-FreeTier')), { status: 429 })) as typeof fetch;
+    const daily = await speakFirst('klucz', ['a-tts', 'b-tts'], 'Tekst', 'Sulafat').catch((e: unknown) => e);
+    expect(daily).toBeInstanceOf(SpeechLimitError);
+    expect((daily as SpeechLimitError).limit).toEqual({ daily: true, retryAfterS: null });
+    expect((daily as SpeechLimitError).message).toContain('jutro');
+
+    globalThis.fetch = (async (url: string) =>
+      new Response(JSON.stringify(url.includes('a-tts') ? quota('GenerateRequestsPerDayPerProjectPerModel-FreeTier') : quota('GenerateRequestsPerMinutePerProjectPerModel-FreeTier', '20s')), { status: 429 })) as typeof fetch;
+    const minute = await speakFirst('klucz', ['a-tts', 'b-tts'], 'Tekst', 'Sulafat').catch((e: unknown) => e);
+    expect((minute as SpeechLimitError).limit).toEqual({ daily: false, retryAfterS: 20 });
+  });
+
+  it('model pominięty (wiadomo, że dziś wyczerpał limit) nie dostaje zapytania', async () => {
+    const seen: string[] = [];
+    globalThis.fetch = (async (url: string) => {
+      seen.push(url);
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/wav', data: base64(wav(24_000)) } }] } }] }), { status: 200 });
+    }) as typeof fetch;
+    const result = await speakFirst('klucz', ['a-tts', 'b-tts'], 'Tekst', 'Sulafat', { skip: (model) => model === 'a-tts' });
+    expect(result.model).toBe('b-tts');
+    expect(seen).toHaveLength(1);
   });
 });

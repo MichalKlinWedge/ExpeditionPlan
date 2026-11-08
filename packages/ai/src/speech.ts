@@ -62,9 +62,44 @@ const TTS = /^gemini-(\d+(?:\.\d+)?)-flash(-lite)?-tts$/;
  * Zapowiedzi (`-preview`) odpadają, bo znikają bez uprzedzenia. `null`, gdy na liście nie ma żadnego.
  */
 export function speechModel(models: readonly AiModel[]): string | null {
+  return speechModels(models)[0] ?? null;
+}
+
+/**
+ * Modele mowy w kolejności użycia: najnowszy Flash-Lite TTS, potem najnowszy Flash TTS. Każdy ma u Google osobny
+ * limit zapytań, więc gdy jeden go wyczerpie, drugi zwykle jeszcze nagra (`speakFirst`).
+ */
+export function speechModels(models: readonly AiModel[]): string[] {
   const version = (id: string) => Number(TTS.exec(id)?.[1] ?? 0);
   const found = models.map((model) => model.id).filter((id) => TTS.test(id)).sort((a, b) => version(b) - version(a));
-  return found.find((id) => id.endsWith('-lite-tts')) ?? found[0] ?? null;
+  return [found.find((id) => id.endsWith('-lite-tts')), found.find((id) => !id.endsWith('-lite-tts'))].filter((id): id is string => id !== undefined);
+}
+
+/** Limit Google: dzienny (do jutra nic nie nagra) albo na minutę (`retryAfterS` = ile odczekać, jeśli Google podał). */
+export type SpeechLimit = { daily: boolean; retryAfterS: number | null };
+
+/** Odmowa z limitu zapytań (HTTP 429) z tym, co Google powiedział o limicie. */
+export class SpeechLimitError extends AiError {
+  readonly limit: SpeechLimit;
+  constructor(message: string, limit: SpeechLimit) {
+    super(message, { busy: true });
+    this.name = 'SpeechLimitError';
+    this.limit = limit;
+  }
+}
+
+type ErrorBody = { error?: { message?: string; details?: { '@type'?: string; violations?: { quotaId?: string; quotaMetric?: string; quotaValue?: string }[]; retryDelay?: string }[] } };
+
+/** Rodzaj limitu z odpowiedzi 429: `QuotaFailure` mówi, który (per day / per minute), `RetryInfo` ile czekać. */
+export function speechLimit(body: unknown): SpeechLimit & { perDay: number | null } {
+  const details = (body as ErrorBody | null)?.error?.details ?? [];
+  const violations = details.flatMap((detail) => (detail['@type']?.endsWith('QuotaFailure') ? (detail.violations ?? []) : []));
+  const dailyHit = violations.find((each) => /per ?day/i.test(`${each.quotaId ?? ''} ${each.quotaMetric ?? ''}`.replace(/_/g, ' ')));
+  const delay = details.find((detail) => detail['@type']?.endsWith('RetryInfo'))?.retryDelay;
+  const seconds = delay ? Number.parseFloat(delay) : Number.NaN;
+  const said = /retry in ([\d.]+)\s*s/i.exec((body as ErrorBody | null)?.error?.message ?? '');
+  const retryAfterS = Number.isFinite(seconds) ? Math.ceil(seconds) : said ? Math.ceil(Number(said[1])) : null;
+  return { daily: dailyHit !== undefined, retryAfterS, perDay: dailyHit?.quotaValue ? Number(dailyHit.quotaValue) : null };
 }
 
 /** Długość nagrania WAV (PCM) z nagłówka: rozmiar fragmentu `data` przez liczbę bajtów na sekundę. */
@@ -125,6 +160,15 @@ export async function speakGemini(key: string, model: string, text: string, voic
   const body = (await response.json().catch(() => null)) as SpeechReply | null;
   if (!response.ok) {
     logFailure(`Gemini ${model} (mowa)`, `HTTP ${response.status}: ${body?.error?.message ?? 'bez treści'}`);
+    if (response.status === 429) {
+      const limit = speechLimit(body);
+      throw new SpeechLimitError(
+        limit.daily
+          ? `Wyczerpany dzienny limit Gemini TTS dla modelu „${model}”${limit.perDay ? ` (${limit.perDay} nagrań na dobę na darmowym poziomie)` : ''}.`
+          : `Limit zapytań na minutę Gemini TTS dla modelu „${model}”.`,
+        { daily: limit.daily, retryAfterS: limit.retryAfterS },
+      );
+    }
     throw new AiError(describeStatus('GEMINI', response.status, body?.error?.message, model), {
       retryable: response.status >= 500,
       modelGone: response.status === 404,
@@ -150,4 +194,43 @@ export async function speakGemini(key: string, model: string, text: string, voic
     inputTokens: body?.usageMetadata?.promptTokenCount ?? 0,
     outputTokens: body?.usageMetadata?.candidatesTokenCount ?? 0,
   };
+}
+
+/**
+ * Nagranie pierwszym modelem, który przepuści zapytanie: limit jednego (`SpeechLimitError`) przechodzi do następnego.
+ * Gdy wszystkie odmówią, błąd mówi, czy czekać (najkrótszy `retryAfterS` limitu minutowego), czy dziś już nic nie nagra.
+ * `skip` pomija modele, o których wiadomo, że dziś wyczerpały limit; `onLimit` dostaje każdą odmowę.
+ */
+export async function speakFirst(
+  key: string,
+  models: readonly string[],
+  text: string,
+  voice: string,
+  options: { skip?: (model: string) => boolean; onLimit?: (model: string, limit: SpeechLimit) => void } = {},
+): Promise<{ speech: Speech; model: string }> {
+  const limits: SpeechLimit[] = [];
+  let last: SpeechLimitError | undefined;
+  for (const model of models) {
+    if (options.skip?.(model)) {
+      limits.push({ daily: true, retryAfterS: null });
+      continue;
+    }
+    try {
+      return { speech: await speakGemini(key, model, text, voice), model };
+    } catch (error) {
+      if (!(error instanceof SpeechLimitError)) throw error;
+      options.onLimit?.(model, error.limit);
+      limits.push(error.limit);
+      last = error;
+    }
+  }
+  if (limits.length === 0) throw new AiError('Brak modelu do czytania tekstu (Gemini TTS).');
+  if (limits.every((limit) => limit.daily)) {
+    throw new SpeechLimitError(
+      `${last?.message ?? 'Wyczerpany dzienny limit Gemini TTS.'} Pozostałe modele mowy też go dziś wyczerpały: nagrasz dalej jutro albo po włączeniu płatnego poziomu w Google AI Studio.`,
+      { daily: true, retryAfterS: null },
+    );
+  }
+  const waits = limits.filter((limit) => !limit.daily).map((limit) => limit.retryAfterS ?? 30);
+  throw new SpeechLimitError(last?.message ?? 'Limit zapytań Gemini TTS.', { daily: false, retryAfterS: Math.min(...waits) });
 }

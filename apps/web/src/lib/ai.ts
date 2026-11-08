@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAiClient, geminiModels, speechModel } from "@expeditionplan/ai";
+import { createAiClient, geminiModels, speakFirst, speechModels } from "@expeditionplan/ai";
 import { fetchHolidays, geoapifyLookup, orsRoute, type PlannerDeps } from "@expeditionplan/planner";
 
 import { createClient } from "./supabase/server";
@@ -63,22 +63,39 @@ export function routeLookup() {
   return key === "" ? null : orsRoute(key);
 }
 
-let speechModelName: Promise<string | null> | undefined;
+let speechModelNames: Promise<string[]> | undefined;
+
+/** Modele, które dziś wyczerpały dzienny limit, do kiedy (ms): kolejne nagrania od razu idą do następnego modelu. */
+const exhausted = new Map<string, number>();
+
+/** Dzienny limit Google odnawia się o północy czasu pacyficznego; pół doby wystarcza, by nie pytać na próżno. */
+const EXHAUSTED_MS = 12 * 60 * 60 * 1000;
 
 /**
- * Klucz i model mowy (Gemini TTS) dla lektora pokazu. Model z `AI_MODEL_TTS`, a bez niej z listy modeli Google
- * (`speechModel`: najnowszy stabilny Flash-Lite TTS), pobranej raz na życie serwera; nieudane pobranie spróbuje się następnym razem.
+ * Klucz i modele mowy (Gemini TTS) dla lektora pokazu. Model z `AI_MODEL_TTS`, a bez niej z listy modeli Google
+ * (`speechModels`: najnowszy Flash-Lite TTS, potem Flash TTS, każdy z osobnym limitem), pobranej raz na życie serwera;
+ * nieudane pobranie spróbuje się następnym razem. `speak` nagrywa pierwszym modelem, który przepuści zapytanie.
  */
-export async function speechSetup(): Promise<{ key: string; model: string } | { error: string }> {
+export async function speechSetup(): Promise<{ key: string; models: string[]; speak: (text: string, voice: string) => ReturnType<typeof speakFirst> } | { error: string }> {
   const key = process.env.GEMINI_API_KEY ?? "";
   if (key === "") return { error: "Serwer nie ma klucza GEMINI_API_KEY." };
   const fixed = process.env.AI_MODEL_TTS?.trim();
-  if (fixed) return { key, model: fixed };
-  speechModelName ??= geminiModels(key).then(speechModel);
-  const model = await speechModelName.catch(() => null);
-  if (model === null) {
-    speechModelName = undefined;
+  let models: string[];
+  if (fixed) models = [fixed];
+  else {
+    speechModelNames ??= geminiModels(key).then(speechModels);
+    models = await speechModelNames.catch(() => []);
+  }
+  if (models.length === 0) {
+    speechModelNames = undefined;
     return { error: "Google nie podał modelu do czytania tekstu (Gemini TTS). Ustaw AI_MODEL_TTS albo spróbuj później." };
   }
-  return { key, model };
+  const speak = (text: string, voice: string) =>
+    speakFirst(key, models, text, voice, {
+      skip: (model) => (exhausted.get(model) ?? 0) > Date.now(),
+      onLimit: (model, limit) => {
+        if (limit.daily) exhausted.set(model, Date.now() + EXHAUSTED_MS);
+      },
+    });
+  return { key, models, speak };
 }

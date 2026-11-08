@@ -1,6 +1,6 @@
 "use server";
 
-import { AiError, isSpeechVoice, speakGemini } from "@expeditionplan/ai";
+import { isSpeechVoice, SpeechLimitError } from "@expeditionplan/ai";
 import { applyShowDraft, droppedAudio, editShowText, narrationHash, plural, ShowScript, setShowAudio, showBrief } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { draftShowNarration } from "@expeditionplan/planner";
@@ -86,8 +86,8 @@ export async function setShowVoice(tripId: string, voice: string): Promise<FormS
   return { ok: "Głos zmieniony: nagraj sceny od nowa." };
 }
 
-/** Przy limicie zapytań Google przeglądarka czeka tyle sekund i próbuje jeszcze raz. */
-const BUSY_WAIT_S = 30;
+/** Ile przeglądarka czeka przy limicie minutowym: tyle, ile podał Google, w rozsądnych granicach. */
+const waitFor = (seconds: number | null) => Math.min(Math.max(seconds ?? 30, 5), 90);
 
 /**
  * Nagranie jednej sceny. Bez `refresh`: przeglądarka odświeża stronę po ostatniej scenie. Limit zapytań (darmowy poziom
@@ -105,8 +105,8 @@ export async function recordShowScene(tripId: string, key: string): Promise<Form
   if (scene === undefined || scene.text.trim() === "") return { error: "Ta scena nie ma tekstu do nagrania." };
 
   try {
-    const speech = await speakGemini(setup.key, setup.model, scene.text, script.voice);
-    const hash = narrationHash(scene.text, script.voice, setup.model);
+    const { speech, model } = await setup.speak(scene.text, script.voice);
+    const hash = narrationHash(scene.text, script.voice, model);
     const path = `${tripId}/${hash}.wav`;
     const { error: uploadError } = await supabase.storage.from("show_audio").upload(path, speech.audio, { contentType: "audio/wav" });
     // Ten sam tekst, głos i model to ten sam plik: już wgrany wystarczy.
@@ -118,14 +118,15 @@ export async function recordShowScene(tripId: string, key: string): Promise<Form
     const latest = ShowScript.safeParse(current?.content ?? {});
     const base = latest.success ? latest.data : script;
     if (base.voice !== script.voice) return { error: "W trakcie nagrywania zmienił się głos. Nagraj jeszcze raz." };
-    const next = setShowAudio(base, key, { path, hash, model: setup.model, durationMs: speech.durationMs }, scene.text);
+    const next = setShowAudio(base, key, { path, hash, model, durationMs: speech.durationMs }, scene.text);
     if (next.scenes.find((each) => each.key === key)?.audio?.path !== path) return { error: "W trakcie nagrywania zmienił się tekst sceny. Nagraj jeszcze raz." };
     const failed = await save(supabase, tripId, base, next);
     if (failed) return { error: failed };
     const seconds = Math.round(speech.durationMs / 1000);
     return { ok: `Nagrano ${seconds} s.`, seconds };
   } catch (e) {
-    if (e instanceof AiError && e.busy) return { error: e.message, wait: BUSY_WAIT_S };
+    // Limit dzienny: czekanie nic nie da, przeglądarka staje z komunikatem.
+    if (e instanceof SpeechLimitError) return e.limit.daily ? { error: e.message } : { error: e.message, wait: waitFor(e.limit.retryAfterS) };
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
@@ -144,12 +145,15 @@ export async function voiceSample(tripId: string, voice: string): Promise<FormSt
   const setup = await speechSetup();
   if ("error" in setup) return { error: setup.error };
   const { supabase } = await requireUser(`/trips/${tripId}/show`);
-  const path = `${tripId}/probka-${narrationHash(SAMPLE_TEXT, voice, setup.model)}.wav`;
   const bucket = supabase.storage.from("show_audio");
-  const ready = await bucket.createSignedUrl(path, 3600);
-  if (ready.data?.signedUrl) return { ok: "Próbka gotowa.", url: ready.data.signedUrl };
+  // Próbka któregokolwiek z modeli mowy wystarczy: głos brzmi tak samo.
+  const paths = setup.models.map((model) => `${tripId}/probka-${narrationHash(SAMPLE_TEXT, voice, model)}.wav`);
+  const { data: ready } = await bucket.createSignedUrls(paths, 3600);
+  const found = ready?.find((each) => each.signedUrl && !each.error);
+  if (found?.signedUrl) return { ok: "Próbka gotowa.", url: found.signedUrl };
   try {
-    const speech = await speakGemini(setup.key, setup.model, SAMPLE_TEXT, voice);
+    const { speech, model } = await setup.speak(SAMPLE_TEXT, voice);
+    const path = `${tripId}/probka-${narrationHash(SAMPLE_TEXT, voice, model)}.wav`;
     const { error } = await bucket.upload(path, speech.audio, { contentType: "audio/wav" });
     if (error && !/exists|duplicate/i.test(error.message)) {
       return { error: /row-level security|unauthorized/i.test(error.message) ? "Próbki nagrywa tylko organizator albo edytor." : `Nie zapisano próbki: ${error.message}` };
@@ -158,7 +162,7 @@ export async function voiceSample(tripId: string, voice: string): Promise<FormSt
     if (!signed.data?.signedUrl) return { error: `Nie podpisano próbki: ${signed.error?.message ?? "brak adresu"}` };
     return { ok: "Próbka gotowa.", url: signed.data.signedUrl };
   } catch (e) {
-    if (e instanceof AiError && e.busy) return { error: "Limit zapytań Google: spróbuj za pół minuty." };
+    if (e instanceof SpeechLimitError) return { error: e.limit.daily ? e.message : `${e.message} Spróbuj za ${waitFor(e.limit.retryAfterS)} s.` };
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
