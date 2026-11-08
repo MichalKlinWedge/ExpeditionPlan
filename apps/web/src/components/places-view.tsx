@@ -2,7 +2,7 @@
 
 import { type DayMap, distanceM, type PlaceGuide, type PlaceUsage } from "@expeditionplan/core";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 
 import { type FormState, pinPlace, searchPlace } from "@/app/actions";
 import { mergePlace, removePlace, savePlaceDetails } from "@/app/place-actions";
@@ -263,6 +263,7 @@ function PlaceRow({
   }
   const [pending, start] = useTransition();
   const pickBar = useRef<HTMLParagraphElement>(null);
+  const coordsForm = useId();
   // Wskazany na mapie punkt trafia do pola współrzędnych; na telefonie lista jest pod mapą, więc wraca na ekran.
   const [shownPick, setShownPick] = useState<LatLng | null>(null);
   if (picked !== shownPick) {
@@ -407,6 +408,7 @@ function PlaceRow({
             </p>
             {/* Wpisane współrzędne i punkt wskazany na mapie (trafia do pola) zapisuje jeden „Zapisz”. */}
             <form
+              id={coordsForm}
               className="flex flex-col gap-2"
               onSubmit={(event) => {
                 event.preventDefault();
@@ -439,9 +441,6 @@ function PlaceRow({
                   {picked === null ? "Kliknij mapę w nowym położeniu — współrzędne trafią do pola." : "Wskazany punkt jest w polu; zapisz albo kliknij mapę jeszcze raz."}
                 </p>
               )}
-              <button disabled={pending || coords.trim() === ""} className={`${button} self-start`}>
-                Zapisz
-              </button>
             </form>
             <form
               className="flex flex-wrap gap-2"
@@ -454,6 +453,10 @@ function PlaceRow({
                 Znajdź po nazwie
               </button>
             </form>
+            {/* Na końcu sekcji, pod oboma polami; należy do formularza współrzędnych. */}
+            <button form={coordsForm} disabled={pending || coords.trim() === ""} className={`${button} self-start`}>
+              Zapisz
+            </button>
           </div>
 
           {others.length > 0 && (
