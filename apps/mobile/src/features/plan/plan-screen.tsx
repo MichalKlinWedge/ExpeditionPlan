@@ -751,6 +751,14 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
     setMapFocus({ lng: pin.lng, lat: pin.lat });
     onShowMap?.(Math.max(dayTop.current + mapTop.current - Spacing.two, 0));
   };
+  /** Położenie kart punktów w dniu — pinezka na mapie przewija plan do pierwszego punktu w tym miejscu. */
+  const cardTops = useRef(new Map<string, number>());
+  const showInPlan = (placeRef: string | null) => {
+    setMapPlace(placeRef);
+    const first = map.pins.find((pin) => pin.placeRef === placeRef)?.stops[0];
+    const y = first === undefined ? undefined : cardTops.current.get(first.ref);
+    if (y !== undefined) onShowMap?.(Math.max(dayTop.current + y - Spacing.two, 0));
+  };
   const stopNumber = (ref: string) => {
     const n = map.numbers[ref];
     return n === undefined ? null : <StopNumber n={n} pin={pinOf.get(ref)} chosen={pinOf.get(ref)?.placeRef === mapPlace} onPress={() => showOnMap(ref)} />;
@@ -823,6 +831,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
         return (
           <ThemedView
             key={item.ref}
+            onLayout={(event) => cardTops.current.set(item.ref, event.nativeEvent.layout.y)}
             type="backgroundElement"
             style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: KIND_COLOR[item.kind] ?? theme.textSecondary }, item.child && styles.child]}>
             {/* Karta prowadzi na mapę, a nazwa — do szczegółów. */}
@@ -897,7 +906,10 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
 
       {/* Nocleg na koniec dnia (baza dnia / rezerwacja tej nocy) — na mapie pinezka ⌂. */}
       {schedule && lodging && (
-        <ThemedView type="backgroundElement" style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: LODGING }]}>
+        <ThemedView
+          type="backgroundElement"
+          onLayout={(event) => cardTops.current.set(LODGING_STOP, event.nativeEvent.layout.y)}
+          style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: LODGING }]}>
           <Pressable accessible={false} disabled={!pinOf.has(LODGING_STOP)} onPress={() => showOnMap(LODGING_STOP)} style={styles.itemBody}>
             {lodging.booking?.checkInFrom ? <ThemedText style={[styles.time, { color: theme.text }]}>od {lodging.booking.checkInFrom}</ThemedText> : null}
             <View style={styles.titleRow}>
@@ -964,7 +976,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
 
       {schedule && (
         <View onLayout={(event) => (mapTop.current = event.nativeEvent.layout.y)}>
-          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={setMapPlace} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} />
+          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} />
         </View>
       )}
 

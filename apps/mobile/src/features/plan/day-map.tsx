@@ -13,7 +13,8 @@ import { useTheme } from '@/hooks/use-theme';
  * Kwadratowa mapa pod planem dnia: pinezki z numerami kolejności z silnika (ta sama `dayMap` co
  * na webie i w zakładce Mapa), trasy przejazdów i własna pozycja. Dotknięcie pinezki pokazuje
  * punkty w tym miejscu, „Nawiguj” i — gdy miejsce ma przewodnik — „Poczytaj / Posłuchaj”. Kafle z pobranej mapy offline działają bez sieci.
- * Wybrana pinezka i numery na liście punktów to ten sam stan w planie dnia.
+ * Wybrana pinezka i numery na liście punktów to ten sam stan w planie dnia: dotknięcie pinezki
+ * przewija plan do pierwszego punktu w tym miejscu (`showInPlan` w `plan-screen.tsx`).
  */
 
 /**
