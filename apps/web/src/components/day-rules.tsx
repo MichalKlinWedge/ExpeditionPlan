@@ -33,7 +33,10 @@ import {
   type VariantGroup,
 } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+
+import { BallotIcon } from "@/components/icons";
 
 /**
  * Warianty, ograniczenia i notatki dnia w edytorze planu (MVP-3). Zmiany idą przez `plan-rules`
@@ -72,9 +75,11 @@ type VariantsProps = {
   onRules: OnRules | null;
   /** Warianty wybrane w terenie na telefonie (groupRef → variantRef). */
   field?: Record<string, string>;
+  /** Strona „Głosowanie” (członkowie wyjazdu); przy wyborach z otwartym głosowaniem jest do niej przycisk. */
+  votesHref?: string;
 };
 
-export function DayVariants({ doc, dayRef, active, onChoose, onRules, field }: VariantsProps) {
+export function DayVariants({ doc, dayRef, active, onChoose, onRules, field, votesHref }: VariantsProps) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const groups = dayVariantGroups(doc, dayRef);
@@ -98,6 +103,12 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules, field }: V
                 <button onClick={() => setEditing(editing === group.ref ? null : group.ref)} className="btn-mini">
                   {editing === group.ref ? "zamknij edycję" : "edytuj"}
                 </button>
+              )}
+              {votesHref && group.votingOpen === true && variants.length > 1 && (
+                <Link href={`${votesHref}#glos-${group.ref}`} className="btn-mini inline-flex items-center gap-1" title="Głosowanie nad tym wyborem">
+                  <BallotIcon className="h-3.5 w-3.5" />
+                  głosuj
+                </Link>
               )}
             </div>
             <p className="text-xs text-zinc-500">

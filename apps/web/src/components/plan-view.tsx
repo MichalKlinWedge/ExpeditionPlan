@@ -964,7 +964,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
 
       {hasFieldLog(field) && <FieldSummary field={field} tz={day.tz} />}
 
-      <DayVariants doc={doc} dayRef={dayRef} active={active} onChoose={onChoose} onRules={onRules} field={fieldVariants} />
+      <DayVariants doc={doc} dayRef={dayRef} active={active} onChoose={onChoose} onRules={onRules} field={fieldVariants} votesHref={tripId ? `/trips/${tripId}/votes` : undefined} />
 
       {failure && <p className="text-sm text-red-600">Nie udało się policzyć dnia: {failure}</p>}
 

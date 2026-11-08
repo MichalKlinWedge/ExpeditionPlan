@@ -118,7 +118,7 @@ function GroupCard({ tripId, group, person, canEdit }: { tripId: string; group: 
   const vote = (variantId: string | null, withdrawn = false) => run(() => castVote(tripId, person!.id, { groupId: group.id, variantId }, withdrawn));
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+    <div id={`glos-${group.ref}`} className="flex scroll-mt-20 flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm target:border-signal dark:border-zinc-800">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-medium">{group.title}</p>
         <span className="text-xs text-zinc-500">{[group.where, group.decideBy ? `decyzja do ${group.decideBy}` : null].filter(Boolean).join(" · ")}</span>
