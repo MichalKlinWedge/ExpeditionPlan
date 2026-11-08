@@ -166,6 +166,15 @@ h2 {
     border-color: var(--btn-danger);
     background: color-mix(in srgb, var(--btn-danger) 18%, var(--surface));
   }
+  /* „usuń” obok dużego przycisku w tym samym rzędzie ma jego wysokość i kształt. */
+  :is(.btn-secondary, .btn-primary) ~ .btn-mini-danger,
+  .btn-mini-danger:has(~ :is(.btn-secondary, .btn-primary)) {
+    align-self: stretch;
+    margin-block: 0;
+    padding-inline: 0.7rem;
+    border-radius: 0.6rem;
+    font-size: 0.8rem;
+  }
   /* Przycisk przejścia (link na inną stronę, `<a>`) wygląda inaczej niż przycisk funkcji (`<button>`):
      żółta pigułka, jak „← powrót”. Pobranie pliku (`download`) to funkcja. */
   a.btn-mini:not([download]),
