@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { ArticleIcon, BackpackIcon, BookIcon, CartIcon, CompareIcon, CompassIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, CompareIcon, CompassIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -22,6 +22,7 @@ const SECTIONS = [
   { path: "guides", title: "Opisy miejsc", Icon: ArticleIcon },
   { path: "logistics", title: "Rezerwacje i budżet", Icon: TicketIcon },
   { path: "tasks", title: "Zadania", Icon: ListIcon },
+  { path: "votes", title: "Głosowanie", Icon: BallotIcon },
   { path: "gear", title: "Sprzęt", Icon: BackpackIcon },
   { path: "meals", title: "Posiłki", Icon: MealIcon },
   { path: "shopping", title: "Lista zakupów", Icon: CartIcon },

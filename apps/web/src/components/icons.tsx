@@ -108,6 +108,14 @@ export const VaultIcon = (props: Props) => (
   </Svg>
 );
 
+export const BallotIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M4 14h16v6H4z" />
+    <path d="M7 14V5h10v9" />
+    <path d="m9.5 9.5 2 2 3.5-4" />
+  </Svg>
+);
+
 export const FlagIcon = (props: Props) => (
   <Svg {...props}>
     <path d="M5 21V4" />

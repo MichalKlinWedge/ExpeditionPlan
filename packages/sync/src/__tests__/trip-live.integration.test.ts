@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, inject, it } from 'vitest';
 
-import { saveExpense, setCarrying, setPacked } from '../outbox.ts';
+import { saveExpense, setCarrying, setPacked, setVote } from '../outbox.ts';
 import { cachedTrip, refreshTrip, setTaskDone } from '../trip-cache.ts';
 import { uuidv7 } from '../uuid.ts';
 import { createDevice, createTestUser, loadFixture, seedTrip } from './helpers/harness.ts';
@@ -95,6 +95,40 @@ describe('portfel i pakowanie z telefonu', () => {
     setCarrying(viewer.db, tripId, itemId, mine!.id, 0);
     await refreshTrip(viewer.db, viewer.remote, tripId);
     expect((await refreshTrip(owner.db, owner.remote, tripId)).live.packingCarriers).toEqual([expect.objectContaining({ traveler_id: mine!.id, quantity: 0 })]);
+  });
+
+  it('głosowanie: widz głosuje offline za siebie, za innych nie (RLS), organizator widzi głos, wycofanie go zdejmuje', async () => {
+    const owner = await device('vote-owner');
+    const viewer = await device('vote-viewer');
+    const { tripId, rows } = await seedTrip(owner.client, loadFixture('barcelona'));
+    const [mine, other] = rows.travelers!;
+    await owner.client.from('travelers').update({ user_id: viewer.user.id }).eq('id', mine!.id);
+    const group = rows.variant_groups!.find((row) => row.ref === 'vg-niedziela-rano')!;
+    const variant = rows.variants!.find((row) => row.ref === 'v-opcja-b')!;
+    const invite = await owner.client.rpc('create_invite', { p_trip: tripId, p_role: 'viewer' });
+    await viewer.client.rpc('accept_invite', { p_token: invite.data });
+
+    await refreshTrip(viewer.db, viewer.remote, tripId);
+    viewer.setOffline(true);
+    setVote(viewer.db, tripId, mine!.id, { groupId: group.id, variantId: variant.id });
+    setVote(viewer.db, tripId, mine!.id, { day: '2027-01-15', answer: 'maybe' });
+    expect(cachedTrip(viewer.db, tripId)!.live.votes).toHaveLength(2);
+    viewer.setOffline(false);
+    const rejected = setVote(viewer.db, tripId, other!.id, { groupId: group.id, variantId: null });
+    const after = await refreshTrip(viewer.db, viewer.remote, tripId);
+    expect(after.rejected.map((each) => each.id)).toEqual([rejected]);
+
+    const ownerView = await refreshTrip(owner.db, owner.remote, tripId);
+    expect(ownerView.live.votes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ traveler_id: mine!.id, variant_group_id: group.id, variant_id: variant.id }),
+        expect.objectContaining({ traveler_id: mine!.id, day: '2027-01-15', answer: 'maybe' }),
+      ]),
+    );
+
+    setVote(viewer.db, tripId, mine!.id, { groupId: group.id, variantId: variant.id }, true);
+    await refreshTrip(viewer.db, viewer.remote, tripId);
+    expect((await refreshTrip(owner.db, owner.remote, tripId)).live.votes.map((row) => row.day)).toEqual(['2027-01-15']);
   });
 
   it('zadania: widz odhacza przypisane do siebie offline, cudzego nie (RLS), organizator widzi status', async () => {

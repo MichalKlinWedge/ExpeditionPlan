@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { ArticleIcon, BackpackIcon, BookIcon, CartIcon, CompareIcon, DownloadIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, CompareIcon, DownloadIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
 import { TripRescheduleButton } from "@/components/trip-reschedule";
@@ -104,7 +104,7 @@ async function loadReadiness(client: SupabaseClient, tripId: string) {
 async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}`);
-  const [trip, members, travelers, days, items, brief, mine, tasks, news, readiness] = await Promise.all([
+  const [trip, members, travelers, days, items, brief, mine, tasks, undecided, poll, news, readiness] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id", { count: "exact", head: true }).eq("trip_id", id),
     supabase.from("travelers").select("tentative").eq("trip_id", id).is("deleted_at", null),
@@ -113,6 +113,8 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("trip_brief").select("id").eq("trip_id", id).maybeSingle(),
     supabase.from("my_trips").select("id, title, role").neq("id", id).order("start_date"),
     supabase.from("tasks").select("id", { count: "exact", head: true }).eq("trip_id", id).eq("status", "open").is("deleted_at", null),
+    supabase.from("variant_groups").select("id", { count: "exact", head: true }).eq("trip_id", id).is("chosen_variant_id", null).is("deleted_at", null),
+    supabase.from("trips").select("date_poll").eq("id", id).maybeSingle(),
     loadNews(supabase as unknown as SupabaseClient, id),
     loadReadiness(supabase as unknown as SupabaseClient, id),
   ]);
@@ -170,6 +172,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <Tile href={`/trips/${id}/guides`} icon={<ArticleIcon />} title="Opisy miejsc" hint="przejrzyj, przygotuj od nowa, popraw" />
         <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, wydatki" />
         <Tile href={`/trips/${id}/tasks`} icon={<ListIcon />} title="Zadania" hint={(tasks.count ?? 0) > 0 ? `do zrobienia: ${tasks.count}` : "przed wyjazdem i w trakcie"} />
+        {!title.startsWith(DRAFT) && <Tile href={`/trips/${id}/votes`} icon={<BallotIcon />} title="Głosowanie" hint={poll.data?.date_poll ? "termin i warianty: zagłosuj" : (undecided.count ?? 0) > 0 ? `do decyzji: ${undecided.count}` : "warianty, kandydaci, termin"} />}
         <Tile href={`/trips/${id}/gear`} icon={<BackpackIcon />} title="Sprzęt" hint="co zabrać, kto bierze rzeczy wspólne" />
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/meals`} icon={<MealIcon />} title="Posiłki" hint="dzień po dniu, ile osób, porcje" />}
         <Tile href={`/trips/${id}/shopping`} icon={<CartIcon />} title="Lista zakupów" hint="wspólne zakupy na wyjazd" />

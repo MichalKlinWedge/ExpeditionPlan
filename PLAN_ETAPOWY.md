@@ -157,7 +157,7 @@ Kolejność orientacyjna. Po teście w terenie może się zmienić.
 - Punkty dla części grupy (`item_participants`: szpica, ekipy zadaniowe).
 - Link publiczny: strona SSR w układzie wzoru, podgląd OG, ukrywanie zakresów, unieważnianie.
 
-**Stan:** jest link publiczny (`/p/[token]` z przeglądem, `/p/[token]/plan`, RPC `public_trip`, ukrywanie kosztów, imion i adresu noclegu, unieważnianie), rola edytora w UI, dziennik aktywności (`activity_log`) w postaci „Co nowego od ostatniej wizyty” (RPC `trip_news`, karta na `/trips/[id]` i baner na telefonie), punkty dla części grupy (`items.participant_ids`). Nie ma: Realtime Presence, nazwanych wersji planu (`plan_snapshots` bez interfejsu), cofania z dziennika.
+**Stan:** jest link publiczny (`/p/[token]` z przeglądem, `/p/[token]/plan`, RPC `public_trip`, ukrywanie kosztów, imion i adresu noclegu, unieważnianie), rola edytora w UI, dziennik aktywności (`activity_log`) w postaci „Co nowego od ostatniej wizyty” (RPC `trip_news`, karta na `/trips/[id]` i baner na telefonie), punkty dla części grupy (`items.participant_ids`). Jest też głosowanie grupy (`/trips/[id]/votes`: warianty, kandydaci noclegu, ankieta terminu z kalendarzem dostępności; na telefonie głos w oknie wariantu). Nie ma: Realtime Presence, nazwanych wersji planu (`plan_snapshots` bez interfejsu), cofania z dziennika.
 
 **Odbiór:** dwie osoby edytują ten sam dzień na dwóch laptopach i żadna zmiana nie ginie bez ostrzeżenia. Link publiczny nie ujawnia kosztów, sejfu, kodów rezerwacji ani kontaktów (test).
 

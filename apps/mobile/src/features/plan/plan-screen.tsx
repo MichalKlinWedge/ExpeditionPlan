@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -13,6 +13,7 @@ import {
   saveElements,
   savePlanEdit,
   serialPuller,
+  setVote,
   summarizeNews,
   type TripState,
   uuidv7,
@@ -36,7 +37,7 @@ import { PlacePin } from '@/features/plan/place-pin';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, type PlaceChange } from '@/features/plan/item-editor';
 import { PoolView } from '@/features/plan/pool-view';
-import { VariantChoice } from '@/features/plan/variant-choice';
+import { VariantChoice, type Voting } from '@/features/plan/variant-choice';
 import { TripNewsBanner } from '@/features/plan/trip-news';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
 import { InfoView } from '@/features/trip/info-view';
@@ -358,6 +359,30 @@ ${fresh.rejected[0]!.error}`);
     }
   };
 
+  /** Głos za siebie (uczestnik połączony z kontem); zapis przez outbox, widać go od razu i na webie po synchronizacji. */
+  const voting = useMemo((): Voting | null => {
+    if (trip === null || !signedIn) return null;
+    const refOf = new Map(Object.entries(trip.ids).map(([ref, rowId]) => [rowId, ref]));
+    const me = (trip.live.travelers as { id: string; user_id?: string | null }[]).find((row) => userId !== null && row.user_id === userId);
+    const voterRef = me === undefined ? null : (refOf.get(me.id) ?? null);
+    return {
+      votes: votesFromRows(trip.live.votes, refOf),
+      voterRef,
+      onVote: (groupRef, variantRef, withdrawn) => {
+        const groupId = trip.ids[groupRef];
+        if (me === undefined || groupId === undefined) return;
+        try {
+          setVote(localDb, tripId, me.id, { groupId, variantId: variantRef === null ? null : (trip.ids[variantRef] ?? null) }, withdrawn);
+          afterLocalWrite();
+        } catch (e) {
+          Alert.alert('Nie zapisano głosu', message(e));
+        }
+      },
+    };
+    // afterLocalWrite czyta zawsze świeży stan z SQLite.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip, signedIn, userId, tripId]);
+
   let status: string;
   if (!signedIn) status = sync.syncedAt ? `Niezalogowany — plan z ${stamp(sync.syncedAt)}, bez synchronizacji` : 'Ten plan nie był pobrany na telefon — zaloguj się na ekranie Start.';
   else if (saving > 0) status = 'Zapisuję zmianę…';
@@ -539,6 +564,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                   scenario={scenario}
                   variants={variants}
                   onChoose={choose}
+                  voting={voting}
                   actions={actions}
                   weather={weather?.days[day.ref]}
                   weatherAt={weather?.fetchedAt}
@@ -644,6 +670,8 @@ type DayProps = {
   scenario: Scenario;
   variants: Record<string, string>;
   onChoose: (groupRef: string, variantRef: string) => void;
+  /** Głosowanie nad wariantami (zalogowany); `null` = bez głosów. */
+  voting?: Voting | null;
   /** Karta nad punktami dnia, liczona z tego samego harmonogramu („Teraz / następny” w dniu dzisiejszym). */
   top?: (schedule: DaySchedule) => ReactNode;
   /** Tryb edycji (organizator, edytor); `null` = tylko odczyt. */
@@ -711,7 +739,7 @@ function StopNumber({ n, pin, chosen, onPress }: { n: number; pin: MapPin | unde
   );
 }
 
-function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weather, weatherAt, onOpen, onShowMap, onBooking, guided, guides, onGuide }: DayProps) {
+function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions, weather, weatherAt, onOpen, onShowMap, onBooking, guided, guides, onGuide }: DayProps) {
   const theme = useTheme();
   const { doc, inputs } = state;
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
@@ -810,7 +838,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
       ) : null}
 
       {groups.map((group) => (
-        <VariantChoice key={group.ref} doc={doc} group={group} active={active} onChoose={onChoose} />
+        <VariantChoice key={group.ref} doc={doc} group={group} active={active} onChoose={onChoose} voting={voting} />
       ))}
 
       {schedule && top?.(schedule)}

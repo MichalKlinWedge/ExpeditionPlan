@@ -1213,16 +1213,60 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
-                },"trips": {
+                },"trip_votes": {
                   Row: {
-                    "base_currency": string,"cover_path": string | null,"created_at": string,"deleted_at": string | null,"doc_version": string | null,"end_date": string,"fx": NonNullable<Json>,"goal": string | null,"home_tz": string,"id": string,"owner_id": string,"plan_version": number,"primary_tz": string,"row_version": number,"start_date": string,"status": string,"subtitle": string | null,"summary": string | null,"sync_version": number,"title": string,"updated_at": string,"updated_by": string | null
+                    "answer": string | null,"created_at": string,"day": string | null,"deleted_at": string | null,"id": string,"note": string | null,"row_version": number,"traveler_id": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"variant_group_id": string | null,"variant_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "base_currency": string,"cover_path"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"doc_version"?: string | null,"end_date": string,"fx"?: NonNullable<Json>,"goal"?: string | null,"home_tz"?: string,"id": string,"owner_id"?: string,"plan_version"?: number,"primary_tz": string,"row_version"?: number,"start_date": string,"status"?: string,"subtitle"?: string | null,"summary"?: string | null,"sync_version"?: number,"title": string,"updated_at"?: string,"updated_by"?: string | null
+                    "answer"?: string | null,"created_at"?: string,"day"?: string | null,"deleted_at"?: string | null,"id": string,"note"?: string | null,"row_version"?: number,"traveler_id": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"variant_group_id"?: string | null,"variant_id"?: string | null
                   }
                   Update: {
-                    "base_currency"?: string,"cover_path"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"doc_version"?: string | null,"end_date"?: string,"fx"?: NonNullable<Json>,"goal"?: string | null,"home_tz"?: string,"id"?: string,"owner_id"?: string,"plan_version"?: number,"primary_tz"?: string,"row_version"?: number,"start_date"?: string,"status"?: string,"subtitle"?: string | null,"summary"?: string | null,"sync_version"?: number,"title"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "answer"?: string | null,"created_at"?: string,"day"?: string | null,"deleted_at"?: string | null,"id"?: string,"note"?: string | null,"row_version"?: number,"traveler_id"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"variant_group_id"?: string | null,"variant_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "trip_votes_traveler_id_fkey"
+      columns: ["traveler_id"]
+isOneToOne: false
+      referencedRelation: "travelers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trip_votes_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trip_votes_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trip_votes_variant_group_id_fkey"
+      columns: ["variant_group_id"]
+isOneToOne: false
+      referencedRelation: "variant_groups"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trip_votes_variant_id_fkey"
+      columns: ["variant_id"]
+isOneToOne: false
+      referencedRelation: "variants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"trips": {
+                  Row: {
+                    "base_currency": string,"cover_path": string | null,"created_at": string,"date_poll": Json | null,"deleted_at": string | null,"doc_version": string | null,"end_date": string,"fx": NonNullable<Json>,"goal": string | null,"home_tz": string,"id": string,"owner_id": string,"plan_version": number,"primary_tz": string,"row_version": number,"start_date": string,"status": string,"subtitle": string | null,"summary": string | null,"sync_version": number,"title": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "base_currency": string,"cover_path"?: string | null,"created_at"?: string,"date_poll"?: Json | null,"deleted_at"?: string | null,"doc_version"?: string | null,"end_date": string,"fx"?: NonNullable<Json>,"goal"?: string | null,"home_tz"?: string,"id": string,"owner_id"?: string,"plan_version"?: number,"primary_tz": string,"row_version"?: number,"start_date": string,"status"?: string,"subtitle"?: string | null,"summary"?: string | null,"sync_version"?: number,"title": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "base_currency"?: string,"cover_path"?: string | null,"created_at"?: string,"date_poll"?: Json | null,"deleted_at"?: string | null,"doc_version"?: string | null,"end_date"?: string,"fx"?: NonNullable<Json>,"goal"?: string | null,"home_tz"?: string,"id"?: string,"owner_id"?: string,"plan_version"?: number,"primary_tz"?: string,"row_version"?: number,"start_date"?: string,"status"?: string,"subtitle"?: string | null,"summary"?: string | null,"sync_version"?: number,"title"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     

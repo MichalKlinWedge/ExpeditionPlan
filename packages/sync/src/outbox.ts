@@ -212,6 +212,31 @@ export function setCarrying(db: LocalDb, tripId: string, packingItemId: string, 
 }
 
 /**
+ * Głos uczestnika: na wariant w grupie (`variantId` = null — „wszystko mi jedno”) albo dostępność w jednym dniu
+ * ankiety terminu. Id stałe dla pary osoba + grupa (albo osoba + dzień), więc web i telefony poprawiają ten sam
+ * wiersz; `withdrawn` cofa głos (`deleted_at`, bez twardych usunięć). Prawa: RLS `trip_votes`.
+ */
+export type VoteChoice = { groupId: string; variantId: string | null } | { day: string; answer: 'yes' | 'maybe' | 'no' };
+
+export function voteRow(tripId: string, travelerId: string, choice: VoteChoice, withdrawn = false) {
+  const own: { variant_group_id: string | null; variant_id: string | null; day: string | null; answer: string | null } = 'groupId' in choice ? { variant_group_id: choice.groupId, variant_id: choice.variantId, day: null, answer: null } : { variant_group_id: null, variant_id: null, day: choice.day, answer: choice.answer };
+  return {
+    id: 'groupId' in choice ? stableUuid('vote', choice.groupId, travelerId) : stableUuid('vote-day', choice.day, travelerId),
+    trip_id: tripId,
+    traveler_id: travelerId,
+    ...own,
+    deleted_at: withdrawn ? new Date().toISOString() : null,
+  };
+}
+
+/** Głos z telefonu, także offline. */
+export function setVote(db: LocalDb, tripId: string, travelerId: string, choice: VoteChoice, withdrawn = false): string {
+  const row = voteRow(tripId, travelerId, choice, withdrawn);
+  enqueue(db, 'trip_votes', row);
+  return row.id;
+}
+
+/**
  * Odhaczenie zadania z planu (albo cofnięcie) — offline. Zadanie jest wierszem planu, więc na serwer
  * idzie sama zmiana statusu (`supabaseRemote`: update, nie upsert całego wiersza) — nie nadpisze
  * zmian z webu, a widz i tak może zmienić tylko status (trigger `guard_viewer_task`). Wiersz
