@@ -28,6 +28,7 @@ import {
   setTaskStatus,
   setTripCurrency,
 } from "@/app/logistics-actions";
+import { setExpenseVehicle } from "@/app/vehicle-actions";
 
 /**
  * Edycja na stronie „Rezerwacje, budżet i zadania”: każda zmiana to akcja serwera, która sprawdza
@@ -67,6 +68,10 @@ function useAction() {
 
 
 type Person = { ref: string; name: string };
+/** Auto do podziału paliwa i winiet: `ref` w dokumencie (budżet) albo `id` wiersza (wydatki) i osoby auta. */
+export type CarChoice = { ref: string; label: string; people: string[] };
+
+const carCaption = (car: CarChoice) => `auto ${car.label}${car.people.length > 0 ? ` (${car.people.join(", ")})` : ""}`;
 
 /** „Wszyscy” albo wybrane osoby; pusta lista = wszyscy, a komplet wybranych wraca do „wszyscy”. */
 function ForWhomPicker({ people, chosen, onChange }: { people: Person[]; chosen: string[]; onChange: (chosen: string[]) => void }) {
@@ -91,16 +96,18 @@ function ForWhomPicker({ people, chosen, onChange }: { people: Person[]; chosen:
 }
 
 /** Na kogo dzieli się wydatek: wiersz przy wydatku, po „zmień” wybór osób. `people` i `chosen` po id z bazy. */
-export function ExpenseSplitEditor({ tripId, expenseId, people, chosen, canEdit }: { tripId: string; expenseId: string; people: Person[]; chosen: string[]; canEdit: boolean }) {
+export function ExpenseSplitEditor({ tripId, expenseId, people, chosen, canEdit, car }: { tripId: string; expenseId: string; people: Person[]; chosen: string[]; canEdit: boolean; car?: CarChoice | undefined }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(chosen);
   const save = useAction();
   const names = people.filter((person) => chosen.includes(person.ref)).map((person) => person.name);
-  if (names.length === 0 && !canEdit) return null;
+  // Wydatek auta bez własnego podziału dzielą osoby auta (`settle`).
+  const carShare = names.length === 0 && car !== undefined && car.people.length > 0;
+  if (names.length === 0 && !carShare && !canEdit) return null;
   if (!editing)
     return (
       <span className="block text-xs text-zinc-500">
-        na: {names.length === 0 ? "wszystkich" : names.join(", ")}
+        na: {names.length > 0 ? names.join(", ") : carShare ? `osoby auta ${car!.label}: ${car!.people.join(", ")}` : "wszystkich"}
         {canEdit && (
           <>
             {" "}
@@ -143,8 +150,33 @@ export function ExpenseSplitEditor({ tripId, expenseId, people, chosen, canEdit 
   );
 }
 
-function BudgetForm({ tripId, line, currency, people, onDone }: { tripId: string; line?: Line; currency: string; people: Person[]; onDone?: () => void }) {
+/** Wydatek auta (paliwo, winiety): wybór auta przy wydatku z telefonu. `cars` po id wierszy `vehicles`. */
+export function ExpenseVehicleEditor({ tripId, expenseId, cars, vehicleId, canEdit }: { tripId: string; expenseId: string; cars: CarChoice[]; vehicleId: string | null; canEdit: boolean }) {
+  const save = useAction();
+  const car = cars.find((each) => each.ref === vehicleId);
+  if (!canEdit) return car ? <span className="block text-xs text-zinc-500">🚗 {carCaption(car)}</span> : null;
+  return (
+    <span className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+      <label className="flex items-center gap-1">
+        🚗 koszt auta:
+        <select value={vehicleId ?? ""} disabled={save.pending} onChange={(event) => save.run(() => setExpenseVehicle(tripId, expenseId, event.target.value || null))} className={`${input} py-0 text-xs`}>
+          <option value="">— nie —</option>
+          {cars.map((each) => (
+            <option key={each.ref} value={each.ref}>
+              {each.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {save.state.error && <span className="text-red-600">{save.state.error}</span>}
+    </span>
+  );
+}
+
+function BudgetForm({ tripId, line, currency, people, cars, onDone }: { tripId: string; line?: Line; currency: string; people: Person[]; cars: CarChoice[]; onDone?: () => void }) {
   const [chosen, setChosen] = useState(line?.participantRefs ?? []);
+  const [vehicle, setVehicle] = useState(line?.vehicleRef ?? "");
+  const car = cars.find((each) => each.ref === vehicle);
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = await saveBudgetLine(tripId, line?.ref ?? null, prev, form);
     if (result.ok && onDone) onDone();
@@ -179,7 +211,21 @@ function BudgetForm({ tripId, line, currency, people, onDone }: { tripId: string
         </label>
         <input name="note" defaultValue={line?.note} placeholder="notatka" className={`${input} min-w-32 flex-1`} aria-label="Notatka" />
       </div>
-      {people.length > 1 && <ForWhomPicker people={people} chosen={chosen} onChange={setChosen} />}
+      {cars.length > 0 && (
+        <label className="flex flex-wrap items-center gap-1 text-xs text-zinc-500">
+          koszt auta (paliwo, winiety):
+          <select name="vehicle" value={vehicle} onChange={(event) => setVehicle(event.target.value)} className={`${input} text-xs`}>
+            <option value="">— nie —</option>
+            {cars.map((each) => (
+              <option key={each.ref} value={each.ref}>
+                {each.label}
+              </option>
+            ))}
+          </select>
+          {car && <span>dzieli się na: {car.people.length > 0 ? car.people.join(", ") : "nikogo jeszcze nie ma w aucie, więc na wszystkich"}</span>}
+        </label>
+      )}
+      {people.length > 1 && car === undefined && <ForWhomPicker people={people} chosen={chosen} onChange={setChosen} />}
       <div className="flex gap-2">
         <button disabled={pending} className={primary}>
           {pending ? "Zapisuję…" : line ? "Zapisz" : "Dodaj pozycję"}
@@ -195,7 +241,7 @@ function BudgetForm({ tripId, line, currency, people, onDone }: { tripId: string
   );
 }
 
-export function BudgetLines({ tripId, lines, currency, people, canEdit }: { tripId: string; lines: Line[]; currency: string; people: Person[]; canEdit: boolean }) {
+export function BudgetLines({ tripId, lines, currency, people, cars = [], canEdit }: { tripId: string; lines: Line[]; currency: string; people: Person[]; cars?: CarChoice[]; canEdit: boolean }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const remove = useAction();
@@ -217,7 +263,7 @@ export function BudgetLines({ tripId, lines, currency, people, canEdit }: { trip
               editing === line.ref ? (
                 <tr key={line.ref} className="border-t border-zinc-100 dark:border-zinc-900">
                   <td colSpan={5} className="py-2">
-                    <BudgetForm tripId={tripId} line={line} currency={currency} people={people} onDone={() => setEditing(null)} />
+                    <BudgetForm tripId={tripId} line={line} currency={currency} people={people} cars={cars} onDone={() => setEditing(null)} />
                   </td>
                 </tr>
               ) : (
@@ -229,7 +275,11 @@ export function BudgetLines({ tripId, lines, currency, people, canEdit }: { trip
                     <span className="block text-xs text-zinc-500 sm:hidden">
                       {BUDGET_CATEGORY[line.category] ?? line.category} · {BUDGET_LINE_STATUS[line.status]}
                     </span>
-                    {lineTravelerNames(people, line) !== null && <span className="block text-xs text-zinc-500">dotyczy: {lineTravelerNames(people, line)!.join(", ")}</span>}
+                    {line.vehicleRef !== undefined && cars.some((car) => car.ref === line.vehicleRef) ? (
+                      <span className="block text-xs text-zinc-500">🚗 {carCaption(cars.find((car) => car.ref === line.vehicleRef)!)}</span>
+                    ) : (
+                      lineTravelerNames(people, line) !== null && <span className="block text-xs text-zinc-500">dotyczy: {lineTravelerNames(people, line)!.join(", ")}</span>
+                    )}
                     {line.note ? <span className="block text-xs text-zinc-500">{line.note}</span> : null}
                   </td>
                   <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{BUDGET_CATEGORY[line.category] ?? line.category}</td>
@@ -257,7 +307,7 @@ export function BudgetLines({ tripId, lines, currency, people, canEdit }: { trip
       <Status state={remove.state} />
       {canEdit &&
         (adding ? (
-          <BudgetForm tripId={tripId} currency={currency} people={people} onDone={() => setAdding(false)} />
+          <BudgetForm tripId={tripId} currency={currency} people={people} cars={cars} onDone={() => setAdding(false)} />
         ) : (
           <button onClick={() => setAdding(true)} className="btn-secondary btn-sm self-start">
             + Dodaj pozycję budżetu

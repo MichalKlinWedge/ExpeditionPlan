@@ -1,8 +1,11 @@
+import { carFromRow, carOccupants } from './vehicles.ts';
+
 /**
  * Rozliczenie wydatków wyjazdu („kto komu ile”) w walucie bazowej. Wiersze z bazy po id
  * (telefon i web mają je tak samo): uczestnicy, wydatki, podziały (`expense_splits`) i wykonane
  * przelewy (`settlements`). Zasady:
  * - wydatek bez podziału dzieli się równo na wszystkich uczestników, z podziałem — na wskazanych (wagi);
+ *   wydatek auta (paliwo, winiety: `vehicleId`) bez podziału — na kierowcę i pasażerów tego auta;
  * - udział dziecka (uczestnik z opiekunem) liczy się do opiekuna;
  * - `households` — strony to rodziny (`household`), uczestnik bez rodziny jest stroną sam;
  * - wydatek bez płacącego albo bez kursu nie wchodzi do rozliczenia (lista „do uzupełnienia”);
@@ -10,7 +13,9 @@
  */
 
 export type SettleTraveler = { id: string; name: string; household?: string | null; guardianId?: string | null };
-export type SettleExpense = { id: string; payerId: string | null; amountMinor: number; currency: string; note?: string | null };
+export type SettleExpense = { id: string; payerId: string | null; amountMinor: number; currency: string; note?: string | null; vehicleId?: string | null };
+/** Auto z osobami (kierowca i pasażerowie), do wydatków auta. */
+export type SettleVehicle = { id: string; travelerIds: readonly string[] };
 export type SettleSplit = { expenseId: string; travelerId: string; weight?: number | null };
 export type SettlePayment = { fromId: string; toId: string; amountMinor: number; currency: string };
 
@@ -30,12 +35,13 @@ function divide(amount: number, weights: number[]): number[] {
 type SettleRow = Record<string, unknown> & { id: string };
 
 /** Wejście do `settle` z wierszy bazy: te same kolumny na webie i na telefonie. */
-export function settleInputFromRows(rows: { travelers: readonly SettleRow[]; expenses: readonly SettleRow[]; splits: readonly Record<string, unknown>[]; payments: readonly Record<string, unknown>[] }) {
+export function settleInputFromRows(rows: { travelers: readonly SettleRow[]; expenses: readonly SettleRow[]; splits: readonly Record<string, unknown>[]; payments: readonly Record<string, unknown>[]; vehicles?: readonly SettleRow[] }) {
   return {
     travelers: rows.travelers.map((row): SettleTraveler => ({ id: row.id, name: String(row.name), household: (row.household as string | null) ?? null, guardianId: (row.guardian_id as string | null) ?? null })),
-    expenses: rows.expenses.map((row): SettleExpense => ({ id: row.id, payerId: (row.payer_traveler_id as string | null) ?? null, amountMinor: Number(row.amount_minor), currency: String(row.currency), note: (row.note as string | null) ?? null })),
+    expenses: rows.expenses.map((row): SettleExpense => ({ id: row.id, payerId: (row.payer_traveler_id as string | null) ?? null, amountMinor: Number(row.amount_minor), currency: String(row.currency), note: (row.note as string | null) ?? null, vehicleId: (row.vehicle_id as string | null) ?? null })),
     splits: rows.splits.map((row): SettleSplit => ({ expenseId: String(row.expense_id), travelerId: String(row.traveler_id), weight: (row.weight as number | null) ?? 1 })),
     payments: rows.payments.map((row): SettlePayment => ({ fromId: String(row.from_traveler_id), toId: String(row.to_traveler_id), amountMinor: Number(row.amount_minor), currency: String(row.currency) })),
+    vehicles: (rows.vehicles ?? []).map((row): SettleVehicle => ({ id: row.id, travelerIds: carOccupants(carFromRow(row)) })),
   };
 }
 
@@ -44,6 +50,7 @@ export function settle(input: {
   expenses: SettleExpense[];
   splits: SettleSplit[];
   payments: SettlePayment[];
+  vehicles?: SettleVehicle[];
   /** Kwota w walucie bazowej albo `null`, gdy brak kursu. */
   toBase: (amountMinor: number, currency: string) => number | null;
   households?: boolean;
@@ -81,7 +88,13 @@ export function settle(input: {
       continue;
     }
     const own = input.splits.filter((split) => split.expenseId === expense.id && byId.has(split.travelerId));
-    const people = own.length > 0 ? own.map((split) => ({ id: split.travelerId, weight: split.weight ?? 1 })) : input.travelers.map((traveler) => ({ id: traveler.id, weight: 1 }));
+    const car = expense.vehicleId ? (input.vehicles ?? []).find((vehicle) => vehicle.id === expense.vehicleId)?.travelerIds.filter((id) => byId.has(id)) : undefined;
+    const people =
+      own.length > 0
+        ? own.map((split) => ({ id: split.travelerId, weight: split.weight ?? 1 }))
+        : car !== undefined && car.length > 0
+          ? car.map((id) => ({ id, weight: 1 }))
+          : input.travelers.map((traveler) => ({ id: traveler.id, weight: 1 }));
     if (people.length === 0 || people.every((each) => each.weight <= 0)) {
       skipped.push({ expense, reason: 'no_people' });
       continue;

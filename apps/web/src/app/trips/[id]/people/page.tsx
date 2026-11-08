@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { MEMBER_ROLE } from "@expeditionplan/core";
+import { carFromRow, MEMBER_ROLE } from "@expeditionplan/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { CarSplit } from "@/components/car-split";
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
 import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
@@ -16,7 +17,7 @@ import { tripDates } from "@/lib/labels";
 export const metadata: Metadata = { title: "Uczestnicy i dostęp — Expedition Planner" };
 
 /**
- * Uczestnicy i dostęp: kto jedzie (uczestnicy), kto ma dostęp do planu (role), zaproszenie linkiem,
+ * Uczestnicy i dostęp: kto jedzie (uczestnicy), kto z kim jedzie autem, kto ma dostęp do planu (role), zaproszenie linkiem,
  * publiczny link „tylko podgląd” i na dole usunięcie wyjazdu (właściciel) albo wyjście z niego.
  * Organizator widzi też statystyki dostępu: kto z linku, kiedy ostatnio w aplikacji, który uczestnik.
  * Domyślnie podgląd; zmiany po „Edytuj” (wspólny tryb edycji).
@@ -38,12 +39,13 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const wantsEdit = await editMode();
   const { supabase } = await requireUser(`/trips/${id}/people`);
-  const [trip, members, travelers, share, places] = await Promise.all([
+  const [trip, members, travelers, share, places, vehicles] = await Promise.all([
     supabase.from("my_trips").select("title, role, start_date, end_date").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, can_add_expenses, profiles(display_name)").eq("trip_id", id).order("created_at"),
     supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver, tentative, from_date, to_date, notes, start_place_id, end_place_id").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
     supabase.from("public_shares").select("enabled, hide").eq("trip_id", id).maybeSingle(),
     supabase.from("places").select("id, ref, name").eq("trip_id", id).is("deleted_at", null).order("name"),
+    supabase.from("vehicles").select("id, label, driver_traveler_id, seats, passenger_ids, notes").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
   ]);
   if (trip.data === null) notFound();
   const role = trip.data.role!;
@@ -83,6 +85,19 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
           <TravelerList tripId={id} trip={{ start: trip.data.start_date!, end: trip.data.end_date! }} people={travelers.data} places={places.data.map((place) => ({ id: place.id, name: place.name, ref: place.ref ?? `id-${place.id}` }))} canEdit={editing} />
         )}
       </section>
+
+      {travelers.data && places.data && (
+        <section className={section}>
+          <h2 className={heading}>Podział na auta</h2>
+          {vehicles.error ? (
+            <p role="alert" className="text-sm text-red-600">
+              Nie udało się wczytać aut. ({vehicles.error.message})
+            </p>
+          ) : (
+            <CarSplit tripId={id} people={travelers.data} cars={vehicles.data.map(carFromRow)} places={places.data} canEdit={editing} />
+          )}
+        </section>
+      )}
 
       <section className={section}>
         <h2 className={heading}>Kto ma dostęp</h2>

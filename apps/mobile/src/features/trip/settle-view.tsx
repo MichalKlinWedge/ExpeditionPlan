@@ -28,7 +28,7 @@ export function SettleView({ trip, tripId, canEdit, fx, onChanged }: { trip: Cac
   const theme = useTheme();
   const [households, setHouseholds] = useState(false);
   const doc = { ...trip.state.doc, trip: { ...trip.state.doc.trip, fx } };
-  const input = settleInputFromRows({ travelers: trip.live.travelers, expenses: trip.live.expenses as Row[], splits: rowsOf(tripId, 'expense_splits'), payments: rowsOf(tripId, 'settlements') });
+  const input = settleInputFromRows({ travelers: trip.live.travelers, expenses: trip.live.expenses as Row[], splits: rowsOf(tripId, 'expense_splits'), payments: rowsOf(tripId, 'settlements'), vehicles: rowsOf(tripId, 'vehicles') });
   const { travelers, expenses } = input;
   if (travelers.length < 2) return null;
   if (expenses.length === 0) return null;

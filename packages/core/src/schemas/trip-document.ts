@@ -596,9 +596,22 @@ export const DocBudgetLine = z
     perPerson: z.boolean().default(false),
     /** Kogo dotyczy pozycja; brak albo pusto = wszystkich uczestników (także dodanych później). */
     participantRefs: z.array(Ref).optional(),
+    /** Koszt jednego auta (paliwo, winiety): dotyczy jego kierowcy i pasażerów (`vehicleTravelers`), nie `participantRefs`. */
+    vehicleRef: Ref.optional(),
     note: z.string().optional(),
   })
   .refine((line) => line.lowMinor <= line.highMinor, { message: 'Dolna kwota większa od górnej.', path: ['highMinor'] });
+
+/** Auto wyjazdu: kto prowadzi, ile ma miejsc (z kierowcą) i kto nim jedzie (`core/vehicles.ts`). */
+export const DocVehicle = z.object({
+  ref: Ref,
+  label: text,
+  driverRef: Ref.optional(),
+  /** Wszystkie miejsca razem z kierowcą; brak = nie wiadomo. */
+  seats: z.number().int().min(1).max(60).optional(),
+  passengerRefs: z.array(Ref).default([]),
+  notes: noteText.optional(),
+});
 
 // ---------------------------------------------------------------------------------------------
 // Zadania, pakowanie, notatki, źródła, ślady
@@ -701,6 +714,7 @@ export const TripDocumentShape = z.object({
   bookings: z.array(DocBooking).default([]),
   contacts: z.array(DocContact).default([]),
   budgetLines: z.array(DocBudgetLine).default([]),
+  vehicles: z.array(DocVehicle).default([]),
   tasks: z.array(DocTask).default([]),
   packing: z.array(DocPackingItem).default([]),
   notes: z.array(DocNote).default([]),
@@ -721,6 +735,7 @@ type Collection =
   | 'bookings'
   | 'contacts'
   | 'budgetLines'
+  | 'vehicles'
   | 'tasks'
   | 'packing'
   | 'notes'
@@ -739,6 +754,7 @@ const COLLECTIONS: Collection[] = [
   'bookings',
   'contacts',
   'budgetLines',
+  'vehicles',
   'tasks',
   'packing',
   'notes',
@@ -908,6 +924,11 @@ export function checkReferences(doc: Shape): { path: (string | number)[]; messag
     expect(['budgetLines', i, 'bookingRef'], b.bookingRef, 'bookings');
     expect(['budgetLines', i, 'itemRef'], b.itemRef, 'items');
     b.participantRefs?.forEach((p, j) => expect(['budgetLines', i, 'participantRefs', j], p, 'travelers'));
+    expect(['budgetLines', i, 'vehicleRef'], b.vehicleRef, 'vehicles');
+  });
+  doc.vehicles.forEach((v, i) => {
+    expect(['vehicles', i, 'driverRef'], v.driverRef, 'travelers');
+    v.passengerRefs.forEach((p, j) => expect(['vehicles', i, 'passengerRefs', j], p, 'travelers'));
   });
   doc.tasks.forEach((t, i) => {
     t.assigneeRefs.forEach((a, j) => expect(['tasks', i, 'assigneeRefs', j], a, 'travelers'));

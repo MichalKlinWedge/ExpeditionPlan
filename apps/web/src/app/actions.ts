@@ -218,6 +218,7 @@ export async function removeTraveler(tripId: string, travelerId: string): Promis
       ["wspólny sprzęt, który bierze", await count("packing_carriers", (q) => q.eq("traveler_id", travelerId).gt("quantity", 0))],
       ["rezerwacje (płacący)", await count("bookings", (q) => q.eq("paid_by_traveler_id", travelerId))],
       ["auto (kierowca)", await count("vehicles", (q) => q.eq("driver_traveler_id", travelerId))],
+      ["auto (pasażer)", await count("vehicles", (q) => q.contains("passenger_ids", [travelerId]))],
     ];
     uses = checks.filter(([, found]) => found > 0).map(([what, found]) => `${what}: ${found}`);
   } catch (e) {

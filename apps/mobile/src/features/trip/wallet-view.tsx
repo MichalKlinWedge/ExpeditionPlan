@@ -46,6 +46,8 @@ type ExpenseRow = {
   item_id?: string | null;
   receipt_path?: string | null;
   created_by?: string | null;
+  /** Wydatek auta (paliwo, winiety); ustawia się na webie. */
+  vehicle_id?: string | null;
 };
 
 const asExpense = (tripId: string, row: ExpenseRow): NewExpense & { id: string } => ({
@@ -67,6 +69,16 @@ const activeSplits = () =>
     .all<{ data: string }>("select data from rows where tbl = 'expense_splits'")
     .map((row) => JSON.parse(row.data) as { expense_id: string; traveler_id: string; deleted_at: string | null })
     .filter((row) => row.deleted_at === null);
+
+/** Auta z bazy telefonu po id wiersza: wydatek auta (paliwo, winiety) bez podziału dzielą jego osoby (`settle`). */
+const activeCars = () =>
+  new Map(
+    localDb
+      .all<{ data: string }>("select data from rows where tbl = 'vehicles'")
+      .map((row) => JSON.parse(row.data) as { id: string; label: string; deleted_at: string | null })
+      .filter((row) => row.deleted_at === null)
+      .map((row) => [row.id, row.label]),
+  );
 
 const when = (iso: string) => new Date(iso).toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -104,6 +116,7 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
   const canChange = (row: ExpenseRow) => canEditAll || (canAdd && mine(row));
   const splits = activeSplits();
   const splitsOf = (expenseId: string) => splits.filter((row) => row.expense_id === expenseId).map((row) => row.traveler_id);
+  const cars = activeCars();
 
   return (
     <View style={styles.stack}>
@@ -218,6 +231,7 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
                 {BUDGET_CATEGORY[expense.category] ?? expense.category}
                 {expense.payer_traveler_id ? ` · płacił(a): ${names.get(expense.payer_traveler_id) ?? '?'}` : ''}
                 {splitsOf(expense.id).length > 0 ? ` · na: ${splitsOf(expense.id).map((id) => names.get(id) ?? '?').join(', ')}` : ''}
+                {expense.vehicle_id && cars.has(expense.vehicle_id) ? ` · 🚗 ${cars.get(expense.vehicle_id)}` : ''}
                 {expense.note ? ` · ${expense.note}` : ''}
               </ThemedText>
               {canChange(expense) && (
@@ -291,7 +305,7 @@ function BudgetDetails({ doc, budget, spent, money }: { doc: CachedTrip['state']
                       {[
                         BUDGET_LINE_STATUS[line.status],
                         line.perPerson ? `na osobę × ${Math.max(lineTravelers(doc, line).length, 1)}` : null,
-                        lineTravelerNames(doc.travelers, line) ? `dotyczy: ${lineTravelerNames(doc.travelers, line)!.join(', ')}` : null,
+                        line.vehicleRef ? `🚗 ${doc.vehicles.find((car) => car.ref === line.vehicleRef)?.label ?? '?'}: ${lineTravelers(doc, line).map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? '?').join(', ')}` : lineTravelerNames(doc.travelers, line) ? `dotyczy: ${lineTravelerNames(doc.travelers, line)!.join(', ')}` : null,
                         line.bookingRef ? bookings.get(line.bookingRef) : null,
                         line.note,
                       ]

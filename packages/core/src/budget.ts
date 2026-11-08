@@ -1,4 +1,5 @@
 import type { TripDocument } from './schemas/trip-document.ts';
+import { vehicleTravelers } from './vehicles.ts';
 
 /**
  * Budżet wyjazdu (SPECYFIKACJA §5, MVP-3): „zapłacone / do wydania” z pozycji budżetu i portfel
@@ -39,9 +40,11 @@ export function toBase(doc: Doc, amountMinor: number, currency: string): number 
   return rate === undefined ? null : Math.round(amountMinor * rate);
 }
 
-/** Kogo dotyczy pozycja budżetu: wybrane osoby, a bez wyboru wszyscy uczestnicy (kolejność z planu). */
+/** Kogo dotyczy pozycja budżetu: osoby auta (`vehicleRef`), wybrane osoby, a bez wyboru wszyscy uczestnicy (kolejność z planu). */
 export function lineTravelers(doc: Doc, line: Doc['budgetLines'][number]): string[] {
-  const chosen = line.participantRefs ?? [];
+  // Koszt auta (paliwo, winiety) dzielą osoby tego auta; auto jeszcze bez osób liczy się jak bez wyboru.
+  const car = vehicleTravelers(doc, line.vehicleRef);
+  const chosen = car.length > 0 ? car : (line.participantRefs ?? []);
   return doc.travelers.filter((traveler) => chosen.length === 0 || chosen.includes(traveler.ref)).map((traveler) => traveler.ref);
 }
 

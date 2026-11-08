@@ -191,14 +191,14 @@ isOneToOne: false
                   ]
                 },"budget_lines": {
                   Row: {
-                    "auto": boolean,"base_high_minor": number | null,"base_low_minor": number | null,"booking_id": string | null,"category": string,"created_at": string,"currency": string,"deleted_at": string | null,"fx_date": string | null,"fx_rate": number | null,"high_minor": number,"id": string,"item_id": string | null,"low_minor": number,"note": string | null,"participant_ids": (string)[] | null,"per_person": boolean,"ref": string | null,"row_version": number,"sort_key": string | null,"status": string,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null
+                    "auto": boolean,"base_high_minor": number | null,"base_low_minor": number | null,"booking_id": string | null,"category": string,"created_at": string,"currency": string,"deleted_at": string | null,"fx_date": string | null,"fx_rate": number | null,"high_minor": number,"id": string,"item_id": string | null,"low_minor": number,"note": string | null,"participant_ids": (string)[] | null,"per_person": boolean,"ref": string | null,"row_version": number,"sort_key": string | null,"status": string,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"vehicle_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "auto"?: boolean,"base_high_minor"?: number | null,"base_low_minor"?: number | null,"booking_id"?: string | null,"category": string,"created_at"?: string,"currency": string,"deleted_at"?: string | null,"fx_date"?: string | null,"fx_rate"?: number | null,"high_minor": number,"id": string,"item_id"?: string | null,"low_minor": number,"note"?: string | null,"participant_ids"?: (string)[] | null,"per_person"?: boolean,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"status": string,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null
+                    "auto"?: boolean,"base_high_minor"?: number | null,"base_low_minor"?: number | null,"booking_id"?: string | null,"category": string,"created_at"?: string,"currency": string,"deleted_at"?: string | null,"fx_date"?: string | null,"fx_rate"?: number | null,"high_minor": number,"id": string,"item_id"?: string | null,"low_minor": number,"note"?: string | null,"participant_ids"?: (string)[] | null,"per_person"?: boolean,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"status": string,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"vehicle_id"?: string | null
                   }
                   Update: {
-                    "auto"?: boolean,"base_high_minor"?: number | null,"base_low_minor"?: number | null,"booking_id"?: string | null,"category"?: string,"created_at"?: string,"currency"?: string,"deleted_at"?: string | null,"fx_date"?: string | null,"fx_rate"?: number | null,"high_minor"?: number,"id"?: string,"item_id"?: string | null,"low_minor"?: number,"note"?: string | null,"participant_ids"?: (string)[] | null,"per_person"?: boolean,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"status"?: string,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "auto"?: boolean,"base_high_minor"?: number | null,"base_low_minor"?: number | null,"booking_id"?: string | null,"category"?: string,"created_at"?: string,"currency"?: string,"deleted_at"?: string | null,"fx_date"?: string | null,"fx_rate"?: number | null,"high_minor"?: number,"id"?: string,"item_id"?: string | null,"low_minor"?: number,"note"?: string | null,"participant_ids"?: (string)[] | null,"per_person"?: boolean,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"status"?: string,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"vehicle_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -224,6 +224,12 @@ isOneToOne: false
       columns: ["trip_id"]
 isOneToOne: false
       referencedRelation: "trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "budget_lines_vehicle_id_fkey"
+      columns: ["vehicle_id"]
+isOneToOne: false
+      referencedRelation: "vehicles"
       referencedColumns: ["id"]
     }
                   ]
@@ -425,14 +431,14 @@ isOneToOne: false
                   ]
                 },"expenses": {
                   Row: {
-                    "amount_minor": number,"base_amount_minor": number | null,"booking_id": string | null,"budget_line_id": string | null,"category": string,"created_at": string,"created_by": string | null,"currency": string,"deleted_at": string | null,"fx_rate": number | null,"fx_source": string | null,"id": string,"item_id": string | null,"note": string | null,"paid_at": string,"payer_traveler_id": string | null,"receipt_document_id": string | null,"receipt_path": string | null,"row_version": number,"split_mode": string,"trip_id": string,"updated_at": string,"updated_by": string | null
+                    "amount_minor": number,"base_amount_minor": number | null,"booking_id": string | null,"budget_line_id": string | null,"category": string,"created_at": string,"created_by": string | null,"currency": string,"deleted_at": string | null,"fx_rate": number | null,"fx_source": string | null,"id": string,"item_id": string | null,"note": string | null,"paid_at": string,"payer_traveler_id": string | null,"receipt_document_id": string | null,"receipt_path": string | null,"row_version": number,"split_mode": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"vehicle_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_minor": number,"base_amount_minor"?: number | null,"booking_id"?: string | null,"budget_line_id"?: string | null,"category"?: string,"created_at"?: string,"created_by"?: string | null,"currency": string,"deleted_at"?: string | null,"fx_rate"?: number | null,"fx_source"?: string | null,"id": string,"item_id"?: string | null,"note"?: string | null,"paid_at": string,"payer_traveler_id"?: string | null,"receipt_document_id"?: string | null,"receipt_path"?: string | null,"row_version"?: number,"split_mode"?: string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null
+                    "amount_minor": number,"base_amount_minor"?: number | null,"booking_id"?: string | null,"budget_line_id"?: string | null,"category"?: string,"created_at"?: string,"created_by"?: string | null,"currency": string,"deleted_at"?: string | null,"fx_rate"?: number | null,"fx_source"?: string | null,"id": string,"item_id"?: string | null,"note"?: string | null,"paid_at": string,"payer_traveler_id"?: string | null,"receipt_document_id"?: string | null,"receipt_path"?: string | null,"row_version"?: number,"split_mode"?: string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"vehicle_id"?: string | null
                   }
                   Update: {
-                    "amount_minor"?: number,"base_amount_minor"?: number | null,"booking_id"?: string | null,"budget_line_id"?: string | null,"category"?: string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"deleted_at"?: string | null,"fx_rate"?: number | null,"fx_source"?: string | null,"id"?: string,"item_id"?: string | null,"note"?: string | null,"paid_at"?: string,"payer_traveler_id"?: string | null,"receipt_document_id"?: string | null,"receipt_path"?: string | null,"row_version"?: number,"split_mode"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "amount_minor"?: number,"base_amount_minor"?: number | null,"booking_id"?: string | null,"budget_line_id"?: string | null,"category"?: string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"deleted_at"?: string | null,"fx_rate"?: number | null,"fx_source"?: string | null,"id"?: string,"item_id"?: string | null,"note"?: string | null,"paid_at"?: string,"payer_traveler_id"?: string | null,"receipt_document_id"?: string | null,"receipt_path"?: string | null,"row_version"?: number,"split_mode"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"vehicle_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -476,6 +482,12 @@ isOneToOne: false
       columns: ["trip_id"]
 isOneToOne: false
       referencedRelation: "trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "expenses_vehicle_id_fkey"
+      columns: ["vehicle_id"]
+isOneToOne: false
+      referencedRelation: "vehicles"
       referencedColumns: ["id"]
     }
                   ]
@@ -1343,14 +1355,14 @@ isOneToOne: false
                   ]
                 },"vehicles": {
                   Row: {
-                    "booking_id": string | null,"created_at": string,"deleted_at": string | null,"driver_traveler_id": string | null,"id": string,"label": string,"notes": string | null,"passenger_ids": (string)[],"row_version": number,"seats": number | null,"trip_id": string,"updated_at": string,"updated_by": string | null
+                    "booking_id": string | null,"created_at": string,"deleted_at": string | null,"driver_traveler_id": string | null,"id": string,"label": string,"notes": string | null,"passenger_ids": (string)[],"ref": string | null,"row_version": number,"seats": number | null,"sort_key": string | null,"trip_id": string,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "booking_id"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"driver_traveler_id"?: string | null,"id": string,"label": string,"notes"?: string | null,"passenger_ids"?: (string)[],"row_version"?: number,"seats"?: number | null,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null
+                    "booking_id"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"driver_traveler_id"?: string | null,"id": string,"label": string,"notes"?: string | null,"passenger_ids"?: (string)[],"ref"?: string | null,"row_version"?: number,"seats"?: number | null,"sort_key"?: string | null,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "booking_id"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"driver_traveler_id"?: string | null,"id"?: string,"label"?: string,"notes"?: string | null,"passenger_ids"?: (string)[],"row_version"?: number,"seats"?: number | null,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "booking_id"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"driver_traveler_id"?: string | null,"id"?: string,"label"?: string,"notes"?: string | null,"passenger_ids"?: (string)[],"ref"?: string | null,"row_version"?: number,"seats"?: number | null,"sort_key"?: string | null,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {

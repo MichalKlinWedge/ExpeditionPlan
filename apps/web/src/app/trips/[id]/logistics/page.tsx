@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, vehicleTravelers, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,7 +10,7 @@ import { BookingImport } from "@/components/booking-import";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
 import { PlaceLink } from "@/components/place-pin";
-import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
+import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type CarChoice, type Choices, ExpenseSplitEditor, ExpenseVehicleEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
@@ -154,6 +154,10 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
   const statuses = BOOKING_STATUS;
   const today = new Date().toISOString().slice(0, 10);
   const choices: Choices = planChoices(doc);
+  // Auta do paliwa i winiet: budżet po `ref`, wydatki z telefonu po id wiersza.
+  const nameOf = new Map(doc.travelers.map((each) => [each.ref, each.name]));
+  const cars: CarChoice[] = doc.vehicles.map((car) => ({ ref: car.ref, label: car.label, people: vehicleTravelers(doc, car.ref).map((ref) => nameOf.get(ref) ?? "?") }));
+  const carRows: CarChoice[] = cars.map((car) => ({ ...car, ref: idOf[car.ref]! }));
   // Strefy do podpowiedzi przy rezerwacji: wyjazdu, domu, dni i te, które rezerwacje już mają.
   const zones = [...new Set([doc.trip.primaryTz, doc.trip.homeTz, ...doc.days.map((day) => day.tz), ...doc.bookings.flatMap((booking) => [booking.start?.tz, booking.end?.tz])].filter((zone): zone is string => zone !== undefined))];
   const suggestions = budgetSuggestions(doc);
@@ -179,7 +183,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
         {doc.budgetLines.length === 0 ? (
           <>
             <p className="text-sm text-zinc-500">Plan nie ma pozycji budżetu.</p>
-            <BudgetLines tripId={id} lines={[]} currency={doc.trip.baseCurrency} people={choices.travelers} canEdit={canEdit} />
+            <BudgetLines tripId={id} lines={[]} currency={doc.trip.baseCurrency} people={choices.travelers} cars={cars} canEdit={canEdit} />
           </>
         ) : (
           <>
@@ -202,7 +206,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                 </ul>
               </div>
             )}
-            <BudgetLines tripId={id} lines={doc.budgetLines} currency={budget.currency} people={choices.travelers} canEdit={canEdit} />
+            <BudgetLines tripId={id} lines={doc.budgetLines} currency={budget.currency} people={choices.travelers} cars={cars} canEdit={canEdit} />
             {Object.keys(budget.unconverted).length > 0 && (
               <p className="text-xs text-amber-700">
                 Bez kursu w planie (poza sumą):{" "}
@@ -255,6 +259,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
             refOf={refOf}
             people={doc.travelers.map((each) => ({ ref: idOf[each.ref]!, name: each.name }))}
             splits={(payload.tables.expense_splits ?? []).filter((row) => row.deleted_at === null)}
+            cars={carRows}
           />
         )}
         <Settlement doc={doc} tables={payload.tables as unknown as Parameters<typeof Settlement>[0]["tables"]} />
@@ -487,6 +492,7 @@ function ExpenseList({
   refOf,
   people,
   splits,
+  cars,
 }: {
   tripId: string;
   canEdit: boolean;
@@ -496,6 +502,7 @@ function ExpenseList({
   refOf: Map<string, string>;
   people: { ref: string; name: string }[];
   splits: Record<string, unknown>[];
+  cars: CarChoice[];
 }) {
   const sorted = [...expenses].sort((a, b) => String(b.paid_at).localeCompare(String(a.paid_at)));
   const withReceipt = sorted.filter((row) => row.receipt_path).length;
@@ -522,7 +529,10 @@ function ExpenseList({
                 <strong>{formatMoney(Number(row.amount_minor), String(row.currency))}</strong> · {BUDGET_CATEGORY[String(row.category)] ?? String(row.category)}
                 {payer ? ` · płacił(a): ${payer}` : ""}
                 {row.note ? <span className="text-zinc-500"> · {String(row.note)}</span> : null}
-                {people.length > 1 && <ExpenseSplitEditor tripId={tripId} expenseId={row.id} people={people} chosen={splits.filter((split) => split.expense_id === row.id).map((split) => String(split.traveler_id))} canEdit={canEdit} />}
+                {people.length > 1 && (
+                  <ExpenseSplitEditor tripId={tripId} expenseId={row.id} people={people} chosen={splits.filter((split) => split.expense_id === row.id).map((split) => String(split.traveler_id))} canEdit={canEdit} car={cars.find((car) => car.ref === row.vehicle_id)} />
+                )}
+                {cars.length > 0 && <ExpenseVehicleEditor tripId={tripId} expenseId={row.id} cars={cars} vehicleId={(row.vehicle_id as string | null) ?? null} canEdit={canEdit} />}
               </div>
               <span className="text-xs text-zinc-500">{new Date(String(row.paid_at)).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</span>
             </li>

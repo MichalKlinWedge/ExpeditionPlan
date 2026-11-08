@@ -2,7 +2,7 @@ import { formatMoney, settle, settleInputFromRows, toBase, type TripDocument } f
 
 /**
  * Rozliczenie „kto komu ile” na webie (tylko odczyt — przelewy „Oddane” zaznacza się w telefonie,
- * w trasie; „na kogo” zmienia się przy wydatku). Te same zasady co w telefonie (`settle`): podziały wydatków, dzieci do opiekuna,
+ * w trasie; „na kogo” i auto (paliwo, winiety na osoby auta) zmienia się przy wydatku). Te same zasady co w telefonie (`settle`): podziały wydatków, dzieci do opiekuna,
  * osobno i rodzinami, wykonane przelewy pomniejszają salda.
  */
 
@@ -10,7 +10,7 @@ type Row = Record<string, unknown> & { id: string; deleted_at: string | null };
 
 export function Settlement({ doc, tables }: { doc: TripDocument; tables: Record<string, Row[] | undefined> }) {
   const alive = (table: string) => (tables[table] ?? []).filter((row) => row.deleted_at === null);
-  const rows = settleInputFromRows({ travelers: alive("travelers"), expenses: alive("expenses"), splits: alive("expense_splits"), payments: alive("settlements") });
+  const rows = settleInputFromRows({ travelers: alive("travelers"), expenses: alive("expenses"), splits: alive("expense_splits"), payments: alive("settlements"), vehicles: alive("vehicles") });
   const { travelers, expenses } = rows;
   if (travelers.length < 2 || expenses.length === 0) return null;
   const input = {

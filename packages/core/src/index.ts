@@ -32,6 +32,7 @@ export * from './coordinates.ts';
 export * from './place-list.ts';
 export * from './trip-overview.ts';
 export * from './traveler-transport.ts';
+export * from './vehicles.ts';
 export * from './route-stops.ts';
 export * from './booking-place.ts';
 export * from './booking-remove.ts';

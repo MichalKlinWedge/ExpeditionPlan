@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { ContactList } from '@/features/plan/item-facts';
+import { PlacePin } from '@/features/plan/place-pin';
 import { DocumentsView } from '@/features/trip/documents-view';
 
 /**
@@ -31,6 +32,8 @@ type Props = {
 
 export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false, onOpenItem, onContacts }: Props) {
   const details = bookingRef === null ? null : bookingDetails(trip.state.doc, bookingRef, localToday());
+  // Miejsce noclegu — pinezka otwiera je w Mapach Google.
+  const place = details?.place === undefined ? undefined : trip.state.doc.places.find((each) => each.ref === details.booking.startPlaceRef);
   return (
     <Modal visible={details !== null} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
@@ -50,7 +53,14 @@ export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false
                     {details.when !== '' && <ThemedText type="smallBold">{details.when}</ThemedText>}
                     {details.price !== null && <ThemedText type="small">💰 {details.price}</ThemedText>}
                     {details.line !== '' && <ThemedText type="small">{details.line}</ThemedText>}
-                    {details.place !== undefined && <ThemedText type="small">Miejsce: {details.place}</ThemedText>}
+                    {details.place !== undefined && (
+                      <View style={styles.place}>
+                        <ThemedText type="small" style={styles.grow}>
+                          Miejsce: {details.place}
+                        </ThemedText>
+                        {place && <PlacePin place={place} />}
+                      </View>
+                    )}
                     {details.facts.map((fact) => (
                       <ThemedText key={fact} type="small" themeColor="textSecondary">
                         · {fact}
@@ -131,4 +141,6 @@ const styles = StyleSheet.create({
   block: { gap: Spacing.one },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   start: { alignSelf: 'flex-start' },
+  place: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  grow: { flex: 1 },
 });

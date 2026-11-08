@@ -104,19 +104,24 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
   if (!/^[A-Z]{3}$/.test(currency)) return { error: "Waluta: trzy litery, np. PLN, EUR, MAD." };
   const status = ["estimate", "committed", "paid"].includes(text(form, "status")) ? text(form, "status") : "estimate";
   const chosen = form.getAll("for").map(String);
-  return change(tripId, "budgetLines", ref, (doc, current) => ({
-    ...(current ?? { ref: `id-${uuidv7()}` }),
-    title,
-    category: category.data,
-    status,
-    lowMinor: low,
-    highMinor: high,
-    currency,
-    perPerson: form.get("perPerson") === "on",
-    // Wszyscy zaznaczeni to to samo co brak wyboru: osoba dodana później też się liczy.
-    participantRefs: chosen.length === 0 || doc.travelers.every((traveler) => chosen.includes(traveler.ref)) ? undefined : chosen,
-    note: optional(text(form, "note")),
-  }));
+  const vehicle = text(form, "vehicle");
+  return change(tripId, "budgetLines", ref, (doc, current) => {
+    if (vehicle !== "" && !doc.vehicles.some((each) => each.ref === vehicle)) return "Tego auta już nie ma: odśwież stronę.";
+    return {
+      ...(current ?? { ref: `id-${uuidv7()}` }),
+      title,
+      category: category.data,
+      status,
+      lowMinor: low,
+      highMinor: high,
+      currency,
+      perPerson: form.get("perPerson") === "on",
+      // Wszyscy zaznaczeni to to samo co brak wyboru: osoba dodana później też się liczy. Koszt auta dzielą osoby auta.
+      participantRefs: vehicle !== "" || chosen.length === 0 || doc.travelers.every((traveler) => chosen.includes(traveler.ref)) ? undefined : chosen,
+      vehicleRef: vehicle === "" ? undefined : vehicle,
+      note: optional(text(form, "note")),
+    };
+  });
 }
 
 /** Na kogo dzieli się wydatek; pusto = na wszystkich. Prawo: RLS `expense_splits`, jak na telefonie. */
