@@ -272,6 +272,15 @@ h2 {
   .card:not(.flex):not(.grid) > .card-title {
     margin-bottom: 0.75rem;
   }
+  /* Boks z samą belką (np. zwinięty wiersz listy): belka do dolnej krawędzi. */
+  .card > .card-title:last-child {
+    margin-bottom: -1rem;
+    border-bottom: 0;
+    border-radius: calc(1rem - 1px);
+  }
+  .card.p-3 > .card-title:last-child {
+    margin-bottom: -0.75rem;
+  }
   /* Zwinięty boks to sama belka: bez dolnego paddingu (ujemny margines w <details> nie działa). */
   details.card:not([open]) {
     padding-bottom: 0 !important;

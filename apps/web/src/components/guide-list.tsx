@@ -47,7 +47,7 @@ function GuideRowCard({ tripId, guide, canEdit }: { tripId: string; guide: TripG
   const confirm = content.edited || content.imagesEdited ? REGENERATE_EDITED : REGENERATE;
   return (
     <li className="card flex flex-col gap-2 p-3 text-sm">
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <div className="card-title flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-left font-semibold hover:text-sea">
           {guide.title}
         </button>
@@ -123,7 +123,7 @@ function MissingRow({ tripId, item, canEdit }: { tripId: string; item: { ref: st
   const [open, setOpen] = useState(false);
   return (
     <li className="card flex flex-col gap-2 p-3 text-sm">
-      <div className="flex flex-wrap items-baseline gap-x-2">
+      <div className="card-title flex flex-wrap items-baseline gap-x-2">
         <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} className="btn-mini">
           {item.title}
         </Link>

@@ -301,7 +301,7 @@ function PlaceRow({
 
   return (
     <li id={`miejsce-${place.ref}`} className={`card flex scroll-mt-4 flex-col gap-2 p-3 text-sm ${selected || open ? "ring-2 ring-sea" : ""}`}>
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <div className="card-title flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         {located ? (
           <button type="button" onClick={onShow} aria-pressed={selected} title="Pokaż na mapie" className="flex items-baseline gap-x-2 text-left hover:text-sea">
             {place.n !== undefined && <span className="flex h-5 min-w-5 items-center justify-center self-center rounded-full bg-sea px-1 text-xs font-semibold text-white">{place.n}</span>}
