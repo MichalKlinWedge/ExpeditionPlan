@@ -627,7 +627,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
   );
 }
 
-/** Synchronizacja i pokrycie mapy — na końcu strony, pod mapą dnia (nie zabiera miejsca na górze). */
+/** Synchronizacja i pokrycie mapy — na końcu strony, pod planem dnia (nie zabiera miejsca na górze). */
 function SyncStatus({ text }: { text: string }) {
   const theme = useTheme();
   if (text === '') return null;
@@ -817,6 +817,13 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
 
       {failure && <ThemedText style={{ color: HARD }}>Nie udało się policzyć dnia: {failure}</ThemedText>}
 
+      {/* Mapa dnia nad punktami planu: numer pinezki przewija w dół do punktu, karta punktu — z powrotem do mapy. */}
+      {schedule && (
+        <View onLayout={(event) => (mapTop.current = event.nativeEvent.layout.y)}>
+          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} />
+        </View>
+      )}
+
       {schedule?.items.map((item) => {
         const source = byRef.get(item.ref);
         const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
@@ -971,12 +978,6 @@ function Day({ state, dayRef, scenario, variants, onChoose, top, actions, weathe
       )}
 
       {schedule && <Warnings list={schedule.warnings.filter((warning) => warning.itemRef === undefined)} />}
-
-      {schedule && (
-        <View onLayout={(event) => (mapTop.current = event.nativeEvent.layout.y)}>
-          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} />
-        </View>
-      )}
 
       {cuts.length > 0 && (
         <View style={styles.group}>
