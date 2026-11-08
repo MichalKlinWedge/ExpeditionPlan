@@ -37,9 +37,7 @@ export function SettingsScreen({ visible, onClose, onIntro }: { visible: boolean
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
             <View style={styles.top}>
-              <Pressable onPress={onClose} hitSlop={12}>
-                <ThemedText type="linkPrimary">← Wróć</ThemedText>
-              </Pressable>
+              <Button label="← Wróć" onPress={onClose} small />
               <ThemedText type="smallBold">Ustawienia</ThemedText>
             </View>
             <ScrollView contentContainerStyle={styles.content}>

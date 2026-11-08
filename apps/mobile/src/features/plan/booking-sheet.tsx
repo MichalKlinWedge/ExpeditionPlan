@@ -39,9 +39,7 @@ export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false
             {details !== null && (
               <View style={styles.fill}>
                 <View style={styles.top}>
-                  <Pressable onPress={onClose} hitSlop={12}>
-                    <ThemedText type="linkPrimary">← Wróć</ThemedText>
-                  </Pressable>
+                  <Button label="← Wróć" onPress={onClose} small />
                 </View>
                 <ScrollView contentContainerStyle={styles.content}>
                   <ThemedText type="subtitle">🎫 {details.booking.title}</ThemedText>

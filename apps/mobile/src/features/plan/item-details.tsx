@@ -193,9 +193,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
   return (
     <View style={styles.fill}>
       <View style={styles.top}>
-        <Pressable onPress={onBack} hitSlop={12}>
-          <ThemedText type="linkPrimary">{backLabel}</ThemedText>
-        </Pressable>
+        <Button label={backLabel} onPress={onBack} small />
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <ThemedText type="subtitle">

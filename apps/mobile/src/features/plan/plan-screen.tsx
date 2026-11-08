@@ -384,9 +384,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
     <View style={styles.fill}>
       <View style={styles.top}>
         {onClose && (
-          <Pressable onPress={onClose} hitSlop={12}>
-            <ThemedText type="linkPrimary">← Wyjazdy</ThemedText>
-          </Pressable>
+          <AppButton label="← Wyjazdy" onPress={onClose} small />
         )}
         <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
           {state?.doc.trip.title ?? ''}
