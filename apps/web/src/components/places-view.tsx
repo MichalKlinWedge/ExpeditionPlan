@@ -262,8 +262,13 @@ function PlaceRow({
     setAddress(place.address ?? "");
   }
   const [pending, start] = useTransition();
-  const pickBar = useRef<HTMLDivElement>(null);
-  // Na telefonie lista jest pod mapą: po wskazaniu pokazuje przycisk zapisu.
+  const pickBar = useRef<HTMLParagraphElement>(null);
+  // Wskazany na mapie punkt trafia do pola współrzędnych; na telefonie lista jest pod mapą, więc wraca na ekran.
+  const [shownPick, setShownPick] = useState<LatLng | null>(null);
+  if (picked !== shownPick) {
+    setShownPick(picked);
+    if (picked !== null) setCoords(`${picked.lat.toFixed(6)}, ${picked.lng.toFixed(6)}`);
+  }
   useEffect(() => {
     if (picked !== null) pickBar.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [picked]);
@@ -360,7 +365,7 @@ function PlaceRow({
       )}
 
       {open && (
-        <div className="flex flex-col gap-3 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+        <div className="flex flex-col divide-y divide-zinc-200 border-t border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800 [&>*]:py-3 [&>*:last-child]:pb-0">
           {linked.length > 0 && (
             <p className="text-xs text-zinc-500">
               Korzystają:{" "}
@@ -398,34 +403,46 @@ function PlaceRow({
           <div className="flex flex-col gap-2">
             <p className="text-xs text-zinc-500">
               {located ? "Nowe współrzędne" : "Współrzędne"}
-              {usage.total > 0 ? ` przesuną to miejsce wszędzie, gdzie jest użyte (${usageLabel(usage)}).` : "."} W Google Maps przytrzymaj miejsce i skopiuj liczby albo wklej pełny link; w OpenStreetMap wklej link z paska adresu.
+              {usage.total > 0 ? ` przesuną to miejsce wszędzie, gdzie jest użyte (${usageLabel(usage)}).` : "."} W Google Maps przytrzymaj miejsce i skopiuj liczby albo wklej pełny link; w OpenStreetMap wklej link z paska adresu. Możesz też wskazać miejsce na mapie.
             </p>
+            {/* Wpisane współrzędne i punkt wskazany na mapie (trafia do pola) zapisuje jeden „Zapisz”. */}
             <form
-              className="flex flex-wrap gap-2"
+              className="flex flex-col gap-2"
               onSubmit={(event) => {
                 event.preventDefault();
-                savePosition(coords, () => setCoords(""));
+                savePosition(coords, () => {
+                  setCoords("");
+                  if (picking) onStopPicking();
+                });
               }}>
-              <input value={coords} onChange={(event) => setCoords(event.target.value)} disabled={pending} placeholder="50.2771, 16.5373 albo link z mapy" aria-label={`Współrzędne: ${place.name}`} className={input} />
-              <button disabled={pending || coords.trim() === ""} className={button}>
+              <div className="flex flex-wrap gap-2">
+                <input value={coords} onChange={(event) => setCoords(event.target.value)} disabled={pending} placeholder="50.2771, 16.5373 albo link z mapy" aria-label={`Współrzędne: ${place.name}`} className={input} />
+                {picking ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Punkt z mapy w polu znika razem ze wskazywaniem.
+                      if (picked !== null) setCoords("");
+                      onStopPicking();
+                    }}
+                    className={button}>
+                    Anuluj wskazywanie
+                  </button>
+                ) : (
+                  <button type="button" onClick={onStartPicking} className={button}>
+                    Wskaż na mapie
+                  </button>
+                )}
+              </div>
+              {picking && (
+                <p ref={pickBar} className="text-xs text-zinc-500">
+                  {picked === null ? "Kliknij mapę w nowym położeniu — współrzędne trafią do pola." : "Wskazany punkt jest w polu; zapisz albo kliknij mapę jeszcze raz."}
+                </p>
+              )}
+              <button disabled={pending || coords.trim() === ""} className={`${button} self-start`}>
                 Zapisz
               </button>
             </form>
-            {picking ? (
-              <div ref={pickBar} className="flex flex-wrap items-center gap-2 text-xs">
-                <span>{picked === null ? "Kliknij mapę w nowym położeniu." : `Wskazano: ${picked.lat.toFixed(5)}, ${picked.lng.toFixed(5)}`}</span>
-                <button type="button" disabled={pending || picked === null} onClick={() => savePosition(`${picked!.lat}, ${picked!.lng}`, onStopPicking)} className="btn-primary btn-sm">
-                  Zapisz pozycję
-                </button>
-                <button type="button" onClick={onStopPicking} className="btn-mini">
-                  anuluj
-                </button>
-              </div>
-            ) : (
-              <button type="button" onClick={onStartPicking} className={`${button} self-start`}>
-                Wskaż na mapie
-              </button>
-            )}
             <form
               className="flex flex-wrap gap-2"
               onSubmit={(event) => {
