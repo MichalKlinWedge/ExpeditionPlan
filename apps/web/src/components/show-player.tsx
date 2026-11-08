@@ -13,6 +13,7 @@ import { polishLabels } from "@/components/plan-map";
  * Odtwarzacz pokazu z lektorem: mapa sceny (przelot kamery do trasy dnia i rysowanie linii), potem zdjęcia z powolnym
  * zbliżeniem, na dole nagłówek sceny i napisy z tekstu lektora. Scena z nagraniem trwa tyle, co nagranie; bez nagrania —
  * tyle, ile czyta się napisy (`readingMs`). Start zawsze z kliknięcia: przeglądarka nie pozwala grać dźwięku bez niego.
+ * Lektor wchodzi po chwili ciszy na pierwszej scenie (`LEAD_MS`), a po ostatnim zdaniu pokaz trwa jeszcze `TAIL_MS`.
  * Kafle OpenFreeMap (wyświetlanie na żywo, bez pobierania na zapas — docs/USLUGI.md).
  */
 
@@ -21,6 +22,10 @@ const SEA = "#2e7d74";
 const PIN = "#e0662f";
 const DRAW_MS = 2_500;
 const GAP_MS = 700;
+/** Cisza przed lektorem pierwszej sceny: mapa rusza, głos dopiero potem. */
+const LEAD_MS = 2_000;
+/** Przerwa po lektorze ostatniej sceny, zanim pokaz się skończy. */
+const TAIL_MS = 1_000;
 
 export type ShowMapData = { lines: { coordinates: [number, number][]; routed: boolean }[]; pins: { lng: number; lat: number; name: string }[] };
 
@@ -151,14 +156,19 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
   const audio = useRef<HTMLAudioElement>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  /** Czas sceny od jej początku (z ciszą przed lektorem) i czas samego lektora. */
   const [elapsed, setElapsed] = useState(0);
+  const [narrated, setNarrated] = useState(0);
   const [subtitles, setSubtitles] = useState(true);
   const [ended, setEnded] = useState(false);
   const scene = scenes[index]!;
   const duration = sceneMs(scene);
+  const lead = index === 0 ? LEAD_MS : 0;
+  const gap = index === scenes.length - 1 ? TAIL_MS : GAP_MS;
+  const span = lead + duration;
   const lines = useMemo(() => sentences(scene.text), [scene.text]);
 
-  /** Czas sceny bez nagrania: przeżywa pauzę, a zeruje się przy zmianie sceny. */
+  /** Czas sceny (z ciszą przed lektorem): przeżywa pauzę, a zeruje się przy zmianie sceny. */
   const clock = useRef(0);
 
   const go = useCallback(
@@ -171,13 +181,14 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
       clock.current = 0;
       setEnded(false);
       setElapsed(0);
+      setNarrated(0);
       setIndex(Math.max(0, next));
     },
     [scenes.length],
   );
 
-  // Zegar sceny: z nagrania, gdy jest, inaczej z upływu czasu; na końcu krótka przerwa i następna scena.
-  // `setInterval`, a nie klatki animacji: w karcie w tle klatki stają, a lektor ma czytać dalej.
+  // Zegar sceny: cisza przed lektorem (`lead`), potem nagranie, gdy jest, inaczej upływ czasu; na końcu przerwa
+  // (`gap`) i następna scena. `setInterval`, a nie klatki animacji: w karcie w tle klatki stają, a lektor ma czytać dalej.
   useEffect(() => {
     if (!playing) return;
     let last = performance.now();
@@ -189,28 +200,32 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
       const step = now - last;
       last = now;
       const element = audio.current;
+      let voice: number;
       if (scene.audio && element) {
-        clock.current = element.currentTime * 1000;
+        if (clock.current < lead) clock.current = Math.min(clock.current + step, lead);
+        // Głos rusza dopiero po ciszy; przeglądarka pozwala, bo pokaz uruchomiło kliknięcie.
+        else if (element.paused && !element.ended) void element.play().catch(() => setPlaying(false));
+        voice = element.currentTime * 1000;
+        if (clock.current >= lead) clock.current = lead + voice;
         if (element.ended) waited += step;
       } else {
-        if (clock.current >= duration) waited += step;
-        clock.current = Math.min(clock.current + step, duration);
+        if (clock.current >= span) waited += step;
+        clock.current = Math.min(clock.current + step, span);
+        voice = Math.max(clock.current - lead, 0);
       }
       setElapsed(clock.current);
-      if (waited >= GAP_MS) {
+      setNarrated(voice);
+      if (waited >= gap) {
         moved = true;
         go(index + 1);
       }
     }, 100);
     return () => clearInterval(timer);
-  }, [playing, index, scene.audio, duration, go]);
+  }, [playing, index, scene.audio, lead, span, gap, go]);
 
   useEffect(() => {
-    const element = audio.current;
-    if (element === null || !scene.audio) return;
-    if (playing) void element.play().catch(() => setPlaying(false));
-    else element.pause();
-  }, [playing, index, scene.audio]);
+    if (!playing) audio.current?.pause();
+  }, [playing, index]);
 
   const toggle = () => {
     if (ended) {
@@ -218,6 +233,7 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
       setEnded(false);
       setIndex(0);
       setElapsed(0);
+      setNarrated(0);
     }
     setPlaying((value) => !value);
   };
@@ -242,11 +258,12 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
     return () => window.removeEventListener("keydown", key);
   });
 
-  const mapPhase = scene.images.length === 0 ? duration : Math.min(Math.max(4_500, duration * 0.35), duration * 0.6);
-  const perPhoto = scene.images.length === 0 ? 0 : Math.max((duration - mapPhase) / scene.images.length, 3_000);
+  const mapPhase = scene.images.length === 0 ? span : Math.min(Math.max(4_500, span * 0.35), span * 0.6);
+  const perPhoto = scene.images.length === 0 ? 0 : Math.max((span - mapPhase) / scene.images.length, 3_000);
   const photo = elapsed < mapPhase ? -1 : Math.min(Math.floor((elapsed - mapPhase) / perPhoto), scene.images.length - 1);
-  const share = duration === 0 ? 0 : elapsed / duration;
-  const line = lines.find((each) => share <= each.until) ?? lines.at(-1);
+  const share = span === 0 ? 0 : elapsed / span;
+  // Napisy idą za głosem; w ciszy przed lektorem ich nie ma.
+  const line = elapsed < lead ? undefined : (lines.find((each) => (duration === 0 ? 0 : narrated / duration) <= each.until) ?? lines.at(-1));
 
   return (
     <div className="flex flex-col gap-3">

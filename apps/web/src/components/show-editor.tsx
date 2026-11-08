@@ -2,10 +2,10 @@
 
 import { plural } from "@expeditionplan/core";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowVoice } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowVoice, voiceSample } from "@/app/show-actions";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
 
@@ -56,6 +56,49 @@ function RecordingBadge({ status, seconds, live, unsaved }: { status: RecordingS
   }
   if (status === "new") return <span className={`${BADGE} bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300`}>nienagrane</span>;
   return <span className={`${BADGE} bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400`}>bez tekstu</span>;
+}
+
+/** Odsłuchanie próbki wybranego głosu; nagrana raz, potem z pliku (`voiceSample`). */
+function VoiceSample({ tripId, voice }: { tripId: string; voice: string }) {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [state, setState] = useState<"idle" | "loading" | "playing">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const player = useRef<HTMLAudioElement | null>(null);
+  const play = async () => {
+    if (state === "playing") {
+      player.current?.pause();
+      setState("idle");
+      return;
+    }
+    setError(null);
+    let url = urls[voice];
+    if (url === undefined) {
+      setState("loading");
+      const answer = await voiceSample(tripId, voice);
+      if (!answer.url) {
+        setError(answer.error ?? "Nie udało się nagrać próbki.");
+        setState("idle");
+        return;
+      }
+      url = answer.url;
+      setUrls((now) => ({ ...now, [voice]: answer.url! }));
+    }
+    player.current?.pause();
+    const audio = new Audio(url);
+    player.current = audio;
+    audio.onended = () => setState("idle");
+    setState("playing");
+    await audio.play().catch(() => setState("idle"));
+  };
+  return (
+    <>
+      <button type="button" onClick={() => void play()} disabled={state === "loading"} className="btn-mini" title="Krótka próbka tego głosu">
+        <SpeakerIcon className="size-3.5" />
+        {state === "loading" ? "nagrywam próbkę…" : state === "playing" ? "zatrzymaj" : "posłuchaj"}
+      </button>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </>
+  );
 }
 
 function SceneText({ tripId, scene, live }: { tripId: string; scene: EditorScene; live?: Live }) {
@@ -164,6 +207,7 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
             ))}
           </select>
         </label>
+        <VoiceSample tripId={tripId} voice={picked} />
         <button onClick={() => void record()} disabled={toRecord.length === 0 || progress !== null || pending} className="btn-secondary btn-sm">
           <MicIcon className="size-4" />
           {progress?.waiting ? `Limit zapytań Google, czekam ${progress.waiting} s…` : progress ? `Nagrywam ${progress.done + 1} z ${progress.total}…` : toRecord.length > 0 ? `Nagraj lektora (${plural(toRecord.length, ["scena", "sceny", "scen"])})` : "Wszystko nagrane"}

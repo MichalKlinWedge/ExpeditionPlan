@@ -129,3 +129,36 @@ export async function recordShowScene(tripId: string, key: string): Promise<Form
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/** Zdanie próbki głosu: krótkie (grosze za nagranie), bez nazw z planu, więc jedno na głos i model. */
+const SAMPLE_TEXT = "Dzień dobry, tak brzmi ten głos. Opowiem wam o wyjeździe, dzień po dniu.";
+
+/**
+ * Próbka głosu przed wyborem: nagranie raz na głos i model, trzymane w buckecie wyjazdu (`<trip>/probka-<hash>.wav`,
+ * nie w scenariuszu, więc `droppedAudio` go nie rusza); kolejne odsłuchanie tylko podpisuje plik.
+ */
+export async function voiceSample(tripId: string, voice: string): Promise<FormState & { url?: string }> {
+  if (!isSpeechVoice(voice)) return { error: `Nie ma głosu „${voice}”.` };
+  const denied = await aiAccessError();
+  if (denied) return { error: denied };
+  const setup = await speechSetup();
+  if ("error" in setup) return { error: setup.error };
+  const { supabase } = await requireUser(`/trips/${tripId}/show`);
+  const path = `${tripId}/probka-${narrationHash(SAMPLE_TEXT, voice, setup.model)}.wav`;
+  const bucket = supabase.storage.from("show_audio");
+  const ready = await bucket.createSignedUrl(path, 3600);
+  if (ready.data?.signedUrl) return { ok: "Próbka gotowa.", url: ready.data.signedUrl };
+  try {
+    const speech = await speakGemini(setup.key, setup.model, SAMPLE_TEXT, voice);
+    const { error } = await bucket.upload(path, speech.audio, { contentType: "audio/wav" });
+    if (error && !/exists|duplicate/i.test(error.message)) {
+      return { error: /row-level security|unauthorized/i.test(error.message) ? "Próbki nagrywa tylko organizator albo edytor." : `Nie zapisano próbki: ${error.message}` };
+    }
+    const signed = await bucket.createSignedUrl(path, 3600);
+    if (!signed.data?.signedUrl) return { error: `Nie podpisano próbki: ${signed.error?.message ?? "brak adresu"}` };
+    return { ok: "Próbka gotowa.", url: signed.data.signedUrl };
+  } catch (e) {
+    if (e instanceof AiError && e.busy) return { error: "Limit zapytań Google: spróbuj za pół minuty." };
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
