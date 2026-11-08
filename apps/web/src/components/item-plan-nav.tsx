@@ -32,12 +32,14 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef, editing }: Props) {
     if (forItem.switched) switched = doc.variants.find((each) => each.ref === forItem.switched!.variantRef)?.label ?? null;
   }
   const scheduled = plan?.scheduled;
-  // Miejsce punktu, a przy przejeździe skąd i dokąd: każde z pinezką do strony Miejsca.
-  const placeOf = (ref: string | undefined) => (ref === undefined ? undefined : doc.places.find((each) => each.ref === ref));
+  // Miejsce punktu, a przy przejeździe skąd i dokąd w jednym wierszu: każde z pinezką do strony Miejsca.
+  const placeOf = (ref: string | undefined) => (ref === undefined ? [] : doc.places.filter((each) => each.ref === ref));
+  const route = item.leg ? [...placeOf(item.leg.fromPlaceRef), ...placeOf(item.leg.toPlaceRef)] : [];
+  const own = item.placeRef !== undefined && item.placeRef !== item.leg?.fromPlaceRef && item.placeRef !== item.leg?.toPlaceRef ? placeOf(item.placeRef) : [];
   const places = [
-    ...(item.leg ? [["Skąd", placeOf(item.leg.fromPlaceRef)], ["Dokąd", placeOf(item.leg.toPlaceRef)]] as const : []),
-    ...(item.placeRef !== undefined && item.placeRef !== item.leg?.fromPlaceRef && item.placeRef !== item.leg?.toPlaceRef ? [["Miejsce", placeOf(item.placeRef)]] as const : []),
-  ].flatMap(([label, place]) => (place === undefined ? [] : [{ label, place }]));
+    ...(route.length > 0 ? [{ label: item.leg?.fromPlaceRef && item.leg.toPlaceRef ? "Skąd → dokąd" : item.leg?.fromPlaceRef ? "Skąd" : "Dokąd", list: route }] : []),
+    ...(own.length > 0 ? [{ label: "Miejsce", list: own }] : []),
+  ];
   // Punkt w puli bez szczegółów: nie ma czego pokazać.
   if (item.dayRef === undefined && facts.length === 0) return null;
   const neighbour = (step: PlanStep, arrow: "prev" | "next") => {
@@ -71,12 +73,17 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef, editing }: Props) {
       ))}
       {(places.length > 0 || facts.length > 0) && (
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
-          {places.map(({ label, place }) => (
+          {places.map(({ label, list }) => (
             <div key={label} className="contents">
               <dt className="text-zinc-500">{label}</dt>
-              <dd className="flex items-center gap-1.5">
-                {place.name}
-                <PlaceLink tripId={tripId} place={place} />
+              <dd className="flex flex-wrap items-center gap-1.5">
+                {list.map((place, index) => (
+                  <span key={place.ref} className="flex items-center gap-1.5">
+                    {index > 0 && <span className="text-zinc-400">→</span>}
+                    {place.name}
+                    <PlaceLink tripId={tripId} place={place} />
+                  </span>
+                ))}
               </dd>
             </div>
           ))}
