@@ -93,7 +93,7 @@ export function MealsView({ tripId, doc, ids, mayEdit, editing, initialPlace }: 
             <MealDaySection key={day.dayRef} day={day}>
               {day.meals.map((meal) => (
                 <li key={meal.itemRef} id={mealRowId(meal)} className={mealRowClass(doc, meal, selected)}>
-                  <MealHead doc={doc} meal={meal} selection={selection} />
+                  <MealHead tripId={tripId} doc={doc} meal={meal} selection={selection} />
                   {meal.selfCooked && <p className="text-xs text-zinc-500">Porcje: {people(meal.people)}</p>}
                   <MealEateries tripId={tripId} doc={doc} ids={{}} itemRef={meal.itemRef} canEdit={false} selection={selection} />
                 </li>

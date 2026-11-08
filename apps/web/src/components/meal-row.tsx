@@ -1,6 +1,8 @@
 import { dayLabel, type Meal, type MealDay, mealEateries, mealPlaceRefs, mealTime, type TripDocument } from "@expeditionplan/core";
 import type { ReactNode } from "react";
 
+import { PlaceLink } from "@/components/place-pin";
+
 /** Wspólne dla podglądu i edycji „Posiłków”: nagłówek dnia oraz numer i nazwa posiłku, które wybierają jego miejsce. */
 
 
@@ -31,7 +33,8 @@ export const mealAnchor = (itemRef: string) => `posilek-${itemRef}`;
 
 export const mealRowId = (meal: Meal) => mealAnchor(meal.itemRef);
 
-export function MealHead({ doc, meal, selection }: { doc: TripDocument; meal: Meal; selection: MealSelection }) {
+/** `tripId` — pinezka przy miejscu posiłku (bez przypiętej knajpy) prowadzi do niego na stronie Miejsca. */
+export function MealHead({ tripId, doc, meal, selection }: { tripId?: string; doc: TripDocument; meal: Meal; selection: MealSelection }) {
   const time = mealTime(doc, meal);
   const n = meal.placeRef === undefined ? undefined : selection.numbers[meal.placeRef];
   // Przypięta knajpa stoi pod posiłkiem (`MealEateries`), więc nazwa tu by się powtarzała.
@@ -59,7 +62,12 @@ export function MealHead({ doc, meal, selection }: { doc: TripDocument; meal: Me
         )}
         {time && <span className="text-xs text-zinc-500">{time}</span>}
       </div>
-      {details && <p className="text-xs text-zinc-600 dark:text-zinc-400">{details}</p>}
+      {details && (
+        <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-zinc-600 dark:text-zinc-400">
+          {details}
+          {!pinned && tripId !== undefined && meal.placeRef !== undefined && meal.place && <PlaceLink tripId={tripId} place={{ ref: meal.placeRef, name: meal.place }} />}
+        </p>
+      )}
       {variants.length > 0 && (
         <p className="text-xs text-zinc-500">
           {variants.length === 1 ? "Wariant" : "Warianty"}: {variants.map((variant) => variant.label).join(", ")}

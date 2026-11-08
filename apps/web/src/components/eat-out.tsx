@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 
 import { type EateryAnswer, findRestaurants } from "@/app/eat-out-actions";
 import type { MealSelection } from "@/components/meal-row";
+import { PlaceLink } from "@/components/place-pin";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -231,6 +232,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                   </span>
                 </button>
               )}
+              <PlaceLink tripId={tripId} place={{ ref: eatery.placeRef, name: eatery.name }} className="btn-mini shrink-0 self-center px-1.5" />
               {eatery.summary && <span className="text-zinc-500">{eatery.summary}</span>}
               {canEdit && eatery.variantRef !== undefined && !eatery.active && (
                 <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="btn-mini">

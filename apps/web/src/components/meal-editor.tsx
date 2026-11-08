@@ -58,7 +58,7 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
             const item = byRef.get(meal.itemRef);
             return (
               <li key={meal.itemRef} id={mealRowId(meal)} className={mealRowClass(doc, meal, selection.selected)}>
-                <MealHead doc={doc} meal={meal} selection={selection} />
+                <MealHead tripId={tripId} doc={doc} meal={meal} selection={selection} />
                 <div>
                   <SelfCookedToggle tripId={tripId} itemRef={meal.itemRef} value={meal.selfCooked === true} />
                   <MealLink doc={doc} itemRef={meal.itemRef} disabled={pending} onEdit={(edit) => save(edit)} />
