@@ -10,8 +10,8 @@ const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 /** Na samą listę modeli czekamy krócej: to jedno zdanie odpowiedzi, nie praca modelu. */
 const LIST_TIMEOUT_MS = 20_000;
 
-/** Formaty, które Google przyjmuje jako obraz. */
-const IMAGES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+/** Formaty, które Google przyjmuje jako załącznik w treści: obrazy i PDF (potwierdzenia rezerwacji). */
+const IMAGES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
 
 export type GeminiPart = { text: string } | { inline_data: { mime_type: string; data: string } };
 

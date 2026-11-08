@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Fragment, Suspense } from "react";
 
 import { draftCandidates } from "@/app/candidates-actions";
+import { BookingImport } from "@/components/booking-import";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
 import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
@@ -25,7 +26,7 @@ export const metadata: Metadata = { title: "Rezerwacje i budżet — Expedition 
  * plan: `pull_changes` → dokument; portfel z wydatków zapisanych na telefonie. Organizator
  * i edytor zmieniają wszystko (`logistics-actions.ts`), widz tylko czyta.
  */
-// „Kandydaci z AI” (akcja serwera na tej stronie) trwa zwykle 15–60 s.
+// „Kandydaci z AI” i import rezerwacji z pliku (akcje serwera na tej stronie) trwają zwykle 15–60 s.
 export const maxDuration = 120;
 
 export default function LogisticsPage(props: PageProps<"/trips/[id]/logistics">) {
@@ -386,6 +387,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
           </table>
         )}
         {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />}
+        {canEdit && <BookingImport tripId={id} owner={membership.data?.role === "owner"} />}
         <HashFocus />
       </section>
 

@@ -169,7 +169,7 @@ Kolejność orientacyjna. Po teście w terenie może się zmienić.
 - Import istniejącego planu DOCX/PDF (z PoC-0) w UI: podgląd per sekcja, akceptacja.
 - Kontrole automatyczne: alert przed końcem darmowego odwołania, skład osobowy u operatora vs wiek uczestników, limit km vs trasa, godzina zwrotu vs godziny biura → zadania z `source = check`.
 
-**Stan:** etapy AI 3–5 są (patrz Stan w MVP-2: `/tune`, logistyka, `/practical`). Import planu DOCX/PDF działa tylko jako CLI (`tools/import-plan`), w UI jest „Importuj z pliku” dla JSON (`/trips/[id]/brief`).
+**Stan:** etapy AI 3–5 są (patrz Stan w MVP-2: `/tune`, logistyka, `/practical`). Import planu DOCX/PDF działa tylko jako CLI (`tools/import-plan`), w UI jest „Importuj z pliku” dla JSON (`/trips/[id]/brief`). Import rezerwacji jest na „Rezerwacje i budżet” („Importuj z potwierdzenia”: PDF, zrzut ekranu albo wklejony mail → szkic Gemini → podgląd pole po polu → nowa albo wskazana rezerwacja, plik do sejfu przy niej z kodem z pliku).
 
 **Odbiór:** „Zmień obiad w dniu 2 na wegański” i „Dzień 3 jest za męczący” dają poprawne łatki, które nie ruszają punktów zablokowanych. Potwierdzenie z Booking (PDF) zamienia się w kartę noclegu z kodem i terminem darmowego odwołania. Dla Gruzji Etap 4 daje porównanie 2–3 noclegów w Mestii w układzie zbliżonym do ręcznego planu. Import `Plan - Chatka Sylwestrowa` daje wyjazd z uczestnikami, harmonogramem, wariantami awaryjnymi, pakowaniem i TODO.
 

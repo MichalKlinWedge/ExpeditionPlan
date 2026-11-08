@@ -1,12 +1,13 @@
 "use client";
 
-import { CODE_FORMATS, codeLabel, DOCUMENT_MIME, documentPath, type DocumentVisibility, formatBytes, MAX_DOCUMENT_BYTES, VISIBILITY_LABEL, type VaultDocument } from "@expeditionplan/core";
-import { dbErrorMessage, uuidv7 } from "@expeditionplan/sync";
+import { CODE_FORMATS, codeLabel, DOCUMENT_MIME, type DocumentVisibility, formatBytes, MAX_DOCUMENT_BYTES, VISIBILITY_LABEL, type VaultDocument } from "@expeditionplan/core";
+import { dbErrorMessage } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
-import { codeSvg, type DetectedCode, detectCode, sha256 } from "@/lib/barcode";
+import { codeSvg, type DetectedCode, detectCode } from "@/lib/barcode";
 import { createClient } from "@/lib/supabase/client";
+import { uploadToVault, VAULT_BUCKET, type VaultFields } from "@/lib/vault-upload";
 
 /**
  * Sejf w przeglądarce: lista dokumentów pogrupowana po rezerwacjach i punktach, „Pokaż kod” na
@@ -34,7 +35,7 @@ const input = "field min-w-0 px-2 py-1 text-sm";
 const label = "flex min-w-0 flex-col gap-1 text-xs text-zinc-500";
 const small = "btn-mini";
 const danger = "btn-mini btn-mini-danger";
-const BUCKET = "documents";
+const BUCKET = VAULT_BUCKET;
 
 export function Vault({ tripId, documents, bookings, items, people, userId, owner, editing }: Props) {
   const [shown, setShown] = useState<{ title: string; payload: string; format: string | null; plain?: boolean } | null>(null);
@@ -170,16 +171,7 @@ function DocumentRow({ tripId, document, names, editing, bookings, items, people
   );
 }
 
-type Fields = {
-  file_name: string;
-  booking_id: string | null;
-  item_id: string | null;
-  visibility: DocumentVisibility;
-  visible_to: string[];
-  offline: boolean;
-  code_payload: string | null;
-  code_format: string | null;
-};
+type Fields = VaultFields;
 
 /** Pola dokumentu: nazwa, rezerwacja lub punkt, widoczność, offline, kod (z pliku albo wpisany). */
 function DocumentFields({ initial, bookings, items, people, userId, owner, submit, onSave, onCancel, busy, children }: {
@@ -374,16 +366,8 @@ function UploadForm({ tripId, bookings, items, people, userId, owner, onDone }: 
       onCancel={onDone}
       onSave={async (fields) => {
         if (file === null) return "Wybierz plik.";
-        const supabase = createClient();
-        const id = uuidv7();
-        const path = documentPath(tripId, id, file.name);
-        const upload = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
-        if (upload.error) return dbErrorMessage(upload.error, "Nie wgrano pliku. Spróbuj jeszcze raz.");
-        const { error } = await supabase.from("documents").insert({ ...fields, file_name: fields.file_name || file.name, id, trip_id: tripId, storage_path: path, mime: file.type, size: file.size, sha256: await sha256(file) });
-        if (error) {
-          await supabase.storage.from(BUCKET).remove([path]);
-          return dbErrorMessage(error, "Nie zapisano dokumentu. Spróbuj jeszcze raz.");
-        }
+        const problem = await uploadToVault(tripId, file, fields);
+        if (problem !== null) return problem;
         onDone();
         router.refresh();
         return null;
