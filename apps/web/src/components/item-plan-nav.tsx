@@ -92,6 +92,14 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef, editing }: Props) {
               <dt className="text-zinc-500">{fact.label}</dt>
               <dd>
                 {fact.text}
+                {/* Godziny z silnika; postój w trasie ma tylko przybliżone położenie w ramach przejazdu. */}
+                {fact.label === "Czas trwania" && scheduled && scheduled.end > scheduled.start && (
+                  <span className="text-zinc-500 tabular-nums">
+                    {" "}
+                    · {scheduled.routeStop ? "ok. " : ""}
+                    {scheduled.startLocal}–{scheduled.endLocal}
+                  </span>
+                )}
                 {fact.refs && (
                   <span className="flex flex-wrap gap-1">
                     {fact.refs.map((each) => (
