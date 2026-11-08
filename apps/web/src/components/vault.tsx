@@ -2,6 +2,7 @@
 
 import { CODE_FORMATS, codeLabel, DOCUMENT_MIME, type DocumentVisibility, formatBytes, MAX_DOCUMENT_BYTES, VISIBILITY_LABEL, type VaultDocument } from "@expeditionplan/core";
 import { dbErrorMessage } from "@expeditionplan/sync";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
@@ -23,7 +24,8 @@ type Person = { userId: string; name: string; role: string };
 type Props = {
   tripId: string;
   documents: VaultDocument[];
-  bookings: (Ref & { code: string | null })[];
+  /** `href` — wiersz rezerwacji na „Rezerwacje i budżet”. */
+  bookings: (Ref & { code: string | null; href?: string | null })[];
   items: PlanRef[];
   people: Person[];
   userId: string;
@@ -41,9 +43,9 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
   const [shown, setShown] = useState<{ title: string; payload: string; format: string | null; plain?: boolean } | null>(null);
   const [adding, setAdding] = useState(false);
   const groups = [
-    ...bookings.map((booking) => ({ key: booking.id, title: booking.title, code: booking.code, docs: documents.filter((each) => each.bookingId === booking.id) })),
-    ...items.filter((item) => !item.booking).map((item) => ({ key: item.id, title: item.title, code: null, docs: documents.filter((each) => each.itemId === item.id && each.bookingId === null) })),
-    { key: "other", title: "Inne dokumenty", code: null, docs: documents.filter((each) => each.bookingId === null && each.itemId === null) },
+    ...bookings.map((booking) => ({ key: booking.id, title: booking.title, code: booking.code, href: booking.href ?? null, docs: documents.filter((each) => each.bookingId === booking.id) })),
+    ...items.filter((item) => !item.booking).map((item) => ({ key: item.id, title: item.title, code: null, href: null, docs: documents.filter((each) => each.itemId === item.id && each.bookingId === null) })),
+    { key: "other", title: "Inne dokumenty", code: null, href: null, docs: documents.filter((each) => each.bookingId === null && each.itemId === null) },
   ].filter((group) => group.docs.length > 0 || (group.code !== null && group.code !== ""));
   const names = new Map(people.map((person) => [person.userId, person.name]));
 
@@ -54,11 +56,18 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
         <section key={group.key} className="card flex flex-col gap-2 p-4">
           <div className="card-title flex flex-wrap items-baseline justify-between gap-2">
             <h2>{group.title}</h2>
-            {group.code && (
-              <button onClick={() => setShown({ title: `${group.title} — kod rezerwacji`, payload: group.code!, format: null, plain: true })} className="chip">
-                kod rezerwacji: {group.code}
-              </button>
-            )}
+            <span className="flex flex-wrap items-center gap-2">
+              {group.code && (
+                <button onClick={() => setShown({ title: `${group.title} — kod rezerwacji`, payload: group.code!, format: null, plain: true })} className="chip">
+                  kod rezerwacji: {group.code}
+                </button>
+              )}
+              {group.href && (
+                <Link href={group.href} className="btn-mini">
+                  Rezerwacja ›
+                </Link>
+              )}
+            </span>
           </div>
           <ul className="flex flex-col gap-2">
             {group.docs.map((document) => (

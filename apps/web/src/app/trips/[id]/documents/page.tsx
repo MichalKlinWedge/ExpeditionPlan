@@ -10,6 +10,7 @@ import { editMode } from "@/lib/edit-mode";
 import { Loading, Shell } from "@/components/shell";
 import { Vault } from "@/components/vault";
 import { requireUser } from "@/lib/auth";
+import { bookingHref } from "@/lib/booking-link";
 
 export const metadata: Metadata = { title: "Sejf dokumentów — Expedition Planner" };
 
@@ -55,7 +56,7 @@ async function Documents({ params }: { params: Promise<{ id: string }> }) {
   for (const table of ["bookings", "items"] as const) for (const row of payload.tables[table] ?? []) rowId.set(`${table}:${typeof row.ref === "string" ? row.ref : `id-${String(row.id)}`}`, String(row.id));
   const bookings = doc.bookings
     .filter((booking) => booking.status !== "candidate" && booking.status !== "idea")
-    .flatMap((booking) => (rowId.get(`bookings:${booking.ref}`) ? [{ id: rowId.get(`bookings:${booking.ref}`)!, title: booking.title, code: booking.confirmationCode ?? null }] : []));
+    .flatMap((booking) => (rowId.get(`bookings:${booking.ref}`) ? [{ id: rowId.get(`bookings:${booking.ref}`)!, title: booking.title, code: booking.confirmationCode ?? null, href: bookingHref(id, booking) }] : []));
   // Punkty planu dzień po dniu, w kolejności planu; na końcu dnia nocleg (rezerwacja obejmująca tę noc).
   const items = doc.days.flatMap((day, index) => {
     const label = `Dzień ${index + 1} · ${dayLabelShort(day.date)}`;
