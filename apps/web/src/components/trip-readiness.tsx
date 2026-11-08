@@ -29,6 +29,8 @@ function hrefOf(tripId: string, group: ReadinessGroup, ref: string): string {
       return `${base}/item/${encodeURIComponent(ref)}`;
     case "decide":
       return `${base}/plan`;
+    case "documents":
+      return `${base}/people`;
   }
 }
 

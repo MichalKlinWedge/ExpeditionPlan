@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { carFromRow, MEMBER_ROLE } from "@expeditionplan/core";
+import { carFromRow, FORMALITIES, instantToZoned, MEMBER_ROLE } from "@expeditionplan/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { CarSplit } from "@/components/car-split";
+import { Formalities } from "@/components/formalities";
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
 import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
@@ -39,13 +40,14 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const wantsEdit = await editMode();
   const { supabase } = await requireUser(`/trips/${id}/people`);
-  const [trip, members, travelers, share, places, vehicles] = await Promise.all([
-    supabase.from("my_trips").select("title, role, start_date, end_date").eq("id", id).maybeSingle(),
+  const [trip, members, travelers, share, places, vehicles, taskTitles] = await Promise.all([
+    supabase.from("my_trips").select("title, role, start_date, end_date, primary_tz").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, can_add_expenses, profiles(display_name)").eq("trip_id", id).order("created_at"),
-    supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver, tentative, from_date, to_date, notes, start_place_id, end_place_id").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
+    supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver, tentative, from_date, to_date, notes, start_place_id, end_place_id, passport_until, id_card_until").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
     supabase.from("public_shares").select("enabled, hide").eq("trip_id", id).maybeSingle(),
     supabase.from("places").select("id, ref, name").eq("trip_id", id).is("deleted_at", null).order("name"),
     supabase.from("vehicles").select("id, label, driver_traveler_id, seats, passenger_ids, notes").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
+    supabase.from("tasks").select("title").eq("trip_id", id).is("deleted_at", null),
   ]);
   if (trip.data === null) notFound();
   const role = trip.data.role!;
@@ -61,6 +63,7 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
         ])
       : [null, null];
   const now = new Date().getTime();
+  const today = instantToZoned(now, trip.data.primary_tz!).date;
 
   return (
     <>
@@ -82,9 +85,17 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
             Nie udało się wczytać uczestników. To błąd odczytu, nie usunięcie danych: nie dodawaj ich od nowa, odśwież stronę za chwilę. ({(travelers.error ?? places.error)!.message})
           </p>
         ) : (
-          <TravelerList tripId={id} trip={{ start: trip.data.start_date!, end: trip.data.end_date! }} people={travelers.data} places={places.data.map((place) => ({ id: place.id, name: place.name, ref: place.ref ?? `id-${place.id}` }))} canEdit={editing} />
+          <TravelerList tripId={id} trip={{ start: trip.data.start_date!, end: trip.data.end_date! }} people={travelers.data} places={places.data.map((place) => ({ id: place.id, name: place.name, ref: place.ref ?? `id-${place.id}` }))} canEdit={editing} today={today} />
         )}
       </section>
+
+      {canEdit && (
+        <section className={section}>
+          <h2 className={heading}>Formalności</h2>
+          <p className="text-xs text-zinc-500">Zaznaczone trafią do zadań wyjazdu z terminem przed wyjazdem i linkiem do usługi na gov.pl. Ważność paszportu i dowodu wpisuje się przy osobie.</p>
+          <Formalities tripId={id} present={FORMALITIES.filter((formality) => (taskTitles.data ?? []).some((task) => task.title === formality.title)).map((formality) => formality.key)} drivers={(travelers.data ?? []).some((person) => person.is_driver === true)} />
+        </section>
+      )}
 
       {travelers.data && places.data && (
         <section className={section}>

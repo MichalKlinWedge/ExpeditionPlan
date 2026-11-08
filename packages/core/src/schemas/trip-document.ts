@@ -80,6 +80,9 @@ export const DocTraveler = z.object({
   /** Skąd rusza i gdzie kończy: do planowania wspólnego transportu. */
   startPlaceRef: Ref.optional(),
   endPlaceRef: Ref.optional(),
+  /** Ważność paszportu i dowodu — sama data, bez numerów (`core/travel-documents.ts`). Przy zmianie terminu nie przesuwa się. */
+  passportUntil: IsoDate.optional(),
+  idCardUntil: IsoDate.optional(),
 });
 
 /** Przykładowa cena z karty lokalu. Tylko do pokazania, nic z niej nie liczymy. */

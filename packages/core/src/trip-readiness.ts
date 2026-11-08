@@ -2,17 +2,19 @@ import { addDays } from './engine/time.ts';
 import { type GearCarry, gearGaps } from './gear.ts';
 import { dayLodging, missingOnMap } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
+import { documentWarnings } from './travel-documents.ts';
 
 /**
  * Gotowość przed wyjazdem: jedna lista braków z planu — rezerwacje do zrobienia i do zapłaty,
  * rezerwacje bez dokumentu w sejfie, noce bez noclegu, nierozstrzygnięte warianty, otwarte zadania
- * (z terminem przed końcem wyjazdu), wspólny sprzęt bez osoby, punkty bez miejsca na mapie. Każdy brak z `ref` do linku.
+ * (z terminem przed końcem wyjazdu), wspólny sprzęt bez osoby, punkty bez miejsca na mapie, paszporty
+ * i dowody, które nie wystarczą (`documentWarnings`). Każdy brak z `ref` do linku.
  * Ludzie (kto bez konta / bez telefonu) dochodzą osobno — to dane spoza dokumentu.
  */
 
 type Doc = TripDocument;
 
-export type ReadinessGroup = 'book' | 'pay' | 'vault' | 'lodging' | 'decide' | 'task' | 'gear' | 'map';
+export type ReadinessGroup = 'book' | 'documents' | 'pay' | 'vault' | 'lodging' | 'decide' | 'task' | 'gear' | 'map';
 
 export type ReadinessIssue = {
   group: ReadinessGroup;
@@ -27,6 +29,7 @@ export type ReadinessIssue = {
 
 export const READINESS_GROUP: Record<ReadinessGroup, string> = {
   book: 'Do zarezerwowania',
+  documents: 'Dokumenty tożsamości',
   pay: 'Do zapłaty przed wyjazdem',
   vault: 'Rezerwacje bez dokumentu w sejfie',
   lodging: 'Noce bez noclegu',
@@ -37,7 +40,7 @@ export const READINESS_GROUP: Record<ReadinessGroup, string> = {
 };
 
 /** Kolejność grup na liście: najpierw to, co może przepaść (rezerwacje), na końcu kosmetyka. */
-export const READINESS_ORDER: ReadinessGroup[] = ['book', 'decide', 'lodging', 'pay', 'task', 'gear', 'vault', 'map'];
+export const READINESS_ORDER: ReadinessGroup[] = ['book', 'documents', 'decide', 'lodging', 'pay', 'task', 'gear', 'vault', 'map'];
 
 const OPEN_BOOKING = new Set(['idea', 'candidate', 'to_book', 'unknown']);
 const DONE_BOOKING = new Set(['booked', 'paid']);
@@ -114,6 +117,11 @@ export function tripReadiness(doc: Doc, today: string, vaultBookingRefs?: Readon
     const date = taskDate(doc, task);
     if (date !== undefined && date > doc.trip.endDate) continue;
     out.push({ group: 'task', ref: task.ref, title: task.title, ...(date ? { date } : {}), ...(date !== undefined && date < today ? { overdue: true as const } : {}) });
+  }
+
+  // Nowy paszport to tygodnie: ostrzeżenie od razu, nieważny lub tracący ważność w trakcie — jako zaległy.
+  for (const warning of documentWarnings(doc, today)) {
+    out.push({ group: 'documents', ref: warning.travelerRef, title: `${warning.name}: ${warning.text}`, ...(warning.problem !== 'short_margin' ? { overdue: true as const } : {}) });
   }
 
   if (carries !== undefined) for (const item of gearGaps(doc, carries)) out.push({ group: 'gear', ref: item.ref, title: item.title });

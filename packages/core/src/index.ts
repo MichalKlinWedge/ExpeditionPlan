@@ -59,6 +59,7 @@ export * from './settle.ts';
 export * from './field-log.ts';
 export * from './trip-memories.ts';
 export * from './trip-readiness.ts';
+export * from './travel-documents.ts';
 export * from './gear.ts';
 export * from './eat-out.ts';
 export * from './trip-status.ts';

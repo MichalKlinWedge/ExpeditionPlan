@@ -1,6 +1,6 @@
 "use client";
 
-import { transportPlan } from "@expeditionplan/core";
+import { ID_DOCUMENT, type IdDocument, idDocumentProblem, transportPlan } from "@expeditionplan/core";
 import { useActionState, useId, useState, useTransition } from "react";
 
 import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTraveler, removeTrip, updateTraveler } from "@/app/actions";
@@ -99,6 +99,8 @@ export type Traveler = {
   notes: string | null;
   start_place_id: string | null;
   end_place_id: string | null;
+  passport_until: string | null;
+  id_card_until: string | null;
 };
 
 type TripRange = { start: string; end: string };
@@ -161,6 +163,14 @@ export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone
         Jedzie do
         <input name="toDate" type="date" min={trip.start} max={trip.end} className={input} defaultValue={traveler?.to_date ?? ""} />
       </label>
+      <label className={label}>
+        Paszport ważny do
+        <input name="passportUntil" type="date" className={input} defaultValue={traveler?.passport_until ?? ""} />
+      </label>
+      <label className={label}>
+        Dowód ważny do
+        <input name="idCardUntil" type="date" className={input} defaultValue={traveler?.id_card_until ?? ""} />
+      </label>
       <label className={`${label} col-span-2 sm:col-span-3`}>
         Uwagi
         <input name="notes" maxLength={2000} className={input} placeholder="np. dojedzie po pracy" defaultValue={traveler?.notes ?? ""} />
@@ -184,7 +194,7 @@ export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone
           <option key={place.id} value={place.name} />
         ))}
       </datalist>
-      <p className="col-span-2 text-xs text-zinc-500 sm:col-span-6">Puste daty oznaczają cały wyjazd. Start i koniec wybierz z listy miejsc albo wpisz nowe: pojawi się na stronie „Miejsca”.</p>
+      <p className="col-span-2 text-xs text-zinc-500 sm:col-span-6">Paszport i dowód: tylko data ważności, bez numeru — do ostrzeżeń w „Gotowości do wyjazdu”. Puste daty obecności oznaczają cały wyjazd. Start i koniec wybierz z listy miejsc albo wpisz nowe: pojawi się na stronie „Miejsca”.</p>
       <div className="col-span-2 flex gap-2 sm:col-span-5">
         <button disabled={pending} className="btn-primary btn-sm">
           {pending ? "Zapisuję…" : traveler ? "Zapisz" : "Dodaj"}
@@ -233,7 +243,7 @@ function SharedTransport({ people, places }: { people: Traveler[]; places: TripP
   );
 }
 
-export function TravelerList({ tripId, trip, people, places, canEdit }: { tripId: string; trip: TripRange; people: Traveler[]; places: TripPlace[]; canEdit: boolean }) {
+export function TravelerList({ tripId, trip, people, places, canEdit, today }: { tripId: string; trip: TripRange; people: Traveler[]; places: TripPlace[]; canEdit: boolean; today: string }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [result, setResult] = useState<FormState>({});
   const [pending, start] = useTransition();
@@ -279,6 +289,7 @@ export function TravelerList({ tripId, trip, people, places, canEdit }: { tripId
                     {[person.start_place_id && `start: ${places.find((place) => place.id === person.start_place_id)?.name ?? "?"}`, person.end_place_id && `koniec: ${places.find((place) => place.id === person.end_place_id)?.name ?? "?"}`].filter(Boolean).join(" · ")}
                   </p>
                 )}
+                <TravelerDocuments person={person} back={person.to_date ?? trip.end} today={today} />
                 {person.notes && <p className="w-full whitespace-pre-line text-xs text-zinc-600 dark:text-zinc-400">{person.notes}</p>}
               </li>
             ),
@@ -291,6 +302,29 @@ export function TravelerList({ tripId, trip, people, places, canEdit }: { tripId
     </div>
   );
 }
+
+/** Ważność paszportu i dowodu przy osobie; dokument, który nie wystarczy, na czerwono (nieważny w trakcie) albo bursztynowo (paszport bez 6 miesięcy zapasu). */
+function TravelerDocuments({ person, back, today }: { person: Traveler; back: string; today: string }) {
+  const docs = [
+    ["passport", person.passport_until],
+    ["id_card", person.id_card_until],
+  ].filter((pair): pair is [IdDocument, string] => pair[1] !== null);
+  if (docs.length === 0) return null;
+  return (
+    <p className="flex w-full flex-wrap gap-x-3 text-xs text-zinc-600 dark:text-zinc-400">
+      {docs.map(([document, until]) => {
+        const found = idDocumentProblem(document, until, back, today);
+        return (
+          <span key={document} className={found === null ? undefined : found.problem === "short_margin" ? "text-amber-700 dark:text-amber-400" : "text-red-700 dark:text-red-400"}>
+            {found === null ? `${ID_DOCUMENT[document]} ważny do ${dayMonthYear(until)}` : `⚠ ${found.text}`}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+const dayMonthYear = (date: string) => `${Number(date.slice(8))}.${date.slice(5, 7)}.${date.slice(0, 4)}`;
 
 export function InviteForm({ tripId }: { tripId: string }) {
   const [state, action, pending] = useActionState(createInvite.bind(null, tripId), {});
