@@ -5,7 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { Contacts, HashFocus } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -24,15 +25,15 @@ export default function ContactsPage(props: PageProps<"/trips/[id]/contacts">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <View params={props.params} searchParams={props.searchParams} />
+        <View params={props.params} />
       </Suspense>
     </Shell>
   );
 }
 
-async function View({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function View({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const { supabase } = await requireUser(`/trips/${id}/contacts`);
   const [{ data, error }, membership] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
@@ -66,7 +67,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
           </Link>
           <h1 className="text-2xl font-semibold">Kontakty</h1>
         </div>
-        {mayEdit && <EditToggle href={`/trips/${id}/contacts`} editing={canEdit} />}
+        {mayEdit && <EditToggle editing={canEdit} />}
       </div>
 
       {(emergency.length > 0 || canEdit) && (

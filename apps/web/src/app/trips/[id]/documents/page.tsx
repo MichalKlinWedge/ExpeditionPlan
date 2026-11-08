@@ -5,7 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { Loading, Shell } from "@/components/shell";
 import { Vault } from "@/components/vault";
 import { requireUser } from "@/lib/auth";
@@ -21,15 +22,15 @@ export default function DocumentsPage(props: PageProps<"/trips/[id]/documents">)
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <Documents params={props.params} searchParams={props.searchParams} />
+        <Documents params={props.params} />
       </Suspense>
     </Shell>
   );
 }
 
-async function Documents({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function Documents({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const { supabase, userId } = await requireUser(`/trips/${id}/documents`);
   const [{ data, error }, membership, members] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
@@ -79,7 +80,7 @@ async function Documents({ params, searchParams }: { params: Promise<{ id: strin
           </Link>
           <h1 className="text-2xl font-semibold">Sejf dokumentów</h1>
         </div>
-        {mayEdit && <EditToggle href={`/trips/${id}/documents`} editing={editing} />}
+        {mayEdit && <EditToggle editing={editing} />}
       </div>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Bilety, vouchery i potwierdzenia. Kod (QR, Aztec, PDF417) odczytany z pliku pokażesz przy bramce — także na telefonie bez internetu, jeśli dokument jest oznaczony „offline”.

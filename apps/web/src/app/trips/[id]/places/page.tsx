@@ -1,4 +1,5 @@
 import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { type GuideRow, placeGuide, placeList, similarPlaces, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
@@ -44,7 +45,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
-  const canEdit = mayEdit && query.edit === "1";
+  const canEdit = mayEdit && (await editMode());
   const ids = refIndex(payload.tables);
   const similar = similarPlaces(doc);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
@@ -63,7 +64,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h1 className="text-2xl font-semibold">Miejsca</h1>
-          {mayEdit && <EditToggle href={`/trips/${id}/places`} editing={canEdit} />}
+          {mayEdit && <EditToggle editing={canEdit} />}
         </div>
         <Link href="/places" className="btn-secondary btn-sm self-start">
           Miejsca ze wszystkich wyjazdów

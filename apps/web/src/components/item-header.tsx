@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 /**
  * Edycja nagłówka punktu na jego karcie (nazwa, rodzaj, godzina, czas trwania, bufor, priorytet) —
  * ten sam formularz i ta sama droga zapisu co w planie (`updateItem` → `savePlanEdit`, `user_locked`).
- * Widoczna w trybie edycji (`?edit=1`) dla organizatora i edytora.
+ * Widoczna w trybie edycji (wspólny, `lib/edit-mode.ts`) dla organizatora i edytora.
  */
 export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string }) {
   const router = useRouter();

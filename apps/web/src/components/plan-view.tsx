@@ -457,7 +457,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                         {dnd ? <DragHandle onStart={(event) => dnd.start(item.ref, event)} onEnd={dnd.end} /> : <span aria-hidden="true">•</span>}
                         <span>
                           {itemBase && (!guidedOnly || guided?.includes(item.ref)) ? (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Szczegóły i opis miejsca" {...routeHover(item.ref)} className="hover:text-sea hover:underline">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Szczegóły i opis miejsca" {...routeHover(item.ref)} className="hover:text-sea hover:underline">
                               {item.title}
                             </Link>
                           ) : (
@@ -466,12 +466,12 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                           <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
                           <RouteLink doc={doc} item={item} />
                           {itemBase && item.kind !== "lodging" && guided?.includes(item.ref) && (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Opis miejsca gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis miejsca gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                               📖 opis
                             </Link>
                           )}
                           {itemBase && canEdit && item.kind !== "lodging" && !guided?.includes(item.ref) && (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}${canEdit ? "?edit=1" : ""}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="btn-mini ml-1.5">
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Karta punktu — „Przygotuj opis z Wikipedii (AI)”" className="btn-mini ml-1.5">
                               <SparkIcon className="size-3" />
                               opis AI
                             </Link>
@@ -1029,7 +1029,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       </span>
                     )}
                     {itemBase && (!guidedOnly || guided?.includes(item.ref)) ? (
-                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Szczegóły i opis miejsca" {...routeHover(item.ref)} className="font-medium hover:text-sea hover:underline">
+                      <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Szczegóły i opis miejsca" {...routeHover(item.ref)} className="font-medium hover:text-sea hover:underline">
                         {item.title}
                       </Link>
                     ) : (
@@ -1038,7 +1038,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     {source && <RouteLink doc={doc} item={source} />}
                     {item.kind !== "lodging" && guided?.includes(item.ref) &&
                       (itemBase ? (
-                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}${actions ? "?edit=1" : ""}`} title="Opis miejsca gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
+                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis miejsca gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
                           📖 opis
                         </Link>
                       ) : (

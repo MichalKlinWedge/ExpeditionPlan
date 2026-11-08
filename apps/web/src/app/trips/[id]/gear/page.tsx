@@ -5,7 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { GearView } from "@/components/gear-view";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -18,15 +19,15 @@ export default function GearPage(props: PageProps<"/trips/[id]/gear">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <View params={props.params} searchParams={props.searchParams} />
+        <View params={props.params} />
       </Suspense>
     </Shell>
   );
 }
 
-async function View({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function View({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const { supabase, userId } = await requireUser(`/trips/${id}/gear`);
   const [{ data, error }, membership] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
@@ -60,7 +61,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
           </Link>
           <h1 className="text-2xl font-semibold">Sprzęt</h1>
         </div>
-        {mayEdit && <EditToggle href={`/trips/${id}/gear`} editing={mayEdit && wantsEdit} />}
+        {mayEdit && <EditToggle editing={mayEdit && wantsEdit} />}
       </div>
       <GearView tripId={id} doc={doc} carries={carriesFromRows(payload.tables.packing_carriers ?? [], ids)} packed={packed} ids={ids} mine={mine} mayEdit={mayEdit} canEdit={mayEdit && wantsEdit} />
     </>

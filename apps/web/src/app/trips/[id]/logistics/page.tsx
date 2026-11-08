@@ -10,7 +10,8 @@ import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/compo
 import { LinkedText } from "@/components/linked-text";
 import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -31,7 +32,7 @@ export default function LogisticsPage(props: PageProps<"/trips/[id]/logistics">)
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <Logistics params={props.params} searchParams={props.searchParams} />
+        <Logistics params={props.params} />
       </Suspense>
     </Shell>
   );
@@ -54,9 +55,9 @@ const STATUS_TONE: Record<string, string> = {
 const card = "flex flex-col gap-3 card p-4";
 const heading = "card-title";
 
-async function Logistics({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function Logistics({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const { supabase } = await requireUser(`/trips/${id}/logistics`);
   const [{ data, error }, membership, draftRow] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
@@ -72,7 +73,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
       .maybeSingle(),
   ]);
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
-  // Domyślnie podgląd; formularze po „Edytuj” (`?edit=1`).
+  // Domyślnie podgląd; formularze po „Edytuj” (wspólny tryb edycji).
   const canEdit = mayEdit && wantsEdit;
   if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
   if (data === null) notFound();
@@ -168,7 +169,7 @@ async function Logistics({ params, searchParams }: { params: Promise<{ id: strin
           </Link>
           <h1 className="text-2xl font-semibold">Rezerwacje i budżet</h1>
         </div>
-        {mayEdit && <EditToggle href={`/trips/${id}/logistics`} editing={canEdit} />}
+        {mayEdit && <EditToggle editing={canEdit} />}
       </div>
 
       <section className={card}>

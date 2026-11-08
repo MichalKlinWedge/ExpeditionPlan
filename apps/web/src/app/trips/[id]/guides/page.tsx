@@ -1,4 +1,5 @@
 import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { type GuideRow, tripGuides, undescribedSights, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
@@ -23,15 +24,14 @@ export default function GuidesPage(props: PageProps<"/trips/[id]/guides">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <View params={props.params} searchParams={props.searchParams} />
+        <View params={props.params} />
       </Suspense>
     </Shell>
   );
 }
 
-async function View({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function View({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { edit } = await searchParams;
   const { supabase } = await requireUser(`/trips/${id}/guides`);
   const [{ data, error }, membership] = await Promise.all([supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }), supabase.from("my_trips").select("role").eq("id", id).maybeSingle()]);
   if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
@@ -44,7 +44,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
-  const canEdit = mayEdit && edit === "1";
+  const canEdit = mayEdit && (await editMode());
   const ids = refIndex(payload.tables);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const guides = tripGuides(doc, rows, ids);
@@ -58,7 +58,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h1 className="text-2xl font-semibold">Opisy miejsc</h1>
-          {mayEdit && <EditToggle href={`/trips/${id}/guides`} editing={canEdit} />}
+          {mayEdit && <EditToggle editing={canEdit} />}
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Opisy z Wikipedii, Wikivoyage i wskazanych stron przy punktach planu: {guides.length}.{canEdit ? " Każdy możesz przygotować od nowa, poprawić ręcznie albo usunąć." : ""}

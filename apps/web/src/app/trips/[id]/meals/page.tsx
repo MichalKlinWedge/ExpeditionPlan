@@ -5,7 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { MealsView } from "@/components/meals-view";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -26,7 +27,7 @@ export default function MealsPage(props: PageProps<"/trips/[id]/meals">) {
 
 async function View({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const eatery = (await searchParams).knajpa;
   const { supabase } = await requireUser(`/trips/${id}/meals`);
   const [{ data, error }, membership] = await Promise.all([
@@ -55,7 +56,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
           </Link>
           <h1 className="text-2xl font-semibold">Posiłki</h1>
         </div>
-        {mayEdit && <EditToggle href={`/trips/${id}/meals`} editing={canEdit} />}
+        {mayEdit && <EditToggle editing={canEdit} />}
       </div>
       <MealsView tripId={id} doc={doc} ids={ids} mayEdit={mayEdit} editing={canEdit} initialPlace={typeof eatery === "string" ? eatery : undefined} />
     </>

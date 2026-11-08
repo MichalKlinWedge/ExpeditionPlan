@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
  * Szybkie przejście między sekcjami wyjazdu: rząd ikon pod górną belką, na każdej podstronie
  * wyjazdu (plan, rezerwacje, sejf…). Nazwa w podpowiedzi i dla czytnika ekranu; bieżąca sekcja
  * wyróżniona. Na stronie samego wyjazdu są duże kafelki, więc tam pasek się nie pokazuje.
- * Linki prowadzą do podglądu (bez `?edit=1`). Dostrajanie i porównanie są dla organizatora i edytora,
+ * Tryb edycji jest wspólny dla stron (`lib/edit-mode.ts`), linki go nie zmieniają. Dostrajanie i porównanie są dla organizatora i edytora,
  * a pamiątka od początku wyjazdu, tak jak kafelki: te pozycje dochodzą po odczytaniu roli i dat.
  */
 

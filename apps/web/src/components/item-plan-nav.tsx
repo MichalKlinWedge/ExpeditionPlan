@@ -8,19 +8,19 @@ import { PlaceLink } from "@/components/place-pin";
 import { readChosenVariants } from "@/lib/plan-variants";
 import { useHydrated } from "@/lib/use-hydrated";
 
-type Props = { tripId: string; doc: TripDocument; inputs: TripState["inputs"]; itemRef: string; editing: boolean };
+type Props = { tripId: string; doc: TripDocument; inputs: TripState["inputs"]; itemRef: string };
 
 /**
  * „W planie” na karcie punktu: godziny z silnika dla wariantów wybranych w widoku planu (ta sama
  * pamięć karty przeglądarki), szczegóły z planu i przejście do poprzedniego i następnego punktu.
  * Godziny i sąsiedzi liczą się dopiero w przeglądarce — wybór wariantu jest tylko tam.
  */
-export function ItemPlanNav({ tripId, doc, inputs, itemRef, editing }: Props) {
+export function ItemPlanNav({ tripId, doc, inputs, itemRef }: Props) {
   const hydrated = useHydrated();
   const item = doc.items.find((each) => each.ref === itemRef);
   if (item === undefined) return null;
   const facts = itemPlanFacts(doc, item);
-  const href = (ref: string) => `/trips/${tripId}/item/${encodeURIComponent(ref)}${editing ? "?edit=1" : ""}`;
+  const href = (ref: string) => `/trips/${tripId}/item/${encodeURIComponent(ref)}`;
   const dayNumber = (dayRef: string) => doc.days.findIndex((day) => day.ref === dayRef) + 1;
 
   let plan: ReturnType<typeof itemInPlan> | null = null;

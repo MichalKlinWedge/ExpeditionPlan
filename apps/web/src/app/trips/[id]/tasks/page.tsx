@@ -5,7 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { TaskList } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -23,15 +24,15 @@ export default function TasksPage(props: PageProps<"/trips/[id]/tasks">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <Tasks params={props.params} searchParams={props.searchParams} />
+        <Tasks params={props.params} />
       </Suspense>
     </Shell>
   );
 }
 
-async function Tasks({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function Tasks({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const { supabase, userId } = await requireUser(`/trips/${id}/tasks`);
   const [{ data, error }, membership] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
@@ -61,7 +62,7 @@ async function Tasks({ params, searchParams }: { params: Promise<{ id: string }>
           </Link>
           <h1 className="text-2xl font-semibold">Zadania</h1>
         </div>
-        {mayEdit && <EditToggle href={`/trips/${id}/tasks`} editing={canEdit} />}
+        {mayEdit && <EditToggle editing={canEdit} />}
       </div>
 
       <section className="flex flex-col gap-3 card p-4">

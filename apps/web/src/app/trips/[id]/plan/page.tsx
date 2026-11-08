@@ -7,7 +7,8 @@ import { Suspense } from "react";
 
 import { groundTrip, routeTrip } from "@/app/actions";
 import { describeTrip } from "@/app/guide-actions";
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { PlacePinner } from "@/components/place-pinner";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { CoverageInfo, PlanPageGrid, PlanView } from "@/components/plan-view";
@@ -35,7 +36,7 @@ export default function PlanPage(props: PageProps<"/trips/[id]/plan">) {
 
 async function Plan({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const { day } = await searchParams;
   const { supabase } = await requireUser(`/trips/${id}/plan`);
   const [{ data, error }, membership] = await Promise.all([
@@ -51,7 +52,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
-  // Domyślnie podgląd; edycja po „Edytuj” (`?edit=1`).
+  // Domyślnie podgląd; edycja po „Edytuj” (wspólny tryb edycji).
   const editing = canEdit && wantsEdit;
   const ids = refIndex((data as { tables: Parameters<typeof refIndex>[0] }).tables);
   // Punkty z gotowym przewodnikiem (własnym albo swojego miejsca) — znaczek 📖 w planie.
@@ -85,7 +86,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
             <Link href={`/trips/${id}/print`} className="btn-secondary btn-sm">
               Wydruk / PDF
             </Link>
-            {canEdit && <EditToggle href={`/trips/${id}/plan`} editing={editing} />}
+            {canEdit && <EditToggle editing={editing} />}
           </div>
           {editing && (
             <>

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
 import { type InviteStat, type MemberStat, MemberStats } from "@/components/member-stats";
 import { PublicShare } from "@/components/public-share";
@@ -18,13 +19,13 @@ export const metadata: Metadata = { title: "Uczestnicy i dostęp — Expedition 
  * Uczestnicy i dostęp: kto jedzie (uczestnicy), kto ma dostęp do planu (role), zaproszenie linkiem,
  * publiczny link „tylko podgląd” i na dole usunięcie wyjazdu (właściciel) albo wyjście z niego.
  * Organizator widzi też statystyki dostępu: kto z linku, kiedy ostatnio w aplikacji, który uczestnik.
- * Domyślnie podgląd; zmiany po „Edytuj” (`?edit=1`).
+ * Domyślnie podgląd; zmiany po „Edytuj” (wspólny tryb edycji).
  */
 export default function PeoplePage(props: PageProps<"/trips/[id]/people">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <People params={props.params} searchParams={props.searchParams} />
+        <People params={props.params} />
       </Suspense>
     </Shell>
   );
@@ -33,9 +34,9 @@ export default function PeoplePage(props: PageProps<"/trips/[id]/people">) {
 const section = "card flex flex-col gap-3 p-5";
 const heading = "text-lg font-semibold";
 
-async function People({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function People({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const { supabase } = await requireUser(`/trips/${id}/people`);
   const [trip, members, travelers, share, places] = await Promise.all([
     supabase.from("my_trips").select("title, role, start_date, end_date").eq("id", id).maybeSingle(),
@@ -67,7 +68,7 @@ async function People({ params, searchParams }: { params: Promise<{ id: string }
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h1 className="text-2xl font-semibold">Uczestnicy i dostęp</h1>
-          {canEdit && <EditToggle href={`/trips/${id}/people`} editing={editing} />}
+          {canEdit && <EditToggle editing={editing} />}
         </div>
       </div>
 

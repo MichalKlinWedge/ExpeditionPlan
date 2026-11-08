@@ -7,7 +7,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { BookingButton } from "@/components/booking-dialog";
-import { EditToggle, editMode } from "@/components/edit-toggle";
+import { EditToggle } from "@/components/edit-toggle";
+import { editMode } from "@/lib/edit-mode";
 import { GuideArticle } from "@/components/guide-article";
 import { ItemEatOut } from "@/components/item-eat-out";
 import { GuideButtons } from "@/components/guide-button";
@@ -31,16 +32,16 @@ export default function ItemPage(props: PageProps<"/trips/[id]/item/[ref]">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <ItemCard params={props.params} searchParams={props.searchParams} />
+        <ItemCard params={props.params} />
       </Suspense>
     </Shell>
   );
 }
 
 
-async function ItemCard({ params, searchParams }: { params: Promise<{ id: string; ref: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function ItemCard({ params }: { params: Promise<{ id: string; ref: string }> }) {
   const { id, ref: rawRef } = await params;
-  const wantsEdit = await editMode(searchParams);
+  const wantsEdit = await editMode();
   const ref = decodeURIComponent(rawRef);
   const { supabase } = await requireUser(`/trips/${id}/item/${rawRef}`);
   const [{ data, error }, membership] = await Promise.all([
@@ -60,7 +61,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined) notFound();
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
-  // Domyślnie podgląd; edycja nagłówka po „Edytuj” (`?edit=1`) — ten sam tryb co w planie.
+  // Domyślnie podgląd; edycja nagłówka po „Edytuj” (wspólny tryb edycji, `lib/edit-mode.ts`).
   const editing = canEdit && wantsEdit;
   const ids = refIndex(payload.tables);
   const dayIndex = doc.days.findIndex((day) => day.ref === item.dayRef);
@@ -90,10 +91,10 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Powrót na ten sam dzień i w tym samym trybie (podgląd / edycja). */}
-          <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}${editing ? "&edit=1" : ""}`} className="back-link">
+          <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}`} className="back-link">
             ← Plan: {doc.trip.title}
           </Link>
-          {canEdit && <EditToggle href={`/trips/${id}/item/${rawRef}`} editing={editing} />}
+          {canEdit && <EditToggle editing={editing} />}
         </div>
         <h1 className="flex items-center gap-2 text-2xl font-semibold">
           <span aria-hidden="true">{itemIcon(doc, item)}</span>
@@ -107,7 +108,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
         {editing && <ItemHeaderEditor tripId={id} doc={doc} ids={ids} itemRef={item.ref} />}
       </div>
 
-      <ItemPlanNav tripId={id} doc={doc} inputs={inputs} itemRef={item.ref} editing={editing} />
+      <ItemPlanNav tripId={id} doc={doc} inputs={inputs} itemRef={item.ref} />
 
       {hasInfo && (
       <section className="card flex flex-col gap-2 p-4 text-sm">
