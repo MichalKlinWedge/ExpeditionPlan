@@ -166,3 +166,16 @@ export async function voiceSample(tripId: string, voice: string): Promise<FormSt
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/**
+ * Pokaz pod publicznym linkiem (`/p/<token>/show`): osobna zgoda właściciela, bo tekst i głos lektora mogą zawierać imiona
+ * i kwoty, a zdjęcia z dziennika twarze (`public_shares.show`, RPC `set_public_show`). Link musi już istnieć.
+ */
+export async function setPublicShow(tripId: string, on: boolean): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/show`);
+  const { data, error } = await supabase.rpc("set_public_show", { p_trip: tripId, p_show: on });
+  if (error) return { error: error.code === "42501" ? "Pokaz pod linkiem włącza tylko właściciel wyjazdu." : error.message };
+  if (data !== true) return { error: "Najpierw utwórz publiczny link na stronie „Uczestnicy i dostęp”." };
+  refresh();
+  return { ok: on ? "Pokaz jest pod publicznym linkiem: zakładka „Pokaz z lektorem”." : "Pokaz zniknął z publicznego linku." };
+}

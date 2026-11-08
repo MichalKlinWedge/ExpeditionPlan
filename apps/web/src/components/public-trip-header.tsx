@@ -2,10 +2,10 @@ import Link from "next/link";
 
 import { tripDates } from "@/lib/labels";
 
-/** Nagłówek publicznego linku: nazwa wyjazdu i przejście między ogólnym opisem a planem dzień po dniu. */
-export function PublicTripHeader({ token, trip, active }: { token: string; trip: { title: string; startDate: string; endDate: string }; active: "overview" | "plan" }) {
+/** Nagłówek publicznego linku: nazwa wyjazdu i przejście między ogólnym opisem, planem dzień po dniu i pokazem (gdy właściciel go udostępnił). */
+export function PublicTripHeader({ token, trip, active, show = false }: { token: string; trip: { title: string; startDate: string; endDate: string }; active: "overview" | "plan" | "show"; show?: boolean }) {
   const base = `/p/${encodeURIComponent(token)}`;
-  const tab = (name: "overview" | "plan", href: string, label: string) => (
+  const tab = (name: "overview" | "plan" | "show", href: string, label: string) => (
     <Link href={href} aria-current={active === name ? "page" : undefined} className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${active === name ? "border-white bg-white text-zinc-900" : "border-white/50 bg-white/15 text-white hover:border-white hover:bg-white/25"}`}>
       {label}
     </Link>
@@ -17,6 +17,7 @@ export function PublicTripHeader({ token, trip, active }: { token: string; trip:
       <nav aria-label="Widok wyjazdu" className="mt-1 flex flex-wrap gap-1.5">
         {tab("overview", base, "Opis wyprawy")}
         {tab("plan", `${base}/plan`, "Plan dzień po dniu")}
+        {show && tab("show", `${base}/show`, "Pokaz z lektorem")}
       </nav>
     </section>
   );

@@ -883,14 +883,14 @@ isOneToOne: false
                   ]
                 },"public_shares": {
                   Row: {
-                    "created_at": string,"enabled": boolean,"hide": NonNullable<Json>,"id": string,"token_hash": string,"trip_id": string,"updated_at": string
+                    "created_at": string,"enabled": boolean,"hide": NonNullable<Json>,"id": string,"show": boolean,"token_hash": string,"trip_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"enabled"?: boolean,"hide"?: NonNullable<Json>,"id"?: string,"token_hash": string,"trip_id": string,"updated_at"?: string
+                    "created_at"?: string,"enabled"?: boolean,"hide"?: NonNullable<Json>,"id"?: string,"show"?: boolean,"token_hash": string,"trip_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"enabled"?: boolean,"hide"?: NonNullable<Json>,"id"?: string,"token_hash"?: string,"trip_id"?: string,"updated_at"?: string
+                    "created_at"?: string,"enabled"?: boolean,"hide"?: NonNullable<Json>,"id"?: string,"show"?: boolean,"token_hash"?: string,"trip_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1528,6 +1528,12 @@ isOneToOne: false
 "place_key":
 { Args: { "p_name": string }; Returns: string
                            },
+"public_show":
+{ Args: { "p_token": string }; Returns: Json
+                           },
+"public_show_on":
+{ Args: { "p_token": string }; Returns: boolean
+                           },
 "public_trip":
 { Args: { "p_token": string }; Returns: Json
                            },
@@ -1539,6 +1545,12 @@ isOneToOne: false
                            },
 "set_place_memory":
 { Args: { "p_note": string,"p_place": string,"p_verdict": string }; Returns: string
+                           },
+"set_public_show":
+{ Args: { "p_show": boolean,"p_trip": string }; Returns: boolean
+                           },
+"show_is_public":
+{ Args: { "p_trip": string }; Returns: boolean
                            },
 "storage_trip":
 { Args: { "p_name": string }; Returns: string
