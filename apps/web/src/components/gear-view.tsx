@@ -93,7 +93,7 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
     <>
       {doc.travelers.length > 0 && gear.length > 0 && (
         <section className="flex flex-col gap-2 card p-4 text-sm">
-          <h2 className="font-semibold">Kto ile niesie</h2>
+          <h2 className="card-title">Kto ile niesie</h2>
           <ul className="flex flex-col gap-2">
             {loads.map((load) => {
               const own = [...load.personal, ...load.shared.map((line) => line.item)];
@@ -135,8 +135,8 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
       </div>
 
       <section className="flex flex-col gap-3 card p-4 text-sm">
-        <div>
-          <h2 className="font-semibold">Wspólne</h2>
+        <div className="card-title">
+          <h2>Wspólne</h2>
           <p className="text-xs text-zinc-500">Wystarczy jedno na grupę albo dzielicie się ilością: ustalcie, kto bierze.</p>
           {allowed.length === 0 && !mayEdit && <p className="text-xs text-zinc-500">Twoje konto nie jest połączone z żadnym uczestnikiem, więc nie możesz tu niczego wziąć. Poproś organizatora o zaproszenie imienne.</p>}
         </div>
@@ -173,8 +173,8 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
 
       {filter !== "open" && (
         <section className="flex flex-col gap-3 card p-4 text-sm">
-          <div>
-            <h2 className="font-semibold">Osobiste</h2>
+          <div className="card-title">
+            <h2>Osobiste</h2>
             <p className="text-xs text-zinc-500">Każdy pakuje swoje.</p>
           </div>
           {shownPersonal.length === 0 ? (

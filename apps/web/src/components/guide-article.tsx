@@ -1,5 +1,6 @@
 import { GUIDE_SITE, type GuideContent, type GuideImage, type GuideLinkTarget, type GuideSegment, linkGuideText } from "@expeditionplan/core";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { GuideListen } from "@/components/guide-listen";
 
@@ -8,12 +9,14 @@ import { GuideListen } from "@/components/guide-listen";
  * Karta punktu w planie i publiczny link. `itemBase` to adres karty bez klucza punktu; nazwy innych
  * opisanych miejsc w tekście prowadzą do ich kart (raz na miejsce w całym opisie).
  * „Posłuchaj” czyta opis głosem przeglądarki (`GuideListen`); `title` jest czytany na początku.
+ * `heading` = belka tytułowa boksu (osobny boks na stronie); `children` (np. przyciski) idą na koniec boksu.
  */
-export function GuideArticle({ guide, targets, itemBase, title }: { guide: GuideContent; targets: GuideLinkTarget[]; itemBase: string; title?: string }) {
+export function GuideArticle({ guide, targets, itemBase, title, heading, children }: { guide: GuideContent; targets: GuideLinkTarget[]; itemBase: string; title?: string; heading?: string; children?: ReactNode }) {
   const used = new Set<string>();
   const linked = (text: string) => <Linked itemBase={itemBase} segments={linkGuideText(text, targets, used)} />;
   return (
     <article className="card flex flex-col gap-3 p-4 text-sm">
+      {heading && <h2 className="card-title">{heading}</h2>}
       <div className="flex items-start gap-3">
         <p className="flex-1 text-base">{linked(guide.summary)}</p>
         <GuideListen guide={guide} {...(title ? { title } : {})} />
@@ -67,6 +70,7 @@ export function GuideArticle({ guide, targets, itemBase, title }: { guide: Guide
         )}
         ; streszczenie: AI{guide.edited ? ", poprawione ręcznie" : ""}.
       </p>
+      {children}
     </article>
   );
 }

@@ -52,7 +52,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 const card = "flex flex-col gap-3 card p-4";
-const heading = "text-lg font-semibold";
+const heading = "card-title";
 
 async function Logistics({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;

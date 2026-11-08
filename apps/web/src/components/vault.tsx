@@ -51,8 +51,8 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
       {groups.length === 0 && <p className="text-sm text-zinc-500">W sejfie nie ma jeszcze dokumentów{editing ? "." : " — dodasz je po „Edytuj”."}</p>}
       {groups.map((group) => (
         <section key={group.key} className="card flex flex-col gap-2 p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-semibold">{group.title}</h2>
+          <div className="card-title flex flex-wrap items-baseline justify-between gap-2">
+            <h2>{group.title}</h2>
             {group.code && (
               <button onClick={() => setShown({ title: `${group.title} — kod rezerwacji`, payload: group.code!, format: null, plain: true })} className="chip">
                 kod rezerwacji: {group.code}

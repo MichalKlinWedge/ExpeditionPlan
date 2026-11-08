@@ -71,7 +71,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
 
       {(emergency.length > 0 || canEdit) && (
         <section className="flex flex-col gap-2 card p-4">
-          <h2 className="text-lg font-semibold">Numery alarmowe</h2>
+          <h2 className="card-title">Numery alarmowe</h2>
           {/* W edycji — lista z „edytuj / usuń” i dodawaniem; w podglądzie — duże numery do wybrania jednym dotknięciem. */}
           {canEdit ? (
             <Contacts tripId={id} contacts={emergency} bookings={bookings} canEdit defaultRole="emergency" addLabel="+ Dodaj numer alarmowy" bookingHrefs={bookingHrefs} bookingItems={bookingItems} />
@@ -93,7 +93,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
       )}
 
       <section className="flex flex-col gap-3 card p-4">
-        <h2 className="text-lg font-semibold">Gospodarze, wypożyczalnie i inne ({others.length})</h2>
+        <h2 className="card-title">Gospodarze, wypożyczalnie i inne ({others.length})</h2>
         <Contacts tripId={id} contacts={others} bookings={bookings} canEdit={canEdit} bookingHrefs={bookingHrefs} bookingItems={bookingItems} />
       </section>
       <HashFocus />

@@ -65,7 +65,7 @@ async function Tasks({ params, searchParams }: { params: Promise<{ id: string }>
       </div>
 
       <section className="flex flex-col gap-3 card p-4">
-        <h2 className="text-lg font-semibold">
+        <h2 className="card-title">
           Do zrobienia: {open.length}
           {closed > 0 ? <span className="text-sm font-normal text-zinc-500"> (zamknięte: {closed})</span> : null}
         </h2>

@@ -18,7 +18,7 @@ export default function LoginPage(props: PageProps<"/login">) {
         <InviteHero searchParams={props.searchParams} />
       </Suspense>
       <section className="card flex flex-col gap-4 p-6">
-        <h2 className="text-xl font-semibold">Zaloguj się</h2>
+        <h2 className="card-title">Zaloguj się</h2>
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>

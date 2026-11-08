@@ -42,7 +42,7 @@ export function TripReadiness({ tripId, issues, daysLeft, people }: { tripId: st
   const when = daysLeft > 1 ? `za ${daysLeft} dni` : daysLeft === 1 ? "jutro" : daysLeft === 0 ? "dziś" : "trwa";
   return (
     <details className="card p-4 text-sm" open={daysLeft <= 30} data-remember="gotowosc">
-      <summary className="cursor-pointer font-semibold">
+      <summary className="card-title cursor-pointer">
         Gotowość do wyjazdu <span className="font-normal text-zinc-500">· {when}</span>{" "}
         {total === 0 ? (
           <span className="font-normal text-emerald-700 dark:text-emerald-400">· ✓ bez zaległości</span>

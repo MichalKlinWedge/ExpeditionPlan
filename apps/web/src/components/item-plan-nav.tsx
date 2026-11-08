@@ -53,7 +53,7 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef, editing }: Props) {
 
   return (
     <section className="card flex flex-col gap-2 p-4 text-sm">
-      <h2 className="text-lg font-semibold">W planie</h2>
+      <h2 className="card-title">W planie</h2>
       {scheduled && (
         <p>
           <strong className="tabular-nums">

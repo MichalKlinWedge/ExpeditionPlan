@@ -111,6 +111,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
 
       {hasInfo && (
       <section className="card flex flex-col gap-2 p-4 text-sm">
+        <h2 className="card-title">Szczegóły</h2>
         {place && (
           <p>
             <strong>{place.name}</strong>
@@ -165,7 +166,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
 
       {(track !== undefined || isFootRouteItem(item)) && (track?.geojson !== undefined || track?.url !== undefined || canEdit) && (
         <section className="card flex flex-col gap-2 p-4 text-sm">
-          <h2 className="text-lg font-semibold">Trasa</h2>
+          <h2 className="card-title">Trasa</h2>
           {track !== undefined && (
             <p>
               <strong>{track.name}</strong>
@@ -221,7 +222,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
 
       {transit !== null && (editing || transit.length > 0) && (
         <section id="przejazd-komunikacja" className="card flex scroll-mt-4 flex-col gap-2 p-4 text-sm">
-          <h2 className="text-lg font-semibold">Przejazd komunikacją</h2>
+          <h2 className="card-title">Przejazd komunikacją</h2>
           {editing ? (
             <TransitDetails tripId={id} itemRef={item.ref} rows={transit} />
           ) : (
@@ -234,7 +235,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
 
       {lodging !== null && (editing || lodging.lines.length > 0 || lodging.contacts.length > 0) && (
         <section className="card flex flex-col gap-2 p-4 text-sm">
-          <h2 className="text-lg font-semibold">Obiekt</h2>
+          <h2 className="card-title">Obiekt</h2>
           {lodging.lines.map((line) => (
             <p key={line}>{line}</p>
           ))}
@@ -258,18 +259,20 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
 
       {/* Przy noclegu zamiast przewodnika z Wikipedii jest sekcja „Obiekt”. */}
       {item.kind !== "lodging" && (
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Opis miejsca</h2>
-        {guide === null ? (
-          <p className="text-sm text-zinc-500">
+      guide === null ? (
+        <section className="card flex flex-col gap-2 p-4 text-sm">
+          <h2 className="card-title">Opis miejsca</h2>
+          <p className="text-zinc-500">
             Brak opisu.
             {canEdit ? " Opis powstaje z artykułu w Wikipedii albo Wikivoyage o tym miejscu (ciekawostki, historia, zdjęcia)." : " Organizator może go przygotować na webie."}
           </p>
-        ) : (
-          <GuideArticle guide={guide} title={guide.title} targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/trips/${id}/item/`} />
-        )}
-        {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guideRow?.place_id === null ? guide?.hint : undefined} />}
-      </section>
+          {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} />}
+        </section>
+      ) : (
+        <GuideArticle guide={guide} title={guide.title} heading="Opis miejsca" targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/trips/${id}/item/`}>
+          {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guideRow?.place_id === null ? guide.hint : undefined} />}
+        </GuideArticle>
+      )
       )}
     </>
   );

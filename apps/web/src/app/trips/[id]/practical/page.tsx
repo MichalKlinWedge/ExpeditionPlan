@@ -81,7 +81,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
       {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm text-green-700 dark:text-green-400">Ostatni szkic AI dodany do planu — notatki, kontakty i źródła są niżej, pakowanie w telefonie, zadania na stronie rezerwacji i zadań.</p>}
 
       <section className={card}>
-        <h2 className="text-lg font-semibold">Notatki ({notes.length})</h2>
+        <h2 className="card-title">Notatki ({notes.length})</h2>
         {notes.length === 0 ? (
           <p className="text-sm text-zinc-500">Plan nie ma ogólnych notatek.</p>
         ) : (
@@ -102,7 +102,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
 
       {doc.sources.length > 0 && (
         <section className={card}>
-          <h2 className="text-lg font-semibold">Źródła ({doc.sources.length})</h2>
+          <h2 className="card-title">Źródła ({doc.sources.length})</h2>
           <ul className="flex flex-col gap-1 text-sm">
             {doc.sources.map((source) => (
               <li key={source.ref}>

@@ -437,7 +437,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
 
           {showPool && (
             <section className="flex flex-col gap-2 card p-4">
-              <h2 className="text-lg font-semibold">Pula — poza dniami ({pool.length})</h2>
+              <h2 className="card-title">Pula — poza dniami ({pool.length})</h2>
               {pool.length === 0 && (
                 <p className="text-sm text-zinc-500">
                   Pula jest pusta. Dodaj tu atrakcje, miejsca i pomysły na później — albo przenieś punkt z dnia („przenieś… → do puli”, przeciągnięcie na przycisk „Pula”).
@@ -915,9 +915,9 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
 
   return (
     <section className="flex flex-col gap-3 card p-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
+      <header className="card-title flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold first-letter:uppercase">
+          <h2 className="first-letter:uppercase">
             {dayLabel(day.date)}
             {day.title ? ` — ${day.title}` : ""}
           </h2>

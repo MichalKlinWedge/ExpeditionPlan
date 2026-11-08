@@ -59,7 +59,7 @@ export default function HelpPage() {
       </div>
 
       <nav className="card flex flex-col gap-1 p-4 text-sm">
-        <span className="text-xs text-zinc-500">Spis treści</span>
+        <h2 className="card-title">Spis treści</h2>
         {SECTIONS.map((each) => (
           <a key={each.id} href={`#${each.id}`} className="underline-offset-2 hover:text-sea hover:underline">
             {each.title}

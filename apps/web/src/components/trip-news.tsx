@@ -65,8 +65,8 @@ export function TripNews({ tripId, news, now }: { tripId: string; news: NewsSumm
   const rest = news.lines.slice(SHOWN);
   return (
     <section className="card flex flex-col gap-2 p-4 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">
+      <div className="card-title flex flex-wrap items-center justify-between gap-2">
+        <h2>
           Co nowego <span className="font-normal text-zinc-500">od Twojej ostatniej wizyty ({ago(news.since, now)})</span>
         </h2>
         <NewsSeenButton tripId={tripId} />

@@ -35,6 +35,7 @@ export function AiPlanButton({ tripId, children }: { tripId: string; children?: 
 
   return (
     <div className="flex flex-col gap-2 card p-4">
+      <h2 className="card-title">Plan z AI</h2>
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={run}

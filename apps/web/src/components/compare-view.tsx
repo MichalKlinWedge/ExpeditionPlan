@@ -101,8 +101,8 @@ export function CompareView({ tripId, plan: initialPlan, ids: initialIds, locked
         const missing = pair.draft.filter((item) => inAllVariants(item) && !inPlan.has(key(item.title)));
         return (
           <section key={pair.date} className="flex flex-col gap-3 card p-4">
-            <header className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-semibold first-letter:uppercase">{dayLabel(pair.date)}</h2>
+            <header className="card-title flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="first-letter:uppercase">{dayLabel(pair.date)}</h2>
               {pair.draft.length > 0 && (
                 <div className="flex gap-2">
                   <button disabled={status.pending || missing.length === 0} onClick={() => copy(missing.map((item) => item.ref), pair.date)} className={button}>

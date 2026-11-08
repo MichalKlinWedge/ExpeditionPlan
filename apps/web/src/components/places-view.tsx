@@ -192,29 +192,30 @@ export function PlacesView({ tripId, places, canEdit, hasRouted, initial = null 
 function PlaceDescription({ tripId, place, canEdit }: { tripId: string; place: PlaceRowData; canEdit: boolean }) {
   const { guide } = place;
   const own = guide !== null && guide.fromItem === undefined;
+  const buttons = canEdit && <PlaceGuideButtons tripId={tripId} placeRef={place.ref} guideId={own ? guide.rowId : null} label={own ? "Odśwież opis" : "Przygotuj opis miejsca (AI)"} which={own ? guide.content.hint : undefined} />;
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-lg font-semibold">{place.name}</h2>
-      {guide === null ? (
-        <p className="text-sm text-zinc-500">
+    guide === null ? (
+      <section className="card flex flex-col gap-2 p-4 text-sm">
+        <h2 className="card-title">{place.name}</h2>
+        <p className="text-zinc-500">
           Brak opisu.
           {canEdit ? " Powstaje z artykułu w Wikipedii albo Wikivoyage o tym miejscu." : " Organizator może go przygotować."}
         </p>
-      ) : (
-        <>
-          {guide.fromItem && (
-            <p className="text-xs text-zinc-500">
-              Opis z punktu{" "}
-              <Link href={`/trips/${tripId}/item/${encodeURIComponent(guide.fromItem.ref)}`} className="btn-mini">
-                {guide.fromItem.title}
-              </Link>
-            </p>
-          )}
-          <GuideArticle guide={guide.content} title={guide.title} targets={[]} itemBase={`/trips/${tripId}/item/`} />
-        </>
-      )}
-      {canEdit && <PlaceGuideButtons tripId={tripId} placeRef={place.ref} guideId={own ? guide.rowId : null} label={own ? "Odśwież opis" : "Przygotuj opis miejsca (AI)"} which={own ? guide.content.hint : undefined} />}
-    </section>
+        {buttons}
+      </section>
+    ) : (
+      <GuideArticle guide={guide.content} title={guide.title} heading={place.name} targets={[]} itemBase={`/trips/${tripId}/item/`}>
+        {guide.fromItem && (
+          <p className="text-xs text-zinc-500">
+            Opis z punktu{" "}
+            <Link href={`/trips/${tripId}/item/${encodeURIComponent(guide.fromItem.ref)}`} className="btn-mini">
+              {guide.fromItem.title}
+            </Link>
+          </p>
+        )}
+        {buttons}
+      </GuideArticle>
+    )
   );
 }
 
