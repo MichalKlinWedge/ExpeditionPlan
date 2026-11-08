@@ -9,6 +9,7 @@ import { draftCandidates } from "@/app/candidates-actions";
 import { BookingImport } from "@/components/booking-import";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
+import { PlaceLink } from "@/components/place-pin";
 import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type Choices, ExpenseSplitEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle } from "@/components/edit-toggle";
@@ -335,9 +336,12 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                             </span>
                           )}
                           {place && (
-                            <span className="block">
-                              miejsce: {place.name}
-                              {place.lat === undefined || place.lng === undefined ? " · bez współrzędnych, nie ma go na mapie" : ""}
+                            <span className="flex flex-wrap items-center gap-x-1.5">
+                              <span>
+                                miejsce: {place.name}
+                                {place.lat === undefined || place.lng === undefined ? " · bez współrzędnych, nie ma go na mapie" : ""}
+                              </span>
+                              <PlaceLink tripId={id} place={place} />
                             </span>
                           )}
                           {packaged.get(booking.ref) && (
