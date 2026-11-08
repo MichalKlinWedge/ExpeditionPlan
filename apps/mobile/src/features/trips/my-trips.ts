@@ -1,4 +1,4 @@
-import { isPostponed } from '@expeditionplan/core';
+import { isPostponed, localToday, tripSections } from '@expeditionplan/core';
 import type { Tables } from '@expeditionplan/db';
 import { pruneLocal, refreshTrip, dbLoadError } from '@expeditionplan/sync';
 
@@ -70,6 +70,13 @@ export function setTripArchived(id: string, archived: boolean): Set<string> {
     // Bez zapisu wyjazd wróci na swoje miejsce przy następnym otwarciu.
   }
   return ids;
+}
+
+/** Wyjazdy aktywne (przed nami i odłożone) — bez archiwum (po dacie końca albo zarchiwizowanych na telefonie) i szkiców AI. */
+export function activeTrips(trips: Trip[]): Trip[] {
+  const archived = archivedTrips();
+  const { ahead, postponed } = tripSections(trips.filter((trip) => !archived.has(trip.id!)), localToday());
+  return [...ahead, ...postponed];
 }
 
 /** Domyślny wyjazd: trwający dziś, inaczej najbliższy nadchodzący, inaczej ostatni. Odłożony i zarchiwizowany na telefonie — tylko gdy nie ma innych. */
