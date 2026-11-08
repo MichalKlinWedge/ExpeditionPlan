@@ -1,6 +1,6 @@
 "use client";
 
-import { type DayMap, distanceM, type PlaceGuide, type PlaceUsage } from "@expeditionplan/core";
+import { type DayMap, distanceM, type PlaceGuide, type PlaceMemorySummary, type PlaceUsage } from "@expeditionplan/core";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 
@@ -10,6 +10,7 @@ import { GuideArticle } from "@/components/guide-article";
 import { PlaceGuideButtons } from "@/components/guide-button";
 import { type LatLng, PlanMap } from "@/components/plan-map";
 import { IconAction } from "@/components/icon-action";
+import { PlaceMemory, VERDICT_ICON } from "@/components/place-memory";
 
 /**
  * Wszystkie miejsca wyjazdu: lista i mapa z tymi samymi numerami. Organizator i edytor poprawiają nazwę,
@@ -17,7 +18,8 @@ import { IconAction } from "@/components/icon-action";
  * Numer albo nazwa na liście wyróżnia pinezkę, tak jak numer punktu w planie; pinezka wyróżnia wiersz.
  * Duplikaty (podpowiedź z `similarPlaces` albo wybrane z listy) scala się do miejsca, przy którym się klika.
  * Pozycję zmienia się kliknięciem i osobnym zapisem, bez przeciągania: miejsce jest wspólne dla wielu punktów.
- * Pod kwadratową mapą jest opis wybranego miejsca (`placeGuide`) i przygotowanie nowego z AI.
+ * Pod kwadratową mapą jest ocena wybranego miejsca (pamięć miejsc między wyjazdami, głosuje każdy uczestnik),
+ * jego opis (`placeGuide`) i przygotowanie nowego z AI.
  * Miejsca bez współrzędnych (postój na trasie, przerwa na szlaku) stoją na końcu listy, w osobnej podsekcji i bez ostrzeżenia.
  */
 
@@ -35,6 +37,8 @@ export type PlaceRowData = {
   /** Refy możliwych duplikatów. */
   similar: string[];
   guide: PlaceGuide | null;
+  /** Oceny i notatki z pamięci miejsc (`memorySummary`), wspólne z innymi wyjazdami z tym miejscem. */
+  memory: PlaceMemorySummary;
 };
 
 type Filter = "all" | "missing" | "unused";
@@ -154,6 +158,13 @@ export function PlacesView({ tripId, places, canEdit, hasRouted, initial = null 
           editing={canEdit ? { picking: picking !== null, picked, onPick: setPicked, onMovePlace: () => {}, hints: ["Kliknij mapę w nowym położeniu tego miejsca.", "Zapisz pozycję przy miejscu na liście albo kliknij mapę jeszcze raz."] } : null}
         />
         <p className="text-xs text-zinc-500">Numery na mapie odpowiadają numerom na liście. Kliknięcie numeru albo nazwy na liście pokazuje miejsce na mapie i jego opis, a kliknięcie pinezki otwiera je na liście.</p>
+        {chosen && (
+          <section key={`ocena-${chosen.ref}`} className="card flex flex-col gap-2 p-4 text-sm">
+            <h2 className="card-title">Czy warto? {chosen.name}</h2>
+            <p className="text-xs text-zinc-500">Każdy uczestnik ocenia za siebie. Oceny i notatki widać też w innych wyjazdach z tym miejscem i bierze je pod uwagę „Zaplanuj z AI”.</p>
+            <PlaceMemory placeId={chosen.id} summary={chosen.memory} />
+          </section>
+        )}
         {chosen && <PlaceDescription key={chosen.ref} tripId={tripId} place={chosen} canEdit={canEdit} />}
       </aside>
 
@@ -342,6 +353,8 @@ function PlaceRow({
           </>
         )}
         {PROVIDER[place.provider]} · {usage.total > 0 ? usageLabel(usage) : "nieużywane"}
+        {place.memory.worth > 0 && ` · ${VERDICT_ICON.worth} ${place.memory.worth}`}
+        {place.memory.notWorth > 0 && ` · ${VERDICT_ICON.not_worth} ${place.memory.notWorth}`}
       </p>
       {canEdit && similar.length > 0 && (
         <div className="flex flex-col gap-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
