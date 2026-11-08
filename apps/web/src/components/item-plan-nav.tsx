@@ -4,6 +4,7 @@ import { itemInPlan, itemPlanFacts, type PlanStep, type TripDocument, variantsFo
 import type { TripState } from "@expeditionplan/sync";
 import Link from "next/link";
 
+import { PlaceLink } from "@/components/place-pin";
 import { readChosenVariants } from "@/lib/plan-variants";
 import { useHydrated } from "@/lib/use-hydrated";
 
@@ -31,6 +32,12 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef, editing }: Props) {
     if (forItem.switched) switched = doc.variants.find((each) => each.ref === forItem.switched!.variantRef)?.label ?? null;
   }
   const scheduled = plan?.scheduled;
+  // Miejsce punktu, a przy przejeździe skąd i dokąd: każde z pinezką do strony Miejsca.
+  const placeOf = (ref: string | undefined) => (ref === undefined ? undefined : doc.places.find((each) => each.ref === ref));
+  const places = [
+    ...(item.leg ? [["Skąd", placeOf(item.leg.fromPlaceRef)], ["Dokąd", placeOf(item.leg.toPlaceRef)]] as const : []),
+    ...(item.placeRef !== undefined && item.placeRef !== item.leg?.fromPlaceRef && item.placeRef !== item.leg?.toPlaceRef ? [["Miejsce", placeOf(item.placeRef)]] as const : []),
+  ].flatMap(([label, place]) => (place === undefined ? [] : [{ label, place }]));
   // Punkt w puli bez szczegółów: nie ma czego pokazać.
   if (item.dayRef === undefined && facts.length === 0) return null;
   const neighbour = (step: PlanStep, arrow: "prev" | "next") => {
@@ -62,8 +69,17 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef, editing }: Props) {
           {warning.message}
         </p>
       ))}
-      {facts.length > 0 && (
+      {(places.length > 0 || facts.length > 0) && (
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
+          {places.map(({ label, place }) => (
+            <div key={label} className="contents">
+              <dt className="text-zinc-500">{label}</dt>
+              <dd className="flex items-center gap-1.5">
+                {place.name}
+                <PlaceLink tripId={tripId} place={place} />
+              </dd>
+            </div>
+          ))}
           {facts.map((fact, index) => (
             <div key={index} className="contents">
               <dt className="text-zinc-500">{fact.label}</dt>
