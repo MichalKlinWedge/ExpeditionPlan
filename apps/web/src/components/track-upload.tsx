@@ -1,7 +1,7 @@
 "use client";
 
 import { trackFromGpx } from "@expeditionplan/core";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { removeTrackLine, saveTrack } from "@/app/track-actions";
@@ -13,6 +13,7 @@ import { removeTrackLine, saveTrack } from "@/app/track-actions";
 export function TrackUpload({ tripId, itemRef, hasLine }: { tripId: string; itemRef: string; hasLine: boolean }) {
   const [state, setState] = useState<FormState>({});
   const [pending, start] = useTransition();
+  const fileId = useId();
 
   const read = async (file: File | undefined) => {
     setState({});
@@ -30,29 +31,36 @@ export function TrackUpload({ tripId, itemRef, hasLine }: { tripId: string; item
 
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <label className="flex flex-col gap-1 text-xs text-zinc-500">
-        {hasLine ? "Zamień ślad (plik .gpx)" : "Dodaj ślad (plik .gpx z mapy.cz, Komoot, Garmina, Strava…)"} — zapisze się od razu z długością, czasem i podejściem, a brakujący start i koniec ustawi się sam
-        <input
-          type="file"
-          accept=".gpx,application/gpx+xml"
-          disabled={pending}
-          onChange={(event) => {
-            void read(event.target.files?.[0]);
-            // Ten sam plik można wybrać ponownie, np. po ręcznej zmianie liczb.
-            event.target.value = "";
-          }}
-          className="text-sm"
-        />
-      </label>
+      <div className="flex flex-col gap-1">
+        <label htmlFor={fileId} className="text-xs text-zinc-500">
+          {hasLine ? "Zamień ślad (plik .gpx)" : "Dodaj ślad (plik .gpx z mapy.cz, Komoot, Garmina, Strava…)"} — zapisze się od razu z długością, czasem i podejściem, a brakujący start i koniec ustawi się sam
+        </label>
+        {/* Wybór pliku i usunięcie śladu w jednej linii. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            id={fileId}
+            type="file"
+            accept=".gpx,application/gpx+xml"
+            disabled={pending}
+            onChange={(event) => {
+              void read(event.target.files?.[0]);
+              // Ten sam plik można wybrać ponownie, np. po ręcznej zmianie liczb.
+              event.target.value = "";
+            }}
+            className="text-sm"
+          />
+          {hasLine && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => window.confirm("Usunąć ślad z tego punktu?") && start(async () => setState(await removeTrackLine(tripId, itemRef)))}
+              className="btn-mini btn-mini-danger">
+              usuń ślad
+            </button>
+          )}
+        </div>
+      </div>
       {pending && <p className="text-xs text-zinc-500">Zapisuję ślad…</p>}
-      {hasLine && (
-        <button
-          disabled={pending}
-          onClick={() => window.confirm("Usunąć ślad z tego punktu?") && start(async () => setState(await removeTrackLine(tripId, itemRef)))}
-          className="btn-mini btn-mini-danger self-start">
-          usuń ślad
-        </button>
-      )}
       {state.error && <p className="text-xs text-red-600">{state.error}</p>}
       {state.ok && <p className="text-xs text-green-700 dark:text-green-400">{state.ok}</p>}
     </div>
