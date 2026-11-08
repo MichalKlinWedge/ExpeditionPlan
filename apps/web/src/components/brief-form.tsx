@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 
 import { type FormState, saveBrief } from "@/app/actions";
 import { FlagIcon, ListIcon, RouteIcon, ShieldIcon, TicketIcon } from "@/components/icons";
+import { ClimateHint } from "@/components/climate-hint";
+import type { ClimateSource } from "@/lib/climate-place";
 import { IconAction } from "@/components/icon-action";
 
 /**
@@ -139,7 +141,7 @@ function Lines({ title, hint, value, onChange }: { title: string; hint?: string;
   );
 }
 
-export function BriefForm({ tripId, tripTz, initial, travelers }: { tripId: string; tripTz: string; initial: BriefDraft; travelers: number }) {
+export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId: string; tripTz: string; initial: BriefDraft; travelers: number; term: { startDate: string; endDate: string; today: string; climate: ClimateSource } }) {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<BriefDraft>(initial);
   const [state, action, pending] = useActionState(saveBrief.bind(null, tripId), {} as FormState);
@@ -206,6 +208,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers }: { tripId: stri
             />
           </label>
           <Lines title="Miejsca w kolejności (jedno w linii)" hint={"Marrakesz\nAgafay\nEssaouira"} value={draft.location.places} onChange={(places) => update({ location: { ...draft.location, places } })} />
+          <ClimateHint source={term.climate} name={draft.location.places[0]} countryCode={draft.location.countries[0]} start={term.startDate} end={term.endDate} today={term.today} />
         </div>
       )}
 

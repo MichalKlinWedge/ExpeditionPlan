@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 
 import { applyReschedule, previewReschedule, type ReschedulePreview } from "@/app/reschedule-actions";
 import { setTripPostponed } from "@/app/actions";
+import { ClimateHint } from "@/components/climate-hint";
 import { tripDates } from "@/lib/labels";
 
 const shortDate = (date: string) => `${Number(date.slice(8))}.${date.slice(5, 7)}.${date.slice(0, 4)}`;
@@ -105,6 +106,7 @@ export function RescheduleDialog({ tripId, startDate, endDate, today, hasDrafts,
             </>
           )}
         </p>
+        <ClimateHint tripId={tripId} start={isRealDate(date) ? date : null} end={newEnd} today={today} />
         {loading && preview === null && <p className="text-zinc-500">Liczę, co się przesunie…</p>}
 
         {changed && review && (

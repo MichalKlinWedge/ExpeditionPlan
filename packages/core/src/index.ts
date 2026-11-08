@@ -45,6 +45,7 @@ export * from './offline-areas.ts';
 export * from './rates.ts';
 export * from './weather.ts';
 export * from './weather-alerts.ts';
+export * from './climate.ts';
 export * from './reminders.ts';
 export * from './item-icon.ts';
 export * from './item-kind.ts';

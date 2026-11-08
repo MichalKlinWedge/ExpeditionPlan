@@ -254,6 +254,7 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - Limity: **600/min, 5000/h, 10 000/dzień, 300 000/mies.**, liczone per IP i per aplikacja.
 - Licencja danych: CC BY 4.0 (wymagana atrybucja).
 - Horyzont: `forecast_days` domyślnie **7**, maksymalnie **16**; `past_days` do 92.
+- Dalej niż 16 dni — klimat z archiwum (`archive-api.open-meteo.com`, `models=era5`, ok. 5 dni opóźnienia): te same warunki Free API. Wymagany dopisek „Copernicus Climate Change Service” (ERA5). Geokoder (`geocoding-api.open-meteo.com`) tylko do znalezienia miejsca do klimatu, nic nie zapisujemy; podpis „GeoNames”. Strony nie opisują ważenia zapytań o długie okresy — u nas 10 zapytań (po roku) na jedno okno terminu (**NIEPOTWIERDZONE**, czy liczone jako więcej niż 10). Źródła: https://open-meteo.com/en/docs/historical-weather-api , https://open-meteo.com/en/docs/geocoding-api
 - Plany komercyjne: Standard 1 mln, Professional 5 mln, Enterprise > 50 mln wywołań / mies.; ceny nie są podane na stronie (**NIEPOTWIERDZONE**).
 - Wniosek: przy apce wywołującej API z telefonu limit per IP jest bezpieczny; przy wywołaniach z Edge Function wszystkie zapytania idą z IP Supabase — cache prognoz po stronie serwera.
 - Źródła: https://open-meteo.com/en/terms , https://open-meteo.com/en/docs , https://open-meteo.com/en/pricing

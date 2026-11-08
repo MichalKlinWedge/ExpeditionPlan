@@ -9,6 +9,7 @@ import { EditToggle } from "@/components/edit-toggle";
 import { Loading, Shell } from "@/components/shell";
 import { type BoardGroup, VoteBoard } from "@/components/vote-board";
 import { requireUser } from "@/lib/auth";
+import { climateSource } from "@/lib/climate-place";
 import { editMode } from "@/lib/edit-mode";
 
 export const metadata: Metadata = { title: "Głosowanie — Expedition Planner" };
@@ -125,6 +126,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         trip={{ startDate: doc.trip.startDate, endDate: doc.trip.endDate, today }}
         canEdit={mayEdit && wantsEdit}
         mayEdit={mayEdit}
+        climate={climateSource(payload)}
       />
     </>
   );

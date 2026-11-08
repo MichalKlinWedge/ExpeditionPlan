@@ -1,11 +1,13 @@
 "use client";
 
-import { addDays, DAY_ANSWER, type DayAnswer, type DatePoll, dayChip, dayMonth, type TermOption } from "@expeditionplan/core";
+import { addDays, climateFor, climateLine, climateYearsText, DAY_ANSWER, type DayAnswer, type DatePoll, dayChip, dayMonth, needsClimate, type TermOption } from "@expeditionplan/core";
 import { useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { castVote, chooseVariant, saveAvailability, saveDatePoll, setVotingOpen } from "@/app/vote-actions";
+import { ClimateCredit, useClimate, useClimatePlace } from "@/components/climate-hint";
 import { RescheduleDialog } from "@/components/trip-reschedule";
+import type { ClimateSource } from "@/lib/climate-place";
 
 /**
  * Tablica głosowania: za kogo głosuję, ankieta terminu (kalendarz dostępności i najlepsze terminy)
@@ -47,6 +49,8 @@ type Props = {
   canEdit: boolean;
   /** Organizator albo edytor (niezależnie od trybu edycji). */
   mayEdit: boolean;
+  /** Miejsce do klimatu terminów dalej niż 16 dni. */
+  climate: ClimateSource;
 };
 
 const card = "card flex flex-col gap-3 p-4";
@@ -201,13 +205,19 @@ const NEXT: Record<DayAnswer | "none", DayAnswer | null> = { none: "yes", yes: "
 /** Poniedziałek = 0. */
 const weekday = (date: string) => (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
 
-function DateSection({ tripId, poll, length, terms, answers, dayCounts, trip, canEdit, person, travelerCount }: Props & { person: BoardPerson | null }) {
+function DateSection({ tripId, poll, length, terms, answers, dayCounts, trip, canEdit, person, travelerCount, climate: climateFrom }: Props & { person: BoardPerson | null }) {
   const saved = person === null ? {} : (answers[person.ref] ?? {});
   const [draft, setDraft] = useState<Record<string, DayAnswer | null>>({});
   const [draftFor, setDraftFor] = useState(person?.ref);
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<FormState>({});
   const [reschedule, setReschedule] = useState<string | null>(null);
+  // Terminy dalej niż 16 dni: klimat z jednego pobrania dla całego okna ankiety.
+  const far = poll !== null && terms.some((term) => needsClimate(term.start, trip.today));
+  const climatePlace = useClimatePlace(far ? { source: climateFrom } : {});
+  const climate = useClimate(far ? climatePlace : null, poll?.from ?? null, poll?.to ?? null, trip.today);
+  const termClimate = (term: TermOption) => (climate.data !== null && needsClimate(term.start, trip.today) ? climateFor(climate.data, term.start, term.end) : null);
+  const anyClimate = terms.map(termClimate).find((each) => each !== null) ?? null;
   // Zmiana osoby = niezapisane kliknięcia poprzedniej przepadają.
   if (draftFor !== person?.ref) {
     setDraftFor(person?.ref);
@@ -341,9 +351,15 @@ function DateSection({ tripId, poll, length, terms, answers, dayCounts, trip, ca
                     .filter(Boolean)
                     .join(" · ")}
                 </span>
+                {termClimate(term) !== null && <span className="text-xs text-zinc-500">klimat: {climateLine(termClimate(term)!)}</span>}
               </li>
             ))}
           </ol>
+        )}
+        {anyClimate !== null && (
+          <p className="text-xs text-zinc-500">
+            Klimat{climatePlace ? ` (${climatePlace.name})` : ""}: {climateYearsText(anyClimate)} dla tych dni kalendarza, bo prognoza sięga tylko 16 dni. Źródło: <ClimateCredit place={climatePlace} />.
+          </p>
         )}
       </div>
       {canEdit && <PollForm tripId={tripId} poll={poll} />}
