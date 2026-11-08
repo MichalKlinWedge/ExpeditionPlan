@@ -5,6 +5,7 @@ import { useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, CompareIcon, CompassIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { tripDates } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -13,6 +14,7 @@ import { createClient } from "@/lib/supabase/client";
  * wyróżniona. Na stronie samego wyjazdu są duże kafelki, więc tam pasek się nie pokazuje.
  * Tryb edycji jest wspólny dla stron (`lib/edit-mode.ts`), linki go nie zmieniają. Dostrajanie i porównanie są dla organizatora i edytora,
  * a pamiątka od początku wyjazdu, tak jak kafelki: te pozycje dochodzą po odczytaniu roli i dat.
+ * Pod ikonami nazwa wyjazdu i jego daty, żeby na każdej podstronie było widać, którego wyjazdu dotyczy.
  */
 
 const SECTIONS = [
@@ -39,7 +41,7 @@ const SECTIONS = [
   { path: "show", title: "Pokaz z lektorem", Icon: FilmIcon },
 ] as const;
 
-type Access = { canEdit: boolean; started: boolean };
+type Access = { canEdit: boolean; started: boolean; title: string; dates: string | null; postponed: boolean };
 
 export function TripNav({ width }: { width: string }) {
   const params = useParams<{ id?: string }>();
@@ -51,14 +53,20 @@ export function TripNav({ width }: { width: string }) {
     let current = true;
     void createClient()
       .from("my_trips")
-      .select("role, start_date, status, title")
+      .select("role, start_date, end_date, status, title")
       .eq("id", id)
       .maybeSingle()
       .then(({ data }) => {
         if (!current || data === null) return;
         const today = new Date().toISOString().slice(0, 10);
         const started = data.status !== "postponed" && !(data.title ?? "").startsWith("Szkic AI: ") && (data.start_date ?? today) <= today;
-        setAccess({ canEdit: data.role === "owner" || data.role === "editor", started });
+        setAccess({
+          canEdit: data.role === "owner" || data.role === "editor",
+          started,
+          title: data.title ?? "",
+          dates: data.start_date && data.end_date ? tripDates(data.start_date, data.end_date) : null,
+          postponed: data.status === "postponed",
+        });
       });
     return () => {
       current = false;
@@ -90,6 +98,18 @@ export function TripNav({ width }: { width: string }) {
           );
         })}
       </ul>
+      {access && (
+        <p className={`mx-auto w-full ${width} truncate px-4 pb-2 text-sm`}>
+          <span className="font-semibold">{access.title}</span>
+          {access.dates && (
+            <span className="text-zinc-600 dark:text-zinc-400">
+              {" "}
+              · {access.dates}
+              {access.postponed ? " (termin wstępny, wyjazd odłożony)" : ""}
+            </span>
+          )}
+        </p>
+      )}
     </nav>
   );
 }
