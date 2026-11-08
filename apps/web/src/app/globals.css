@@ -39,8 +39,11 @@
   --btn-bg-hover: color-mix(in srgb, var(--color-sea) 30%, var(--surface));
   --btn-line: color-mix(in srgb, var(--color-sea) 50%, var(--surface));
   --btn-danger: #b42318;
-  /* Przejście na inną stronę: jasna pigułka z morskim tekstem (przycisk funkcji jest wypełniony). */
-  --nav-fg: var(--color-sea);
+  /* Przejście na inną stronę: żółta pigułka (przycisk funkcji jest morski i prostokątny). */
+  --nav-bg: #fbedbd;
+  --nav-bg-hover: #f5d97a;
+  --nav-line: #dcb04a;
+  --nav-fg: #4a3500;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -53,7 +56,10 @@
     --btn-bg-hover: color-mix(in srgb, var(--color-sea) 60%, var(--surface));
     --btn-line: var(--color-sea);
     --btn-danger: #fda29b;
-    --nav-fg: #9fd8cf;
+    --nav-bg: color-mix(in srgb, #e0b33c 22%, var(--surface));
+    --nav-bg-hover: color-mix(in srgb, #e0b33c 40%, var(--surface));
+    --nav-line: #c99a2e;
+    --nav-fg: #f6dd85;
   }
 }
 
@@ -161,20 +167,19 @@ h2 {
     background: color-mix(in srgb, var(--btn-danger) 18%, var(--surface));
   }
   /* Przycisk przejścia (link na inną stronę, `<a>`) wygląda inaczej niż przycisk funkcji (`<button>`):
-     pigułka z jasnym tłem i morskim tekstem, jak „← powrót”. Pobranie pliku (`download`) to funkcja. */
+     żółta pigułka, jak „← powrót”. Pobranie pliku (`download`) to funkcja. */
   a.btn-mini:not([download]),
   a.btn-secondary:not([download]) {
     border-radius: 999px;
-    background: var(--surface);
+    background: var(--nav-bg);
     color: var(--nav-fg);
-    border-color: var(--btn-line);
+    border-color: var(--nav-line);
     box-shadow: none;
   }
   a.btn-mini:not([download]):hover,
   a.btn-secondary:not([download]):hover {
-    background: var(--color-sea);
-    border-color: var(--color-sea);
-    color: #fff;
+    background: var(--nav-bg-hover);
+    border-color: var(--nav-line);
   }
   .btn-mini:disabled {
     opacity: 0.5;
@@ -234,18 +239,17 @@ h2 {
     font-size: 0.8rem;
     font-weight: 600;
     line-height: 1.25rem;
-    background: var(--surface);
+    background: var(--nav-bg);
     color: var(--nav-fg);
-    border: 1.5px solid var(--btn-line);
+    border: 1.5px solid var(--nav-line);
     transition:
       background-color 120ms,
       border-color 120ms,
       color 120ms;
   }
   .back-link:hover {
-    background: var(--color-sea);
-    border-color: var(--color-sea);
-    color: #fff;
+    background: var(--nav-bg-hover);
+    border-color: var(--nav-line);
   }
   .back-link:focus-visible {
     outline: 2px solid var(--color-sea);
