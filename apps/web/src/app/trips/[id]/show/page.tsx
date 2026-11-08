@@ -96,7 +96,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
       ...(scene.subheading ? { subheading: scene.subheading } : {}),
       text: told?.text ?? "",
       edited: told?.edited === true,
-      status: fits ? "ready" : told && told.text.trim() !== "" ? "stale" : "none",
+      status: told === undefined || told.text.trim() === "" ? "none" : fits ? "ready" : told.audio ? "old" : "new",
       ...(fits ? { seconds: Math.round(told.audio.durationMs / 1000) } : {}),
     };
   });

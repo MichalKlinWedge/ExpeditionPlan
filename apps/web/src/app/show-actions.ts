@@ -93,7 +93,7 @@ const BUSY_WAIT_S = 30;
  * Nagranie jednej sceny. Bez `refresh`: przeglądarka odświeża stronę po ostatniej scenie. Limit zapytań (darmowy poziom
  * Gemini TTS przepuszcza kilka nagrań na minutę) zwraca `wait`: przeglądarka odczeka i ponowi.
  */
-export async function recordShowScene(tripId: string, key: string): Promise<FormState & { wait?: number }> {
+export async function recordShowScene(tripId: string, key: string): Promise<FormState & { wait?: number; seconds?: number }> {
   const denied = await aiAccessError();
   if (denied) return { error: denied };
   const setup = await speechSetup();
@@ -122,7 +122,8 @@ export async function recordShowScene(tripId: string, key: string): Promise<Form
     if (next.scenes.find((each) => each.key === key)?.audio?.path !== path) return { error: "W trakcie nagrywania zmienił się tekst sceny. Nagraj jeszcze raz." };
     const failed = await save(supabase, tripId, base, next);
     if (failed) return { error: failed };
-    return { ok: `Nagrano ${Math.round(speech.durationMs / 1000)} s.` };
+    const seconds = Math.round(speech.durationMs / 1000);
+    return { ok: `Nagrano ${seconds} s.`, seconds };
   } catch (e) {
     if (e instanceof AiError && e.busy) return { error: e.message, wait: BUSY_WAIT_S };
     return { error: e instanceof Error ? e.message : String(e) };

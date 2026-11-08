@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { draftShow, recordShowScene, saveShowText, setShowVoice } from "@/app/show-actions";
-import { MicIcon } from "@/components/icons";
+import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
 
 /**
@@ -17,9 +17,48 @@ import { PlanActionButton } from "@/components/plan-action-button";
 /** Ile razy czekać na limit zapytań przy jednej scenie, zanim kolejka stanie. */
 const MAX_WAITS = 4;
 
-export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: "none" | "stale" | "ready"; seconds?: number };
+/** Stan nagrania sceny: bez tekstu, tekst bez nagrania, nagranie starszego tekstu albo głosu, nagranie aktualne. */
+export type RecordingStatus = "none" | "new" | "old" | "ready";
 
-function SceneText({ tripId, scene }: { tripId: string; scene: EditorScene }) {
+export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number };
+
+/** Na żywo w trakcie nagrywania, zanim strona się odświeży: ta scena się nagrywa albo właśnie się nagrała. */
+type Live = "recording" | { seconds: number };
+
+const BADGE = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium";
+
+/** Znaczek stanu nagrania przy scenie; zmieniony, niezapisany tekst unieważnia nagranie już w polu. */
+function RecordingBadge({ status, seconds, live, unsaved }: { status: RecordingStatus; seconds?: number; live?: Live; unsaved: boolean }) {
+  if (live === "recording") {
+    return (
+      <span className={`${BADGE} animate-pulse bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200`}>
+        <MicIcon className="size-3.5" /> nagrywam…
+      </span>
+    );
+  }
+  if (unsaved) {
+    return <span className={`${BADGE} bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200`}>✎ tekst zmieniony: zapisz{status === "ready" || status === "old" ? " i nagraj od nowa" : ""}</span>;
+  }
+  const done = live !== undefined ? live.seconds : status === "ready" ? seconds : undefined;
+  if (done !== undefined) {
+    return (
+      <span className={`${BADGE} bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-200`} title="Nagranie pasuje do tego tekstu i głosu">
+        <SpeakerIcon className="size-3.5" /> ✓ nagrane · {done} s
+      </span>
+    );
+  }
+  if (status === "old") {
+    return (
+      <span className={`${BADGE} bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200`} title="Nagranie jest ze starszego tekstu albo innego głosu i nie gra w pokazie">
+        <SpeakerIcon className="size-3.5" /> nagranie nieaktualne
+      </span>
+    );
+  }
+  if (status === "new") return <span className={`${BADGE} bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300`}>nienagrane</span>;
+  return <span className={`${BADGE} bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400`}>bez tekstu</span>;
+}
+
+function SceneText({ tripId, scene, live }: { tripId: string; scene: EditorScene; live?: Live }) {
   const router = useRouter();
   const [text, setText] = useState(scene.text);
   const [pending, start] = useTransition();
@@ -37,10 +76,8 @@ function SceneText({ tripId, scene }: { tripId: string; scene: EditorScene }) {
         <span className="font-medium">{scene.heading}</span>
         {scene.subheading && <span className="text-xs text-zinc-500">{scene.subheading}</span>}
         <span className="flex-1" />
-        <span className="text-xs text-zinc-500">
-          {scene.status === "ready" ? `🔊 ${scene.seconds} s` : scene.status === "stale" ? "do nagrania" : "bez tekstu"}
-          {scene.edited ? " · poprawione ręcznie" : ""}
-        </span>
+        {scene.edited && <span className="text-xs text-zinc-500">poprawione ręcznie</span>}
+        <RecordingBadge status={scene.status} {...(scene.seconds !== undefined ? { seconds: scene.seconds } : {})} {...(live !== undefined ? { live } : {})} unsaved={changed} />
       </div>
       <textarea value={text} onChange={(event) => setText(event.target.value)} rows={Math.min(8, Math.max(2, Math.ceil(text.length / 90)))} maxLength={3000} className="field p-2 text-sm" placeholder="Tekst lektora tej sceny (pusty: scena bez lektora, z samym nagłówkiem)" />
       {(changed || result) && (
@@ -62,6 +99,7 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
   const router = useRouter();
   const [picked, setPicked] = useState(voice);
   const [progress, setProgress] = useState<{ done: number; total: number; waiting?: number } | null>(null);
+  const [live, setLive] = useState<Record<string, Live>>({});
   const [message, setMessage] = useState<FormState | null>(null);
   const [pending, start] = useTransition();
 
@@ -78,7 +116,9 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
     setMessage(null);
     setProgress({ done: 0, total: toRecord.length });
     let seconds = 0;
+    setLive({});
     for (const [at, key] of toRecord.entries()) {
+      setLive((now) => ({ ...now, [key]: "recording" }));
       let answer = await recordShowScene(tripId, key);
       // Limit zapytań Google: odczekać i spróbować jeszcze raz, najwyżej kilka razy na scenę.
       for (let tries = 0; answer.wait !== undefined && tries < MAX_WAITS; tries += 1) {
@@ -90,12 +130,18 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
         answer = await recordShowScene(tripId, key);
       }
       if (answer.error) {
+        setLive((now) => {
+          const next = { ...now };
+          delete next[key];
+          return next;
+        });
         setMessage({ error: `Scena ${at + 1} z ${toRecord.length}: ${answer.error}` });
         setProgress(null);
         router.refresh();
         return;
       }
-      seconds += Number(/(\d+) s/.exec(answer.ok ?? "")?.[1] ?? 0);
+      seconds += answer.seconds ?? 0;
+      setLive((now) => ({ ...now, [key]: { seconds: answer.seconds ?? 0 } }));
       setProgress({ done: at + 1, total: toRecord.length });
     }
     setProgress(null);
@@ -128,7 +174,7 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
       {message?.ok && <p className="text-sm text-green-700 dark:text-green-400">{message.ok}</p>}
       <ol className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
         {scenes.map((scene) => (
-          <SceneText key={`${scene.key}:${scene.text}`} tripId={tripId} scene={scene} />
+          <SceneText key={`${scene.key}:${scene.text}`} tripId={tripId} scene={scene} {...(live[scene.key] !== undefined ? { live: live[scene.key] } : {})} />
         ))}
       </ol>
     </section>

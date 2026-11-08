@@ -6,6 +6,7 @@ import { readingMs, type ShowCredits, type ShowImage } from "@expeditionplan/cor
 import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { SpeakerIcon } from "@/components/icons";
 import { polishLabels } from "@/components/plan-map";
 
 /**
@@ -300,9 +301,9 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
 
       <div className="flex flex-wrap gap-1">
         {scenes.map((each, at) => (
-          <button key={each.key} onClick={() => go(at)} className={`btn-mini ${at === index ? "ring-2 ring-sea" : ""}`} title={each.heading}>
+          <button key={each.key} onClick={() => go(at)} className={`btn-mini ${at === index ? "ring-2 ring-sea" : ""}`} title={`${each.heading}${each.audio ? " · z lektorem" : ""}`}>
             {each.kind === "intro" ? "Start" : each.kind === "outro" ? "Koniec" : each.heading.split(" · ")[0]}
-            {each.audio ? "" : each.text.trim() === "" ? " ·" : " ✎"}
+            {each.audio ? <SpeakerIcon className="size-3.5 text-green-700 dark:text-green-400" /> : each.text.trim() !== "" ? " ✎" : ""}
           </button>
         ))}
       </div>
