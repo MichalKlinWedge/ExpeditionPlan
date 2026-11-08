@@ -13,6 +13,7 @@ import { ItemEatOut } from "@/components/item-eat-out";
 import { GuideButtons } from "@/components/guide-button";
 import { ItemHeaderEditor } from "@/components/item-header";
 import { ItemPlanNav } from "@/components/item-plan-nav";
+import { ItemTexts } from "@/components/item-texts";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
 import { TrackUpload } from "@/components/track-upload";
@@ -81,7 +82,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
   const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
   const transit = isTransitItem(item) ? transitDetailRows(item) : null;
   // Bez miejsca, przejazdu, rezerwacji i opisu karta z podstawowymi danymi byłaby pusta.
-  const hasInfo = place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
+  const hasInfo = place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || editing || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
 
   return (
@@ -147,12 +148,7 @@ async function ItemCard({ params, searchParams }: { params: Promise<{ id: string
             {item.activity.difficulty ? ` · ${item.activity.difficulty}` : ""}
           </p>
         )}
-        {item.description && <p className="whitespace-pre-line">{item.description}</p>}
-        {[...item.notes, ...notes.map((note) => (note.title ? `${note.title}: ${note.body}` : note.body))].map((note, i) => (
-          <p key={i} className="text-zinc-600 dark:text-zinc-400">
-            • {note}
-          </p>
-        ))}
+        <ItemTexts tripId={id} doc={doc} ids={ids} itemRef={item.ref} editing={editing} />
         {item.links.length > 0 && (
           <p className="flex flex-wrap gap-x-3">
             {item.links.map((link) => (

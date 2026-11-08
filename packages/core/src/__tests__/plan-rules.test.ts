@@ -14,6 +14,7 @@ import {
   dayConstraints,
   dayNotes,
   itemVariant,
+  itemNoteList,
   itemVariants,
   removeConstraint,
   removeNote,
@@ -23,6 +24,7 @@ import {
   setDayEnd,
   setDayScenarios,
   setItemVariant,
+  setItemTexts,
   setItemVariants,
   updateConstraint,
   updateNote,
@@ -253,5 +255,25 @@ describe('scenariusze dnia', () => {
   it('bez zmiany albo przy nieznanym dniu nie ma czego zapisać', () => {
     expect(setDayScenarios(maroko, day, true)).toBeNull();
     expect(setDayScenarios(maroko, 'nie-ma', false)).toBeNull();
+  });
+});
+
+describe('opis i uwagi punktu', () => {
+  const rawBcn = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/barcelona/plan.json', import.meta.url)), 'utf8')));
+  // W bazie każda notatka ma klucz — tak jak w edytorze.
+  const bcn: TripDocument = { ...rawBcn, notes: rawBcn.notes.map((each, index) => ({ ...each, ref: each.ref ?? `n${index}` })) };
+
+  it('uwaga w punkcie i ta sama notatka przypięta do punktu to jedna uwaga; zapis wchłania notatkę', () => {
+    expect(itemNoteList(bcn, 'd1-bunkry')).toEqual(['Na górze wieje, weźcie kurtki.']);
+    const edit = setItemTexts(bcn, 'd1-bunkry', { description: ' Widok na całe miasto. ', notes: ['Na górze wieje, weźcie kurtki.', '', 'Zachód słońca ok. 17:20'] })!;
+    const item = edit.doc.items.find((each) => each.ref === 'd1-bunkry')!;
+    expect(item.description).toBe('Widok na całe miasto.');
+    expect(item.notes).toEqual(['Na górze wieje, weźcie kurtki.', 'Zachód słońca ok. 17:20']);
+    expect(edit.doc.notes.some((note) => note.scope === 'item' && note.targetRef === 'd1-bunkry')).toBe(false);
+    expect(edit.writes.map((write) => [write.collection, write.op])).toEqual([['notes', 'remove']]);
+    expect(edit.changed.map((each) => each.ref)).toEqual(['d1-bunkry']);
+    expect(documentProblem(edit.doc)).toBeNull();
+    expect(setItemTexts(edit.doc, 'd1-bunkry', { description: 'Widok na całe miasto.', notes: item.notes })).toBeNull();
+    expect('description' in setItemTexts(edit.doc, 'd1-bunkry', { description: '  ', notes: [] })!.changed[0]!).toBe(false);
   });
 });

@@ -292,6 +292,39 @@ export function setDayScenarios(doc: Doc, dayRef: string, on: boolean): RulesEdi
   return { doc: { ...doc, days: swap(doc.days, [next]) }, writes: [{ collection: 'days', element: next, op: 'update' }], changed: [] };
 }
 
+// --- Opis i uwagi punktu --------------------------------------------------------------------
+
+/** Notatki przypięte do punktu (`scope: 'item'`), tak jak je pokazuje karta: „tytuł: treść”. */
+const itemNoteLines = (doc: Doc, itemRef: string) => doc.notes.filter((note) => note.scope === 'item' && note.targetRef === itemRef).map((note) => (note.title ? `${note.title}: ${note.body}` : note.body));
+
+/** Uwagi punktu do edycji: jego własne i notatki przypięte do niego, bez powtórzeń (import potrafi dać obie). */
+export function itemNoteList(doc: Doc, itemRef: string): string[] {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  return [...new Set([...(item?.notes ?? []), ...itemNoteLines(doc, itemRef)].map((line) => line.trim()).filter((line) => line !== ''))];
+}
+
+/**
+ * Opis i uwagi z karty punktu. Notatki przypięte do punktu przechodzą do jego uwag (edytor pokazuje je
+ * razem), więc znikają jako osobne notatki. Pusty opis znika. `null` = nic się nie zmieniło.
+ */
+export function setItemTexts(doc: Doc, itemRef: string, texts: { description: string; notes: string[] }): RulesEdit | null {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  if (item === undefined) return null;
+  const description = texts.description.trim();
+  const notes = [...new Set(texts.notes.map((line) => line.trim()).filter((line) => line !== ''))];
+  const { description: _old, ...rest } = item;
+  const next: Item = { ...rest, ...(description === '' ? {} : { description }), notes };
+  const absorbed = doc.notes.filter((note) => note.scope === 'item' && note.targetRef === itemRef);
+  const itemChanged = (item.description ?? '') !== description || JSON.stringify(item.notes) !== JSON.stringify(notes);
+  if (!itemChanged && absorbed.length === 0) return null;
+  const gone = new Set(absorbed.map((note) => note.ref));
+  return {
+    doc: { ...withItems(doc, [next]), notes: doc.notes.filter((note) => !gone.has(note.ref)) },
+    writes: absorbed.flatMap((note) => (note.ref === undefined ? [] : [{ collection: 'notes' as const, element: { ...note, ref: note.ref }, op: 'remove' as const }])),
+    changed: itemChanged ? [next] : [],
+  };
+}
+
 // --- Notatki dnia ----------------------------------------------------------------------------
 
 /** Treść notatki z formularza; zasięg i cel (dzień) dopisuje funkcja. */
