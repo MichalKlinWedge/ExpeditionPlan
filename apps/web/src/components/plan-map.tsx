@@ -369,7 +369,7 @@ function ranges(numbers: number[]): string {
 }
 
 /** Napisy po polsku tam, gdzie OSM ma `name:pl` — reszta zostaje w nazwie lokalnej. */
-function polishLabels(map: MapLibreMap) {
+export function polishLabels(map: MapLibreMap) {
   for (const layer of map.getStyle().layers) {
     if (layer.type !== "symbol") continue;
     const field = map.getLayoutProperty(layer.id, "text-field");

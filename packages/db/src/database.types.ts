@@ -1187,6 +1187,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"trip_shows": {
+                  Row: {
+                    "content": NonNullable<Json>,"trip_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "content"?: NonNullable<Json>,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "content"?: NonNullable<Json>,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "trip_shows_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: true
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "trip_shows_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: true
+      referencedRelation: "trips"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"trips": {
                   Row: {
                     "base_currency": string,"cover_path": string | null,"created_at": string,"deleted_at": string | null,"doc_version": string | null,"end_date": string,"fx": NonNullable<Json>,"goal": string | null,"home_tz": string,"id": string,"owner_id": string,"plan_version": number,"primary_tz": string,"row_version": number,"start_date": string,"status": string,"subtitle": string | null,"summary": string | null,"sync_version": number,"title": string,"updated_at": string,"updated_by": string | null

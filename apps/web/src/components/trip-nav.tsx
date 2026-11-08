@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { ArticleIcon, BackpackIcon, BookIcon, CartIcon, CompareIcon, CompassIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BookIcon, CartIcon, CompareIcon, CompassIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -35,6 +35,7 @@ const SECTIONS = [
   { path: "compare", title: "Porównanie ze szkicem", Icon: CompareIcon },
   { path: "print", title: "Wydruk / PDF", Icon: PrinterIcon },
   { path: "memories", title: "Pamiątka z wyjazdu", Icon: PeakIcon },
+  { path: "show", title: "Pokaz z lektorem", Icon: FilmIcon },
 ] as const;
 
 type Access = { canEdit: boolean; started: boolean };

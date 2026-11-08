@@ -30,3 +30,13 @@ export {
   unwrapJson,
 } from './structured.ts';
 export { AiError, send, TIMEOUT_MS } from './transport.ts';
+export {
+  DEFAULT_VOICE,
+  isSpeechVoice,
+  type Speech,
+  speakGemini,
+  SPEECH_TEXT_LIMIT,
+  SPEECH_VOICES,
+  speechModel,
+  wavDurationMs,
+} from './speech.ts';

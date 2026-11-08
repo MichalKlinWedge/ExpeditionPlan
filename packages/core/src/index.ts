@@ -65,3 +65,4 @@ export * from './booking-import.ts';
 export * from './transit-info.ts';
 export * from './transit-shape.ts';
 export * from './venue-info.ts';
+export * from './trip-show.ts';

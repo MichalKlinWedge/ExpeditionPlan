@@ -372,3 +372,21 @@ h2 {
 @page {
   margin: 14mm 12mm;
 }
+
+/* Pokaz z lektorem: powolne zbliżenie zdjęcia (efekt Kena Burnsa); czas ustawia odtwarzacz. */
+@keyframes show-kenburns {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.12) translate(-2%, -1%);
+  }
+}
+.show-kenburns {
+  animation: show-kenburns linear forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .show-kenburns {
+    animation: none;
+  }
+}

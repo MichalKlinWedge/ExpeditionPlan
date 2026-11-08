@@ -187,3 +187,18 @@ export const PhoneIcon = (props: Props) => (
     <path d="M5 4h3l1.5 4-2 1.2a11 11 0 0 0 5.3 5.3l1.2-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2Z" />
   </Svg>
 );
+
+export const MicIcon = (props: Props) => (
+  <Svg {...props}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" />
+  </Svg>
+);
+
+export const FilmIcon = (props: Props) => (
+  <Svg {...props}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m10 9.5 4.5 2.5-4.5 2.5Z" fill="currentColor" fillOpacity={0.25} />
+    <path d="M3 9h2M3 15h2M19 9h2M19 15h2" />
+  </Svg>
+);

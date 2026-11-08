@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { ArticleIcon, BackpackIcon, BookIcon, CartIcon, CompareIcon, DownloadIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BookIcon, CartIcon, CompareIcon, DownloadIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PhoneIcon, PeopleIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, VaultIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
 import { TripRescheduleButton } from "@/components/trip-reschedule";
@@ -177,6 +177,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <Tile href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
         <Tile href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />}
+        {!title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/show`} icon={<FilmIcon />} title="Pokaz z lektorem" hint={trip.data.end_date! < today ? "wyjazd jak film: mapy, zdjęcia, głos" : "zapowiedź wyjazdu: mapy, zdjęcia, głos"} />}
         <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.error ? "Błąd odczytu uczestników" : `${travelers.data.length} os. jedzie${wavering > 0 ? ` (waha się: ${wavering})` : ""}`} · ${members.count ?? 0} z dostępem`} />
         {canEdit && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />}
         <Tile href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />

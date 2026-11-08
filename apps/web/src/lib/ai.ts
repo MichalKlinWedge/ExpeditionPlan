@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAiClient } from "@expeditionplan/ai";
+import { createAiClient, geminiModels, speechModel } from "@expeditionplan/ai";
 import { fetchHolidays, geoapifyLookup, orsRoute, type PlannerDeps } from "@expeditionplan/planner";
 
 import { createClient } from "./supabase/server";
@@ -61,4 +61,24 @@ export function geminiClient() {
 export function routeLookup() {
   const key = process.env.OPENROUTESERVICE_API_KEY ?? "";
   return key === "" ? null : orsRoute(key);
+}
+
+let speechModelName: Promise<string | null> | undefined;
+
+/**
+ * Klucz i model mowy (Gemini TTS) dla lektora pokazu. Model z `AI_MODEL_TTS`, a bez niej z listy modeli Google
+ * (`speechModel`: najnowszy stabilny Flash-Lite TTS), pobranej raz na życie serwera; nieudane pobranie spróbuje się następnym razem.
+ */
+export async function speechSetup(): Promise<{ key: string; model: string } | { error: string }> {
+  const key = process.env.GEMINI_API_KEY ?? "";
+  if (key === "") return { error: "Serwer nie ma klucza GEMINI_API_KEY." };
+  const fixed = process.env.AI_MODEL_TTS?.trim();
+  if (fixed) return { key, model: fixed };
+  speechModelName ??= geminiModels(key).then(speechModel);
+  const model = await speechModelName.catch(() => null);
+  if (model === null) {
+    speechModelName = undefined;
+    return { error: "Google nie podał modelu do czytania tekstu (Gemini TTS). Ustaw AI_MODEL_TTS albo spróbuj później." };
+  }
+  return { key, model };
 }
