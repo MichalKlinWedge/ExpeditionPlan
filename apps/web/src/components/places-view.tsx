@@ -303,9 +303,23 @@ function PlaceRow({
           <strong>{place.name}</strong>
         )}
         {canEdit && (
-          <button type="button" onClick={onToggle} aria-expanded={open} className="btn-mini ml-auto">
-            {open ? "zwiń" : "zmień"}
-          </button>
+          <span className="ml-auto flex gap-1">
+            <button type="button" onClick={onToggle} aria-expanded={open} className="btn-mini">
+              {open ? "zwiń" : "zmień"}
+            </button>
+            {usage.total === 0 && (
+              <button
+                type="button"
+                disabled={pending}
+                title="Nic w planie z niego nie korzysta"
+                onClick={() => {
+                  if (window.confirm(`Usunąć miejsce „${place.name}”? Nic w planie z niego nie korzysta. Jego opis też zniknie. W aplikacji nie da się tego cofnąć.`)) run(() => removePlace(tripId, place.ref));
+                }}
+                className="btn-mini btn-mini-danger">
+                usuń
+              </button>
+            )}
+          </span>
         )}
       </div>
       {place.address && <p className="text-xs text-zinc-600 dark:text-zinc-400">{place.address}</p>}
@@ -437,17 +451,6 @@ function PlaceRow({
             </div>
           )}
 
-          {usage.total === 0 && (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                if (window.confirm(`Usunąć miejsce „${place.name}”? Nic z niego nie korzysta. W aplikacji nie da się tego cofnąć.`)) run(() => removePlace(tripId, place.ref));
-              }}
-              className="btn-mini btn-mini-danger self-start">
-              usuń miejsce
-            </button>
-          )}
         </div>
       )}
 
