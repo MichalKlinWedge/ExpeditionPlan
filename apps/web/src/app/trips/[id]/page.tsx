@@ -185,6 +185,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         {!title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/show`} icon={<FilmIcon />} title="Pokaz z lektorem" hint={trip.data.end_date! < today ? "wyjazd jak film: mapy, zdjęcia, głos" : "zapowiedź wyjazdu: mapy, zdjęcia, głos"} />}
         <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.error ? "Błąd odczytu uczestników" : `${travelers.data.length} os. jedzie${wavering > 0 ? ` (waha się: ${wavering})` : ""}`} · ${members.count ?? 0} z dostępem`} />
         {canEdit && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />}
+        {canEdit && !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/compare?review=1`} icon={<SparkIcon />} title="Propozycje AI" hint="przegląd planu: trasy, mapa, opisy obok planu" />}
         <Tile href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />
         {compareHref !== null && (
           <Tile href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />

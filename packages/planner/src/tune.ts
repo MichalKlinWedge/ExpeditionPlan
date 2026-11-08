@@ -4,6 +4,7 @@ import {
   dayItems,
   documentProblem,
   ItemInUseError,
+  LEG_MODE,
   type MergeEdit,
   moveAfter,
   moveToDay,
@@ -17,6 +18,7 @@ import {
 import { z } from 'zod';
 
 import { SYSTEM } from './prompts.ts';
+import { skipReason } from './queries.ts';
 
 /**
  * Etap 3 — dostrajanie planu czatem (SPECYFIKACJA §4): polecenie człowieka → łatka (operacje na
@@ -113,15 +115,38 @@ export async function tunePlan(
 export type OpResult = { op: PatchOp['op']; ok: boolean; text: string };
 
 /** Miejsce o tej nazwie z planu albo nowe (bez współrzędnych — dołoży je ugruntowanie). */
-function placeFor(doc: Doc, input: PatchItemInput, newId: () => string): { doc: Doc; ref?: string } {
-  if (!input.place) return { doc };
-  const existing = doc.places.find((place) => place.name.trim().toLocaleLowerCase('pl') === input.place!.trim().toLocaleLowerCase('pl'));
+function placeNamed(doc: Doc, name: string | undefined, searchName: string | undefined, newId: () => string): { doc: Doc; ref?: string } {
+  if (!name?.trim()) return { doc };
+  const existing = doc.places.find((place) => place.name.trim().toLocaleLowerCase('pl') === name.trim().toLocaleLowerCase('pl'));
   if (existing) return { doc, ref: existing.ref };
   const ref = `id-${newId()}`;
-  return { doc: { ...doc, places: [...doc.places, { ref, name: input.place, ...(input.searchName ? { searchName: input.searchName } : {}), provider: 'unknown', links: [] }] }, ref };
+  return { doc: { ...doc, places: [...doc.places, { ref, name: name.trim(), ...(searchName ? { searchName } : {}), provider: 'unknown', links: [] }] }, ref };
 }
 
+const placeFor = (doc: Doc, input: PatchItemInput, newId: () => string) => placeNamed(doc, input.place, input.searchName, newId);
+
 const timeOf = (input: PatchItemInput): Item['time'] => (input.start ? { precision: input.precision ?? 'approx', start: input.start } : undefined);
+
+/** Przejazd nowego punktu z łatki: skąd/dokąd jako miejsca planu (istniejące po nazwie albo nowe). */
+function legFor(doc: Doc, input: PatchItemInput, newId: () => string): { doc: Doc; leg?: Item['leg'] } {
+  if (input.kind !== 'transport' || input.leg === undefined) return { doc };
+  const { mode, durationMin, distanceKm, from, to } = input.leg;
+  const start = placeNamed(doc, from, undefined, newId);
+  const end = placeNamed(start.doc, to, undefined, newId);
+  return {
+    doc: end.doc,
+    leg: {
+      mode,
+      links: [],
+      ...(durationMin !== undefined ? { durationMin } : {}),
+      ...(distanceKm !== undefined ? { distanceKm } : {}),
+      ...(start.ref ? { fromPlaceRef: start.ref } : {}),
+      ...(end.ref ? { toPlaceRef: end.ref } : {}),
+    },
+  };
+}
+
+const LEG_FIELDS = { mode: 'środek', durationMin: 'czas', distanceKm: 'dystans', from: 'skąd', to: 'dokąd' } as const;
 
 /**
  * Łatka na dokumencie, operacja po operacji. Każda musi zostawić poprawny dokument; zła albo na
@@ -171,10 +196,12 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
             continue;
           }
           const placed = placeFor(current, op.item, newId);
+          const legged = legFor(placed.doc, op.item, newId);
           const time = timeOf(op.item);
-          const added = addItem(placed.doc, op.dayRef, newId(), {
+          const added = addItem(legged.doc, op.dayRef, newId(), {
             title: op.item.title,
             kind: op.item.kind,
+            ...(legged.leg ? { leg: legged.leg } : {}),
             ...(op.item.durationMin !== undefined ? { durationMin: op.item.durationMin } : {}),
             ...(time ? { time } : {}),
             ...(placed.ref ? { placeRef: placed.ref } : {}),
@@ -187,11 +214,13 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
         }
         case 'replace_item': {
           const placed = placeFor(current, op.with, newId);
+          const legged = legFor(placed.doc, op.with, newId);
           const time = timeOf(op.with);
           next =
-            updateItem(placed.doc, op.itemRef, {
+            updateItem(legged.doc, op.itemRef, {
               title: op.with.title,
               kind: op.with.kind,
+              leg: legged.leg ?? (op.with.kind === 'transport' ? target!.leg : undefined),
               durationMin: op.with.durationMin,
               time: time ?? target!.time,
               placeRef: placed.ref,
@@ -235,10 +264,12 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
           let after: string | null = first === -1 ? (list.at(-1)?.ref ?? null) : first === 0 ? null : list[first - 1]!.ref;
           for (const input of op.items) {
             const placed = placeFor(draft, input, newId);
+            const legged = legFor(placed.doc, input, newId);
             const time = timeOf(input);
-            const added = addItem(placed.doc, op.dayRef, newId(), {
+            const added = addItem(legged.doc, op.dayRef, newId(), {
               title: input.title,
               kind: input.kind,
+              ...(legged.leg ? { leg: legged.leg } : {}),
               variantRefs: [altRef],
               ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
               ...(time ? { time } : {}),
@@ -253,6 +284,72 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
           next = draft;
           const replaced = replaces.map((ref) => `„${title(ref)}”`).join(', ');
           text = `Wariant na ${dayName(op.dayRef)} — ${op.title}: „${op.mainLabel}” albo „${op.label}” (${op.items.map((each) => `„${each.title}”`).join(', ')}${replaced ? ` zamiast ${replaced}` : ''})${kept.length > 0 ? `; nocleg zostaje: ${kept.map((item) => `„${item.title}”`).join(', ')}` : ''}`;
+          break;
+        }
+        case 'set_leg': {
+          const leg = target!.leg;
+          if (target!.kind !== 'transport' || leg === undefined) {
+            fail(`„${target!.title}” to nie przejazd.`);
+            continue;
+          }
+          if (leg.routed && op.mode === undefined && (op.durationMin !== undefined || op.distanceKm !== undefined)) {
+            fail(`„${target!.title}”: czas i dystans są z trasy — szacunek AI ich nie zastępuje.`);
+            continue;
+          }
+          const changes = (Object.keys(LEG_FIELDS) as (keyof typeof LEG_FIELDS)[]).filter((field) => op[field] !== undefined);
+          if (changes.length === 0) {
+            fail(`„${target!.title}”: łatka nic nie zmienia.`);
+            continue;
+          }
+          const start = placeNamed(current, op.from, undefined, newId);
+          const end = placeNamed(start.doc, op.to, undefined, newId);
+          // Inny środek albo inne końce = stara trasa (linia na mapie, czas z trasy) przestaje pasować.
+          const rerouted =
+            (op.mode !== undefined && op.mode !== leg.mode) || (start.ref !== undefined && start.ref !== leg.fromPlaceRef) || (end.ref !== undefined && end.ref !== leg.toPlaceRef);
+          const { routed: _routed, geometry: _geometry, ...unrouted } = leg;
+          next =
+            updateItem(end.doc, op.itemRef, {
+              leg: {
+                ...(rerouted ? unrouted : leg),
+                ...(op.mode !== undefined ? { mode: op.mode } : {}),
+                ...(op.durationMin !== undefined ? { durationMin: op.durationMin } : {}),
+                ...(op.distanceKm !== undefined ? { distanceKm: op.distanceKm } : {}),
+                ...(start.ref ? { fromPlaceRef: start.ref } : {}),
+                ...(end.ref ? { toPlaceRef: end.ref } : {}),
+              },
+            })?.doc ?? null;
+          const shown = changes.map((field) => {
+            const value = op[field];
+            const label = field === 'mode' ? (LEG_MODE[String(value)] ?? String(value)) : field === 'durationMin' ? `${value} min` : field === 'distanceKm' ? `${value} km` : String(value);
+            return `${LEG_FIELDS[field]} → ${label}`;
+          });
+          text = `Przejazd „${target!.title}”: ${shown.join(', ')}${op.reason ? ` — ${op.reason}` : ''}`;
+          break;
+        }
+        case 'set_place': {
+          const place = current.places.find((each) => each.ref === op.placeRef);
+          if (place === undefined) {
+            fail(`Nie ma miejsca „${op.placeRef}”.`);
+            continue;
+          }
+          if (place.provider === 'user') {
+            fail(`„${place.name}” przypiąłeś ręcznie — AI go nie przesuwa.`);
+            continue;
+          }
+          if (skipReason({ ref: place.ref, name: place.name }) !== null) {
+            fail(`„${place.name}” to miejsce prywatne albo opisowe — wyszukiwarka go nie szuka; przypnij je ręcznie na stronie Miejsca.`);
+            continue;
+          }
+          if (place.lat !== undefined && current.items.some((item) => locked.has(item.ref) && item.placeRef === place.ref)) {
+            fail(`„${place.name}” jest w punkcie zmienionym ręcznie — AI nie przesuwa jego pinezki.`);
+            continue;
+          }
+          if (place.searchName === op.searchName) {
+            fail(`„${place.name}” już ma tę nazwę do wyszukania.`);
+            continue;
+          }
+          next = { ...current, places: current.places.map((each) => (each.ref === place.ref ? { ...each, searchName: op.searchName } : each)) };
+          text = `Mapa: „${place.name}” — szukaj jako „${op.searchName}”${place.lat === undefined ? ' (teraz poza mapą)' : ' (pinezka do sprawdzenia od nowa)'}${op.reason ? ` — ${op.reason}` : ''}`;
           break;
         }
         case 'set_field': {
@@ -311,4 +408,13 @@ export function patchDiff(before: Doc, after: Doc): MergeEdit {
     kept: [],
     copied: {},
   };
+}
+
+/** Miejsca zmienione łatką (`set_place`): zapisuje się je osobno, bo `MergeEdit` zna tylko nowe miejsca. */
+export function changedPlaces(before: Doc, after: Doc): Doc['places'] {
+  const old = new Map(before.places.map((place) => [place.ref, place]));
+  return after.places.filter((place) => {
+    const was = old.get(place.ref);
+    return was !== undefined && JSON.stringify(was) !== JSON.stringify(place);
+  });
 }

@@ -1,15 +1,15 @@
 "use server";
 
-import { PlanPatch, plural, TripBrief, TripDocument } from "@expeditionplan/core";
+import { PlanPatch, plural } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { applyPatch, type ChatTurn, geoapifyLookup, groundPlaces, type OpResult, patchDiff, tunePlan, withCoordinates } from "@expeditionplan/planner";
-import { dbErrorMessage, lockedRefs, type PullPayload, refIndex, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { applyPatch, type ChatTurn, type OpResult, tunePlan } from "@expeditionplan/planner";
+import { dbErrorMessage, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
 import { aiAccessError, plannerDeps } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
-import { countriesFor } from "@/lib/countries";
+import { loadForPatch, savePatchedPlan } from "@/lib/patch-save";
 
 /**
  * Etap 3 AI na webie: polecenie → łatka (ai_runs stage `tune`, rozmowa w ai_messages) → podgląd →
@@ -18,21 +18,7 @@ import { countriesFor } from "@/lib/countries";
  */
 
 
-async function load(tripId: string) {
-  const { supabase } = await requireUser(`/trips/${tripId}/tune`);
-  const [pulled, membership, briefRow] = await Promise.all([
-    supabase.rpc("pull_changes", { p_trip: tripId, p_since: 0 }),
-    supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle(),
-    supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle(),
-  ]);
-  if (pulled.error) return { error: dbErrorMessage(pulled.error) } as const;
-  if (pulled.data === null) return { error: "Nie ma takiego wyjazdu." } as const;
-  if (membership.data?.role !== "owner" && membership.data?.role !== "editor") return { error: "Dostrajać plan może organizator albo edytor." } as const;
-  const payload = pulled.data as PullPayload;
-  const locked = lockedRefs(payload.tables);
-  const brief = TripBrief.safeParse(briefRow.data?.brief);
-  return { supabase, payload, doc: stateFromPayload(payload).doc, locked, brief: brief.success ? brief.data : null } as const;
-}
+const load = (tripId: string) => loadForPatch(tripId, `/trips/${tripId}/tune`, "Dostrajać plan może organizator albo edytor.");
 
 /** Polecenie → łatka do podglądu (nic się nie zapisuje w planie). */
 export async function proposePatch(tripId: string, _prev: FormState, form: FormData): Promise<FormState> {
@@ -89,7 +75,7 @@ export async function proposePatch(tripId: string, _prev: FormState, form: FormD
   return { ok: "Propozycja gotowa — sprawdź podgląd i zastosuj albo odrzuć." };
 }
 
-/** „Zastosuj”: łatka od nowa na świeżym planie (ktoś mógł go zmienić), nowe miejsca w Geoapify, zapis. */
+/** „Zastosuj”: łatka od nowa na świeżym planie (ktoś mógł go zmienić), nowe i przeszukiwane miejsca w Geoapify, zapis. */
 export async function acceptPatch(tripId: string, runId: string): Promise<FormState> {
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
@@ -100,36 +86,8 @@ export async function acceptPatch(tripId: string, runId: string): Promise<FormSt
 
   const applied = applyPatch(loaded.doc, patch.data, loaded.locked, uuidv7);
   if (!applied.results.some((result) => result.ok)) return { error: "Żadnej zmiany nie da się już zastosować." };
-  let doc = applied.doc;
-  // Ugruntowanie nowych miejsc (współrzędne) — błąd usługi nie blokuje zapisu.
-  const newPlaces = doc.places.filter((place) => !loaded.doc.places.some((old) => old.ref === place.ref));
-  const key = process.env.GEOAPIFY_API_KEY ?? "";
-  const countries = countriesFor(loaded.brief, doc.trip.primaryTz);
-  if (newPlaces.length > 0 && key !== "" && countries.length > 0) {
-    try {
-      const anchors = doc.places.flatMap((place) => (place.lat !== undefined && place.lng !== undefined ? [{ lat: place.lat, lng: place.lng }] : []));
-      const found = await groundPlaces(
-        newPlaces.map((place) => ({ ref: place.ref, name: place.name, ...(place.searchName ? { searchName: place.searchName } : {}) })),
-        { countries, kind: loaded.brief?.location.kind ?? "region", lookup: geoapifyLookup(key), anchors },
-      );
-      doc = {
-        ...doc,
-        places: doc.places.map((place) => {
-          const hit = found.find((result) => result.ref === place.ref);
-          return hit?.status === "found" ? withCoordinates(place, hit.hit, { openingHours: true }) : place;
-        }),
-      };
-    } catch {
-      // bez współrzędnych — „Uzupełnij współrzędne” albo przypięcie ręczne dokończą
-    }
-  }
-  const checked = TripDocument.safeParse(doc);
-  if (!checked.success) return { error: `Nie zapisano: ${checked.error.issues[0]?.message ?? ""}` };
-  try {
-    await saveMergeEdit(loaded.supabase, tripId, patchDiff(loaded.doc, checked.data), refIndex(loaded.payload.tables));
-  } catch (e) {
-    return { error: `Nie zapisano: ${e instanceof Error ? e.message : String(e)}` };
-  }
+  const saved = await savePatchedPlan(loaded.supabase, tripId, loaded, applied.doc);
+  if ("error" in saved) return saved;
   await loaded.supabase.from("ai_runs").update({ status: "accepted" }).eq("id", runId);
   refresh();
   const skipped = applied.results.filter((result) => !result.ok).length;

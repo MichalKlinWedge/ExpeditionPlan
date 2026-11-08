@@ -89,3 +89,33 @@ export const NOTE_TOPIC: Record<string, string> = {
 
 /** Zapas czasu w dniu (`schedule.slack`). */
 export const SLACK_LABEL = { large: 'duży zapas', small: 'mały zapas', none: 'bez zapasu', negative: 'dzień się nie spina' };
+
+/** Obszar propozycji z przeglądu planu z AI (`ReviewCategory`). */
+export const REVIEW_CATEGORY: Record<string, string> = {
+  schedule: 'harmonogram',
+  routes: 'trasy i przejazdy',
+  map: 'mapa',
+  descriptions: 'opisy',
+  meals: 'posiłki',
+  variants: 'plan B',
+  other: 'inne',
+};
+
+/** Środek przejazdu (`LegMode`). */
+export const LEG_MODE: Record<string, string> = {
+  walk: 'pieszo',
+  hike: 'trekking',
+  car: 'samochód',
+  rental_car: 'wynajęte auto',
+  taxi: 'taksówka',
+  hired_driver: 'kierowca',
+  bus: 'autobus',
+  metro: 'metro',
+  tram: 'tramwaj',
+  train: 'pociąg',
+  ferry: 'prom',
+  boat: 'łódź',
+  cable_car: 'kolejka',
+  flight: 'samolot',
+  bike: 'rower',
+};

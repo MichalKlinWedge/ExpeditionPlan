@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { IsoDate } from './common.ts';
 import { PriceBasis } from './price.ts';
-import { ContactRole, ItemKind, Ref, TripDocumentShape } from './trip-document.ts';
+import { ContactRole, ItemKind, LegMode, Ref, TripDocumentShape } from './trip-document.ts';
 
 /**
  * Wyniki etapów łańcucha AI (SPECYFIKACJA §4). Etap 1 to warianty szkieletu wyjazdu, etap 2 —
@@ -218,6 +218,16 @@ const PatchItem = z.object({
   /** Nazwa do wyszukania w OpenStreetMap (lokalna albo angielska). */
   searchName: z.string().optional(),
   description: z.string().optional(),
+  /** Tylko przy `kind: transport`: środek, czas i dystans przejazdu, skąd/dokąd po nazwie miejsca. */
+  leg: z
+    .object({
+      mode: LegMode,
+      durationMin: minutes.optional(),
+      distanceKm: z.number().nonnegative().optional(),
+      from: z.string().optional(),
+      to: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const PatchOp = z.discriminatedUnion('op', [
@@ -231,6 +241,25 @@ export const PatchOp = z.discriminatedUnion('op', [
     field: z.enum(['title', 'durationMin', 'start', 'description']),
     value: z.union([z.string(), z.number()]),
   }),
+  /**
+   * Przejazd (`kind: transport`): środek, czas, dystans, skąd/dokąd (nazwy miejsc planu albo nowe).
+   * Czasu z trasy (`routed`) się nie nadpisuje szacunkiem — kod odrzuci taką zmianę czasu.
+   */
+  z.object({
+    op: z.literal('set_leg'),
+    itemRef: Ref,
+    mode: LegMode.optional(),
+    durationMin: minutes.optional(),
+    distanceKm: z.number().nonnegative().optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+    reason: z.string().optional(),
+  }),
+  /**
+   * Miejsce na mapie: nazwa do wyszukania w OpenStreetMap, gdy miejsca nie ma na mapie albo pinezka
+   * jest podejrzanie daleko. Współrzędne dokłada kod (Geoapify) przy zastosowaniu — AI ich nie podaje.
+   */
+  z.object({ op: z.literal('set_place'), placeRef: Ref, searchName: text, reason: z.string().optional() }),
   /**
    * Plan B dla dnia (pogoda, zamknięcie, samopoczucie): obecny plan dnia zostaje wariantem A,
    * wariant B zastępuje wskazane punkty nowymi. Nic nie znika z planu — decyzję podejmuje się na miejscu.
@@ -261,3 +290,37 @@ export const PlanPatch = z.object({
 
 export type PatchOp = z.infer<typeof PatchOp>;
 export type PlanPatch = z.infer<typeof PlanPatch>;
+
+/** Obszar propozycji z przeglądu planu (`REVIEW_CATEGORY` w labels). */
+export const ReviewCategory = z.enum(['schedule', 'routes', 'map', 'descriptions', 'meals', 'variants', 'other']);
+export type ReviewCategory = z.infer<typeof ReviewCategory>;
+
+/**
+ * Przegląd planu z AI: niezależne propozycje, każda z własną łatką. Człowiek stosuje albo odrzuca
+ * każdą osobno (porównanie z planem), więc żadna nie może zależeć od innej.
+ */
+export const PlanReview = z.object({
+  /** Dwa–trzy zdania o planie: co jest dobre, co najbardziej wymaga poprawy. */
+  summary: text,
+  suggestions: z
+    .array(
+      z.object({
+        category: ReviewCategory,
+        /** Krótko, co zmienić: „Dzień 3: obiad przed wąwozem, nie po”. */
+        title: text,
+        /** Dlaczego — z faktów planu (ostrzeżenie silnika, odległość, brak opisu). */
+        why: text,
+        ops: z.array(PatchOp).min(1).max(8),
+      }),
+    )
+    .max(14),
+});
+export type PlanReview = z.infer<typeof PlanReview>;
+
+/** Przegląd zapisany w `ai_runs.output` (stage `review`): propozycje z numerami i co już z nimi zrobiono. */
+export const StoredReview = z.object({
+  review: PlanReview.extend({ suggestions: z.array(PlanReview.shape.suggestions.element.extend({ id: z.string() })) }),
+  applied: z.array(z.string()).default([]),
+  dismissed: z.array(z.string()).default([]),
+});
+export type StoredReview = z.infer<typeof StoredReview>;
