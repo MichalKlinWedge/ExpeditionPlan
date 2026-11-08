@@ -7,6 +7,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
 import { InfoIcon, SparkIcon } from "@/components/icons";
+import { PlaceLink } from "@/components/place-pin";
 import { DayConstraints, DayEndField, DayNotes, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
@@ -424,7 +425,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
               selected={selected}
               onSelect={(ref) => select(ref, "list")}
               weather={weather[mapDay.ref]}
-              tripId={tripId}
+              // Pinezki do strony Miejsca tylko dla członków — publiczny link jej nie ma.
+              tripId={guidedOnly ? undefined : tripId}
               itemBase={itemBase}
               guided={guided}
               guidedOnly={guidedOnly}
@@ -860,7 +862,7 @@ type DayProps = {
   numbers: Record<string, number> | null;
   selected: string | null;
   onSelect: (ref: string) => void;
-  /** Pinezka przy polu miejsca w edycji punktu (strona Miejsca). */
+  /** Pinezka przy polu miejsca w edycji punktu i przy noclegu (strona Miejsca). */
   tripId?: string;
   itemBase?: string;
   guided?: string[];
@@ -1177,6 +1179,11 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     {lodging.booking?.code ? ` · kod ${lodging.booking.code}` : ""}
                   </span>
                   {lodging.booking !== undefined && onBooking !== null && <BookingButton onClick={() => onBooking(lodging.booking!.ref)} />}
+                  {tripId !== undefined && lodging.placeRef !== undefined && (
+                    <span className="ml-1.5 inline-flex align-middle">
+                      <PlaceLink tripId={tripId} place={{ ref: lodging.placeRef, name: lodging.name }} />
+                    </span>
+                  )}
                   {!lodging.onMap && (
                     <span title="Miejsce noclegu bez współrzędnych — „Uzupełnij współrzędne miejsc” albo własna pinezka" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
                       brak na mapie
