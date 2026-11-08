@@ -34,6 +34,7 @@ import { EateriesCard } from '@/features/plan/eateries-card';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ItemFactsCard } from '@/features/plan/item-facts';
 import { type PlanChoice, PlanPlace } from '@/features/plan/plan-place';
+import { PlacePin } from '@/features/plan/place-pin';
 import { TrackCard } from '@/features/plan/track-card';
 
 /**
@@ -251,9 +252,13 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
             <ThemedText type="smallBold">Gdzie jemy</ThemedText>
             {mealEateries(doc, item.ref).map((eatery, _, all) => {
               const label = `${all.length > 1 && eatery.active ? '✓ ' : ''}${eatery.name}`;
+              const spot = doc.places.find((each) => each.ref === eatery.placeRef);
               return (
                 <View key={eatery.placeRef} style={styles.eatery}>
-                  {onMeal ? <Button small label={label} onPress={() => onMeal(item.ref)} /> : <ThemedText type="small">{label}</ThemedText>}
+                  <View style={styles.eateryName}>
+                    {onMeal ? <Button small label={label} onPress={() => onMeal(item.ref)} /> : <ThemedText type="small">{label}</ThemedText>}
+                    {spot && <PlacePin place={spot} />}
+                  </View>
                   {eatery.summary ? (
                     <ThemedText type="small" themeColor="textSecondary" style={styles.eaterySummary}>
                       {eatery.summary}
@@ -345,6 +350,7 @@ const styles = StyleSheet.create({
   eateries: { gap: Spacing.one },
   eatery: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
   eaterySummary: { flexShrink: 1 },
+  eateryName: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.two },
   fill: { flex: 1 },
   top: { flexDirection: 'row', paddingHorizontal: Spacing.four, paddingVertical: Spacing.three },
   content: { gap: Spacing.three, padding: Spacing.four, paddingTop: 0 },

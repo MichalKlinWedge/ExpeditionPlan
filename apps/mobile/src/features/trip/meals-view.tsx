@@ -14,11 +14,13 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Spacing } from "@/constants/theme";
+import { PlacePin } from "@/features/plan/place-pin";
 
 /**
  * Posiłki na telefonie, offline: dzień po dniu, z przypiętymi knajpami (✓ = wybrana w „gdzie jemy?”), jak lista na
  * webowych „Posiłkach”, ale bez mapy. Dotknięcie posiłku otwiera jego szczegóły. Posiłki z niewybranych wariantów są
- * na liście, ale nie liczą się do porcji (`selfCookedTotals`).
+ * na liście, ale nie liczą się do porcji (`selfCookedTotals`). Pinezka przy knajpie (i miejscu posiłku bez knajp)
+ * otwiera je w Mapach Google.
  */
 
 const people = (each: { adults: number; children: number }) =>
@@ -37,6 +39,10 @@ export function MealsView({
   onOpenItem: (itemRef: string) => void;
 }) {
   const doc = trip.state.doc;
+  const placeOf = (ref: string | undefined) =>
+    ref === undefined
+      ? undefined
+      : doc.places.find((place) => place.ref === ref);
   const meals = mealList(doc, { allVariants: true });
   const days = mealDays(doc, meals);
   const own = selfCookedTotals(meals);
@@ -80,6 +86,8 @@ export function MealsView({
         ...day.meals.map((meal) => {
           const time = mealTime(doc, meal);
           const eateries = mealEateries(doc, meal.itemRef);
+          const spot =
+            eateries.length === 0 ? placeOf(meal.placeRef) : undefined;
           const details = [
             eateries.length === 0 && meal.place,
             meal.at &&
@@ -111,23 +119,34 @@ export function MealsView({
                   ) : null}
                 </ThemedText>
                 {details !== "" && (
-                  <ThemedText type="small">{details}</ThemedText>
+                  <View style={styles.place}>
+                    <ThemedText type="small" style={styles.grow}>
+                      {details}
+                    </ThemedText>
+                    {spot && <PlacePin place={spot} />}
+                  </View>
                 )}
-                {eateries.map((eatery) => (
-                  <ThemedText
-                    key={eatery.placeRef}
-                    type="small"
-                    themeColor={
-                      eatery.active || eateries.length === 1
-                        ? "text"
-                        : "textSecondary"
-                    }
-                  >
-                    {eateries.length > 1 && eatery.active ? "✓ " : "· "}
-                    {eatery.name}
-                    {eatery.summary ? ` · ${eatery.summary}` : ""}
-                  </ThemedText>
-                ))}
+                {eateries.map((eatery) => {
+                  const place = placeOf(eatery.placeRef);
+                  return (
+                    <View key={eatery.placeRef} style={styles.place}>
+                      <ThemedText
+                        type="small"
+                        style={styles.grow}
+                        themeColor={
+                          eatery.active || eateries.length === 1
+                            ? "text"
+                            : "textSecondary"
+                        }
+                      >
+                        {eateries.length > 1 && eatery.active ? "✓ " : "· "}
+                        {eatery.name}
+                        {eatery.summary ? ` · ${eatery.summary}` : ""}
+                      </ThemedText>
+                      {place && <PlacePin place={place} />}
+                    </View>
+                  );
+                })}
                 {variants.length > 0 && (
                   <ThemedText type="small" themeColor="textSecondary">
                     {variants.length === 1 ? "Wariant" : "Warianty"}:{" "}
@@ -149,4 +168,6 @@ const styles = StyleSheet.create({
   list: { gap: Spacing.two },
   day: { marginTop: Spacing.two },
   card: { borderRadius: 12, padding: Spacing.three, gap: Spacing.half },
+  place: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
+  grow: { flex: 1 },
 });
