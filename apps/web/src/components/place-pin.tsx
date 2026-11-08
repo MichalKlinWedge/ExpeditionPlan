@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { PinIcon } from "@/components/icons";
 
@@ -13,10 +16,24 @@ export function PlacePin({ tripId, places, name }: { tripId: string; places: rea
   return <PlaceLink tripId={tripId} place={place} className="btn-mini my-0 shrink-0 justify-center self-stretch px-2" size="size-5" />;
 }
 
-/** Sama pinezka do znanego miejsca (np. w tekście karty punktu). */
+/**
+ * Sama pinezka do znanego miejsca (np. w tekście karty punktu). Kliknięcie dopisuje `wroc` = bieżąca strona,
+ * żeby „←” na stronie Miejsca wracał tam, skąd przyszliśmy (link otwierany w nowej karcie go nie ma).
+ */
 export function PlaceLink({ tripId, place, className = "btn-mini shrink-0 px-1.5", size = "size-4" }: { tripId: string; place: { ref: string; name: string }; className?: string; size?: string }) {
+  const router = useRouter();
+  const href = `/trips/${tripId}/places?miejsce=${encodeURIComponent(place.ref)}`;
   return (
-    <Link href={`/trips/${tripId}/places?miejsce=${encodeURIComponent(place.ref)}`} title={`„${place.name}” w Miejscach`} aria-label={`Pokaż „${place.name}” w Miejscach`} className={className}>
+    <Link
+      href={href}
+      onClick={(event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        router.push(`${href}&wroc=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      }}
+      title={`„${place.name}” w Miejscach`}
+      aria-label={`Pokaż „${place.name}” w Miejscach`}
+      className={className}>
       <PinIcon className={size} />
     </Link>
   );

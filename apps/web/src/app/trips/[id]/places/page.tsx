@@ -31,7 +31,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
   const { id } = await params;
   // Wejście z listy wszystkich miejsc: to miejsce jest od razu wybrane.
   const query = await searchParams;
-  const { miejsce } = query;
+  const { miejsce, wroc } = query;
   const { supabase } = await requireUser(`/trips/${id}/places`);
   const [{ data, error }, membership] = await Promise.all([supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }), supabase.from("my_trips").select("role").eq("id", id).maybeSingle()]);
   if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
@@ -53,11 +53,13 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
     return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, similar: similar[place.ref] ?? [], guide: placeGuide(doc.items, rows, ids, place.ref) }];
   });
 
+  const back = backLink(id, doc, wroc);
+
   return (
     <>
       <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {doc.trip.title}
+        <Link href={back?.href ?? `/trips/${id}`} className="back-link">
+          ← {back?.label ?? doc.trip.title}
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h1 className="text-2xl font-semibold">Miejsca</h1>
@@ -73,4 +75,23 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
       {places.length === 0 ? <p className="text-sm text-zinc-500">Ten plan nie ma jeszcze miejsc.</p> : <PlacesView tripId={id} places={places} canEdit={canEdit} hasRouted={doc.items.some((item) => item.leg?.routed === true)} initial={typeof miejsce === "string" ? miejsce : null} />}
     </>
   );
+}
+
+/** Wejście z pinezki (`wroc`): powrót na tę stronę wyjazdu, np. do karty punktu. Inny adres jest pomijany. */
+function backLink(tripId: string, doc: TripDocument, wroc: string | string[] | undefined): { href: string; label: string } | null {
+  if (typeof wroc !== "string" || !wroc.startsWith(`/trips/${tripId}/`) || wroc.includes("//") || wroc.includes("\\")) return null;
+  const path = wroc.split("?")[0]!;
+  const item = /\/item\/([^/]+)$/.exec(path);
+  if (item) {
+    let ref = item[1]!;
+    try {
+      ref = decodeURIComponent(ref);
+    } catch {}
+    const title = doc.items.find((each) => each.ref === ref)?.title;
+    return { href: wroc, label: title ?? "Punkt planu" };
+  }
+  if (path.endsWith("/plan")) return { href: wroc, label: "Plan dzień po dniu" };
+  if (path.endsWith("/logistics")) return { href: wroc, label: "Rezerwacje i budżet" };
+  if (path.endsWith("/people")) return { href: wroc, label: "Uczestnicy i dostęp" };
+  return { href: wroc, label: "Wróć" };
 }
