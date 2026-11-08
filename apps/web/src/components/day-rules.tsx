@@ -29,6 +29,7 @@ import {
   updateNote,
   updateVariant,
   updateVariantGroup,
+  type Variant,
   type VariantGroup,
 } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
@@ -92,19 +93,10 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules, field }: V
           <div key={group.ref} className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-zinc-500">{group.title}:</span>
-              {variants.map((variant) => (
-                <button
-                  key={variant.ref}
-                  onClick={() => onChoose(group.ref, variant.ref)}
-                  title={variant.summary}
-                  className={`rounded-full border-2 px-3 py-1 transition ${active.has(variant.ref) ? "border-sea bg-sea-light font-semibold text-sea dark:bg-sea/20 dark:text-teal-300" : "border-zinc-300 text-zinc-500 hover:border-sea dark:border-zinc-700"}`}>
-                  {variant.label}
-                  {variant.recommended ? " ★" : ""}
-                </button>
-              ))}
+              <VariantChoice group={group} variants={variants} active={active} onChoose={onChoose} />
               {onRules && (
                 <button onClick={() => setEditing(editing === group.ref ? null : group.ref)} className="btn-mini">
-                  {editing === group.ref ? "zamknij" : "zmień"}
+                  {editing === group.ref ? "zamknij edycję" : "edytuj"}
                 </button>
               )}
             </div>
@@ -131,6 +123,76 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules, field }: V
           </button>
         ))}
     </>
+  );
+}
+
+/**
+ * Wybór wariantu jak na telefonie: widać tylko wybrany wariant, a „Zmień” otwiera okno z wariantami
+ * grupy (★ = polecany, krótki opis, plusy i minusy); kliknięcie wariantu wybiera go i zamyka okno.
+ */
+function VariantChoice({ group, variants, active, onChoose }: { group: VariantGroup; variants: Variant[]; active: Set<string>; onChoose: (groupRef: string, variantRef: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const chosen = variants.find((variant) => active.has(variant.ref));
+  const name = (variant: Variant) => `${variant.label}${variant.recommended ? " ★" : ""}`;
+  return (
+    <>
+      <span title={chosen?.summary} className="rounded-full border-2 border-sea bg-sea-light px-3 py-1 font-semibold text-sea dark:bg-sea/20 dark:text-teal-300">
+        {chosen === undefined ? "nie wybrano" : name(chosen)}
+      </span>
+      {variants.length > 1 && (
+        <button type="button" onClick={() => setOpen(true)} className="btn-mini">
+          Zmień
+        </button>
+      )}
+      {open && (
+        <VariantDialog
+          title={group.title}
+          onClose={() => setOpen(false)}
+          options={variants.map((variant) => ({ variant, name: name(variant), on: active.has(variant.ref) }))}
+          onPick={(variantRef) => {
+            setOpen(false);
+            if (!active.has(variantRef)) onChoose(group.ref, variantRef);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function VariantDialog({ title, options, onPick, onClose }: { title: string; options: { variant: Variant; name: string; on: boolean }[]; onPick: (variantRef: string) => void; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      onClose={onClose}
+      onClick={(event) => {
+        // Kliknięcie w tło (poza oknem) zamyka, jak na telefonie.
+        if (event.target === dialog.current) dialog.current?.close();
+      }}
+      className="card m-auto flex max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100vw-2rem))] flex-col gap-2 overflow-y-auto p-4 text-sm backdrop:bg-black/40">
+      <h2 className="card-title">{title}</h2>
+      <ul className="flex flex-col">
+        {options.map(({ variant, name, on }) => (
+          <li key={variant.ref} className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800">
+            <button type="button" onClick={() => onPick(variant.ref)} aria-pressed={on} className={`flex w-full flex-col gap-0.5 rounded px-2 py-2.5 text-left hover:bg-sea-light dark:hover:bg-sea/20 ${on ? "font-semibold text-sea dark:text-teal-300" : ""}`}>
+              <span>
+                {on ? "✓ " : ""}
+                {name}
+              </span>
+              {variant.summary && <span className="font-normal text-zinc-600 dark:text-zinc-400">{variant.summary}</span>}
+              {variant.pros.length > 0 && <span className="font-normal text-zinc-500">+ {variant.pros.join(" · ")}</span>}
+              {variant.cons.length > 0 && <span className="font-normal text-zinc-500">− {variant.cons.join(" · ")}</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={() => dialog.current?.close()} className="btn-secondary btn-sm self-end">
+        Anuluj
+      </button>
+    </dialog>
   );
 }
 
