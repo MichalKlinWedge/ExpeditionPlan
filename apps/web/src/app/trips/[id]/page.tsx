@@ -113,7 +113,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("trip_brief").select("id").eq("trip_id", id).maybeSingle(),
     supabase.from("my_trips").select("id, title, role").neq("id", id).order("start_date"),
     supabase.from("tasks").select("id", { count: "exact", head: true }).eq("trip_id", id).eq("status", "open").is("deleted_at", null),
-    supabase.from("variant_groups").select("id", { count: "exact", head: true }).eq("trip_id", id).is("chosen_variant_id", null).is("deleted_at", null),
+    supabase.from("variant_groups").select("voting_open").eq("trip_id", id).is("chosen_variant_id", null).is("deleted_at", null),
     supabase.from("trips").select("date_poll").eq("id", id).maybeSingle(),
     loadNews(supabase as unknown as SupabaseClient, id),
     loadReadiness(supabase as unknown as SupabaseClient, id),
@@ -121,6 +121,8 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   if (trip.data === null) notFound();
   const wavering = (travelers.data ?? []).filter((person) => person.tentative).length;
   const role = trip.data.role!;
+  // Uczestnik liczy tylko wybory z otwartym głosowaniem.
+  const toDecide = (undecided.data ?? []).filter((group) => role === "owner" || role === "editor" || group.voting_open === true).length;
   const canEdit = role === "owner" || role === "editor";
   const postponed = isPostponed(trip.data);
   // Szkic AI → plan: ze szkicu link do planu o tej samej nazwie, z planu wybór szkicu (szkice AI na górze).
@@ -172,7 +174,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
         <Tile href={`/trips/${id}/guides`} icon={<ArticleIcon />} title="Opisy miejsc" hint="przejrzyj, przygotuj od nowa, popraw" />
         <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, wydatki" />
         <Tile href={`/trips/${id}/tasks`} icon={<ListIcon />} title="Zadania" hint={(tasks.count ?? 0) > 0 ? `do zrobienia: ${tasks.count}` : "przed wyjazdem i w trakcie"} />
-        {!title.startsWith(DRAFT) && <Tile href={`/trips/${id}/votes`} icon={<BallotIcon />} title="Głosowanie" hint={poll.data?.date_poll ? "termin i warianty: zagłosuj" : (undecided.count ?? 0) > 0 ? `do decyzji: ${undecided.count}` : "warianty, kandydaci, termin"} />}
+        {!title.startsWith(DRAFT) && <Tile href={`/trips/${id}/votes`} icon={<BallotIcon />} title="Głosowanie" hint={poll.data?.date_poll ? "termin i warianty: zagłosuj" : toDecide > 0 ? `do decyzji: ${toDecide}` : "warianty, kandydaci, termin"} />}
         <Tile href={`/trips/${id}/gear`} icon={<BackpackIcon />} title="Sprzęt" hint="co zabrać, kto bierze rzeczy wspólne" />
         {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/meals`} icon={<MealIcon />} title="Posiłki" hint="dzień po dniu, ile osób, porcje" />}
         <Tile href={`/trips/${id}/shopping`} icon={<CartIcon />} title="Lista zakupów" hint="wspólne zakupy na wyjazd" />

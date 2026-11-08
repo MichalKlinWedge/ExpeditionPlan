@@ -378,6 +378,8 @@ export const DocVariantGroup = z.object({
   /** Termin decyzji: godzina dnia (`dayRef`) albo konkretna chwila lokalna. */
   decideBy: z.union([ZonedLocal, z.object({ time: LocalTime })]).optional(),
   chosenRef: Ref.optional(),
+  /** Głosowanie otwarte dla uczestników (strona „Głosowanie”); brak = tylko organizator i edytor. */
+  votingOpen: z.boolean().optional(),
   /** Uzasadnienie wyboru („Dlaczego wariant A”). */
   rationale: z.string().optional(),
   /** Tabela porównania: nagłówki kolumn i wiersz wartości per wariant. */

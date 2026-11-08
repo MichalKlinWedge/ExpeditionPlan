@@ -136,7 +136,7 @@ export const SPECS: Record<Collection, Spec> = {
   },
   variantGroups: {
     table: 'variant_groups',
-    fields: ['scope', ['dayRef', 'day_id'], 'title', 'conditionKind', 'conditionText', 'decideBy', ['chosenRef', 'chosen_variant_id'], 'rationale', 'comparison'],
+    fields: ['scope', ['dayRef', 'day_id'], 'title', 'conditionKind', 'conditionText', 'decideBy', ['chosenRef', 'chosen_variant_id'], 'votingOpen', 'rationale', 'comparison'],
   },
   variants: {
     table: 'variants',

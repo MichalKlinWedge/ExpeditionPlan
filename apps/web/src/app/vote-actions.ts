@@ -70,6 +70,25 @@ export async function chooseVariant(tripId: string, groupRef: string, variantRef
   return { ok: "Wybrano wariant." };
 }
 
+/** Otwiera albo zamyka głosowanie uczestników nad grupą wariantów (głosy zostają). */
+export async function setVotingOpen(tripId: string, groupRef: string, open: boolean): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/votes`);
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { doc } = stateFromPayload(pulled.payload);
+  const group = doc.variantGroups.find((each) => each.ref === groupRef);
+  if (group === undefined) return { error: "Tego wyboru już nie ma — odśwież stronę." };
+  const next = { ...group, votingOpen: true };
+  if (!open) delete (next as Partial<typeof next>).votingOpen;
+  try {
+    await saveElements(supabase, tripId, doc, [{ collection: "variantGroups", element: next, op: "update" }], refIndex(pulled.payload.tables));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  refresh();
+  return { ok: open ? "Otwarto głosowanie." : "Zamknięto głosowanie." };
+}
+
 /** Okno ankiety terminu; puste „od” usuwa ankietę (głosy zostają w bazie). */
 export async function saveDatePoll(tripId: string, _prev: FormState, form: FormData): Promise<FormState> {
   const from = String(form.get("from") ?? "").trim();

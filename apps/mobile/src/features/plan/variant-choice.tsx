@@ -16,9 +16,11 @@ export type Voting = { votes: Votes; voterRef: string | null; onVote: (groupRef:
 /**
  * Wybór wariantu w planie dnia: tylko wybrany wariant i „Zmień”, które otwiera okno z wariantami
  * grupy (★ = polecany, krótki opis, plusy i minusy). Wybór idzie do `onChoose` jak dotąd. Z `voting` przy każdym
- * wariancie są głosy i „Głosuję” — głos to podpowiedź dla organizatora, wyboru nie zmienia.
+ * wariancie są głosy i „Głosuję” — głos to podpowiedź dla organizatora, wyboru nie zmienia. Tylko w grupach,
+ * nad którymi organizator otworzył głosowanie (`votingOpen`).
  */
 export function VariantChoice({ doc, group, active, onChoose, voting }: { doc: TripDocument; group: Group; active: ReadonlySet<string>; onChoose: (groupRef: string, variantRef: string) => void; voting?: Voting | null }) {
+  if (group.votingOpen !== true) voting = null;
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const variants = doc.variants.filter((variant) => variant.groupRef === group.ref);

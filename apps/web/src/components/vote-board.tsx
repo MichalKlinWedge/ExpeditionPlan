@@ -4,13 +4,14 @@ import { addDays, DAY_ANSWER, type DayAnswer, type DatePoll, dayChip, dayMonth, 
 import { useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { castVote, chooseVariant, saveAvailability, saveDatePoll } from "@/app/vote-actions";
+import { castVote, chooseVariant, saveAvailability, saveDatePoll, setVotingOpen } from "@/app/vote-actions";
 import { RescheduleDialog } from "@/components/trip-reschedule";
 
 /**
  * Tablica głosowania: za kogo głosuję, ankieta terminu (kalendarz dostępności i najlepsze terminy)
  * oraz grupy wariantów z wynikami. Głos zapisuje się od razu (wariant) albo przyciskiem (dostępność);
- * „Wybieram”, okno ankiety i „Ustaw ten termin” są dla organizatora i edytora w trybie edycji.
+ * „Wybieram”, okno ankiety i „Ustaw ten termin” są dla organizatora i edytora w trybie edycji, tak jak
+ * otwieranie głosowania nad grupą: zamkniętą grupę widzą (i mogą w niej głosować) tylko oni.
  */
 
 export type BoardPerson = { ref: string; id: string; name: string; mine: boolean; account: boolean };
@@ -23,6 +24,8 @@ export type BoardGroup = {
   condition: string | null;
   decideBy: string | null;
   chosenRef: string | null;
+  /** Uczestnicy widzą i mogą głosować; zamkniętą widzą tylko organizator i edytor. */
+  votingOpen: boolean;
   options: BoardOption[];
   indifferent: string[];
   missing: string[];
@@ -42,6 +45,8 @@ type Props = {
   dayCounts: Record<string, { yes: number; maybe: number; no: number }>;
   trip: { startDate: string; endDate: string; today: string };
   canEdit: boolean;
+  /** Organizator albo edytor (niezależnie od trybu edycji). */
+  mayEdit: boolean;
 };
 
 const card = "card flex flex-col gap-3 p-4";
@@ -77,7 +82,15 @@ export function VoteBoard(props: Props) {
 
       <section className={card}>
         <h2 className="card-title">Warianty i kandydaci ({open.length} do decyzji)</h2>
-        {groups.length === 0 && <p className="text-sm text-zinc-500">W planie nie ma wyborów z co najmniej dwoma wariantami.</p>}
+        {groups.length === 0 && (
+          <p className="text-sm text-zinc-500">{props.mayEdit ? "W planie nie ma wyborów z co najmniej dwoma wariantami." : "Organizator nie otworzył jeszcze głosowania nad żadnym wyborem."}</p>
+        )}
+        {props.mayEdit && groups.length > 0 && (
+          <p className="text-xs text-zinc-500">
+            Uczestnicy widzą tylko wybory z otwartym głosowaniem ({groups.filter((group) => group.votingOpen).length} z {groups.length}).
+            {props.canEdit ? " Otwierasz je przyciskiem przy wyborze." : " Otwierasz je po „Edytuj”."}
+          </p>
+        )}
         {open.map((group) => (
           <GroupCard key={group.ref} tripId={props.tripId} group={group} person={person} canEdit={props.canEdit} />
         ))}
@@ -110,6 +123,16 @@ function GroupCard({ tripId, group, person, canEdit }: { tripId: string; group: 
         <p className="font-medium">{group.title}</p>
         <span className="text-xs text-zinc-500">{[group.where, group.decideBy ? `decyzja do ${group.decideBy}` : null].filter(Boolean).join(" · ")}</span>
       </div>
+      {(canEdit || !group.votingOpen) && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className={group.votingOpen ? "chip" : "chip text-zinc-500"}>{group.votingOpen ? "głosowanie otwarte dla wszystkich" : "głosowanie zamknięte: widzisz je tylko Ty i edytorzy"}</span>
+          {canEdit && (
+            <button type="button" disabled={pending} onClick={() => run(() => setVotingOpen(tripId, group.ref, !group.votingOpen))} className="btn-mini">
+              {group.votingOpen ? "zamknij głosowanie" : "otwórz głosowanie"}
+            </button>
+          )}
+        </div>
+      )}
       {group.condition && <p className="text-xs text-zinc-500">{group.condition}</p>}
       <ul className="flex flex-col gap-2">
         {group.options.map((option) => {

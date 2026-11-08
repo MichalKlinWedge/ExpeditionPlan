@@ -65,7 +65,8 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
   });
   people.sort((a, b) => Number(b.mine) - Number(a.mine));
 
-  const groups: BoardGroup[] = votingGroups(doc).map((group) => {
+  // Uczestnik widzi tylko wybory, nad którymi organizator otworzył głosowanie.
+  const groups: BoardGroup[] = votingGroups(doc).filter((group) => mayEdit || group.votingOpen === true).map((group) => {
     const day = doc.days.find((each) => each.ref === group.dayRef);
     const tally = groupTally(doc, group.ref, votes);
     return {
@@ -76,6 +77,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
       condition: group.conditionText ?? null,
       decideBy: decideByText(group) ?? null,
       chosenRef: group.chosenRef ?? null,
+      votingOpen: group.votingOpen === true,
       options: tally.options.map((option) => {
         const variant = doc.variants.find((each) => each.ref === option.variantRef)!;
         return { ...option, id: ids[option.variantRef]!, summary: variant.summary ?? null };
@@ -109,7 +111,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         </div>
         {mayEdit && <EditToggle editing={mayEdit && wantsEdit} />}
       </div>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">Głos to podpowiedź dla organizatora: wybór wariantu i termin ustala on (albo edytor). Wyniki widzą wszyscy uczestnicy.</p>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">Głos to podpowiedź dla organizatora: wybór wariantu i termin ustala on (albo edytor). Głosować można nad wyborami, które otworzył; wyniki widzą wszyscy uczestnicy.</p>
       <VoteBoard
         tripId={id}
         people={people}
@@ -122,6 +124,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         dayCounts={dayCounts}
         trip={{ startDate: doc.trip.startDate, endDate: doc.trip.endDate, today }}
         canEdit={mayEdit && wantsEdit}
+        mayEdit={mayEdit}
       />
     </>
   );

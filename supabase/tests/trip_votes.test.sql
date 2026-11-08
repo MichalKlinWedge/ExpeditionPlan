@@ -1,9 +1,10 @@
 -- Głosowanie (migracja *_trip_votes): każdy głosuje za siebie i swoje dziecko, organizator też za osobę bez
 -- konta, widz nie głosuje za innych, obcy niczego nie widzi; wariant musi należeć do grupy wyjazdu,
--- a ankietę terminu zmienia tylko organizator lub edytor. Uruchomienie: npm run test:db
+-- a ankietę terminu zmienia tylko organizator lub edytor. W zamkniętym głosowaniu (bez voting_open) głosuje
+-- tylko organizator i edytor. Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000000d1', 'glos-owner@test.local'),
@@ -51,6 +52,12 @@ select throws_ok($$ insert into public.trip_votes (id, trip_id, traveler_id, var
 select lives_ok($$ update public.trips set date_poll = '{"from":"2027-01-01","to":"2027-02-28"}' where id = '1d000000-0000-4000-8000-000000000001' $$,
   'organizator zakłada ankietę terminu');
 
+select pg_temp.login('00000000-0000-4000-8000-0000000000d2');
+select throws_ok($$ insert into public.trip_votes (id, trip_id, traveler_id, variant_group_id, variant_id) values
+  ('5d000000-0000-4000-8000-000000000005', '1d000000-0000-4000-8000-000000000001', '2d000000-0000-4000-8000-000000000002',
+   '3d000000-0000-4000-8000-000000000001', '4d000000-0000-4000-8000-000000000002') $$, '23514', null, 'widz nie głosuje w zamkniętym głosowaniu');
+select pg_temp.login('00000000-0000-4000-8000-0000000000d1');
+update public.variant_groups set voting_open = true where id = '3d000000-0000-4000-8000-000000000001';
 select pg_temp.login('00000000-0000-4000-8000-0000000000d2');
 select lives_ok($$ insert into public.trip_votes (id, trip_id, traveler_id, variant_group_id, variant_id) values
   ('5d000000-0000-4000-8000-000000000005', '1d000000-0000-4000-8000-000000000001', '2d000000-0000-4000-8000-000000000002',

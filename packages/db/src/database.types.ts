@@ -1285,14 +1285,14 @@ isOneToOne: false
                   ]
                 },"variant_groups": {
                   Row: {
-                    "chosen_variant_id": string | null,"comparison": Json | null,"condition_kind": string,"condition_text": string | null,"created_at": string,"day_id": string | null,"decide_by": Json | null,"deleted_at": string | null,"id": string,"rationale": string | null,"ref": string | null,"row_version": number,"scope": string,"sort_key": string | null,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null
+                    "chosen_variant_id": string | null,"comparison": Json | null,"condition_kind": string,"condition_text": string | null,"created_at": string,"day_id": string | null,"decide_by": Json | null,"deleted_at": string | null,"id": string,"rationale": string | null,"ref": string | null,"row_version": number,"scope": string,"sort_key": string | null,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"voting_open": boolean | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "chosen_variant_id"?: string | null,"comparison"?: Json | null,"condition_kind": string,"condition_text"?: string | null,"created_at"?: string,"day_id"?: string | null,"decide_by"?: Json | null,"deleted_at"?: string | null,"id": string,"rationale"?: string | null,"ref"?: string | null,"row_version"?: number,"scope": string,"sort_key"?: string | null,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null
+                    "chosen_variant_id"?: string | null,"comparison"?: Json | null,"condition_kind": string,"condition_text"?: string | null,"created_at"?: string,"day_id"?: string | null,"decide_by"?: Json | null,"deleted_at"?: string | null,"id": string,"rationale"?: string | null,"ref"?: string | null,"row_version"?: number,"scope": string,"sort_key"?: string | null,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"voting_open"?: boolean | null
                   }
                   Update: {
-                    "chosen_variant_id"?: string | null,"comparison"?: Json | null,"condition_kind"?: string,"condition_text"?: string | null,"created_at"?: string,"day_id"?: string | null,"decide_by"?: Json | null,"deleted_at"?: string | null,"id"?: string,"rationale"?: string | null,"ref"?: string | null,"row_version"?: number,"scope"?: string,"sort_key"?: string | null,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "chosen_variant_id"?: string | null,"comparison"?: Json | null,"condition_kind"?: string,"condition_text"?: string | null,"created_at"?: string,"day_id"?: string | null,"decide_by"?: Json | null,"deleted_at"?: string | null,"id"?: string,"rationale"?: string | null,"ref"?: string | null,"row_version"?: number,"scope"?: string,"sort_key"?: string | null,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"voting_open"?: boolean | null
                   }
                   Relationships: [
                     {

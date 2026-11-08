@@ -49,6 +49,9 @@ revoke all on public.trip_votes from anon;
 revoke delete on public.trip_votes from authenticated;
 
 -- Wariant musi należeć do grupy, a grupa i osoba do tego wyjazdu (klient podaje id).
+-- Głosowanie nad grupą wariantów otwiera organizator (albo edytor); bez flagi uczestnicy jej nie widzą.
+alter table public.variant_groups add column voting_open boolean;
+
 create function public.check_trip_vote() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
@@ -60,6 +63,11 @@ begin
   end if;
   if new.variant_id is not null and not exists (select 1 from public.variants where id = new.variant_id and group_id = new.variant_group_id) then
     raise exception 'Wariant nie należy do tego głosowania.' using errcode = '23514';
+  end if;
+  -- Zamknięte głosowanie: głosuje tylko organizator i edytor; wycofać głos (deleted_at) może każdy.
+  if new.variant_group_id is not null and new.deleted_at is null and not public.can_edit_trip(new.trip_id)
+     and not exists (select 1 from public.variant_groups where id = new.variant_group_id and voting_open is true) then
+    raise exception 'Organizator nie otworzył tego głosowania.' using errcode = '23514';
   end if;
   return new;
 end $$;
