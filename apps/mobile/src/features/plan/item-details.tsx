@@ -36,6 +36,7 @@ import { ItemFactsCard } from '@/features/plan/item-facts';
 import { type PlanChoice, PlanPlace } from '@/features/plan/plan-place';
 import { PlacePin } from '@/features/plan/place-pin';
 import { TrackCard } from '@/features/plan/track-card';
+import { TrackProfileCard } from '@/features/plan/track-profile';
 
 /**
  * Szczegóły punktu na telefonie: miejsce z „Nawiguj”, opis, notatki, linki i przewodnik
@@ -271,6 +272,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         )}
         {item.kind === 'meal' && !item.selfCooked && online && tripId !== undefined && <EateriesCard trip={trip} tripId={tripId} item={item} onSave={onSaveEatOut} />}
         <TrackCard doc={doc} item={item} />
+        <TrackProfileCard trip={trip} item={item} plan={plan} />
 
         {guide !== null && (
           <View style={styles.guide}>

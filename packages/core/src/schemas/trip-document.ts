@@ -695,6 +695,28 @@ export const DocTrack = z.object({
   geojson: z
     .object({ type: z.literal('LineString'), coordinates: z.array(z.array(z.number()).min(2).max(3)).min(2) })
     .optional(),
+  /** Woda, schroniska i zejścia awaryjne wzdłuż śladu z OpenStreetMap (`core/track-pois.ts`), pobrane na kliknięcie. */
+  pois: z
+    .object({
+      fetchedAt: IsoDate,
+      items: z.array(
+        z.object({
+          kind: z.enum(['water', 'shelter', 'exit']),
+          /** Rodzaj z OSM, np. `spring`, `alpine_hut`, `bus_stop` (`TRACK_POI_TYPE`). */
+          type: z.string(),
+          name: z.string().optional(),
+          lat: z.number(),
+          lng: z.number(),
+          /** Km od startu śladu i odległość od niego (m). */
+          km: z.number().nonnegative(),
+          offM: z.number().int().nonnegative(),
+          /** Woda: `true` pitna, `false` niepitna wg OSM; brak = nie wiadomo. */
+          potable: z.boolean().optional(),
+          osmId: z.string(),
+        }),
+      ),
+    })
+    .optional(),
 });
 
 // ---------------------------------------------------------------------------------------------

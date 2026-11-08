@@ -49,7 +49,7 @@ const flat = (point: TrackPoint): LngLat => [point[0], point[1]];
  * Podejścia i zejścia po punktach zwrotnych: zmiana kierunku liczy się dopiero, gdy wysokość
  * odejdzie od szczytu (dołka) o `thresholdM` — szum GPS i barometru nie dokłada metrów.
  */
-function climb(points: readonly TrackPoint[], thresholdM = 5): { ascentM: number; descentM: number } | null {
+export function trackClimb(points: readonly TrackPoint[], thresholdM = 5): { ascentM: number; descentM: number } | null {
   const heights = points.map((point) => point[2]).filter((height): height is number => height !== undefined);
   if (heights.length < points.length * 0.8 || heights.length < 2) return null;
   let ascent = 0;
@@ -91,12 +91,12 @@ export function trackStats(points: readonly TrackPoint[]): TrackStats {
   let meters = 0;
   for (let i = 1; i < points.length; i++) meters += distanceM(flat(points[i - 1]!), flat(points[i]!));
   const distanceKm = Math.round(meters / 100) / 10;
-  const heights = climb(points);
+  const heights = trackClimb(points);
   return { distanceKm, ascentM: heights?.ascentM ?? null, descentM: heights?.descentM ?? null, durationMin: hikingMinutes(distanceKm, heights?.ascentM ?? 0, heights?.descentM ?? 0) };
 }
 
 /** Odległość punktu od odcinka w metrach i położenie rzutu na odcinku (0…1), w rzucie płaskim wokół punktu. */
-function project(point: LngLat, a: LngLat, b: LngLat): { offM: number; t: number } {
+export function projectOnSegment(point: LngLat, a: LngLat, b: LngLat): { offM: number; t: number } {
   const scale = Math.cos((point[1] * Math.PI) / 180);
   const M = 111_320;
   const ax = (a[0] - point[0]) * scale * M;
@@ -126,7 +126,7 @@ export function simplifyTrack(points: readonly TrackPoint[], maxPoints = 1500, t
     let worst = -1;
     let index = -1;
     for (let i = from + 1; i < to; i++) {
-      const { offM } = project(flat(points[i]!), flat(points[from]!), flat(points[to]!));
+      const { offM } = projectOnSegment(flat(points[i]!), flat(points[from]!), flat(points[to]!));
       if (offM > worst) {
         worst = offM;
         index = i;
@@ -172,7 +172,7 @@ export function trackPosition(line: TrackLine, here: { lat: number; lng: number 
   const point: LngLat = [here.lng, here.lat];
   let best = { offM: Infinity, segment: 0, t: 0 };
   for (let i = 1; i < points.length; i++) {
-    const { offM, t } = project(point, flat(points[i - 1]!), flat(points[i]!));
+    const { offM, t } = projectOnSegment(point, flat(points[i - 1]!), flat(points[i]!));
     if (offM < best.offM) best = { offM, segment: i - 1, t };
   }
   let done = 0;
@@ -184,7 +184,7 @@ export function trackPosition(line: TrackLine, here: { lat: number; lng: number 
     else if (i - 1 === best.segment) done += length * best.t;
   }
   const rest = points.slice(best.segment + 1);
-  const heights = climb(rest);
+  const heights = trackClimb(rest);
   return {
     offTrackM: Math.round(best.offM),
     doneKm: Math.round(done / 100) / 10,

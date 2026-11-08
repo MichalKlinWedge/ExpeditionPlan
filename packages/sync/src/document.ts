@@ -163,7 +163,7 @@ export const SPECS: Record<Collection, Spec> = {
   },
   tracks: {
     table: 'tracks',
-    fields: ['name', 'distanceKm', 'ascentM', 'descentM', 'durationMin', 'durationMaxMin', 'difficulty', 'waymarking', 'routeNotes', 'url', 'geojson'],
+    fields: ['name', 'distanceKm', 'ascentM', 'descentM', 'durationMin', 'durationMaxMin', 'difficulty', 'waymarking', 'routeNotes', 'url', 'geojson', 'pois'],
   },
   items: {
     table: 'items',

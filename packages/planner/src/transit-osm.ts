@@ -8,7 +8,7 @@ import { type LngLat, OSM_ROUTE_TYPES, type OsmRoute } from '@expeditionplan/cor
  */
 
 export const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
-const UA = 'ExpeditionPlan/0.1 (https://github.com/MichalKlinWedge/ExpeditionPlan)';
+export const OVERPASS_UA = 'ExpeditionPlan/0.1 (https://github.com/MichalKlinWedge/ExpeditionPlan)';
 
 export type Bbox = { south: number; west: number; north: number; east: number };
 
@@ -80,7 +80,7 @@ export async function fetchOsmRoutes(
   const fetchImpl = options.fetchImpl ?? fetch;
   const response = await fetchImpl(options.url ?? OVERPASS_URL, {
     method: 'POST',
-    headers: { 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { 'User-Agent': OVERPASS_UA, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ data: overpassQuery(refs, bbox, types) }).toString(),
     signal: AbortSignal.timeout(options.timeoutMs ?? 40_000),
   });

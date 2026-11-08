@@ -17,6 +17,7 @@ import { ItemPlanNav } from "@/components/item-plan-nav";
 import { ItemTexts } from "@/components/item-texts";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
+import { TrackProfile } from "@/components/track-profile";
 import { TrackUpload } from "@/components/track-upload";
 import { TransitDetails, TransitEditor } from "@/components/transit-editor";
 import { Loading, Shell } from "@/components/shell";
@@ -220,6 +221,8 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
           {canEdit && <TrackUpload tripId={id} itemRef={item.ref} hasLine={track?.geojson !== undefined} />}
         </section>
       )}
+
+      {track?.geojson !== undefined && <TrackProfile tripId={id} doc={doc} inputs={inputs} itemRef={item.ref} canEdit={canEdit} />}
 
       {transit !== null && (editing || transit.length > 0) && (
         <section id="przejazd-komunikacja" className="card flex scroll-mt-4 flex-col gap-2 p-4 text-sm">

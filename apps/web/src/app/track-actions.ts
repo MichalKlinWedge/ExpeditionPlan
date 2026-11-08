@@ -1,6 +1,7 @@
 "use server";
 
-import { DocTrack, formatMinutes, type ItemRouteFields, setItemRoute, setTrackEnds, trackEndsNote, TripDocument } from "@expeditionplan/core";
+import { DocTrack, formatMinutes, type ItemRouteFields, localToday, setItemRoute, setTrackEnds, setTrackPois, trackEndsNote, trackLine, type TrackPoi, TripDocument } from "@expeditionplan/core";
+import { fetchTrackPois, OVERPASS_URL } from "@expeditionplan/planner";
 import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
@@ -128,6 +129,36 @@ export async function saveItemRoute(tripId: string, itemRef: string, fields: z.i
       return "Zapisano trasę.";
     },
   );
+}
+
+/**
+ * Woda, schroniska i zejścia awaryjne wzdłuż śladu z OpenStreetMap (Overpass, serwer FOSSGIS) — na
+ * kliknięcie, jedno zapytanie. Warunki serwera wymagają e-maila operatora na stronie (`CONTACT_EMAIL`,
+ * „Pomoc”), więc bez niego nie pytamy. Wynik zostaje w śladzie, więc telefon ma go offline.
+ */
+export async function findTrackPois(tripId: string, itemRef: string): Promise<FormState> {
+  if (!process.env.CONTACT_EMAIL) return { error: "Nie pobrano: serwer nie ma ustawionego CONTACT_EMAIL (warunek serwera OpenStreetMap Overpass)." };
+  const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const doc = stateFromPayload(pulled.payload).doc;
+  const item = doc.items.find((each) => each.ref === itemRef);
+  const current = doc.tracks.find((track) => track.ref === item?.activity?.trackRef);
+  const line = current === undefined ? undefined : trackLine(current);
+  if (current === undefined || line === undefined) return { error: "Ten punkt nie ma śladu GPX." };
+  let found: TrackPoi[];
+  try {
+    found = await fetchTrackPois(line, { url: process.env.OVERPASS_URL || OVERPASS_URL });
+  } catch (e) {
+    return { error: `Nie pobrano z OpenStreetMap: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  return commit(tripId, itemRef, (fresh) => {
+    const set = setTrackPois(fresh, current.ref, found, localToday());
+    if (set === null) return "Ślad zmienił się w międzyczasie — odśwież stronę.";
+    const count = (kind: TrackPoi["kind"]) => found.filter((poi) => poi.kind === kind).length;
+    const summary = found.length === 0 ? "Sprawdzone." : `Przy śladzie: woda ${count("water")}, schronienia ${count("shelter")}, zejścia ${count("exit")}.`;
+    return { doc: set.doc, writes: [{ collection: "tracks", element: set.track, op: "update" }], ok: summary };
+  });
 }
 
 /** Usuwa samą linię śladu; opis trasy (nazwa, trudność, oznakowanie) zostaje w planie. */
