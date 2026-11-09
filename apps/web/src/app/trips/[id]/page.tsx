@@ -168,32 +168,45 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
       {news !== null && <TripNews tripId={id} news={news} now={new Date().getTime()} />}
       {readiness !== null && !postponed && !title.startsWith(DRAFT) && <TripReadiness tripId={id} issues={readiness.issues} daysLeft={readiness.daysLeft} people={role === "owner" ? readiness.people : null} />}
 
-      {/* Przy dwóch kolumnach ostatni kafelek bez pary zajmuje cały wiersz. */}
-      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>:last-child:nth-child(odd)]:col-span-2">
-        {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/plan`} icon={<RouteIcon />} title="Plan dzień po dniu" hint="godziny, trasy, słońce" />}
-        <Tile href={`/trips/${id}/places`} icon={<PinIcon />} title="Miejsca" hint="nazwy i współrzędne, co z nich korzysta" />
-        <Tile href={`/trips/${id}/guides`} icon={<ArticleIcon />} title="Opisy miejsc" hint="przejrzyj, przygotuj od nowa, popraw" />
-        <Tile href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, wydatki" />
-        <Tile href={`/trips/${id}/tasks`} icon={<ListIcon />} title="Zadania" hint={(tasks.count ?? 0) > 0 ? `do zrobienia: ${tasks.count}` : "przed wyjazdem i w trakcie"} />
-        {!title.startsWith(DRAFT) && <Tile href={`/trips/${id}/votes`} icon={<BallotIcon />} title="Głosowanie" hint={poll.data?.date_poll ? "termin i warianty: zagłosuj" : toDecide > 0 ? `do decyzji: ${toDecide}` : "warianty, kandydaci, termin"} />}
-        <Tile href={`/trips/${id}/gear`} icon={<BackpackIcon />} title="Sprzęt" hint="co zabrać, kto bierze rzeczy wspólne" />
-        {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/meals`} icon={<MealIcon />} title="Posiłki" hint="dzień po dniu, ile osób, porcje" />}
-        <Tile href={`/trips/${id}/shopping`} icon={<CartIcon />} title="Lista zakupów" hint="wspólne zakupy na wyjazd" />
-        <Tile href={`/trips/${id}/contacts`} icon={<PhoneIcon />} title="Kontakty" hint="gospodarze, wypożyczalnie, numery alarmowe" />
-        <Tile href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />
-        <Tile href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />
-        {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />}
-        {!title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/show`} icon={<FilmIcon />} title={SHOW_PAGES.preview.title} hint={SHOW_PAGES.preview.about} />}
-        {!title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/film`} icon={<ClapperIcon />} title={SHOW_PAGES.film.title} hint={SHOW_PAGES.film.about} />}
-        <Tile href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.error ? "Błąd odczytu uczestników" : `${travelers.data.length} os. jedzie${wavering > 0 ? ` (waha się: ${wavering})` : ""}`} · ${members.count ?? 0} z dostępem`} />
-        {canEdit && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />}
-        {canEdit && !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile href={`/trips/${id}/compare?review=1`} icon={<SparkIcon />} title="Propozycje AI" hint="przegląd planu: trasy, mapa, opisy obok planu" />}
-        <Tile href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />
-        {compareHref !== null && (
-          <Tile href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />
-        )}
-        {(days.count ?? 0) > 0 && <Tile href={`/trips/${id}/print`} icon={<PrinterIcon />} title="Wydruk / PDF" hint="plan na papierze, bez telefonu" />}
-        {!title.startsWith(DRAFT) && !postponed && trip.data.start_date! <= new Date().toISOString().slice(0, 10) && <Tile href={`/trips/${id}/memories`} icon={<PeakIcon />} title="Pamiątka z wyjazdu" hint="liczby, trasa, zdjęcia dzień po dniu" />}
+      {/* Kafelki w trzech grupach, w tej samej kolejności co pasek ikon (`components/trip-nav.tsx`). Przy dwóch kolumnach ostatni kafelek bez pary zajmuje cały wiersz. */}
+      <nav className="flex flex-col gap-3">
+        {[
+          [
+            (days.count ?? 0) > 0 && <Tile key="plan" href={`/trips/${id}/plan`} icon={<RouteIcon />} title="Plan dzień po dniu" hint="godziny, trasy, słońce" />,
+            <Tile key="tasks" href={`/trips/${id}/tasks`} icon={<ListIcon />} title="Zadania" hint={(tasks.count ?? 0) > 0 ? `do zrobienia: ${tasks.count}` : "przed wyjazdem i w trakcie"} />,
+            <Tile key="people" href={`/trips/${id}/people`} icon={<PeopleIcon />} title="Uczestnicy i dostęp" hint={`${travelers.error ? "Błąd odczytu uczestników" : `${travelers.data.length} os. jedzie${wavering > 0 ? ` (waha się: ${wavering})` : ""}`} · ${members.count ?? 0} z dostępem`} />,
+            <Tile key="logistics" href={`/trips/${id}/logistics`} icon={<TicketIcon />} title="Rezerwacje i budżet" hint="noclegi, auto, wydatki" />,
+            <Tile key="documents" href={`/trips/${id}/documents`} icon={<VaultIcon />} title="Sejf dokumentów" hint="bilety, vouchery, kody QR" />,
+            (days.count ?? 0) > 0 && <Tile key="meals" href={`/trips/${id}/meals`} icon={<MealIcon />} title="Posiłki" hint="dzień po dniu, ile osób, porcje" />,
+            <Tile key="gear" href={`/trips/${id}/gear`} icon={<BackpackIcon />} title="Sprzęt" hint="co zabrać, kto bierze rzeczy wspólne" />,
+            <Tile key="shopping" href={`/trips/${id}/shopping`} icon={<CartIcon />} title="Lista zakupów" hint="wspólne zakupy na wyjazd" />,
+            <Tile key="practical" href={`/trips/${id}/practical`} icon={<InfoIcon />} title="Informacje praktyczne" hint="numery, zwyczaje, pogoda" />,
+            <Tile key="contacts" href={`/trips/${id}/contacts`} icon={<PhoneIcon />} title="Kontakty" hint="gospodarze, wypożyczalnie, numery alarmowe" />,
+            <Tile key="places" href={`/trips/${id}/places`} icon={<PinIcon />} title="Miejsca" hint="nazwy i współrzędne, co z nich korzysta" />,
+            <Tile key="guides" href={`/trips/${id}/guides`} icon={<ArticleIcon />} title="Opisy miejsc" hint="przejrzyj, przygotuj od nowa, popraw" />,
+            (days.count ?? 0) > 0 && <Tile key="print" href={`/trips/${id}/print`} icon={<PrinterIcon />} title="Wydruk / PDF" hint="plan na papierze, bez telefonu" />,
+            !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile key="show" href={`/trips/${id}/show`} icon={<FilmIcon />} title={SHOW_PAGES.preview.title} hint={SHOW_PAGES.preview.about} />,
+          ],
+          [
+            <Tile key="brief" href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />,
+            compareHref !== null && <Tile key="compare" href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />,
+            !title.startsWith(DRAFT) && <Tile key="votes" href={`/trips/${id}/votes`} icon={<BallotIcon />} title="Głosowanie" hint={poll.data?.date_poll ? "termin i warianty: zagłosuj" : toDecide > 0 ? `do decyzji: ${toDecide}` : "warianty, kandydaci, termin"} />,
+            canEdit && (days.count ?? 0) > 0 && <Tile key="tune" href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />,
+            canEdit && !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile key="review" href={`/trips/${id}/compare?review=1`} icon={<SparkIcon />} title="Propozycje AI" hint="przegląd planu: trasy, mapa, opisy obok planu" />,
+          ],
+          [
+            !title.startsWith(DRAFT) && !postponed && trip.data.start_date! <= new Date().toISOString().slice(0, 10) && <Tile key="memories" href={`/trips/${id}/memories`} icon={<PeakIcon />} title="Pamiątka z wyjazdu" hint="liczby, trasa, zdjęcia dzień po dniu" />,
+            !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile key="film" href={`/trips/${id}/film`} icon={<ClapperIcon />} title={SHOW_PAGES.film.title} hint={SHOW_PAGES.film.about} />,
+            (days.count ?? 0) > 0 && <Tile key="journal" href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />,
+          ],
+        ]
+          .map((group) => group.filter((tile) => tile !== false && tile !== null))
+          .filter((group) => group.length > 0)
+          .map((group, index) => (
+            <div key={index} className={`grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>:last-child:nth-child(odd)]:col-span-2 ${index > 0 ? "border-t border-zinc-200 pt-3 dark:border-zinc-800" : ""}`}>
+              {group}
+            </div>
+          ))}
       </nav>
 
       {/* Eksport to plik (route handler), nie strona — zwykłe <a>. */}

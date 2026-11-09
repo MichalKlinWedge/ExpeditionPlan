@@ -17,29 +17,32 @@ import { createClient } from "@/lib/supabase/client";
  * Pod ikonami nazwa wyjazdu i jego daty, żeby na każdej podstronie było widać, którego wyjazdu dotyczy.
  */
 
+/** Ta sama kolejność i te same grupy co kafelki na stronie wyjazdu (`app/trips/[id]/page.tsx`); `null` = odstęp między grupami. */
 const SECTIONS = [
   { path: "", title: "Wyjazd — wszystkie sekcje", Icon: CompassIcon },
   { path: "plan", title: "Plan dzień po dniu", Icon: RouteIcon },
+  { path: "tasks", title: "Zadania", Icon: ListIcon },
+  { path: "people", title: "Uczestnicy i dostęp", Icon: PeopleIcon },
+  { path: "logistics", title: "Rezerwacje i budżet", Icon: TicketIcon },
+  { path: "documents", title: "Sejf dokumentów", Icon: VaultIcon },
+  { path: "meals", title: "Posiłki", Icon: MealIcon },
+  { path: "gear", title: "Sprzęt", Icon: BackpackIcon },
+  { path: "shopping", title: "Lista zakupów", Icon: CartIcon },
+  { path: "practical", title: "Informacje praktyczne", Icon: InfoIcon },
+  { path: "contacts", title: "Kontakty", Icon: PhoneIcon },
   { path: "places", title: "Miejsca", Icon: PinIcon },
   { path: "guides", title: "Opisy miejsc", Icon: ArticleIcon },
-  { path: "logistics", title: "Rezerwacje i budżet", Icon: TicketIcon },
-  { path: "tasks", title: "Zadania", Icon: ListIcon },
-  { path: "votes", title: "Głosowanie", Icon: BallotIcon },
-  { path: "gear", title: "Sprzęt", Icon: BackpackIcon },
-  { path: "meals", title: "Posiłki", Icon: MealIcon },
-  { path: "shopping", title: "Lista zakupów", Icon: CartIcon },
-  { path: "contacts", title: "Kontakty", Icon: PhoneIcon },
-  { path: "documents", title: "Sejf dokumentów", Icon: VaultIcon },
-  { path: "practical", title: "Informacje praktyczne", Icon: InfoIcon },
-  { path: "journal", title: "Dziennik", Icon: BookIcon },
-  { path: "people", title: "Uczestnicy i dostęp", Icon: PeopleIcon },
-  { path: "tune", title: "Dostrajanie z AI", Icon: SparkIcon },
+  { path: "print", title: "Wydruk / PDF", Icon: PrinterIcon },
+  { path: "show", title: "Pokaz z lektorem", Icon: FilmIcon },
+  null,
   { path: "brief", title: "Brief wyjazdu", Icon: NoteIcon },
   { path: "compare", title: "Porównanie ze szkicem", Icon: CompareIcon },
-  { path: "print", title: "Wydruk / PDF", Icon: PrinterIcon },
+  { path: "votes", title: "Głosowanie", Icon: BallotIcon },
+  { path: "tune", title: "Dostrajanie z AI", Icon: SparkIcon },
+  null,
   { path: "memories", title: "Pamiątka z wyjazdu", Icon: PeakIcon },
-  { path: "show", title: "Pokaz z lektorem", Icon: FilmIcon },
   { path: "film", title: "Film z wyjazdu", Icon: ClapperIcon },
+  { path: "journal", title: "Dziennik", Icon: BookIcon },
 ] as const;
 
 type Access = { canEdit: boolean; started: boolean; title: string; dates: string | null; postponed: boolean };
@@ -81,7 +84,9 @@ export function TripNav({ width }: { width: string }) {
   return (
     <nav aria-label="Sekcje wyjazdu" className="border-b border-zinc-200 bg-[var(--background)] dark:border-zinc-800">
       <ul className={`mx-auto flex w-full ${width} gap-1.5 overflow-x-auto px-4 py-2 sm:flex-wrap sm:gap-1 sm:overflow-visible`}>
-        {SECTIONS.map(({ path, title, Icon }) => {
+        {SECTIONS.map((section, index) => {
+          if (section === null) return <li key={`odstep-${index}`} aria-hidden className="mx-1 w-px shrink-0 self-stretch bg-zinc-300 dark:bg-zinc-700" />;
+          const { path, title, Icon } = section;
           const active = path === current;
           const hidden = ((path === "tune" || path === "compare") && !access?.canEdit) || (path === "memories" && !access?.started);
           if (hidden && !active) return null;
