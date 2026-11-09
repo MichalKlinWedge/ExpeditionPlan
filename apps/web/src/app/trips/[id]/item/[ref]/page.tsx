@@ -297,9 +297,9 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
 
       {/* Zdjęcia na końcu karty: wpisy dziennika przy punkcie, nowy wpis i połączenie z wpisami dodanymi wcześniej. */}
       {itemId !== undefined && day !== undefined && (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold">Zdjęcia{photos.length > 0 ? ` (${photos.length})` : ""}</h2>
+        <section className="card flex flex-col gap-3 p-4 text-sm">
+          <div className="card-title flex flex-wrap items-center justify-between gap-2">
+            <h2>Zdjęcia{photos.length > 0 ? ` (${photos.length})` : ""}</h2>
             <Link href={`/trips/${id}/journal`} className="btn-mini">
               cały dziennik
             </Link>
