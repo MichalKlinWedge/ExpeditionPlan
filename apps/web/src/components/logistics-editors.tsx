@@ -1,6 +1,6 @@
 "use client";
 
-import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestion, CONTACT_ROLE, formatMoneyRange, fxLine, lineTravelerNames, moneyToInput, PRICE_BASIS, type TripDocument } from "@expeditionplan/core";
+import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestion, CONTACT_ROLE, formatMoney, formatMoneyRange, fxLine, lineTravelerNames, moneyToInput, PRICE_BASIS, type TripDocument } from "@expeditionplan/core";
 import Link from "next/link";
 import { Fragment, type ReactNode, startTransition, useActionState, useEffect, useState, useTransition } from "react";
 
@@ -205,6 +205,10 @@ function BudgetForm({ tripId, line, currency, people, cars, onDone }: { tripId: 
         <label className="flex items-center gap-1 text-xs">
           <input name="perPerson" type="checkbox" defaultChecked={line?.perPerson ?? false} /> na osobę
         </label>
+        <label className="flex items-center gap-1 text-xs text-zinc-500" title="Część kwoty już zapłacona (łącznie, w walucie pozycji). Reszta liczy się do wydania.">
+          zapłacony zadatek
+          <input name="deposit" defaultValue={line?.depositMinor ? moneyToInput(line.depositMinor) : ""} placeholder="0" inputMode="decimal" className={`${input} w-24`} />
+        </label>
         <input name="note" defaultValue={line?.note} placeholder="notatka" className={`${input} min-w-32 flex-1`} aria-label="Notatka" />
       </div>
       {cars.length > 0 && (
@@ -276,6 +280,7 @@ export function BudgetLines({ tripId, lines, currency, people, cars = [], canEdi
                     ) : (
                       lineTravelerNames(people, line) !== null && <span className="block text-xs text-zinc-500">dotyczy: {lineTravelerNames(people, line)!.join(", ")}</span>
                     )}
+                    {line.status !== "paid" && line.depositMinor ? <span className="block text-xs text-zinc-500">zapłacony zadatek: {formatMoney(line.depositMinor, line.currency)}</span> : null}
                     {line.note ? <span className="block text-xs text-zinc-500">{line.note}</span> : null}
                   </td>
                   <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{BUDGET_CATEGORY[line.category] ?? line.category}</td>

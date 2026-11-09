@@ -599,6 +599,8 @@ export const DocBudgetLine = z
     highMinor: MinorAmount,
     currency: Currency,
     perPerson: z.boolean().default(false),
+    /** Zadatek już zapłacony (łącznie, w walucie pozycji, także przy „na osobę”); reszta zostaje do wydania. Przy „zapłacone” bez znaczenia. */
+    depositMinor: MinorAmount.optional(),
     /** Kogo dotyczy pozycja; brak albo pusto = wszystkich uczestników (także dodanych później). */
     participantRefs: z.array(Ref).optional(),
     /** Koszt jednego auta (paliwo, winiety): dotyczy jego kierowcy i pasażerów (`vehicleTravelers`), nie `participantRefs`. */

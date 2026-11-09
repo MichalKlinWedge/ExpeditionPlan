@@ -100,9 +100,14 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
   const high = highText === "" ? low : parseMoney(highText);
   if (low === null || high === null) return { error: "Kwota: liczba, np. 1200 albo 1200,50." };
   if (low > high) return { error: "Kwota „od” większa niż „do”." };
+  const depositText = text(form, "deposit");
+  const deposit = depositText === "" ? undefined : parseMoney(depositText);
+  if (deposit === null) return { error: "Zadatek: liczba, np. 500 albo 500,50." };
   const currency = text(form, "currency").toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return { error: "Waluta: trzy litery, np. PLN, EUR, MAD." };
   const status = ["estimate", "committed", "paid"].includes(text(form, "status")) ? text(form, "status") : "estimate";
+  const perPerson = form.get("perPerson") === "on";
+  if (deposit !== undefined && !perPerson && deposit > high) return { error: "Zadatek większy niż kwota pozycji." };
   const chosen = form.getAll("for").map(String);
   const vehicle = text(form, "vehicle");
   return change(tripId, "budgetLines", ref, (doc, current) => {
@@ -115,7 +120,9 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
       lowMinor: low,
       highMinor: high,
       currency,
-      perPerson: form.get("perPerson") === "on",
+      perPerson,
+      // Pozycja zapłacona w całości nie potrzebuje zadatku.
+      depositMinor: status === "paid" || deposit === 0 ? undefined : deposit,
       // Wszyscy zaznaczeni to to samo co brak wyboru: osoba dodana później też się liczy. Koszt auta dzielą osoby auta.
       participantRefs: vehicle !== "" || chosen.length === 0 || doc.travelers.every((traveler) => chosen.includes(traveler.ref)) ? undefined : chosen,
       vehicleRef: vehicle === "" ? undefined : vehicle,

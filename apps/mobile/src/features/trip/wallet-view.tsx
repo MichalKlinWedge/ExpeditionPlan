@@ -305,6 +305,7 @@ function BudgetDetails({ doc, budget, spent, money }: { doc: CachedTrip['state']
                       {[
                         BUDGET_LINE_STATUS[line.status],
                         line.perPerson ? `na osobę × ${Math.max(lineTravelers(doc, line).length, 1)}` : null,
+                        line.status !== 'paid' && line.depositMinor ? `zadatek ${formatMoney(line.depositMinor, line.currency)} zapłacony` : null,
                         line.vehicleRef ? `🚗 ${doc.vehicles.find((car) => car.ref === line.vehicleRef)?.label ?? '?'}: ${lineTravelers(doc, line).map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? '?').join(', ')}` : lineTravelerNames(doc.travelers, line) ? `dotyczy: ${lineTravelerNames(doc.travelers, line)!.join(', ')}` : null,
                         line.bookingRef ? bookings.get(line.bookingRef) : null,
                         line.note,

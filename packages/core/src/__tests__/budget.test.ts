@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { budgetSummary, formatMoney, lineTravelerNames, parseMoney, TripDocument, walletSummary } from '../index.ts';
+import { budgetPace, budgetSummary, formatMoney, lineTravelerNames, parseMoney, TripDocument, walletSummary } from '../index.ts';
 
 const load = (slug: string) =>
   TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
@@ -111,5 +111,22 @@ describe('budżet: pozycja dla części osób', () => {
 
   it('odwołanie do nieistniejącej osoby nie przechodzi walidacji', () => {
     expect(TripDocument.safeParse({ ...base, budgetLines: [{ ...line, ref: 'linia', title: 'X', lowMinor: 1, highMinor: 1, participantRefs: ['nie-ma'] }] }).success).toBe(false);
+  });
+
+  it('zadatek jest zapłacony, do wydania zostaje reszta; całość i udziały bez zmian', () => {
+    const doc = withLines({ status: 'committed', lowMinor: 500_000, highMinor: 600_000, depositMinor: 100_000, participantRefs: [a!, b!] });
+    const summary = budgetSummary(doc);
+    expect(summary.paidMinor).toBe(100_000);
+    expect(summary.toSpendLowMinor).toBe(400_000);
+    expect(summary.toSpendHighMinor).toBe(500_000);
+    expect(summary.totalLowMinor).toBe(500_000);
+    expect(share(summary, a!).lowMinor).toBe(250_000);
+    // Tempo wydatków w trakcie nie liczy zadatku zapłaconego wcześniej.
+    expect(budgetPace(doc, [], doc.trip.startDate).categories.find((each) => each.category === 'other')?.plannedLowMinor).toBe(400_000);
+  });
+
+  it('zadatek większy od kwoty liczy się najwyżej jako cała kwota, a przy „zapłacone” nie liczy się wcale', () => {
+    expect(budgetSummary(withLines({ lowMinor: 1000, highMinor: 2000, depositMinor: 5000 }))).toMatchObject({ paidMinor: 1000, toSpendLowMinor: 0, toSpendHighMinor: 1000 });
+    expect(budgetSummary(withLines({ status: 'paid', lowMinor: 1000, highMinor: 1000, depositMinor: 300 }))).toMatchObject({ paidMinor: 1000, toSpendLowMinor: 0 });
   });
 });

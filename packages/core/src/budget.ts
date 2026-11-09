@@ -18,7 +18,7 @@ export type TravelerShare = { ref: string; name: string; lowMinor: number; highM
 export type BudgetSummary = {
   currency: string;
   paidMinor: number;
-  /** Do wydania: pozycje szacowane i zobowiązania — scenariusz oszczędny … wygodny. */
+  /** Do wydania: pozycje szacowane i zobowiązania bez zapłaconych zadatków — scenariusz oszczędny … wygodny. */
   toSpendLowMinor: number;
   toSpendHighMinor: number;
   totalLowMinor: number;
@@ -46,6 +46,15 @@ export function lineTravelers(doc: Doc, line: Doc['budgetLines'][number]): strin
   const car = vehicleTravelers(doc, line.vehicleRef);
   const chosen = car.length > 0 ? car : (line.participantRefs ?? []);
   return doc.travelers.filter((traveler) => chosen.length === 0 || chosen.includes(traveler.ref)).map((traveler) => traveler.ref);
+}
+
+/**
+ * Zadatek pozycji w walucie bazowej: część kwoty już zapłacona, najwyżej cała kwota oszczędna (`lowBase`).
+ * Pozycja „zapłacone” liczy się w całości, więc jej zadatek nie ma znaczenia; waluta bez kursu daje 0.
+ */
+export function lineDeposit(doc: Doc, line: Doc['budgetLines'][number], lowBase: number): number {
+  if (line.status === 'paid' || !line.depositMinor) return 0;
+  return Math.min(toBase(doc, line.depositMinor, line.currency) ?? 0, lowBase);
 }
 
 /** Imiona osób pozycji; `null`, gdy dotyczy wszystkich. */
@@ -86,8 +95,12 @@ export function budgetSummary(doc: Doc): BudgetSummary {
       summary.paidMinor += low;
       category.paidMinor += low;
     } else {
-      summary.toSpendLowMinor += low;
-      summary.toSpendHighMinor += high;
+      // Zadatek jest już zapłacony; do wydania zostaje reszta.
+      const deposit = lineDeposit(doc, line, low);
+      summary.paidMinor += deposit;
+      category.paidMinor += deposit;
+      summary.toSpendLowMinor += low - deposit;
+      summary.toSpendHighMinor += high - deposit;
     }
     category.lowMinor += low;
     category.highMinor += high;

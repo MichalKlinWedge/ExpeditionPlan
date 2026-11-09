@@ -1,4 +1,4 @@
-import { lineTravelers, toBase, type WalletExpense } from './budget.ts';
+import { lineDeposit, lineTravelers, toBase, type WalletExpense } from './budget.ts';
 import { instantToZoned } from './engine/time.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
@@ -61,12 +61,16 @@ export function budgetPace(doc: Doc, expenses: readonly PaceExpense[], today: st
   for (const line of doc.budgetLines) {
     if (line.status === 'paid') continue;
     const times = line.perPerson ? Math.max(lineTravelers(doc, line).length, 1) : 1;
-    const low = toBase(doc, line.lowMinor * times, line.currency);
-    const high = toBase(doc, line.highMinor * times, line.currency);
-    if (low === null || high === null) {
+    const fullLow = toBase(doc, line.lowMinor * times, line.currency);
+    const fullHigh = toBase(doc, line.highMinor * times, line.currency);
+    if (fullLow === null || fullHigh === null) {
       unconverted[line.currency] = (unconverted[line.currency] ?? 0) + line.highMinor * times;
       continue;
     }
+    // Zadatek zapłacony przed wyjazdem nie jest wydatkiem w trakcie.
+    const deposit = lineDeposit(doc, line, fullLow);
+    const low = fullLow - deposit;
+    const high = fullHigh - deposit;
     const target = category(line.category);
     target.plannedLowMinor += low;
     target.plannedHighMinor += high;
