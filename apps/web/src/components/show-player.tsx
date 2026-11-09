@@ -4,10 +4,14 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import { readingMs, type ShowCredits, type ShowImage } from "@expeditionplan/core";
 import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SpeakerIcon } from "@/components/icons";
 import { polishLabels } from "@/components/plan-map";
+
+// Eksport do pliku wideo dopiero na kliknięcie: osobna paczka, tylko w przeglądarce.
+const ShowExport = dynamic(() => import("@/components/show-export").then((module) => module.ShowExport), { ssr: false });
 
 /**
  * Odtwarzacz pokazu z lektorem: mapa sceny (przelot kamery do trasy dnia i rysowanie linii), potem zdjęcia z powolnym
@@ -15,7 +19,7 @@ import { polishLabels } from "@/components/plan-map";
  * tyle, ile czyta się napisy (`readingMs`). Start zawsze z kliknięcia: przeglądarka nie pozwala grać dźwięku bez niego.
  * Film otwiera ekran startowy (nazwa i daty wyjazdu), zamyka ekran końcowy. Lektor wchodzi po chwili ciszy na pierwszej
  * scenie (`LEAD_MS`), a po ostatnim zdaniu jest jeszcze `TAIL_MS` przed ekranem końcowym. Trasy dnia rysują się po kolei.
- * Podkład muzyczny (opcjonalny) gra w pętli: narasta na ekranie startowym, pod lektorem cichnie (`MUSIC_UNDER_VOICE`),
+ * Podkład muzyczny (opcjonalny) gra w pętli od `skipS` (pominięty początek pliku): narasta na ekranie startowym, pod lektorem cichnie (`MUSIC_UNDER_VOICE`),
  * między scenami wraca, a na ekranie końcowym wygasa.
  * Kafle OpenFreeMap (wyświetlanie na żywo, bez pobierania na zapas — docs/USLUGI.md).
  */
@@ -38,9 +42,12 @@ const END_MS = 5_000;
 /** Podkład pod lektorem: ułamek głośności ustawionej przez organizatora. */
 const MUSIC_UNDER_VOICE = 0.3;
 /** Jak szybko podkład dochodzi do docelowej głośności: ułamek różnicy na krok zegara (100 ms). */
-const MUSIC_EASE = 0.2;
+export const MUSIC_EASE = 0.2;
 
-export type PlayerMusic = { url: string; volume: number; name: string };
+export type PlayerMusic = { url: string; volume: number; name: string; /** Pominięty początek pliku (s). */ skipS: number };
+
+/** Miejsce startu podkładu: pominięty początek, chyba że plik jest od niego krótszy. */
+export const musicStart = (music: PlayerMusic, durationS: number) => (Number.isFinite(durationS) && music.skipS >= durationS ? 0 : music.skipS);
 
 export type ShowMapData = { lines: { coordinates: [number, number][]; routed: boolean }[]; pins: { lng: number; lat: number; name: string }[] };
 
@@ -58,7 +65,23 @@ export type PlayerScene = {
 const sceneMs = (scene: PlayerScene) =>
   scene.kind === "title" ? TITLE_MS : scene.kind === "end" ? END_MS : (scene.audio?.durationMs ?? (scene.text.trim() === "" ? 5_000 : readingMs(scene.text)));
 
-const isCard = (scene: PlayerScene) => scene.kind === "title" || scene.kind === "end";
+export const isCard = (scene: PlayerScene) => scene.kind === "title" || scene.kind === "end";
+
+/**
+ * Czas sceny `index`: cisza przed lektorem (tylko pierwsza scena po ekranie startowym), lektor albo czas czytania
+ * napisów i przerwa przed następną (ekrany przechodzą od razu; po ostatniej scenie z lektorem dłuższa).
+ */
+export function sceneTiming(scenes: PlayerScene[], index: number): { lead: number; duration: number; gap: number } {
+  const scene = scenes[index]!;
+  return { lead: index === 1 ? LEAD_MS : 0, duration: sceneMs(scene), gap: isCard(scene) ? 0 : index === scenes.length - 2 ? TAIL_MS : GAP_MS };
+}
+
+/** Które zdjęcie sceny widać po `elapsed` ms (−1: jeszcze mapa); najpierw mapa, potem zdjęcia po równo. */
+export function photoAt(count: number, span: number, elapsed: number): { photo: number; mapPhase: number; perPhoto: number } {
+  const mapPhase = count === 0 ? span : Math.min(Math.max(4_500, span * 0.35), span * 0.6);
+  const perPhoto = count === 0 ? 0 : Math.max((span - mapPhase) / count, 3_000);
+  return { mapPhase, perPhoto, photo: elapsed < mapPhase ? -1 : Math.min(Math.floor((elapsed - mapPhase) / perPhoto), count - 1) };
+}
 
 /** Długość odcinka w przybliżeniu płaskim (stopnie, długość skrócona o cos szerokości): do podziału czasu rysowania. */
 function lengthOf(coordinates: [number, number][]): number[] {
@@ -72,7 +95,7 @@ function lengthOf(coordinates: [number, number][]): number[] {
 }
 
 /** Trasy narysowane do ułamka `progress` całej długości, po kolei: wcześniejsze w całości, bieżąca do miejsca, dalsze wcale. */
-function drawnLines(lines: ShowMapData["lines"], progress: number): ShowMapData["lines"] {
+export function drawnLines(lines: ShowMapData["lines"], progress: number): ShowMapData["lines"] {
   if (progress >= 1) return lines;
   const steps = lines.map((line) => lengthOf(line.coordinates));
   const total = steps.flat().reduce((sum, step) => sum + step, 0);
@@ -99,7 +122,7 @@ function drawnLines(lines: ShowMapData["lines"], progress: number): ShowMapData[
 }
 
 /** Zdania tekstu z udziałem w długości (napisy idą proporcjonalnie do liczby znaków). */
-function sentences(text: string): { text: string; until: number }[] {
+export function sentences(text: string): { text: string; until: number }[] {
   const parts = text.split(/(?<=[.!?…])\s+/).map((part) => part.trim()).filter((part) => part !== "");
   const total = parts.reduce((sum, part) => sum + part.length, 0) || 1;
   let sum = 0;
@@ -124,8 +147,13 @@ function boundsOf(data: ShowMapData): [[number, number], [number, number]] | nul
   return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
 }
 
-function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
+/**
+ * Mapa sceny. `capture`: do eksportu (bufor rysowania zostaje, żeby kadr dało się skopiować na kanwę, piksel 1:1),
+ * `onMap` dostaje gotową mapę.
+ */
+export function ShowMap({ data, sceneKey, capture = false, onMap }: { data: ShowMapData; sceneKey: string; capture?: boolean; onMap?: (map: MapLibreMap) => void }) {
   const container = useRef<HTMLDivElement>(null);
+  const ready = useRef(onMap);
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -143,6 +171,7 @@ function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
           zoom: 2,
           interactive: false,
           attributionControl: false,
+          ...(capture ? { pixelRatio: 1, canvasContextAttributes: { preserveDrawingBuffer: true } } : {}),
         });
         // Przypis u góry: na dole są nagłówek sceny i napisy.
         created.addControl(new maplibre.AttributionControl({ compact: true, customAttribution: '<a href="https://openrouteservice.org/" target="_blank">Trasy: openrouteservice.org</a>' }), "top-left");
@@ -163,6 +192,7 @@ function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
             paint: { "text-color": "#1f2937", "text-halo-color": "#ffffff", "text-halo-width": 2 },
           });
           setMap(created);
+          ready.current?.(created);
         });
       },
       (error: unknown) => setFailure(error instanceof Error ? error.message : String(error)),
@@ -171,7 +201,7 @@ function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
       cancelled = true;
       created?.remove();
     };
-  }, []);
+  }, [capture]);
 
   // Nowa scena: przelot do jej trasy, potem trasy rysują się po kolei, w kolejności planu.
   useEffect(() => {
@@ -204,12 +234,25 @@ function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
 }
 
 /** Docelowa głośność podkładu w tej chwili sceny. */
-function musicLevel(scene: PlayerScene, volume: number, clock: number, speaking: boolean): number {
+export function musicLevel(scene: PlayerScene, volume: number, clock: number, speaking: boolean): number {
   if (scene.kind === "end") return volume * Math.max(0, 1 - clock / (END_MS - 500));
   return speaking ? volume * MUSIC_UNDER_VOICE : volume;
 }
 
-export function ShowPlayer({ scenes: story, credits, trip, music }: { scenes: PlayerScene[]; credits: ShowCredits; trip: { title: string; dates: string }; music?: PlayerMusic }) {
+export function ShowPlayer({
+  scenes: story,
+  credits,
+  trip,
+  music,
+  exportable = false,
+}: {
+  scenes: PlayerScene[];
+  credits: ShowCredits;
+  trip: { title: string; dates: string };
+  music?: PlayerMusic;
+  /** Przycisk eksportu do pliku wideo (w aplikacji; pod publicznym linkiem nie). */
+  exportable?: boolean;
+}) {
   // Ekrany startowy i końcowy: bez lektora, z mapą pierwszej i ostatniej sceny pod spodem (mapa zdąży się wczytać).
   const scenes = useMemo<PlayerScene[]>(() => {
     const first = story[0];
@@ -231,11 +274,9 @@ export function ShowPlayer({ scenes: story, credits, trip, music }: { scenes: Pl
   const [narrated, setNarrated] = useState(0);
   const [subtitles, setSubtitles] = useState(true);
   const [ended, setEnded] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const scene = scenes[index]!;
-  const duration = sceneMs(scene);
-  const lead = index === 1 ? LEAD_MS : 0;
-  // Ekrany przechodzą od razu; po ostatniej scenie z lektorem dłuższa przerwa przed ekranem końcowym.
-  const gap = isCard(scene) ? 0 : index === scenes.length - 2 ? TAIL_MS : GAP_MS;
+  const { lead, duration, gap } = sceneTiming(scenes, index);
   const span = lead + duration;
   const lines = useMemo(() => sentences(scene.text), [scene.text]);
 
@@ -317,8 +358,8 @@ export function ShowPlayer({ scenes: story, credits, trip, music }: { scenes: Pl
   const toggle = () => {
     // Pokaz od początku: podkład też od początku i narasta od ciszy.
     const bed = backing.current;
-    if (bed && (ended || (index === 0 && clock.current === 0))) {
-      bed.currentTime = 0;
+    if (bed && music && (ended || (index === 0 && clock.current === 0))) {
+      bed.currentTime = musicStart(music, bed.duration);
       bed.volume = 0;
     }
     if (ended) {
@@ -351,9 +392,7 @@ export function ShowPlayer({ scenes: story, credits, trip, music }: { scenes: Pl
     return () => window.removeEventListener("keydown", key);
   });
 
-  const mapPhase = scene.images.length === 0 ? span : Math.min(Math.max(4_500, span * 0.35), span * 0.6);
-  const perPhoto = scene.images.length === 0 ? 0 : Math.max((span - mapPhase) / scene.images.length, 3_000);
-  const photo = elapsed < mapPhase ? -1 : Math.min(Math.floor((elapsed - mapPhase) / perPhoto), scene.images.length - 1);
+  const { photo, perPhoto } = photoAt(scene.images.length, span, elapsed);
   const share = span === 0 ? 0 : elapsed / span;
   // Napisy idą za głosem; w ciszy przed lektorem ich nie ma.
   const line = elapsed < lead ? undefined : (lines.find((each) => (duration === 0 ? 0 : narrated / duration) <= each.until) ?? lines.at(-1));
@@ -415,7 +454,19 @@ export function ShowPlayer({ scenes: story, credits, trip, music }: { scenes: Pl
           <div className="h-full bg-white/80" style={{ width: `${((index + Math.min(share, 1)) / scenes.length) * 100}%` }} />
         </div>
         {scene.audio && <audio ref={audio} key={scene.key} src={scene.audio.url} preload="auto" />}
-        {music && <audio ref={backing} src={music.url} loop preload="auto" />}
+        {music && (
+          // Pętla ręcznie, a nie `loop`: po końcu utwór wraca do pominiętego początku, nie do zera.
+          <audio
+            ref={backing}
+            src={music.url}
+            preload="auto"
+            onLoadedMetadata={(event) => (event.currentTarget.currentTime = musicStart(music, event.currentTarget.duration))}
+            onEnded={(event) => {
+              event.currentTarget.currentTime = musicStart(music, event.currentTarget.duration);
+              void event.currentTarget.play().catch(() => undefined);
+            }}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -426,7 +477,22 @@ export function ShowPlayer({ scenes: story, credits, trip, music }: { scenes: Pl
         <span className="flex-1" />
         <button onClick={() => setSubtitles((value) => !value)} className="btn-mini">{subtitles ? "ukryj napisy" : "pokaż napisy"}</button>
         <button onClick={fullscreen} className="btn-mini">pełny ekran</button>
+        {exportable && (
+          <button
+            onClick={() => {
+              setPlaying(false);
+              setExporting(true);
+            }}
+            disabled={exporting}
+            className="btn-mini"
+            title="Nagranie filmu do pliku w tej przeglądarce"
+          >
+            eksport do MP4
+          </button>
+        )}
       </div>
+
+      {exporting && <ShowExport scenes={scenes} trip={trip} subtitles={subtitles} {...(music ? { music } : {})} onClose={() => setExporting(false)} />}
 
       <div className="flex flex-wrap gap-1">
         {story.map((each, at) => (

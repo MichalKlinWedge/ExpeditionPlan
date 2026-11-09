@@ -101,7 +101,7 @@ export async function setShowMusic(tripId: string, music: { path: string; name: 
     next = { ...script };
     delete next.music;
   } else {
-    next = { ...script, music: { path: music.path, name: music.name.trim().slice(0, 200) || "podkład", volume: script.music?.volume ?? 0.5 } };
+    next = { ...script, music: { path: music.path, name: music.name.trim().slice(0, 200) || "podkład", volume: script.music?.volume ?? 0.5, skipS: 0 } };
   }
   const failed = await save(supabase, tripId, script, next);
   if (failed) return { error: failed };
@@ -109,19 +109,28 @@ export async function setShowMusic(tripId: string, music: { path: string; name: 
   return { ok: music === null ? "Usunięto podkład." : "Podkład zapisany." };
 }
 
-/** Głośność podkładu między scenami (5–100%); pod lektorem odtwarzacz ścisza go jeszcze bardziej. */
-export async function setShowMusicVolume(tripId: string, percent: number): Promise<FormState> {
-  if (!Number.isFinite(percent) || percent < 5 || percent > 100) return { error: "Głośność od 5 do 100%." };
+/**
+ * Ustawienia podkładu: głośność między scenami (5–100%; pod lektorem odtwarzacz ścisza go jeszcze bardziej)
+ * i ile sekund z początku pliku pominąć (0–3600, co 0,1 s).
+ */
+export async function setShowMusicSettings(tripId: string, settings: { percent?: number; skipS?: number }): Promise<FormState> {
+  const { percent, skipS } = settings;
+  if (percent !== undefined && (!Number.isFinite(percent) || percent < 5 || percent > 100)) return { error: "Głośność od 5 do 100%." };
+  if (skipS !== undefined && (!Number.isFinite(skipS) || skipS < 0 || skipS > 3600)) return { error: "Początek do pominięcia: od 0 do 3600 s." };
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
   const { supabase, script } = loaded;
   if (script.music === undefined) return { error: "Pokaz nie ma podkładu." };
-  const volume = Math.round(percent) / 100;
-  if (script.music.volume === volume) return { ok: "Bez zmian." };
-  const failed = await save(supabase, tripId, script, { ...script, music: { ...script.music, volume } });
+  const music = {
+    ...script.music,
+    ...(percent !== undefined ? { volume: Math.round(percent) / 100 } : {}),
+    ...(skipS !== undefined ? { skipS: Math.round(skipS * 10) / 10 } : {}),
+  };
+  if (music.volume === script.music.volume && music.skipS === script.music.skipS) return { ok: "Bez zmian." };
+  const failed = await save(supabase, tripId, script, { ...script, music });
   if (failed) return { error: failed };
   refresh();
-  return { ok: "Zapisano głośność." };
+  return { ok: "Zapisano ustawienia podkładu." };
 }
 
 /** Ile przeglądarka czeka przy limicie minutowym: tyle, ile podał Google, w rozsądnych granicach. */

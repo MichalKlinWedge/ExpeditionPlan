@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { type ChangeEvent, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowMusicVolume, setShowVoice, voiceSample } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowMusicSettings, setShowVoice, voiceSample } from "@/app/show-actions";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { createClient } from "@/lib/supabase/client";
@@ -240,12 +240,14 @@ const MUSIC_ACCEPT = ".mp3,.m4a,.aac,.ogg,.wav,audio/mpeg,audio/mp4,audio/x-m4a,
  * Podkład muzyczny: plik idzie z przeglądarki prosto do bucketu `show_audio` (akcja serwera przyjmuje do 4 MB),
  * potem akcja zapisuje go w scenariuszu; nieudany zapis sprząta plik. Głośność zapisuje się po chwili od przesunięcia.
  */
-export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { url: string; name: string; volume: number } | null }) {
+export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { url: string; name: string; volume: number; skipS: number } | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormState | null>(null);
   const [level, setLevel] = useState(Math.round((music?.volume ?? 0.5) * 100));
+  const [skip, setSkip] = useState(String(music?.skipS ?? 0).replace(".", ","));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const upload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -278,15 +280,26 @@ export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { ur
     if (answer.ok) router.refresh();
   };
 
+  const saveSettings = (settings: { percent?: number; skipS?: number }) =>
+    void setShowMusicSettings(tripId, settings).then((answer) => {
+      setMessage(answer.error ? answer : null);
+      if (answer.ok) router.refresh();
+    });
+
   const changeLevel = (value: number) => {
     setLevel(value);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      void setShowMusicVolume(tripId, value).then((answer) => {
-        setMessage(answer.error ? answer : null);
-        if (answer.ok) router.refresh();
-      });
-    }, 600);
+    timer.current = setTimeout(() => saveSettings({ percent: value }), 600);
+  };
+
+  // Sekundy z przecinkiem albo kropką; zapis po chwili od ostatniej zmiany, puste pole to 0.
+  const changeSkip = (text: string) => {
+    setSkip(text);
+    if (skipTimer.current) clearTimeout(skipTimer.current);
+    const value = text.trim() === "" ? 0 : Number(text.replace(",", "."));
+    if (!Number.isFinite(value) || value < 0 || value > 3600) return setMessage({ error: "Początek do pominięcia: liczba sekund od 0 do 3600." });
+    setMessage(null);
+    skipTimer.current = setTimeout(() => saveSettings({ skipS: value }), 800);
   };
 
   const picker = <input type="file" accept={MUSIC_ACCEPT} onChange={(event) => void upload(event)} disabled={busy} className="sr-only" />;
@@ -297,11 +310,17 @@ export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { ur
       {music ? (
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="font-medium break-all">{music.name}</span>
-          <audio controls src={music.url} preload="none" className="h-8 max-w-full" />
+          {/* Odsłuch od pominiętego początku (fragment `#t=`). */}
+          <audio key={music.skipS} controls src={`${music.url}#t=${music.skipS}`} preload="none" className="h-8 max-w-full" />
           <label className="flex items-center gap-2">
             Głośność
             <input type="range" min={5} max={100} step={5} value={level} onChange={(event) => changeLevel(Number(event.target.value))} disabled={busy} />
             <span className="w-10 text-zinc-500">{level}%</span>
+          </label>
+          <label className="flex items-center gap-2" title="Ile sekund z początku pliku pominąć, np. ciszę albo wstęp">
+            Pomiń początek
+            <input type="text" inputMode="decimal" value={skip} onChange={(event) => changeSkip(event.target.value)} disabled={busy} className="field w-16 px-2 py-1 text-right text-sm" />
+            s
           </label>
           <label className={`btn-mini cursor-pointer ${busy ? "opacity-50" : ""}`}>
             {busy ? "wgrywam…" : "zmień plik"}
@@ -320,7 +339,7 @@ export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { ur
       {message?.error && <p className="text-sm text-red-600">{message.error}</p>}
       {message?.ok && <p className="text-sm text-green-700 dark:text-green-400">{message.ok}</p>}
       <p className="text-xs text-zinc-500">
-        MP3, M4A, AAC, OGG albo WAV do 20 MB. Gra w pętli przez cały pokaz: pod lektorem ciszej, na ekranie końcowym wygasa. Nazwa pliku jest na ekranie końcowym (tam autor utworu z licencją CC BY).
+        MP3, M4A, AAC, OGG albo WAV do 20 MB. Gra w pętli przez cały pokaz (od pominiętego początku): pod lektorem ciszej, na ekranie końcowym wygasa. Nazwa pliku jest na ekranie końcowym (tam autor utworu z licencją CC BY).
         Wgrywaj utwory własne albo z licencją, która na to pozwala: pod publicznym linkiem pokazu muzyka też gra.
       </p>
     </section>

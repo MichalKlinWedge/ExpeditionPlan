@@ -93,7 +93,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
             : `Lektor w ${recorded} z ${player.length} scen${written > recorded ? `, w ${written - recorded} na razie same napisy` : ""}.`}
         </p>
       </div>
-      <ShowPlayer scenes={player} credits={credits} {...(music ? { music } : {})} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate) }} />
+      <ShowPlayer exportable scenes={player} credits={credits} {...(music ? { music } : {})} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate) }} />
       {membership.data?.role === "owner" && <PublicShowToggle tripId={id} linkOn={share.data?.enabled === true} showOn={share.data?.enabled === true && share.data.show === true} />}
       {canEdit && <ShowEditor tripId={id} scenes={editor} voice={script.voice} voices={SPEECH_VOICES} toRecord={toRecord} />}
       {canEdit && <ShowMusicEditor tripId={id} music={music ?? null} />}

@@ -87,7 +87,8 @@ describe('scenariusz lektora', () => {
     const audio = { path: 'x', hash: 'h', model: 'm', durationMs: 1 };
     const script = ShowScript.parse({ scenes: [{ key: 'intro', text: 'a', audio }], music: { path: 't/muzyka-a.mp3', name: 'a.mp3' } });
     expect(script.music?.volume).toBe(0.5);
-    expect(droppedAudio(script, { ...script, music: { path: 't/muzyka-b.mp3', name: 'b.mp3', volume: 0.5 } })).toEqual(['t/muzyka-a.mp3']);
+    expect(script.music?.skipS).toBe(0);
+    expect(droppedAudio(script, { ...script, music: { path: 't/muzyka-b.mp3', name: 'b.mp3', volume: 0.5, skipS: 0 } })).toEqual(['t/muzyka-a.mp3']);
     const { music: _, ...without } = script;
     expect(droppedAudio(script, without)).toEqual(['t/muzyka-a.mp3']);
     expect(droppedAudio(script, { ...script, music: { ...script.music!, volume: 0.2 } })).toEqual([]);

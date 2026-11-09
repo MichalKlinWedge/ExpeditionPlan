@@ -104,7 +104,7 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
 export async function playerMusic(supabase: Supabase, script: ShowScript): Promise<PlayerMusic | undefined> {
   if (script.music === undefined) return undefined;
   const url = (await signer(supabase, "show_audio")([script.music.path])).get(script.music.path);
-  return url === undefined ? undefined : { url, volume: script.music.volume, name: script.music.name };
+  return url === undefined ? undefined : { url, volume: script.music.volume, name: script.music.name, skipS: script.music.skipS };
 }
 
 /**

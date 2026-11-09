@@ -47,6 +47,8 @@ export const ShowMusic = z.object({
   name: z.string().min(1).max(200),
   /** Głośność między scenami (0,05–1); pod lektorem odtwarzacz ścisza ją jeszcze bardziej. */
   volume: z.number().min(0.05).max(1).default(0.5),
+  /** Ile sekund z początku pliku pominąć (cisza, wstęp); w pętli utwór też wraca do tego miejsca. */
+  skipS: z.number().min(0).max(3600).default(0),
 });
 
 export const ShowScript = z.object({
