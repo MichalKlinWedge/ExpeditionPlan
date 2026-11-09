@@ -1,9 +1,9 @@
-import { instantToZoned, journalMovedTime, journalRedated, journalTimeAt, plural, type TripDocument, zonedToInstant } from '@expeditionplan/core';
+import { instantToZoned, journalDroppedTime, journalMovedTime, journalRedated, journalTimeAt, plural, type TripDocument, zonedToInstant } from '@expeditionplan/core';
 import { type CachedTrip, removeJournalEntry, saveJournalEntry, uuidv7 } from '@expeditionplan/sync';
 import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Alert, Animated, type GestureResponderHandlers, PanResponder, Pressable, type StyleProp, StyleSheet, TextInput, View, type ViewStyle } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
@@ -20,7 +20,8 @@ import { localDb } from '@/lib/local-db';
  * gdy jest sieć. Wpis dodaje każdy uczestnik; usuwa autor albo organizator i edytor (RLS).
  * Po powrocie cała relacja jest na webie („Dziennik”). `ItemPhotos` to samo w szczegółach punktu planu: wpisy
  * z `item_id` tego punktu, dodawane z jego dniem. Wpis zmienia autor, a cudzy organizator i edytor (`EntryCard`:
- * tekst, dzień, godzina, „Usuń zdjęcie”, ↑ / ↓) — przez outbox, cały wiersz jak przy dodaniu.
+ * tekst, dzień, godzina, „Usuń zdjęcie”, ↑ / ↓, przeciąganie za „≡” w obrębie dnia) — przez outbox, cały wiersz jak
+ * przy dodaniu.
  */
 
 type Props = {
@@ -30,6 +31,8 @@ type Props = {
   userId: string | null;
   canEditAll: boolean;
   onChanged: () => void;
+  /** Przeciąganie wpisu trwa — rodzic wyłącza wtedy przewijanie, żeby nie zabrało gestu. */
+  onDragging?: (active: boolean) => void;
 };
 
 type EntryRow = { id: string; day_id: string | null; item_id: string | null; body: string; photo_path: string | null; taken_at: string; created_by?: string | null };
@@ -46,7 +49,7 @@ export function JournalView(props: Props) {
   );
 }
 
-function Journal({ trip, tripId, signedIn, userId, canEditAll, onChanged }: Props) {
+function Journal({ trip, tripId, signedIn, userId, canEditAll, onChanged, onDragging }: Props) {
   const doc = trip.state.doc;
   const entries = [...(trip.live.journal as unknown as EntryRow[])].sort((a, b) => a.taken_at.localeCompare(b.taken_at));
   const travelers = trip.live.travelers as unknown as TravelerRow[];
@@ -99,21 +102,32 @@ function Journal({ trip, tripId, signedIn, userId, canEditAll, onChanged }: Prop
       {groups.map((group) => (
         <View key={group.key} style={styles.group}>
           <ThemedText type="smallBold">{group.title}</ThemedText>
-          {group.rows.map((row, index) => (
-            <EntryCard
-              key={row.id}
-              row={row}
-              tripId={tripId}
-              trip={trip}
-              tz={group.tz}
-              meta={`${author(row)}${row.item_id && itemOfId.has(row.item_id) ? ` · 📍 ${itemOfId.get(row.item_id)!.title}` : ''}`}
-              canEdit={signedIn && (canEditAll || author(row) === 'ja')}
-              days={doc.days}
-              upAt={journalMovedTime(group.rows.map((each) => each.taken_at), index, -1)}
-              downAt={journalMovedTime(group.rows.map((each) => each.taken_at), index, 1)}
-              onChanged={onChanged}
-            />
-          ))}
+          <DraggableEntries
+            rows={group.rows}
+            onDragging={onDragging}
+            onDrop={(from, to) => {
+              const row = group.rows[from];
+              const takenAt = journalDroppedTime(group.rows.map((each) => each.taken_at), from, to);
+              if (row === undefined || takenAt === null) return;
+              saveJournalEntry(localDb, { id: row.id, tripId, dayId: row.day_id, itemId: row.item_id, body: row.body, photoPath: row.photo_path, takenAt });
+              onChanged();
+            }}
+            render={(row, index, handle) => (
+              <EntryCard
+                row={row}
+                tripId={tripId}
+                trip={trip}
+                tz={group.tz}
+                meta={`${author(row)}${row.item_id && itemOfId.has(row.item_id) ? ` · 📍 ${itemOfId.get(row.item_id)!.title}` : ''}`}
+                canEdit={signedIn && (canEditAll || author(row) === 'ja')}
+                days={doc.days}
+                upAt={journalMovedTime(group.rows.map((each) => each.taken_at), index, -1)}
+                downAt={journalMovedTime(group.rows.map((each) => each.taken_at), index, 1)}
+                handle={group.rows.length > 1 ? handle : undefined}
+                onChanged={onChanged}
+              />
+            )}
+          />
         </View>
       ))}
     </View>
@@ -194,6 +208,129 @@ export function ItemPhotos({ trip, tripId, itemRef, userId, canEditAll, onChange
 
 type Day = TripDocument['days'][number];
 
+type DragProps = {
+  rows: EntryRow[];
+  onDrop: (from: number, to: number) => void;
+  onDragging?: (active: boolean) => void;
+  render: (row: EntryRow, index: number, handle: GestureResponderHandlers) => ReactNode;
+};
+
+/**
+ * Wpisy jednego dnia z przeciąganiem za uchwyt „≡” (`PanResponder` + `Animated`, bez modułów natywnych). Przeciągany
+ * wpis jedzie za palcem, pozostałe rozsuwają się na miejsce, po puszczeniu `onDrop(from, to)` — `to` to miejsce na
+ * liście po przeniesieniu (jak w `journalDroppedTime`). Pozycje z `onLayout` (transformacja ich nie zmienia).
+ */
+type Drag = { from: number; to: number; step: number };
+
+/** Ruch przeciągania wspólny dla wierszy jednego dnia (wiersz po `id` wpisu) — tylko w obsłudze gestów, nie w renderze. */
+type DragEngine = { begin: (id: string) => void; move: (id: string, delta: number) => void; end: (id: string, delta: number | null) => void };
+
+function DraggableEntries({ rows, onDrop, onDragging, render }: DragProps) {
+  const layouts = useRef<{ y: number; height: number }[]>([]);
+  const [dy] = useState(() => new Animated.Value(0));
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const live = useRef({ onDrop, onDragging, ids: rows.map((row) => row.id) });
+  useEffect(() => {
+    live.current = { onDrop, onDragging, ids: rows.map((row) => row.id) };
+  });
+
+  const [engine] = useState<DragEngine>(() => {
+    // Miejsce po przeniesieniu: ile innych wpisów ma środek nad środkiem przeciąganego.
+    const targetFor = (from: number, delta: number) => {
+      const own = layouts.current[from];
+      if (own === undefined) return from;
+      const center = own.y + own.height / 2 + delta;
+      let to = 0;
+      for (let index = 0; index < live.current.ids.length; index++) {
+        const each = layouts.current[index];
+        if (index !== from && each !== undefined && each.y + each.height / 2 < center) to += 1;
+      }
+      return to;
+    };
+    const stop = () => {
+      setDrag(null);
+      dy.setValue(0);
+      live.current.onDragging?.(false);
+    };
+    const at = (id: string) => live.current.ids.indexOf(id);
+    return {
+      begin: (id) => {
+        const index = at(id);
+        if (index < 0) return;
+        dy.setValue(0);
+        setDrag({ from: index, to: index, step: (layouts.current[index]?.height ?? 0) + Spacing.two });
+        live.current.onDragging?.(true);
+      },
+      move: (id, delta) => {
+        const index = at(id);
+        if (index < 0) return;
+        dy.setValue(delta);
+        const to = targetFor(index, delta);
+        setDrag((current) => (current === null || current.to === to ? current : { ...current, to }));
+      },
+      end: (id, delta) => {
+        const index = at(id);
+        const to = delta === null || index < 0 ? index : targetFor(index, delta);
+        stop();
+        if (index >= 0 && to !== index) live.current.onDrop(index, to);
+      },
+    };
+  });
+
+  // Przesunięcie pozostałych: o wysokość przeciąganego (z odstępem) w stronę zwolnionego miejsca.
+  const shift = (index: number) => {
+    if (drag === null || index === drag.from) return 0;
+    const among = index < drag.from ? index : index - 1;
+    const placed = among < drag.to ? among : among + 1;
+    return placed === index ? 0 : placed > index ? drag.step : -drag.step;
+  };
+
+  return (
+    <View style={styles.group}>
+      {rows.map((row, index) => (
+        <DragRow
+          key={row.id}
+          id={row.id}
+          engine={engine}
+          onLayout={(layout) => {
+            layouts.current[index] = layout;
+          }}
+          style={drag?.from === index ? [styles.dragged, { transform: [{ translateY: dy }] }] : shift(index) !== 0 ? { transform: [{ translateY: shift(index) }] } : undefined}>
+          {(handle) => render(row, index, handle)}
+        </DragRow>
+      ))}
+    </View>
+  );
+}
+
+type DragRowProps = {
+  id: string;
+  engine: DragEngine;
+  onLayout: (layout: { y: number; height: number }) => void;
+  style: StyleProp<ViewStyle> | Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
+  children: (handle: GestureResponderHandlers) => ReactNode;
+};
+
+/** Jeden wiersz: własny `PanResponder` na całe życie wiersza; miejsce na liście silnik znajduje po `id`. */
+function DragRow({ id, engine, onLayout, style, children }: DragRowProps) {
+  const [responder] = useState(() =>
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => engine.begin(id),
+      onPanResponderMove: (_, gesture) => engine.move(id, gesture.dy),
+      onPanResponderRelease: (_, gesture) => engine.end(id, gesture.dy),
+      onPanResponderTerminate: () => engine.end(id, null),
+    }),
+  );
+  return (
+    <Animated.View onLayout={(event) => onLayout({ y: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height })} style={style}>
+      {children(responder.panHandlers)}
+    </Animated.View>
+  );
+}
+
 type CardProps = {
   row: EntryRow;
   trip: CachedTrip;
@@ -207,6 +344,8 @@ type CardProps = {
   days: Day[];
   upAt?: string | null;
   downAt?: string | null;
+  /** Uchwyt do przeciągania (`DraggableEntries`); bez niego wpisu się nie przeciąga. */
+  handle?: GestureResponderHandlers;
   onChanged: () => void;
 };
 
@@ -217,7 +356,8 @@ type Changes = { body?: string; dayId?: string | null; photoPath?: null; takenAt
  * „Edytuj” — tekst, dzień (godzina zostaje, data nowa: `journalRedated`), godzina, „Usuń zdjęcie” (plik zostaje
  * w buckecie). Zapis offline przez outbox jak nowy wpis.
  */
-function EntryCard({ row, trip, tripId, tz, meta, canEdit, days, upAt = null, downAt = null, onChanged }: CardProps) {
+function EntryCard({ row, trip, tripId, tz, meta, canEdit, days, upAt = null, downAt = null, handle, onChanged }: CardProps) {
+  const theme = useTheme();
   const [editing, setEditing] = useState(false);
   const save = (changes: Changes) => {
     saveJournalEntry(localDb, {
@@ -267,6 +407,11 @@ function EntryCard({ row, trip, tripId, tz, meta, canEdit, days, upAt = null, do
           </ThemedText>
           {canEdit && (
             <View style={styles.wrap}>
+              {handle && (
+                <View {...handle} hitSlop={8} accessibilityLabel="Przeciągnij, żeby zmienić kolejność" style={[styles.handle, { borderColor: theme.backgroundSelected }]}>
+                  <ThemedText type="smallBold">≡</ThemedText>
+                </View>
+              )}
               {upAt !== null && <Button small label="↑" onPress={() => save({ takenAt: upAt })} />}
               {downAt !== null && <Button small label="↓" onPress={() => save({ takenAt: downAt })} />}
               <Button small label="Edytuj" onPress={() => setEditing(true)} />
@@ -452,6 +597,8 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: Spacing.two },
   label: { alignSelf: 'center' },
+  handle: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, justifyContent: 'center', alignItems: 'center' },
+  dragged: { zIndex: 10, elevation: 8, opacity: 0.92 },
   time: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, fontSize: 16, minWidth: 80 },
   input: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16, minHeight: 80, textAlignVertical: 'top' },
 });

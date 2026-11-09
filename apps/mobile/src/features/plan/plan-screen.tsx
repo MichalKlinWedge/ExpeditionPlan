@@ -139,6 +139,8 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const scroll = useRef<ScrollViewInstance>(null);
   // Zakładki poza planem; „Kontakty wyjazdu” z okna rezerwacji przewija Info do kontaktów.
   const tabScroll = useRef<ScrollViewInstance>(null);
+  // Przeciąganie wpisu w Dzienniku — przewijanie zakładki stoi, żeby nie zabrało gestu.
+  const [journalDrag, setJournalDrag] = useState(false);
   const [toContacts, setToContacts] = useState(false);
   const showContacts = () => {
     setMode('info');
@@ -463,7 +465,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
         />
       )}
       {trip !== null && mode !== 'plan' && (
-        <ScrollView ref={tabScroll} contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={tabScroll} scrollEnabled={!journalDrag} contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]} keyboardShouldPersistTaps="handled">
           {mode === 'wallet' ? (
             <WalletView trip={trip} tripId={tripId} canAdd={signedIn && canAddExpense} canEditAll={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           ) : mode === 'info' ? (
@@ -505,7 +507,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           ) : mode === 'tasks' ? (
             <TasksView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canAct={signedIn && canAct} onChanged={afterLocalWrite} />
           ) : mode === 'journal' ? (
-            <JournalView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canEditAll={signedIn && canAct} onChanged={afterLocalWrite} />
+            <JournalView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canEditAll={signedIn && canAct} onChanged={afterLocalWrite} onDragging={setJournalDrag} />
           ) : (
             <PackingView trip={trip} tripId={tripId} canEdit={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           )}

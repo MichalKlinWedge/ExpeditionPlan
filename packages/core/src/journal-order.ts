@@ -14,12 +14,27 @@ const MINUTE = 60_000;
  * `null`, gdy nie ma dokąd przesunąć.
  */
 export function journalMovedTime(times: readonly string[], index: number, direction: -1 | 1): string | null {
-  const neighbour = times[index + direction];
-  if (neighbour === undefined || index < 0 || index >= times.length) return null;
-  const at = Date.parse(neighbour);
-  const beyond = times[index + 2 * direction];
-  let moved = at + direction * MINUTE;
-  if (beyond !== undefined && (Date.parse(beyond) - moved) * direction <= 0) moved = (at + Date.parse(beyond)) / 2;
+  return journalDroppedTime(times, index, index + direction);
+}
+
+/**
+ * Nowy `taken_at` wpisu przeciągniętego z miejsca `from` na miejsce `to` (indeks na liście po przeniesieniu).
+ * W górę — minutę przed wpisem, nad który trafił; w dół — minutę po tym, pod który trafił; gdy drugi sąsiad stoi
+ * bliżej, w połowie odstępu. `null`, gdy miejsce się nie zmienia albo jest poza listą.
+ */
+export function journalDroppedTime(times: readonly string[], from: number, to: number): string | null {
+  if (from === to || from < 0 || from >= times.length || to < 0 || to >= times.length) return null;
+  const others = times.filter((_, index) => index !== from).map((each) => Date.parse(each));
+  const before = others[to - 1];
+  const after = others[to];
+  let moved: number;
+  if (to < from) {
+    moved = after! - MINUTE;
+    if (before !== undefined && moved <= before) moved = (before + after!) / 2;
+  } else {
+    moved = before! + MINUTE;
+    if (after !== undefined && moved >= after) moved = (before! + after) / 2;
+  }
   return new Date(Math.round(moved)).toISOString();
 }
 
