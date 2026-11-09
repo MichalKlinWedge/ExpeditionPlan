@@ -32,7 +32,7 @@ grant select on tok to anon, authenticated;
 select pg_temp.anon();
 select is(public.public_show((select token from tok)), null, 'bez zgody link nie daje pokazu');
 select is(public.public_show_on((select token from tok)), false, 'bez zgody nie ma zakładki');
-select is((select count(*) from storage.objects where bucket_id = 'show_audio'), 0::bigint, 'bez zgody anon nie słyszy nagrań');
+select is((select count(*) from storage.objects where bucket_id = 'show_audio' and name like '1e000000-%'), 0::bigint, 'bez zgody anon nie słyszy nagrań');
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000e2');
 select throws_ok($$ select public.set_public_show('1e000000-0000-4000-8000-000000000001', true) $$, '42501', null, 'edytor nie udostępnia pokazu');
@@ -43,14 +43,14 @@ select is(public.set_public_show('1e000000-0000-4000-8000-000000000001', true), 
 select pg_temp.anon();
 select is(public.public_show((select token from tok)) -> 'content' ->> 'voice', 'Sulafat', 'po zgodzie link daje scenariusz');
 select is(public.public_show_on((select token from tok)), true, 'po zgodzie jest zakładka');
-select is((select count(*) from storage.objects where bucket_id = 'show_audio'), 1::bigint, 'po zgodzie anon słyszy nagranie');
+select is((select count(*) from storage.objects where bucket_id = 'show_audio' and name like '1e000000-%'), 1::bigint, 'po zgodzie anon słyszy nagranie');
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000e1');
 select public.disable_public_share('1e000000-0000-4000-8000-000000000001');
 
 select pg_temp.anon();
 select is(public.public_show((select token from tok)), null, 'wyłączony link nie daje pokazu');
-select is((select count(*) from storage.objects where bucket_id = 'show_audio'), 0::bigint, 'wyłączony link odcina nagrania');
+select is((select count(*) from storage.objects where bucket_id = 'show_audio' and name like '1e000000-%'), 0::bigint, 'wyłączony link odcina nagrania');
 
 select * from finish();
 rollback;

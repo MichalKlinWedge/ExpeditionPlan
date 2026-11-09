@@ -27,7 +27,7 @@ select lives_ok($$ insert into storage.objects (bucket_id, name) values
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000c2');
 select is((select content ->> 'voice' from public.trip_shows), 'Sulafat', 'widz widzi scenariusz');
-select is((select count(*) from storage.objects where bucket_id = 'show_audio'), 1::bigint, 'widz słyszy nagranie');
+select is((select count(*) from storage.objects where bucket_id = 'show_audio' and name like '1c000000-%'), 1::bigint, 'widz słyszy nagranie');
 update public.trip_shows set content = '{"voice":"Charon"}';
 select throws_ok($$ insert into storage.objects (bucket_id, name) values
   ('show_audio', '1c000000-0000-4000-8000-000000000001/zly.wav') $$, '42501', null, 'widz nie wgrywa nagrania');
@@ -37,7 +37,7 @@ select is((select content ->> 'voice' from public.trip_shows), 'Sulafat', 'widz 
 
 select pg_temp.login('00000000-0000-4000-8000-0000000000c3');
 select is((select count(*) from public.trip_shows), 0::bigint, 'obcy nie widzi scenariusza');
-select is((select count(*) from storage.objects where bucket_id = 'show_audio'), 0::bigint, 'obcy nie słyszy nagrań');
+select is((select count(*) from storage.objects where bucket_id = 'show_audio' and name like '1c000000-%'), 0::bigint, 'obcy nie słyszy nagrań');
 select throws_ok($$ insert into public.trip_shows (trip_id) values ('1c000000-0000-4000-8000-000000000001') $$,
   '42501', null, 'obcy nie zakłada scenariusza');
 

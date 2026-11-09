@@ -37,12 +37,26 @@ export const ShowNarration = z.object({
   audio: ShowAudio.optional(),
 });
 
+/**
+ * Podkład muzyczny: własny plik organizatora w tym samym buckecie co nagrania (`<trip_id>/muzyka-<znacznik>.<rozszerzenie>`),
+ * więc pod publicznym linkiem gra na tej samej zgodzie co lektor. Prawa do utworu są po stronie tego, kto go wgrał.
+ */
+export const ShowMusic = z.object({
+  path: z.string().min(1),
+  /** Nazwa pliku od użytkownika, do pokazania w edytorze. */
+  name: z.string().min(1).max(200),
+  /** Głośność między scenami (0,05–1); pod lektorem odtwarzacz ścisza ją jeszcze bardziej. */
+  volume: z.number().min(0.05).max(1).default(0.5),
+});
+
 export const ShowScript = z.object({
   voice: z.string().min(1).default('Sulafat'),
   scenes: z.array(ShowNarration).default([]),
+  music: ShowMusic.optional(),
 });
 
 export type ShowAudio = z.infer<typeof ShowAudio>;
+export type ShowMusic = z.infer<typeof ShowMusic>;
 export type ShowNarration = z.infer<typeof ShowNarration>;
 export type ShowScript = z.infer<typeof ShowScript>;
 
@@ -244,11 +258,43 @@ export function scenesToRecord(script: ShowScript): string[] {
   return script.scenes.filter((scene) => scene.text.trim() !== '' && !audioFits(scene, script.voice)).map((scene) => scene.key);
 }
 
-/** Pliki nagrań, których nowy scenariusz już nie używa: do usunięcia z bucketu. */
+const audioPaths = (script: ShowScript) => [...script.scenes.flatMap((scene) => (scene.audio ? [scene.audio.path] : [])), ...(script.music ? [script.music.path] : [])];
+
+/** Pliki nagrań i podkładu, których nowy scenariusz już nie używa: do usunięcia z bucketu. */
 export function droppedAudio(before: ShowScript, after: ShowScript): string[] {
-  const kept = new Set(after.scenes.flatMap((scene) => (scene.audio ? [scene.audio.path] : [])));
-  return [...new Set(before.scenes.flatMap((scene) => (scene.audio && !kept.has(scene.audio.path) ? [scene.audio.path] : [])))];
+  const kept = new Set(audioPaths(after));
+  return [...new Set(audioPaths(before).filter((path) => !kept.has(path)))];
 }
+
+/** Formaty podkładu przyjmowane przez bucket `show_audio` (typ pliku → rozszerzenie). */
+const MUSIC_TYPES: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/aac': 'aac',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+};
+const MUSIC_EXTENSIONS: Record<string, string> = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', wav: 'audio/wav' };
+/** Największy plik podkładu (limit bucketu `show_audio`). */
+export const MUSIC_MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Ścieżka i typ podkładu z pliku od użytkownika: typ z przeglądarki, a gdy go nie ma, z rozszerzenia nazwy.
+ * `null`, gdy to nie MP3, M4A, AAC, OGG ani WAV.
+ */
+export function showMusicFile(tripId: string, file: { name: string; type: string }, stamp: string): { path: string; contentType: string } | null {
+  const fromName = file.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  const ext = MUSIC_TYPES[file.type] ?? (fromName !== undefined && MUSIC_EXTENSIONS[fromName] !== undefined ? fromName : undefined);
+  if (ext === undefined) return null;
+  return { path: `${tripId}/muzyka-${stamp}.${ext}`, contentType: MUSIC_EXTENSIONS[ext]! };
+}
+
+/** Czy ścieżka to podkład tego wyjazdu (zapisany przez `showMusicFile`). */
+export const isShowMusicPath = (tripId: string, path: string): boolean =>
+  path.startsWith(`${tripId}/`) && /^muzyka-[a-z0-9]+\.(mp3|m4a|aac|ogg|wav)$/.test(path.slice(tripId.length + 1));
 
 /** Nagranie sceny w scenariuszu (tylko gdy tekst się w międzyczasie nie zmienił). */
 export function setShowAudio(script: ShowScript, key: string, audio: ShowAudio, text: string): ShowScript {

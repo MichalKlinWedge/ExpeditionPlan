@@ -30,11 +30,11 @@ async function PublicShow({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const loaded = await loadPublicShow(token);
   if (loaded === null) return <p className="card p-5 text-zinc-600 dark:text-zinc-400">{EXPIRED_LINK} Albo pokazu z lektorem pod nim nie ma.</p>;
-  const { doc, credits, player } = loaded;
+  const { doc, credits, player, music } = loaded;
   return (
     <>
       <PublicTripHeader token={token} trip={doc.trip} active="show" show />
-      <ShowPlayer scenes={player} credits={credits} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate) }} />
+      <ShowPlayer scenes={player} credits={credits} {...(music ? { music } : {})} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate) }} />
     </>
   );
 }

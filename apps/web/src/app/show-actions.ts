@@ -1,7 +1,7 @@
 "use server";
 
 import { isSpeechVoice, SpeechLimitError } from "@expeditionplan/ai";
-import { applyShowDraft, droppedAudio, editShowText, narrationHash, plural, ShowScript, setShowAudio, showBrief } from "@expeditionplan/core";
+import { applyShowDraft, droppedAudio, editShowText, isShowMusicPath, narrationHash, plural, ShowScript, setShowAudio, showBrief } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { draftShowNarration } from "@expeditionplan/planner";
 import { refresh } from "next/cache";
@@ -84,6 +84,44 @@ export async function setShowVoice(tripId: string, voice: string): Promise<FormS
   if (failed) return { error: failed };
   refresh();
   return { ok: "Głos zmieniony: nagraj sceny od nowa." };
+}
+
+/**
+ * Podkład muzyczny po wgraniu pliku z przeglądarki (`showMusicFile`, bucket `show_audio`); `null` usuwa podkład.
+ * Poprzedni plik usuwa `save` (`droppedAudio`), głośność zostaje.
+ */
+export async function setShowMusic(tripId: string, music: { path: string; name: string } | null): Promise<FormState> {
+  if (music !== null && !isShowMusicPath(tripId, music.path)) return { error: "To nie jest plik podkładu tego wyjazdu." };
+  const loaded = await load(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, script } = loaded;
+  let next: ShowScript;
+  if (music === null) {
+    if (script.music === undefined) return { ok: "Bez zmian." };
+    next = { ...script };
+    delete next.music;
+  } else {
+    next = { ...script, music: { path: music.path, name: music.name.trim().slice(0, 200) || "podkład", volume: script.music?.volume ?? 0.5 } };
+  }
+  const failed = await save(supabase, tripId, script, next);
+  if (failed) return { error: failed };
+  refresh();
+  return { ok: music === null ? "Usunięto podkład." : "Podkład zapisany." };
+}
+
+/** Głośność podkładu między scenami (5–100%); pod lektorem odtwarzacz ścisza go jeszcze bardziej. */
+export async function setShowMusicVolume(tripId: string, percent: number): Promise<FormState> {
+  if (!Number.isFinite(percent) || percent < 5 || percent > 100) return { error: "Głośność od 5 do 100%." };
+  const loaded = await load(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, script } = loaded;
+  if (script.music === undefined) return { error: "Pokaz nie ma podkładu." };
+  const volume = Math.round(percent) / 100;
+  if (script.music.volume === volume) return { ok: "Bez zmian." };
+  const failed = await save(supabase, tripId, script, { ...script, music: { ...script.music, volume } });
+  if (failed) return { error: failed };
+  refresh();
+  return { ok: "Zapisano głośność." };
 }
 
 /** Ile przeglądarka czeka przy limicie minutowym: tyle, ile podał Google, w rozsądnych granicach. */

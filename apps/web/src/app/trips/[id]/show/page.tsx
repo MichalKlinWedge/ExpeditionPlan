@@ -7,14 +7,14 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EditToggle } from "@/components/edit-toggle";
-import { type EditorScene, ShowEditor } from "@/components/show-editor";
+import { type EditorScene, ShowEditor, ShowMusicEditor } from "@/components/show-editor";
 import { PublicShowToggle } from "@/components/public-show-toggle";
 import { ShowPlayer } from "@/components/show-player";
 import { tripDates } from "@/lib/labels";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
-import { loadShow, playerScenes } from "@/lib/trip-show";
+import { loadShow, playerMusic, playerScenes } from "@/lib/trip-show";
 
 export const metadata: Metadata = { title: "Pokaz z lektorem — Expedition Planner" };
 
@@ -56,7 +56,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
   const canEdit = mayEdit && (await editMode());
 
   const narration = new Map(script.scenes.map((scene) => [scene.key, scene]));
-  const player = await playerScenes(supabase, doc, scenes, script);
+  const [player, music] = await Promise.all([playerScenes(supabase, doc, scenes, script), playerMusic(supabase, script)]);
   const editor: EditorScene[] = scenes.map((scene) => {
     const told = narration.get(scene.key);
     const fits = told !== undefined && audioFits(told, script.voice);
@@ -93,9 +93,10 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
             : `Lektor w ${recorded} z ${player.length} scen${written > recorded ? `, w ${written - recorded} na razie same napisy` : ""}.`}
         </p>
       </div>
-      <ShowPlayer scenes={player} credits={credits} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate) }} />
+      <ShowPlayer scenes={player} credits={credits} {...(music ? { music } : {})} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate) }} />
       {membership.data?.role === "owner" && <PublicShowToggle tripId={id} linkOn={share.data?.enabled === true} showOn={share.data?.enabled === true && share.data.show === true} />}
       {canEdit && <ShowEditor tripId={id} scenes={editor} voice={script.voice} voices={SPEECH_VOICES} toRecord={toRecord} />}
+      {canEdit && <ShowMusicEditor tripId={id} music={music ?? null} />}
     </>
   );
 }

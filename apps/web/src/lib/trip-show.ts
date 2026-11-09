@@ -3,7 +3,7 @@ import "server-only";
 import { audioFits, dayMap, type DayMap, guideFor, type GuideRow, ShowScript, showScenes, type TripDocument } from "@expeditionplan/core";
 import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 
-import type { PlayerScene, ShowMapData } from "@/components/show-player";
+import type { PlayerMusic, PlayerScene, ShowMapData } from "@/components/show-player";
 import type { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -100,6 +100,13 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
   });
 }
 
+/** Podkład dla odtwarzacza: podpisany plik, głośność i nazwa (na ekranie końcowym). */
+export async function playerMusic(supabase: Supabase, script: ShowScript): Promise<PlayerMusic | undefined> {
+  if (script.music === undefined) return undefined;
+  const url = (await signer(supabase, "show_audio")([script.music.path])).get(script.music.path);
+  return url === undefined ? undefined : { url, volume: script.music.volume, name: script.music.name };
+}
+
 /**
  * Pokaz pod publicznym linkiem: plan z `public_trip` (te same filtry co reszta linku), scenariusz i zdjęcia dziennika
  * z `public_show`. Nagrania i zdjęcia podpisuje anon dzięki zgodzie właściciela (`public_shares.show`, polityki
@@ -114,7 +121,8 @@ export async function loadPublicShow(token: string) {
   const { doc, scenes, credits } = await scenesFrom(payload, stored.journal ?? [], signer(supabase, "journal"));
   const parsed = ShowScript.safeParse(stored.content ?? {});
   const script = parsed.success ? parsed.data : ShowScript.parse({});
-  return { doc, credits, player: await playerScenes(supabase, doc, scenes, script) };
+  const [player, music] = await Promise.all([playerScenes(supabase, doc, scenes, script), playerMusic(supabase, script)]);
+  return { doc, credits, player, music };
 }
 
 /** Czy pod publicznym linkiem jest pokaz (zakładka w nagłówku linku). */

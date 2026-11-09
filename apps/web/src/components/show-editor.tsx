@@ -1,13 +1,15 @@
 "use client";
 
-import { plural } from "@expeditionplan/core";
+import { MUSIC_MAX_BYTES, plural, showMusicFile } from "@expeditionplan/core";
+import { dbErrorMessage } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { type ChangeEvent, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowVoice, voiceSample } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowMusicVolume, setShowVoice, voiceSample } from "@/app/show-actions";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Edycja pokazu (organizator i edytor w trybie edycji): szkic tekstu z AI, poprawki scen, głos lektora i nagrywanie.
@@ -228,6 +230,99 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
           <SceneText key={`${scene.key}:${scene.text}`} tripId={tripId} scene={scene} {...(live[scene.key] !== undefined ? { live: live[scene.key] } : {})} />
         ))}
       </ol>
+    </section>
+  );
+}
+
+const MUSIC_ACCEPT = ".mp3,.m4a,.aac,.ogg,.wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,audio/wav";
+
+/**
+ * Podkład muzyczny: plik idzie z przeglądarki prosto do bucketu `show_audio` (akcja serwera przyjmuje do 4 MB),
+ * potem akcja zapisuje go w scenariuszu; nieudany zapis sprząta plik. Głośność zapisuje się po chwili od przesunięcia.
+ */
+export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { url: string; name: string; volume: number } | null }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<FormState | null>(null);
+  const [level, setLevel] = useState(Math.round((music?.volume ?? 0.5) * 100));
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const upload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file === undefined) return;
+    setMessage(null);
+    const target = showMusicFile(tripId, file, Date.now().toString(36));
+    if (target === null) return setMessage({ error: "Ten format nie przejdzie: wybierz MP3, M4A, AAC, OGG albo WAV." });
+    if (file.size > MUSIC_MAX_BYTES) return setMessage({ error: `Plik ma ${Math.round(file.size / 1024 / 1024)} MB, a podkład może mieć do 20 MB.` });
+    setBusy(true);
+    const bucket = createClient().storage.from("show_audio");
+    const sent = await bucket.upload(target.path, file, { contentType: target.contentType, upsert: false });
+    if (sent.error) {
+      setBusy(false);
+      return setMessage({ error: /row-level security|unauthorized/i.test(sent.error.message) ? "Podkład wgrywa tylko organizator albo edytor." : dbErrorMessage(sent.error, "Nie wgrano pliku. Spróbuj jeszcze raz.") });
+    }
+    const answer = await setShowMusic(tripId, { path: target.path, name: file.name });
+    if (answer.error) await bucket.remove([target.path]);
+    setBusy(false);
+    setMessage(answer);
+    if (answer.ok) router.refresh();
+  };
+
+  const remove = async () => {
+    if (!window.confirm("Usunąć podkład muzyczny z pokazu?")) return;
+    setBusy(true);
+    const answer = await setShowMusic(tripId, null);
+    setBusy(false);
+    setMessage(answer);
+    if (answer.ok) router.refresh();
+  };
+
+  const changeLevel = (value: number) => {
+    setLevel(value);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      void setShowMusicVolume(tripId, value).then((answer) => {
+        setMessage(answer.error ? answer : null);
+        if (answer.ok) router.refresh();
+      });
+    }, 600);
+  };
+
+  const picker = <input type="file" accept={MUSIC_ACCEPT} onChange={(event) => void upload(event)} disabled={busy} className="sr-only" />;
+
+  return (
+    <section className="card flex flex-col gap-3 p-4">
+      <h2 className="card-title">Podkład muzyczny</h2>
+      {music ? (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="font-medium break-all">{music.name}</span>
+          <audio controls src={music.url} preload="none" className="h-8 max-w-full" />
+          <label className="flex items-center gap-2">
+            Głośność
+            <input type="range" min={5} max={100} step={5} value={level} onChange={(event) => changeLevel(Number(event.target.value))} disabled={busy} />
+            <span className="w-10 text-zinc-500">{level}%</span>
+          </label>
+          <label className={`btn-mini cursor-pointer ${busy ? "opacity-50" : ""}`}>
+            {busy ? "wgrywam…" : "zmień plik"}
+            {picker}
+          </label>
+          <button type="button" onClick={() => void remove()} disabled={busy} className="btn-mini btn-mini-danger">
+            usuń
+          </button>
+        </div>
+      ) : (
+        <label className={`btn-secondary btn-sm w-fit cursor-pointer ${busy ? "opacity-50" : ""}`}>
+          {busy ? "Wgrywam…" : "+ Dodaj plik z muzyką"}
+          {picker}
+        </label>
+      )}
+      {message?.error && <p className="text-sm text-red-600">{message.error}</p>}
+      {message?.ok && <p className="text-sm text-green-700 dark:text-green-400">{message.ok}</p>}
+      <p className="text-xs text-zinc-500">
+        MP3, M4A, AAC, OGG albo WAV do 20 MB. Gra w pętli przez cały pokaz: pod lektorem ciszej, na ekranie końcowym wygasa. Nazwa pliku jest na ekranie końcowym (tam autor utworu z licencją CC BY).
+        Wgrywaj utwory własne albo z licencją, która na to pozwala: pod publicznym linkiem pokazu muzyka też gra.
+      </p>
     </section>
   );
 }

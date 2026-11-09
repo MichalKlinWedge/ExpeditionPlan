@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GuideContent } from '../guide.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
-import { applyShowDraft, audioFits, droppedAudio, editShowText, narrationHash, readingMs, scenesToRecord, setShowAudio, ShowScript, showBrief, showScenes } from '../trip-show.ts';
+import { applyShowDraft, audioFits, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenesToRecord, setShowAudio, ShowScript, showBrief, showMusicFile, showScenes } from '../trip-show.ts';
 
 const fixture = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
 
@@ -81,6 +81,28 @@ describe('scenariusz lektora', () => {
     expect(droppedAudio(script, editShowText(script, 'intro', ''))).toEqual(['x']);
     expect(droppedAudio(script, editShowText(script, 'intro', 'b'))).toEqual([]);
     expect(editShowText(script, 'outro', 'koniec').scenes.map((scene) => scene.key)).toEqual(['intro', 'outro']);
+  });
+
+  it('podkład: zmieniony albo usunięty plik idzie do usunięcia, nagrania scen zostają', () => {
+    const audio = { path: 'x', hash: 'h', model: 'm', durationMs: 1 };
+    const script = ShowScript.parse({ scenes: [{ key: 'intro', text: 'a', audio }], music: { path: 't/muzyka-a.mp3', name: 'a.mp3' } });
+    expect(script.music?.volume).toBe(0.5);
+    expect(droppedAudio(script, { ...script, music: { path: 't/muzyka-b.mp3', name: 'b.mp3', volume: 0.5 } })).toEqual(['t/muzyka-a.mp3']);
+    const { music: _, ...without } = script;
+    expect(droppedAudio(script, without)).toEqual(['t/muzyka-a.mp3']);
+    expect(droppedAudio(script, { ...script, music: { ...script.music!, volume: 0.2 } })).toEqual([]);
+  });
+
+  it('plik podkładu: typ z przeglądarki albo rozszerzenie, inne formaty odpadają', () => {
+    expect(showMusicFile('t', { name: 'Utwór.MP3', type: 'audio/mpeg' }, 'k1')).toEqual({ path: 't/muzyka-k1.mp3', contentType: 'audio/mpeg' });
+    expect(showMusicFile('t', { name: 'a.m4a', type: 'audio/x-m4a' }, 'k1')).toEqual({ path: 't/muzyka-k1.m4a', contentType: 'audio/mp4' });
+    expect(showMusicFile('t', { name: 'a.ogg', type: '' }, 'k1')).toEqual({ path: 't/muzyka-k1.ogg', contentType: 'audio/ogg' });
+    expect(showMusicFile('t', { name: 'a.flac', type: 'audio/flac' }, 'k1')).toBeNull();
+    expect(showMusicFile('t', { name: 'film.mp4', type: 'video/mp4' }, 'k1')).toBeNull();
+    expect(isShowMusicPath('t', 't/muzyka-k1.mp3')).toBe(true);
+    expect(isShowMusicPath('t', 'u/muzyka-k1.mp3')).toBe(false);
+    expect(isShowMusicPath('t', 't/abc.wav')).toBe(false);
+    expect(isShowMusicPath('t', 't/muzyka-k1xmp3')).toBe(false);
   });
 
   it('do nagrania idą sceny bez pasującego nagrania; zmiana głosu nagrywa wszystko od nowa', () => {

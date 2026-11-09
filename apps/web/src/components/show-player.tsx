@@ -15,6 +15,8 @@ import { polishLabels } from "@/components/plan-map";
  * tyle, ile czyta się napisy (`readingMs`). Start zawsze z kliknięcia: przeglądarka nie pozwala grać dźwięku bez niego.
  * Film otwiera ekran startowy (nazwa i daty wyjazdu), zamyka ekran końcowy. Lektor wchodzi po chwili ciszy na pierwszej
  * scenie (`LEAD_MS`), a po ostatnim zdaniu jest jeszcze `TAIL_MS` przed ekranem końcowym. Trasy dnia rysują się po kolei.
+ * Podkład muzyczny (opcjonalny) gra w pętli: narasta na ekranie startowym, pod lektorem cichnie (`MUSIC_UNDER_VOICE`),
+ * między scenami wraca, a na ekranie końcowym wygasa.
  * Kafle OpenFreeMap (wyświetlanie na żywo, bez pobierania na zapas — docs/USLUGI.md).
  */
 
@@ -33,6 +35,12 @@ const TAIL_MS = 1_000;
 /** Ekrany startowy i końcowy. */
 const TITLE_MS = 4_000;
 const END_MS = 5_000;
+/** Podkład pod lektorem: ułamek głośności ustawionej przez organizatora. */
+const MUSIC_UNDER_VOICE = 0.3;
+/** Jak szybko podkład dochodzi do docelowej głośności: ułamek różnicy na krok zegara (100 ms). */
+const MUSIC_EASE = 0.2;
+
+export type PlayerMusic = { url: string; volume: number; name: string };
 
 export type ShowMapData = { lines: { coordinates: [number, number][]; routed: boolean }[]; pins: { lng: number; lat: number; name: string }[] };
 
@@ -195,7 +203,13 @@ function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
   );
 }
 
-export function ShowPlayer({ scenes: story, credits, trip }: { scenes: PlayerScene[]; credits: ShowCredits; trip: { title: string; dates: string } }) {
+/** Docelowa głośność podkładu w tej chwili sceny. */
+function musicLevel(scene: PlayerScene, volume: number, clock: number, speaking: boolean): number {
+  if (scene.kind === "end") return volume * Math.max(0, 1 - clock / (END_MS - 500));
+  return speaking ? volume * MUSIC_UNDER_VOICE : volume;
+}
+
+export function ShowPlayer({ scenes: story, credits, trip, music }: { scenes: PlayerScene[]; credits: ShowCredits; trip: { title: string; dates: string }; music?: PlayerMusic }) {
   // Ekrany startowy i końcowy: bez lektora, z mapą pierwszej i ostatniej sceny pod spodem (mapa zdąży się wczytać).
   const scenes = useMemo<PlayerScene[]>(() => {
     const first = story[0];
@@ -209,6 +223,7 @@ export function ShowPlayer({ scenes: story, credits, trip }: { scenes: PlayerSce
   }, [story, trip.title, trip.dates]);
   const stage = useRef<HTMLDivElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
+  const backing = useRef<HTMLAudioElement>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   /** Czas sceny od jej początku (z ciszą przed lektorem) i czas samego lektora. */
@@ -271,6 +286,12 @@ export function ShowPlayer({ scenes: story, credits, trip }: { scenes: PlayerSce
         voice = Math.max(clock.current - lead, 0);
       }
       if (finished) waited += step;
+      const bed = backing.current;
+      if (bed && music) {
+        // Pod lektorem (z ciszą przed nim) ciszej; scena z samymi napisami i przerwy między scenami — pełna głośność.
+        const target = musicLevel(scene, music.volume, clock.current, scene.audio !== undefined && !finished);
+        bed.volume = Math.min(Math.max(bed.volume + (target - bed.volume) * MUSIC_EASE, 0), 1);
+      }
       setElapsed(clock.current);
       setNarrated(voice);
       if (finished && waited >= gap) {
@@ -279,13 +300,27 @@ export function ShowPlayer({ scenes: story, credits, trip }: { scenes: PlayerSce
       }
     }, 100);
     return () => clearInterval(timer);
-  }, [playing, index, scene.audio, lead, span, gap, go]);
+  }, [playing, index, scene, lead, span, gap, go, music]);
 
   useEffect(() => {
     if (!playing) audio.current?.pause();
   }, [playing, index]);
 
+  // Podkład gra, póki gra pokaz; pauza go zatrzymuje, a koniec pokazu (ostatni ekran minął) też.
+  useEffect(() => {
+    const bed = backing.current;
+    if (bed === null) return;
+    if (playing) void bed.play().catch(() => undefined);
+    else bed.pause();
+  }, [playing]);
+
   const toggle = () => {
+    // Pokaz od początku: podkład też od początku i narasta od ciszy.
+    const bed = backing.current;
+    if (bed && (ended || (index === 0 && clock.current === 0))) {
+      bed.currentTime = 0;
+      bed.volume = 0;
+    }
     if (ended) {
       clock.current = 0;
       setEnded(false);
@@ -335,7 +370,9 @@ export function ShowPlayer({ scenes: story, credits, trip }: { scenes: PlayerSce
               <p className="relative text-4xl font-bold sm:text-6xl">Koniec</p>
               <p className="relative text-lg text-white/85 sm:text-2xl">{trip.title}</p>
               <p className="relative text-sm text-white/70 sm:text-base">{trip.dates}</p>
-              <p className="relative mt-4 text-xs text-white/50">Mapy © OpenStreetMap · głos lektora: Gemini TTS · Expedition Planner</p>
+              <p className="relative mt-4 text-xs text-white/50">
+                Mapy © OpenStreetMap · głos lektora: Gemini TTS{music ? ` · muzyka: ${music.name.replace(/\.[a-z0-9]+$/i, "")}` : ""} · Expedition Planner
+              </p>
             </>
           ) : (
             <>
@@ -378,6 +415,7 @@ export function ShowPlayer({ scenes: story, credits, trip }: { scenes: PlayerSce
           <div className="h-full bg-white/80" style={{ width: `${((index + Math.min(share, 1)) / scenes.length) * 100}%` }} />
         </div>
         {scene.audio && <audio ref={audio} key={scene.key} src={scene.audio.url} preload="auto" />}
+        {music && <audio ref={backing} src={music.url} loop preload="auto" />}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
