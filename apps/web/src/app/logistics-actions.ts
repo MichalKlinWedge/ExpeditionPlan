@@ -1,6 +1,6 @@
 "use server";
 
-import { BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, type FxRate, mergeRates, parseMoney, parseWeightKg, PriceBasis, rebaseRates, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
+import { balanceTask, BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, type FxRate, mergeRates, parseMoney, parseWeightKg, PriceBasis, rebaseRates, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
 import { carrierRow, dbErrorMessage, type ElementWrite, expenseSplitRows, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -103,6 +103,8 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
   const depositText = text(form, "deposit");
   const deposit = depositText === "" ? undefined : parseMoney(depositText);
   if (deposit === null) return { error: "Zadatek: liczba, np. 500 albo 500,50." };
+  const balanceDue = text(form, "balanceDue");
+  if (balanceDue !== "" && !DATE.test(balanceDue)) return { error: "Termin dopłaty: data." };
   const currency = text(form, "currency").toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return { error: "Waluta: trzy litery, np. PLN, EUR, MAD." };
   const status = ["estimate", "committed", "paid"].includes(text(form, "status")) ? text(form, "status") : "estimate";
@@ -110,9 +112,11 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
   if (deposit !== undefined && !perPerson && deposit > high) return { error: "Zadatek większy niż kwota pozycji." };
   const chosen = form.getAll("for").map(String);
   const vehicle = text(form, "vehicle");
-  return change(tripId, "budgetLines", ref, (doc, current) => {
+  return commit(tripId, (doc) => {
+    const current = ref === null ? undefined : doc.budgetLines.find((each) => each.ref === ref);
+    if (ref !== null && current === undefined) return "Tego elementu już nie ma — odśwież stronę.";
     if (vehicle !== "" && !doc.vehicles.some((each) => each.ref === vehicle)) return "Tego auta już nie ma: odśwież stronę.";
-    return {
+    const line: Doc["budgetLines"][number] = {
       ...(current ?? { ref: `id-${uuidv7()}` }),
       title,
       category: category.data,
@@ -123,11 +127,20 @@ export async function saveBudgetLine(tripId: string, ref: string | null, _prev: 
       perPerson,
       // Pozycja zapłacona w całości nie potrzebuje zadatku.
       depositMinor: status === "paid" || deposit === 0 ? undefined : deposit,
+      balanceDue: status === "paid" || balanceDue === "" ? undefined : balanceDue,
       // Wszyscy zaznaczeni to to samo co brak wyboru: osoba dodana później też się liczy. Koszt auta dzielą osoby auta.
       participantRefs: vehicle !== "" || chosen.length === 0 || doc.travelers.every((traveler) => chosen.includes(traveler.ref)) ? undefined : chosen,
       vehicleRef: vehicle === "" ? undefined : vehicle,
       note: optional(text(form, "note")),
-    };
+    } as Doc["budgetLines"][number];
+    const budgetLines = current ? doc.budgetLines.map((each) => (each.ref === line.ref ? line : each)) : [...doc.budgetLines, line];
+    const withLine = { ...doc, budgetLines };
+    // Dopłata po zadatku z terminem = zadanie z tym terminem (przypomnienie na telefonie, „Gotowość”).
+    const task = balanceTask(withLine, line.ref, line, () => `id-${uuidv7()}`);
+    const tasks = task === null ? doc.tasks : task.op === "insert" ? [...doc.tasks, task.task] : doc.tasks.map((each) => (each.ref === task.task.ref ? task.task : each));
+    const writes: ElementWrite[] = [{ collection: "budgetLines", element: line, op: current ? "update" : "insert" }];
+    if (task !== null) writes.push({ collection: "tasks", element: task.task, op: task.op });
+    return { doc: { ...withLine, tasks }, writes, ok: task?.op === "insert" ? "Zapisano. Dodano zadanie dopłaty z terminem." : "Zapisano." };
   });
 }
 
@@ -147,9 +160,18 @@ export async function setExpenseSplits(tripId: string, expenseId: string, chosen
   return { ok: "Zapisano." };
 }
 
-/** Usunięcie pozycji budżetu (miękkie). Nic na pozycje budżetu nie wskazuje. */
+/** Usunięcie pozycji budżetu (miękkie). Wskazuje na nią tylko zadanie dopłaty: traci powiązanie, a otwarte jest odłożone. */
 export async function removeBudgetLine(tripId: string, ref: string): Promise<FormState> {
-  return change(tripId, "budgetLines", ref, () => null);
+  return commit(tripId, (doc) => {
+    const line = doc.budgetLines.find((each) => each.ref === ref);
+    if (line === undefined) return "Tego elementu już nie ma — odśwież stronę.";
+    const task = balanceTask(doc, ref, undefined, () => "");
+    const tasks = task === null ? doc.tasks : doc.tasks.map((each) => (each.ref === task.task.ref ? task.task : each));
+    const writes: ElementWrite[] = [];
+    if (task !== null) writes.push({ collection: "tasks", element: task.task, op: "update" });
+    writes.push({ collection: "budgetLines", element: line, op: "remove" });
+    return { doc: { ...doc, budgetLines: doc.budgetLines.filter((each) => each.ref !== ref), tasks }, writes, ok: "Usunięto." };
+  });
 }
 
 // --- Zadania --------------------------------------------------------------------------------

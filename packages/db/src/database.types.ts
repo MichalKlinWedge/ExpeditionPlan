@@ -191,14 +191,14 @@ isOneToOne: false
                   ]
                 },"budget_lines": {
                   Row: {
-                    "auto": boolean,"base_high_minor": number | null,"base_low_minor": number | null,"booking_id": string | null,"category": string,"created_at": string,"currency": string,"deleted_at": string | null,"deposit_minor": number | null,"fx_date": string | null,"fx_rate": number | null,"high_minor": number,"id": string,"item_id": string | null,"low_minor": number,"note": string | null,"participant_ids": (string)[] | null,"per_person": boolean,"ref": string | null,"row_version": number,"sort_key": string | null,"status": string,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"vehicle_id": string | null
+                    "auto": boolean,"balance_due": string | null,"base_high_minor": number | null,"base_low_minor": number | null,"booking_id": string | null,"category": string,"created_at": string,"currency": string,"deleted_at": string | null,"deposit_minor": number | null,"fx_date": string | null,"fx_rate": number | null,"high_minor": number,"id": string,"item_id": string | null,"low_minor": number,"note": string | null,"participant_ids": (string)[] | null,"per_person": boolean,"ref": string | null,"row_version": number,"sort_key": string | null,"status": string,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"vehicle_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "auto"?: boolean,"base_high_minor"?: number | null,"base_low_minor"?: number | null,"booking_id"?: string | null,"category": string,"created_at"?: string,"currency": string,"deleted_at"?: string | null,"deposit_minor"?: number | null,"fx_date"?: string | null,"fx_rate"?: number | null,"high_minor": number,"id": string,"item_id"?: string | null,"low_minor": number,"note"?: string | null,"participant_ids"?: (string)[] | null,"per_person"?: boolean,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"status": string,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"vehicle_id"?: string | null
+                    "auto"?: boolean,"balance_due"?: string | null,"base_high_minor"?: number | null,"base_low_minor"?: number | null,"booking_id"?: string | null,"category": string,"created_at"?: string,"currency": string,"deleted_at"?: string | null,"deposit_minor"?: number | null,"fx_date"?: string | null,"fx_rate"?: number | null,"high_minor": number,"id": string,"item_id"?: string | null,"low_minor": number,"note"?: string | null,"participant_ids"?: (string)[] | null,"per_person"?: boolean,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"status": string,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"vehicle_id"?: string | null
                   }
                   Update: {
-                    "auto"?: boolean,"base_high_minor"?: number | null,"base_low_minor"?: number | null,"booking_id"?: string | null,"category"?: string,"created_at"?: string,"currency"?: string,"deleted_at"?: string | null,"deposit_minor"?: number | null,"fx_date"?: string | null,"fx_rate"?: number | null,"high_minor"?: number,"id"?: string,"item_id"?: string | null,"low_minor"?: number,"note"?: string | null,"participant_ids"?: (string)[] | null,"per_person"?: boolean,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"status"?: string,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"vehicle_id"?: string | null
+                    "auto"?: boolean,"balance_due"?: string | null,"base_high_minor"?: number | null,"base_low_minor"?: number | null,"booking_id"?: string | null,"category"?: string,"created_at"?: string,"currency"?: string,"deleted_at"?: string | null,"deposit_minor"?: number | null,"fx_date"?: string | null,"fx_rate"?: number | null,"high_minor"?: number,"id"?: string,"item_id"?: string | null,"low_minor"?: number,"note"?: string | null,"participant_ids"?: (string)[] | null,"per_person"?: boolean,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"status"?: string,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"vehicle_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1011,14 +1011,14 @@ isOneToOne: false
                   ]
                 },"tasks": {
                   Row: {
-                    "answer": string | null,"assignee_ids": (string)[],"body": string | null,"booking_id": string | null,"created_at": string,"deleted_at": string | null,"due": Json | null,"id": string,"item_id": string | null,"kind": string,"priority": string | null,"ref": string | null,"row_version": number,"sort_key": string | null,"source": string,"status": string,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"variant_group_id": string | null
+                    "answer": string | null,"assignee_ids": (string)[],"body": string | null,"booking_id": string | null,"budget_line_id": string | null,"created_at": string,"deleted_at": string | null,"due": Json | null,"id": string,"item_id": string | null,"kind": string,"priority": string | null,"ref": string | null,"row_version": number,"sort_key": string | null,"source": string,"status": string,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"variant_group_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "answer"?: string | null,"assignee_ids"?: (string)[],"body"?: string | null,"booking_id"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"due"?: Json | null,"id": string,"item_id"?: string | null,"kind": string,"priority"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"source"?: string,"status"?: string,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"variant_group_id"?: string | null
+                    "answer"?: string | null,"assignee_ids"?: (string)[],"body"?: string | null,"booking_id"?: string | null,"budget_line_id"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"due"?: Json | null,"id": string,"item_id"?: string | null,"kind": string,"priority"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"source"?: string,"status"?: string,"title": string,"trip_id": string,"updated_at"?: string,"updated_by"?: string | null,"variant_group_id"?: string | null
                   }
                   Update: {
-                    "answer"?: string | null,"assignee_ids"?: (string)[],"body"?: string | null,"booking_id"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"due"?: Json | null,"id"?: string,"item_id"?: string | null,"kind"?: string,"priority"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"source"?: string,"status"?: string,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"variant_group_id"?: string | null
+                    "answer"?: string | null,"assignee_ids"?: (string)[],"body"?: string | null,"booking_id"?: string | null,"budget_line_id"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"due"?: Json | null,"id"?: string,"item_id"?: string | null,"kind"?: string,"priority"?: string | null,"ref"?: string | null,"row_version"?: number,"sort_key"?: string | null,"source"?: string,"status"?: string,"title"?: string,"trip_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"variant_group_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1026,6 +1026,12 @@ isOneToOne: false
       columns: ["booking_id"]
 isOneToOne: false
       referencedRelation: "bookings"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_budget_line_id_fkey"
+      columns: ["budget_line_id"]
+isOneToOne: false
+      referencedRelation: "budget_lines"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "tasks_item_id_fkey"

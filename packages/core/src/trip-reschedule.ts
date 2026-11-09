@@ -13,7 +13,8 @@ import type { TripDocument } from './schemas/trip-document.ts';
  *
  * Zostaje to, co jest faktem: rezerwacje kupione (`booked`, `paid`, zapłata albo kod potwierdzenia —
  * data zmienia się u dostawcy, więc to zadanie dla człowieka, a nie dla planu), odwołane,
- * `paid.date`, `checkedAt` cen i źródeł, `fx.date`, zadania zamknięte oraz wydatki, dziennik
+ * `paid.date`, `checkedAt` cen i źródeł, `fx.date`, termin dopłaty pozycji budżetu (`balanceDue`) i jej zadanie,
+ * zadania zamknięte oraz wydatki, dziennik
  * i zdarzenia z trasy (poza dokumentem).
  */
 
@@ -123,7 +124,8 @@ export function shiftTripDates(doc: Doc, newStart: string): TripShift {
   const bought = new Set(doc.bookings.filter((booking) => booking.status !== 'cancelled' && isBought(booking)).map((booking) => booking.ref));
   const tasks = doc.tasks.map((task) => {
     if (task.due?.kind !== 'absolute' || task.status !== 'open') return task;
-    if (task.bookingRef !== undefined && bought.has(task.bookingRef)) {
+    // Kupiona rezerwacja i dopłata po zadatku: termin jest u dostawcy, nie w planie.
+    if ((task.bookingRef !== undefined && bought.has(task.bookingRef)) || task.budgetLineRef !== undefined) {
       review.keptTasks.push({ ref: task.ref, title: task.title, date: task.due.date });
       return task;
     }

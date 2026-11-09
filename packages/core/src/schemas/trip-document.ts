@@ -601,6 +601,8 @@ export const DocBudgetLine = z
     perPerson: z.boolean().default(false),
     /** Zadatek już zapłacony (łącznie, w walucie pozycji, także przy „na osobę”); reszta zostaje do wydania. Przy „zapłacone” bez znaczenia. */
     depositMinor: MinorAmount.optional(),
+    /** Do kiedy dopłacić resztę po zadatku (warunek umowy: nie przesuwa się ze zmianą terminu wyjazdu). */
+    balanceDue: IsoDate.optional(),
     /** Kogo dotyczy pozycja; brak albo pusto = wszystkich uczestników (także dodanych później). */
     participantRefs: z.array(Ref).optional(),
     /** Koszt jednego auta (paliwo, winiety): dotyczy jego kierowcy i pasażerów (`vehicleTravelers`), nie `participantRefs`. */
@@ -645,6 +647,8 @@ export const DocTask = z.object({
   bookingRef: Ref.optional(),
   itemRef: Ref.optional(),
   variantGroupRef: Ref.optional(),
+  /** Zadanie dopłaty pozycji budżetu po zadatku (`core/budget-balance.ts`). */
+  budgetLineRef: Ref.optional(),
   priority: z.enum(['high', 'normal', 'low']).optional(),
 });
 
@@ -964,6 +968,7 @@ export function checkReferences(doc: Shape): { path: (string | number)[]; messag
     expect(['tasks', i, 'bookingRef'], t.bookingRef, 'bookings');
     expect(['tasks', i, 'itemRef'], t.itemRef, 'items');
     expect(['tasks', i, 'variantGroupRef'], t.variantGroupRef, 'variantGroups');
+    expect(['tasks', i, 'budgetLineRef'], t.budgetLineRef, 'budgetLines');
     if (t.due?.kind === 'before_item') expect(['tasks', i, 'due', 'itemRef'], t.due.itemRef, 'items');
     if (t.due?.kind === 'before_booking') expect(['tasks', i, 'due', 'bookingRef'], t.due.bookingRef, 'bookings');
     if (t.due?.kind === 'on_trip') expect(['tasks', i, 'due', 'dayRef'], t.due.dayRef, 'days');

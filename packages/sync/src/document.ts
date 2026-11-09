@@ -196,7 +196,7 @@ export const SPECS: Record<Collection, Spec> = {
   },
   budgetLines: {
     table: 'budget_lines',
-    fields: ['category', 'title', ['bookingRef', 'booking_id'], ['itemRef', 'item_id'], 'status', 'lowMinor', 'highMinor', 'currency', 'perPerson', 'depositMinor', ['participantRefs', 'participant_ids', 'many'], ['vehicleRef', 'vehicle_id'], 'note'],
+    fields: ['category', 'title', ['bookingRef', 'booking_id'], ['itemRef', 'item_id'], 'status', 'lowMinor', 'highMinor', 'currency', 'perPerson', 'depositMinor', 'balanceDue', ['participantRefs', 'participant_ids', 'many'], ['vehicleRef', 'vehicle_id'], 'note'],
   },
   // `booking_id` (wynajem) na razie bez pola w dokumencie.
   vehicles: {
@@ -207,7 +207,7 @@ export const SPECS: Record<Collection, Spec> = {
     table: 'tasks',
     fields: [
       'kind', 'title', 'body', 'answer', 'status', 'due', ['assigneeRefs', 'assignee_ids', 'many'], ['bookingRef', 'booking_id'],
-      ['itemRef', 'item_id'], ['variantGroupRef', 'variant_group_id'], 'priority',
+      ['itemRef', 'item_id'], ['variantGroupRef', 'variant_group_id'], ['budgetLineRef', 'budget_line_id'], 'priority',
     ],
   },
   packing: {

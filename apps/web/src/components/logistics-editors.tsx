@@ -209,6 +209,10 @@ function BudgetForm({ tripId, line, currency, people, cars, onDone }: { tripId: 
           zapłacony zadatek
           <input name="deposit" defaultValue={line?.depositMinor ? moneyToInput(line.depositMinor) : ""} placeholder="0" inputMode="decimal" className={`${input} w-24`} />
         </label>
+        <label className="flex items-center gap-1 text-xs text-zinc-500" title="Do kiedy dopłacić resztę. Z terminem powstaje zadanie „Dopłata: …” z przypomnieniem.">
+          reszta do
+          <input name="balanceDue" type="date" defaultValue={line?.balanceDue ?? ""} className={`${input} w-36`} />
+        </label>
         <input name="note" defaultValue={line?.note} placeholder="notatka" className={`${input} min-w-32 flex-1`} aria-label="Notatka" />
       </div>
       {cars.length > 0 && (
@@ -241,7 +245,7 @@ function BudgetForm({ tripId, line, currency, people, cars, onDone }: { tripId: 
   );
 }
 
-export function BudgetLines({ tripId, lines, currency, people, cars = [], canEdit }: { tripId: string; lines: Line[]; currency: string; people: Person[]; cars?: CarChoice[]; canEdit: boolean }) {
+export function BudgetLines({ tripId, lines, balances = {}, currency, people, cars = [], canEdit }: { tripId: string; lines: Line[]; balances?: Record<string, string | null>; currency: string; people: Person[]; cars?: CarChoice[]; canEdit: boolean }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const remove = useAction();
@@ -280,7 +284,12 @@ export function BudgetLines({ tripId, lines, currency, people, cars = [], canEdi
                     ) : (
                       lineTravelerNames(people, line) !== null && <span className="block text-xs text-zinc-500">dotyczy: {lineTravelerNames(people, line)!.join(", ")}</span>
                     )}
-                    {line.status !== "paid" && line.depositMinor ? <span className="block text-xs text-zinc-500">zapłacony zadatek: {formatMoney(line.depositMinor, line.currency)}</span> : null}
+                    {line.status !== "paid" && line.depositMinor ? (
+                      <span className="block text-xs text-zinc-500">
+                        zapłacony zadatek: {formatMoney(line.depositMinor, line.currency)}
+                        {balances[line.ref] ? <span className="font-medium text-amber-700 dark:text-amber-400"> · {balances[line.ref]}</span> : null}
+                      </span>
+                    ) : null}
                     {line.note ? <span className="block text-xs text-zinc-500">{line.note}</span> : null}
                   </td>
                   <td className="hidden py-1 pr-3 text-zinc-500 sm:table-cell">{BUDGET_CATEGORY[line.category] ?? line.category}</td>

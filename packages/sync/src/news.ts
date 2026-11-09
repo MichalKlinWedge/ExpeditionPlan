@@ -61,7 +61,7 @@ const FIELD: Record<string, string> = {
   title: 'nazwa', name: 'nazwa', label: 'nazwa', description: 'opis', summary: 'opis', body: 'treść', note: 'uwaga', notes: 'uwagi',
   day_id: 'dzień', date: 'data', start_time: 'godzina', end_time: 'godzina', time_precision: 'godzina', part_of_day: 'godzina',
   offset_min: 'godzina', relative_from: 'godzina', start_date: 'termin', end_date: 'termin', duration_min: 'czas trwania',
-  duration_max_min: 'czas trwania', price: 'cena', low_minor: 'kwota', high_minor: 'kwota', deposit_minor: 'zadatek', amount_minor: 'kwota', currency: 'waluta',
+  duration_max_min: 'czas trwania', price: 'cena', low_minor: 'kwota', high_minor: 'kwota', deposit_minor: 'zadatek', balance_due: 'termin dopłaty', amount_minor: 'kwota', currency: 'waluta',
   status: 'status', plan_status: 'status w planie', priority: 'priorytet', place_id: 'miejsce', lat: 'położenie', lng: 'położenie',
   address: 'adres', phone: 'telefon', email: 'e-mail', category: 'kategoria', confirmation_code: 'kod potwierdzenia', paid_minor: 'płatność',
   paid_on: 'płatność', payment: 'płatność', due: 'termin', answer: 'odpowiedź', assignee_ids: 'kto', assignee_traveler_id: 'kto',

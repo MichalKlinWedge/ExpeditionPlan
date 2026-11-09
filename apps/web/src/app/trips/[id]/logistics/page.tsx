@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, vehicleTravelers, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { balanceText, BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, lineBalance, vehicleTravelers, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -166,6 +166,9 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
     ...new Set([...doc.budgetLines.map((line) => line.currency), ...bookings.flatMap((booking) => [booking.price?.currency, booking.paid?.currency])].filter((currency): currency is string => currency !== undefined)),
   ].filter((currency) => currency !== doc.trip.baseCurrency && !doc.trip.fx.some((each) => each.currency === currency));
 
+  // Dopłata po zadatku przy każdej pozycji: „do dopłaty … do …”.
+  const balances = Object.fromEntries(doc.budgetLines.map((line) => [line.ref, ((balance) => (balance === null ? null : balanceText(balance)))(lineBalance(doc, line))]));
+
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -206,7 +209,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                 </ul>
               </div>
             )}
-            <BudgetLines tripId={id} lines={doc.budgetLines} currency={budget.currency} people={choices.travelers} cars={cars} canEdit={canEdit} />
+            <BudgetLines tripId={id} lines={doc.budgetLines} balances={balances} currency={budget.currency} people={choices.travelers} cars={cars} canEdit={canEdit} />
             {Object.keys(budget.unconverted).length > 0 && (
               <p className="text-xs text-amber-700">
                 Bez kursu w planie (poza sumą):{" "}
@@ -388,6 +391,14 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                     <td className="py-1 text-right align-top font-mono whitespace-nowrap">
                       {cost}
                       {booking.paid && booking.status !== "paid" ? <span className="block font-sans text-xs text-zinc-500">zapłacono</span> : null}
+                      {/* Dopłata z pozycji budżetu tej rezerwacji. */}
+                      {doc.budgetLines
+                        .filter((line) => line.bookingRef === booking.ref && balances[line.ref])
+                        .map((line) => (
+                          <span key={line.ref} className="block font-sans text-xs font-medium text-amber-700 dark:text-amber-400">
+                            {balances[line.ref]}
+                          </span>
+                        ))}
                     </td>
                   </BookingRow>
                 );

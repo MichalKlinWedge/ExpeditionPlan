@@ -16,6 +16,7 @@ export * from './engine/sun.ts';
 export * from './engine/time.ts';
 export * from './trip-stats.ts';
 export * from './budget.ts';
+export * from './budget-balance.ts';
 export * from './budget-pace.ts';
 export * from './calendar.ts';
 export * from './budget-suggest.ts';
