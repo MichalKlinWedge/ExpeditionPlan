@@ -163,11 +163,11 @@ export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone
         Jedzie do
         <input name="toDate" type="date" min={trip.start} max={trip.end} className={input} defaultValue={traveler?.to_date ?? ""} />
       </label>
-      <label className={label}>
+      <label className={label} title="Tylko data, bez numeru. U osoby z kontem uzupełni się też w jej innych wyjazdach, gdzie pole jest puste.">
         Paszport ważny do
         <input name="passportUntil" type="date" className={input} defaultValue={traveler?.passport_until ?? ""} />
       </label>
-      <label className={label}>
+      <label className={label} title="Tylko data, bez numeru. U osoby z kontem uzupełni się też w jej innych wyjazdach, gdzie pole jest puste.">
         Dowód ważny do
         <input name="idCardUntil" type="date" className={input} defaultValue={traveler?.id_card_until ?? ""} />
       </label>
