@@ -8,11 +8,11 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Dziennik na webie: nowy wpis (tekst i zdjęcia) oraz usunięcie wpisu. Zapis prosto z przeglądarki, jak na
- * telefonie: plik do prywatnego bucketu `journal` pod `<trip>/<wpis>/zdjecie.<ext>`, potem wiersz
- * `journal_entries` (autor z `auth.uid()`). O prawach decyduje RLS: wpis dodaje każdy uczestnik, usuwa autor
- * albo organizator i edytor. Kilka zdjęć naraz = kolejne wpisy, tekst trafia do pierwszego; dzień i godzinę
- * każdego zdjęcia bierze z EXIF (`photoTakenAt`), gdy aparat je zapisał. Z `itemId` (karta punktu planu) wpis
+ * Dziennik na webie: nowy wpis (tekst i zdjęcia). Zapis prosto z przeglądarki, jak na telefonie: plik do
+ * prywatnego bucketu `journal` pod `<trip>/<wpis>/zdjecie.<ext>`, potem wiersz `journal_entries` (autor
+ * z `auth.uid()`). O prawach decyduje RLS: wpis dodaje każdy uczestnik, zmienia i usuwa autor albo organizator
+ * i edytor (`components/journal-entry.tsx`). Kilka zdjęć naraz = kolejne wpisy, tekst trafia do pierwszego; dzień
+ * i godzinę każdego zdjęcia bierze z EXIF (`photoTakenAt`), gdy aparat je zapisał. Z `itemId` (karta punktu planu) wpis
  * jest przy tym punkcie i jego dniu, a bez godziny ze zdjęcia dostaje planowaną godzinę punktu.
  */
 
@@ -218,29 +218,5 @@ export function JournalNew({ tripId, days, tz, itemId, plannedTime, label = "+ N
         </button>
       </div>
     </section>
-  );
-}
-
-/** Usunięcie wpisu — miękkie (`deleted_at`), plik zdjęcia zostaje w buckecie (jak na telefonie). */
-export function JournalRemove({ entryId, label }: { entryId: string; label: string }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const remove = async () => {
-    if (!window.confirm(`Usunąć wpis${label ? ` „${label.slice(0, 60)}${label.length > 60 ? "…" : ""}”` : " ze zdjęciem"}?`)) return;
-    setBusy(true);
-    const { data, error: updateError } = await createClient().from("journal_entries").update({ deleted_at: new Date().toISOString() }).eq("id", entryId).select("id");
-    setBusy(false);
-    if (updateError) return setError(dbErrorMessage(updateError, "Nie usunięto wpisu. Spróbuj jeszcze raz."));
-    if ((data ?? []).length === 0) return setError("Ten wpis może usunąć tylko autor albo organizator.");
-    router.refresh();
-  };
-  return (
-    <>
-      <button type="button" onClick={() => void remove()} disabled={busy} className="btn-mini btn-mini-danger">
-        usuń
-      </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
-    </>
   );
 }

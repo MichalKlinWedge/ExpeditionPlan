@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { dayLabel, type TripDocument } from "@expeditionplan/core";
+import { dayLabel, journalMovedTime, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,7 +17,8 @@ export const metadata: Metadata = { title: "Dziennik — Expedition Planner" };
 
 /**
  * Dziennik wyjazdu: wpisy i zdjęcia złożone w relację dzień po dniu. W trasie powstają na telefonie (offline),
- * tu można je dodać z komputera (`JournalNew`, np. zdjęcia po powrocie) i usunąć. Zdjęcia z prywatnego bucketu
+ * tu można je dodać z komputera (`JournalNew`, np. zdjęcia po powrocie), poprawić, przesunąć ↑ / ↓, przepiąć na
+ * inny dzień i usunąć (`JournalEntry`). Zdjęcia z prywatnego bucketu
  * `journal` przez podpisane URL-e (ważne godzinę) — zdjęcie, które telefon jeszcze wysyła, ma opis zamiast obrazka.
  * Wpis przy punkcie planu prowadzi do jego karty, gdzie też dodaje się zdjęcia tego punktu.
  */
@@ -77,14 +78,18 @@ async function Journal({ params }: { params: Promise<{ id: string }> }) {
       {groups.map((group) => (
         <section key={group.key} className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">{group.title}</h2>
-          {group.rows.map((row) => {
+          {group.rows.map((row, index) => {
             const item = row.itemId === null ? undefined : itemOfId.get(row.itemId);
+            const times = group.rows.map((each) => each.takenAt);
             return (
               <JournalEntry
                 key={row.id}
                 entry={row}
                 tz={group.tz}
-                canRemove={row.mine || editing}
+                canEdit={row.mine || editing}
+                days={days}
+                upAt={journalMovedTime(times, index, -1)}
+                downAt={journalMovedTime(times, index, 1)}
                 item={item === undefined ? undefined : { href: `/trips/${id}/item/${encodeURIComponent(item.ref)}`, title: item.title }}
               />
             );

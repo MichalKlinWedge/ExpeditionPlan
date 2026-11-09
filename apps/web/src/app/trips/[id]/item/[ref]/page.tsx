@@ -180,7 +180,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             </Link>
           </div>
           {photos.map((entry) => (
-            <JournalEntry key={entry.id} entry={entry} tz={day.tz} canRemove={entry.mine || editing} />
+            <JournalEntry key={entry.id} entry={entry} tz={day.tz} canEdit={entry.mine || editing} days={journalDay} />
           ))}
           <JournalNew tripId={id} days={journalDay} tz={day.tz} itemId={itemId} plannedTime={item.time && "start" in item.time ? item.time.start : undefined} label="+ Dodaj zdjęcia" />
         </section>
