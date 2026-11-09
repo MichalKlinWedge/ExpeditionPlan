@@ -8,7 +8,7 @@ import { type ChangeEvent, useRef, useState, useTransition } from "react";
 import type { FormState } from "@/app/actions";
 import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowMusicSettings, setShowVoice, voiceSample } from "@/app/show-actions";
 import { IconAction } from "@/components/icon-action";
-import { MicIcon, PencilIcon, SpeakerIcon } from "@/components/icons";
+import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { createClient } from "@/lib/supabase/client";
 
@@ -342,10 +342,10 @@ export function ShowMusicEditor({ tripId, kind, music }: { tripId: string; kind:
             <input type="text" inputMode="decimal" value={skip} onChange={(event) => changeSkip(event.target.value)} disabled={busy} className="field w-16 px-2 py-1 text-right text-sm" />
             s
           </label>
-          {/* Ikony jak w innych sekcjach (`IconAction`); wybór pliku to <label>, więc ołówek ma tę samą klasę ręcznie. */}
+          {/* Wgranie innego pliku to nie edycja, więc tekst; usunięcie to kosz jak w innych sekcjach (`IconAction`). */}
           <span className="flex items-center gap-1">
-            <label title="zmień plik" aria-label="zmień plik" className={`btn-mini btn-icon cursor-pointer ${busy ? "opacity-50" : ""}`}>
-              {busy ? "wgrywam…" : <PencilIcon className="size-3.5" />}
+            <label title="wgraj inny plik z muzyką" className={`btn-mini cursor-pointer ${busy ? "opacity-50" : ""}`}>
+              {busy ? "wgrywam…" : "Wgraj"}
               {picker}
             </label>
             <IconAction kind="remove" tip="usuń muzykę" onClick={() => void remove()} disabled={busy} />
