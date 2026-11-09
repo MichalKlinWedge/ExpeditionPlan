@@ -497,8 +497,8 @@ export function ShowExport({
               </button>
             )}
             {!busy && (
-              <button onClick={onClose} className="btn-mini">
-                zamknij
+              <button onClick={onClose} className="btn-secondary btn-sm">
+                Zamknij
               </button>
             )}
           </div>
