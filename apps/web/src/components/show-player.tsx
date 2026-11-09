@@ -51,8 +51,8 @@ const LEAD_MS = 1_000;
 /** Przerwa po lektorze ostatniej sceny, zanim pojawi się ekran końcowy. */
 const TAIL_MS = 1_000;
 /** Ekrany startowy i końcowy. */
-const TITLE_MS = 4_000;
-const END_MS = 5_000;
+const TITLE_MS = 3_000;
+const END_MS = 2_000;
 /** Podkład pod lektorem: ułamek głośności ustawionej przez organizatora. */
 const MUSIC_UNDER_VOICE = 0.3;
 /** Jak szybko podkład dochodzi do docelowej głośności: ułamek różnicy na krok zegara (100 ms). */
