@@ -1466,6 +1466,9 @@ isOneToOne: false
             "accept_invite":
 { Args: { "p_token": string }; Returns: string
                            },
+"add_known_member":
+{ Args: { "p_role": string,"p_traveler"?: string,"p_trip": string,"p_user": string }; Returns: string
+                           },
 "before_user_created":
 { Args: { "event": Json }; Returns: Json
                            },
@@ -1518,6 +1521,9 @@ isOneToOne: false
                            },
 "is_trip_owner":
 { Args: { "p_trip": string }; Returns: boolean
+                           },
+"known_accounts":
+{ Args: { "p_trip": string }; Returns: Json
                            },
 "leave_trip":
 { Args: { "p_trip": string }; Returns: undefined

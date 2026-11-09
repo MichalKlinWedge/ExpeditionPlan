@@ -1,5 +1,6 @@
 "use server";
 
+import { MEMBER_ROLE } from "@expeditionplan/core";
 import { dbErrorMessage } from "@expeditionplan/sync";
 import { createHash } from "node:crypto";
 
@@ -9,7 +10,7 @@ import { z } from "zod";
 
 import type { FormState } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
-import { travelerInviteMessage } from "@/lib/invite-message";
+import { accessGrantedMessage, travelerInviteMessage } from "@/lib/invite-message";
 import { tripDates } from "@/lib/labels";
 import { mailConfigured, sendMail } from "@/lib/mail";
 
@@ -141,4 +142,50 @@ export async function emailTravelerInvite(tripId: string, travelerId: string, to
     return { error: "Nie udało się wysłać wiadomości. Skopiuj ją i wyślij sam." };
   }
   return { ok: `Wysłano na ${address.data}.` };
+}
+
+/** Konto z innych wyjazdów organizatora (`known_accounts`). */
+export type KnownAccount = { user_id: string; email: string | null; display_name: string | null; trips: number; last_trip: string | null };
+
+/**
+ * Dodanie znanego konta do wyjazdu bez linku zaproszenia (`add_known_member`: tylko organizator, tylko
+ * konta z jego innych wyjazdów), opcjonalnie z przypisaniem do uczestnika i e-mailem „masz dostęp”.
+ */
+export async function addKnownMember(tripId: string, userId: string, role: "editor" | "viewer", travelerId: string | null, notify: boolean): Promise<FormState> {
+  if (role !== "editor" && role !== "viewer") return { error: "Rola: edytor albo widz." };
+  const { supabase, email, userId: me } = await requireUser(`/trips/${tripId}/people`);
+  const added = await supabase.rpc("add_known_member", { p_trip: tripId, p_user: userId, p_role: role, ...(travelerId ? { p_traveler: travelerId } : {}) });
+  if (added.error) return { error: dbErrorMessage(added.error) };
+  refresh();
+  const to = added.data;
+  if (!notify) return { ok: "Dodano do wyjazdu." };
+  if (!mailConfigured()) return { ok: "Dodano do wyjazdu. Wysyłka e-maili nie jest skonfigurowana — daj znać tej osobie sam." };
+  if (!to) return { ok: "Dodano do wyjazdu. To konto nie ma adresu e-mail." };
+  const [trip, profile, requestHeaders] = await Promise.all([
+    supabase.from("trips").select("title, start_date, end_date").eq("id", tripId).single(),
+    supabase.from("profiles").select("display_name").eq("id", me).maybeSingle(),
+    headers(),
+  ]);
+  if (trip.data === null) return { ok: "Dodano do wyjazdu, ale nie wysłano wiadomości." };
+  const dates = trip.data.start_date && trip.data.end_date ? tripDates(trip.data.start_date, trip.data.end_date) : "termin do ustalenia";
+  try {
+    await sendMail({
+      to,
+      subject: `Masz dostęp do wyjazdu „${trip.data.title}”`,
+      text: accessGrantedMessage({
+        tripTitle: trip.data.title,
+        dates,
+        role: MEMBER_ROLE[role] ?? role,
+        // Akcje serwera przyjmują tylko żądania z tego samego adresu co strona.
+        origin: requestHeaders.get("origin") ?? "",
+        tripId,
+        from: profile.data?.display_name ?? undefined,
+      }),
+      ...(email ? { replyTo: email } : {}),
+    });
+  } catch (e) {
+    console.error("Wiadomość o dostępie", e);
+    return { ok: "Dodano do wyjazdu, ale wiadomość się nie wysłała — daj znać tej osobie sam." };
+  }
+  return { ok: `Dodano do wyjazdu i wysłano wiadomość na ${to}.` };
 }

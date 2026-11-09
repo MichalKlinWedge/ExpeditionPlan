@@ -9,11 +9,14 @@ import { Formalities } from "@/components/formalities";
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
 import { InviteForm, RemoveTripForm, TravelerList } from "@/components/forms";
+import { KnownAccounts } from "@/components/known-accounts";
 import { type InviteStat, type MemberStat, MemberStats } from "@/components/member-stats";
 import { PublicShare } from "@/components/public-share";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
+import { mailConfigured } from "@/lib/mail";
+import type { KnownAccount } from "@/app/share-actions";
 
 export const metadata: Metadata = { title: "Uczestnicy i dostęp — Expedition Planner" };
 
@@ -55,13 +58,18 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
   const editing = canEdit && wantsEdit;
   const title = trip.data.title!;
   // Statystyki dostępu i linki zaproszeń — tylko organizator (RPC sprawdza to samo).
-  const [stats, invites] =
+  const [stats, invites, known] =
     role === "owner"
       ? await Promise.all([
           supabase.rpc("trip_member_stats", { p_trip: id }),
           supabase.from("trip_invites").select("id, role, created_at, expires_at, used_count, max_uses, revoked_at, traveler_id").eq("trip_id", id).order("created_at"),
+          // Osoby z moich innych wyjazdów — do dodania bez zaproszenia (tylko po „Edytuj”).
+          editing ? supabase.rpc("known_accounts", { p_trip: id }) : Promise.resolve(null),
         ])
-      : [null, null];
+      : [null, null, null];
+  // Uczestnicy bez przypisanego konta — do wyboru przy dodaniu znanej osoby.
+  const linked = new Set(((stats?.data ?? []) as unknown as MemberStat[]).flatMap((member) => member.travelers));
+  const unlinked = (travelers.data ?? []).filter((each) => !linked.has(each.id)).map((each) => ({ id: each.id, name: each.name }));
   const now = new Date().getTime();
   const today = instantToZoned(now, trip.data.primary_tz!).date;
 
@@ -131,6 +139,7 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
             ))}
           </ul>
         )}
+        {role === "owner" && editing && known?.data && <KnownAccounts tripId={id} accounts={known.data as unknown as KnownAccount[]} travelers={unlinked} canMail={mailConfigured()} />}
         {role === "owner" && editing && <InviteForm tripId={id} />}
         {role === "owner" && !editing && <p className="text-xs text-zinc-500">Zaproszenie linkiem — po „Edytuj”.</p>}
       </section>
