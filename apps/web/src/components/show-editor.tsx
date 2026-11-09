@@ -94,8 +94,8 @@ function VoiceSample({ tripId, voice }: { tripId: string; voice: string }) {
   };
   return (
     <>
-      <button type="button" onClick={() => void play()} disabled={state === "loading"} className="btn-mini" title="Krótka próbka tego głosu">
-        <SpeakerIcon className="size-3.5" />
+      <button type="button" onClick={() => void play()} disabled={state === "loading"} className="btn-secondary btn-sm" title="Krótka próbka tego głosu">
+        <SpeakerIcon className="size-4" />
         {state === "loading" ? "nagrywam próbkę…" : state === "playing" ? "zatrzymaj" : "posłuchaj"}
       </button>
       {error && <span className="text-xs text-red-600">{error}</span>}
@@ -236,7 +236,7 @@ export function ShowEditor({
           {progress?.waiting ? `Limit zapytań Google, czekam ${progress.waiting} s…` : progress ? `Nagrywam ${progress.done + 1} z ${progress.total}…` : toRecord.length > 0 ? `Nagraj lektora (${plural(toRecord.length, ["scena", "sceny", "scen"])})` : "Wszystko nagrane"}
         </button>
         {written.length > 0 && progress === null && (
-          <button onClick={() => void record(written, true)} disabled={pending} className="btn-mini" title="Nowe ujęcia wszystkich scen z tekstem, także już nagranych">
+          <button onClick={() => void record(written, true)} disabled={pending} className="btn-secondary btn-sm" title="Nowe ujęcia wszystkich scen z tekstem, także już nagranych">
             nagraj od nowa wszystko
           </button>
         )}
