@@ -13,6 +13,7 @@ import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
 import { TripRescheduleButton } from "@/components/trip-reschedule";
 import { TripStatusButton } from "@/components/trip-status-button";
+import { TripTitle } from "@/components/trip-title";
 import { TripNews } from "@/components/trip-news";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
@@ -139,7 +140,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
     <>
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h1 className="text-3xl font-bold">{trip.data.title}</h1>
+          <TripTitle tripId={id} title={title} canEdit={canEdit} hasDrafts={hasDrafts} />
           {canEdit && (
             <span className="flex flex-wrap items-center gap-2">
               <TripRescheduleButton tripId={id} startDate={trip.data.start_date!} endDate={trip.data.end_date!} today={today} hasDrafts={hasDrafts} />

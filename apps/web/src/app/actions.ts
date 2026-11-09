@@ -1,6 +1,6 @@
 "use server";
 
-import { Currency, formatMinutes, IsoDate, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
+import { Currency, DRAFT_PREFIX, formatMinutes, IsoDate, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { geoapifyLookup, googleLinkVias, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, dbErrorMessage, importTrip, lockedRefs, type PullPayload, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -66,6 +66,45 @@ export async function setTripPostponed(tripId: string, postponed: boolean): Prom
   if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: postponed ? "Wyjazd odłożony." : "Wyjazd wrócił do planów." };
+}
+
+/** Najdłuższa nazwa wyjazdu. */
+const TITLE_MAX = 120;
+
+/**
+ * Nowa nazwa wyjazdu (organizator, edytor; RLS). Szkic AI zostaje szkicem: `name` to część po
+ * „Szkic AI: ”. Szkice łączą się z planem po nazwie, więc zmiana nazwy planu zmienia też nazwy
+ * jego szkiców, które wolno mi edytować.
+ */
+export async function renameTrip(tripId: string, name: string): Promise<FormState> {
+  const clean = name.trim().replace(/s+/g, " ");
+  if (clean === "") return { error: "Podaj nazwę wyjazdu." };
+  if (clean.length > TITLE_MAX) return { error: `Nazwa do ${TITLE_MAX} znaków.` };
+  if (clean.startsWith(DRAFT_PREFIX)) return { error: `Nazwa nie może zaczynać się od „${DRAFT_PREFIX.trim()}”: tak oznaczone są szkice AI.` };
+  const { supabase } = await requireUser(`/trips/${tripId}`);
+  const trip = await supabase.from("my_trips").select("title, role").eq("id", tripId).maybeSingle();
+  if (trip.error) return { error: dbErrorMessage(trip.error) };
+  if (trip.data === null) return { error: "Nie ma takiego wyjazdu." };
+  const old = trip.data.title ?? "";
+  const draft = old.startsWith(DRAFT_PREFIX);
+  const title = draft ? `${DRAFT_PREFIX}${clean}` : clean;
+  if (title === old) return { ok: "Bez zmian." };
+  const { data, error } = await supabase.from("trips").update({ title }).eq("id", tripId).select("id");
+  if (error) return { error: dbErrorMessage(error) };
+  if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  let drafts = 0;
+  if (!draft) {
+    const mine = await supabase.from("my_trips").select("id").eq("title", `${DRAFT_PREFIX}${old}`).in("role", ["owner", "editor"]);
+    if (mine.error) return { error: dbErrorMessage(mine.error) };
+    const ids = mine.data.map((each) => each.id).filter((id): id is string => id !== null);
+    if (ids.length > 0) {
+      const renamed = await supabase.from("trips").update({ title: `${DRAFT_PREFIX}${title}` }).in("id", ids).select("id");
+      if (renamed.error) return { error: dbErrorMessage(renamed.error) };
+      drafts = renamed.data.length;
+    }
+  }
+  refresh();
+  return { ok: drafts > 0 ? `Zapisano. Szkice AI tego planu też mają nową nazwę (${drafts}).` : "Zapisano." };
 }
 
 const NewTraveler = z.object({
