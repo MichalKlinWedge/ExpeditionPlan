@@ -623,6 +623,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           online={signedIn}
           onSaveEatOut={signedIn && canAct ? saveEatOut : undefined}
           plan={{ scenario, variants }}
+          journal={{ userId: signedIn ? userId : null, canEditAll: signedIn && canAct, onChanged: signedIn ? afterLocalWrite : undefined }}
           onContacts={() => {
             setDetail(null);
             showContacts();

@@ -73,3 +73,4 @@ export * from './transit-info.ts';
 export * from './transit-shape.ts';
 export * from './venue-info.ts';
 export * from './trip-show.ts';
+export * from './photo-time.ts';

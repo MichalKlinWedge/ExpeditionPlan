@@ -1,4 +1,4 @@
-import { instantToZoned, plural } from '@expeditionplan/core';
+import { instantToZoned, plural, zonedToInstant } from '@expeditionplan/core';
 import { type CachedTrip, removeJournalEntry, saveJournalEntry, uuidv7 } from '@expeditionplan/sync';
 import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -18,7 +18,8 @@ import { localDb } from '@/lib/local-db';
 /**
  * Dziennik wyjazdu: krótki wpis i zdjęcie przy dniu — zapis offline (outbox), zdjęcie wysyła się,
  * gdy jest sieć. Wpis dodaje każdy uczestnik; usuwa autor albo organizator i edytor (RLS).
- * Po powrocie cała relacja jest na webie („Dziennik”).
+ * Po powrocie cała relacja jest na webie („Dziennik”). `ItemPhotos` to samo w szczegółach punktu planu: wpisy
+ * z `item_id` tego punktu, dodawane z jego dniem.
  */
 
 type Props = {
@@ -51,6 +52,7 @@ function Journal({ trip, tripId, signedIn, userId, canEditAll, onChanged }: Prop
   const author = (row: EntryRow) =>
     row.created_by == null || row.created_by === userId ? 'ja' : (travelers.find((each) => each.user_id === row.created_by)?.name ?? 'uczestnik');
   const dayOfId = new Map(doc.days.map((day) => [trip.ids[day.ref], day]));
+  const itemOfId = new Map(doc.items.map((item) => [trip.ids[item.ref], item]));
   const [writing, setWriting] = useState(false);
   const [waiting, setWaiting] = useState(() => waitingPhotos());
 
@@ -116,6 +118,7 @@ function Journal({ trip, tripId, signedIn, userId, canEditAll, onChanged }: Prop
               <View style={styles.meta}>
                 <ThemedText type="small" themeColor="textSecondary">
                   {hm(row.taken_at, group.tz)} · {author(row)}
+                  {row.item_id && itemOfId.has(row.item_id) ? ` · 📍 ${itemOfId.get(row.item_id)!.title}` : ''}
                 </ThemedText>
                 {signedIn && (canEditAll || author(row) === 'ja') && (
                   <Button label="Usuń" onPress={() => remove(row)} small danger />
@@ -156,6 +159,70 @@ function Photo({ path }: { path: string }) {
   return <Image source={{ uri }} style={styles.photo} contentFit="cover" cachePolicy="disk" recyclingKey={path} />;
 }
 
+/**
+ * Zdjęcia punktu planu w jego szczegółach: wpisy dziennika z `item_id` punktu i dodawanie nowych (dzień punktu).
+ * Bez zalogowania tylko podgląd. Te same wpisy są w zakładce Dziennik.
+ */
+export function ItemPhotos({ trip, tripId, itemRef, userId, canEditAll, onChanged }: { trip: CachedTrip; tripId: string; itemRef: string; userId: string | null; canEditAll: boolean; onChanged?: () => void }) {
+  const [writing, setWriting] = useState(false);
+  const itemId = trip.ids[itemRef];
+  const item = trip.state.doc.items.find((each) => each.ref === itemRef);
+  const day = trip.state.doc.days.find((each) => each.ref === item?.dayRef);
+  const entries = itemId === undefined ? [] : (trip.live.journal as unknown as EntryRow[]).filter((row) => row.item_id === itemId).sort((a, b) => a.taken_at.localeCompare(b.taken_at));
+  if (day === undefined || (entries.length === 0 && onChanged === undefined)) return null;
+  const remove = (row: EntryRow) =>
+    Alert.alert('Usunąć wpis?', row.body || 'Wpis ze zdjęciem', [
+      { text: 'Anuluj', style: 'cancel' },
+      {
+        text: 'Usuń',
+        style: 'destructive',
+        onPress: () => {
+          removeJournalEntry(localDb, { id: row.id, tripId, dayId: row.day_id, itemId: row.item_id, body: row.body, photoPath: row.photo_path, takenAt: row.taken_at });
+          onChanged?.();
+        },
+      },
+    ]);
+  return (
+    <View style={styles.group}>
+      <ThemedText type="smallBold">Zdjęcia{entries.length > 0 ? ` (${entries.length})` : ''}</ThemedText>
+      {entries.map((row) => (
+        <ThemedView key={row.id} type="backgroundElement" style={styles.card}>
+          {row.photo_path && <Photo path={row.photo_path} />}
+          {row.body !== '' && <ThemedText>{row.body}</ThemedText>}
+          <View style={styles.meta}>
+            <ThemedText type="small" themeColor="textSecondary">
+              {hm(row.taken_at, day.tz)}
+            </ThemedText>
+            {onChanged !== undefined && (canEditAll || row.created_by == null || row.created_by === userId) && <Button label="Usuń" onPress={() => remove(row)} small danger />}
+          </View>
+        </ThemedView>
+      ))}
+      {onChanged !== undefined &&
+        (writing ? (
+          <NewEntry
+            trip={trip}
+            tripId={tripId}
+            itemRef={itemRef}
+            onDone={() => setWriting(false)}
+            onSaved={() => {
+              onChanged();
+              void uploadPhotos().catch(() => undefined);
+            }}
+          />
+        ) : (
+          <Button small label="📷 Dodaj zdjęcie" onPress={() => setWriting(true)} />
+        ))}
+    </View>
+  );
+}
+
+/** „2026:10:24 14:37:05” z EXIF galerii → data i godzina; bez niej `null`. */
+function exifMoment(exif: Record<string, unknown> | null | undefined): { date: string; time: string } | null {
+  const raw = exif?.DateTimeOriginal ?? exif?.DateTime;
+  const match = typeof raw === 'string' ? /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2})/.exec(raw) : null;
+  return match && match[1] !== '0000' ? { date: `${match[1]}-${match[2]}-${match[3]}`, time: `${match[4]}:${match[5]}` } : null;
+}
+
 /** Dzień wpisu: dzisiejszy, jeśli wyjazd trwa, inaczej pierwszy. */
 function todayRef(trip: CachedTrip): string | undefined {
   const now = Date.now();
@@ -163,24 +230,27 @@ function todayRef(trip: CachedTrip): string | undefined {
   return (days.find((day) => instantToZoned(now, day.tz).date === day.date) ?? days[0])?.ref;
 }
 
-function NewEntry({ trip, tripId, onDone, onSaved }: { trip: CachedTrip; tripId: string; onDone: () => void; onSaved: () => void }) {
+/** `itemRef` — wpis przy punkcie planu, w jego dniu (bez wyboru dnia). */
+function NewEntry({ trip, tripId, itemRef, onDone, onSaved }: { trip: CachedTrip; tripId: string; itemRef?: string; onDone: () => void; onSaved: () => void }) {
   const theme = useTheme();
   const [body, setBody] = useState('');
-  const [dayRef, setDayRef] = useState(() => todayRef(trip));
-  const [photo, setPhoto] = useState<{ uri: string; mimeType: string; extension: string } | null>(null);
+  const itemDay = itemRef === undefined ? undefined : trip.state.doc.items.find((each) => each.ref === itemRef)?.dayRef;
+  const [dayRef, setDayRef] = useState(() => itemDay ?? todayRef(trip));
+  const [photo, setPhoto] = useState<{ uri: string; mimeType: string; extension: string; taken: { date: string; time: string } | null } | null>(null);
   const days = trip.state.doc.days;
 
   // Aparat albo galeria; kompresja JPEG (0.7) — kilkaset KB zamiast kilku MB do wysłania.
   const pick = async (source: 'camera' | 'library') => {
     if (source === 'camera' && !(await requestCameraPermissionsAsync()).granted) return Alert.alert('Brak dostępu do aparatu', 'Zezwól aplikacji na aparat w ustawieniach telefonu.');
-    const options = { mediaTypes: ['images' as const], quality: 0.7 };
+    // EXIF tylko z galerii: zdjęcie dodane później dostaje czas zrobienia, nie zapisu.
+    const options = { mediaTypes: ['images' as const], quality: 0.7, exif: source === 'library' };
     const result = source === 'camera' ? await launchCameraAsync(options) : await launchImageLibraryAsync(options);
     const asset = result.canceled ? undefined : result.assets[0];
     if (asset === undefined) return;
     const mimeType = asset.mimeType ?? 'image/jpeg';
     const extension = (asset.fileName?.split('.').pop() ?? mimeType.split('/')[1] ?? 'jpg').toLowerCase().replace('jpeg', 'jpg');
     if ((asset.fileSize ?? 0) > 15 * 1024 * 1024) return Alert.alert('Za duże zdjęcie', 'Zdjęcie może mieć najwyżej 15 MB.');
-    setPhoto({ uri: asset.uri, mimeType, extension });
+    setPhoto({ uri: asset.uri, mimeType, extension, taken: exifMoment(asset.exif) });
   };
 
   const save = () => {
@@ -192,7 +262,12 @@ function NewEntry({ trip, tripId, onDone, onSaved }: { trip: CachedTrip; tripId:
     } catch (e) {
       return Alert.alert('Nie zapisano zdjęcia', e instanceof Error ? e.message : String(e));
     }
-    saveJournalEntry(localDb, { id, tripId, dayId: dayRef === undefined ? null : (trip.ids[dayRef] ?? null), body: body.trim(), photoPath });
+    // Czas z EXIF, gdy zdjęcie jest z dnia wyjazdu (przy punkcie — tylko z jego dnia); wtedy też ten dzień.
+    const taken = photo?.taken ?? null;
+    const exifDay = taken === null ? undefined : days.find((day) => day.date === taken.date && (itemRef === undefined || day.ref === dayRef));
+    const entryDay = exifDay?.ref ?? dayRef;
+    const takenAt = exifDay !== undefined && taken !== null ? new Date(zonedToInstant(exifDay.date, taken.time, exifDay.tz)).toISOString() : undefined;
+    saveJournalEntry(localDb, { id, tripId, dayId: entryDay === undefined ? null : (trip.ids[entryDay] ?? null), itemId: itemRef === undefined ? null : (trip.ids[itemRef] ?? null), body: body.trim(), photoPath, ...(takenAt ? { takenAt } : {}) });
     setBody('');
     setPhoto(null);
     onSaved();
@@ -211,7 +286,7 @@ function NewEntry({ trip, tripId, onDone, onSaved }: { trip: CachedTrip; tripId:
         maxLength={4000}
         autoFocus
       />
-      {days.length > 0 && (
+      {days.length > 0 && itemRef === undefined && (
         <View style={styles.wrap}>
           {days.map((day, index) => (
             <Chip key={day.ref} active={dayRef === day.ref} label={`Dzień ${index + 1}`} onPress={() => setDayRef(day.ref)} />

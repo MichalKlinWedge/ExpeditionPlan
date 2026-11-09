@@ -14,6 +14,9 @@ import { ItemEatOut } from "@/components/item-eat-out";
 import { GuideButtons } from "@/components/guide-button";
 import { ItemHeaderEditor } from "@/components/item-header";
 import { ItemPlanNav } from "@/components/item-plan-nav";
+import { JournalNew } from "@/components/journal-editor";
+import { JournalEntry } from "@/components/journal-entry";
+import { journalCards } from "@/lib/journal";
 import { ItemTexts } from "@/components/item-texts";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
@@ -28,6 +31,7 @@ export const metadata: Metadata = { title: "Punkt planu — Expedition Planner" 
 /**
  * Karta punktu planu: wszystko o punkcie (kiedy, gdzie, opis, notatki, linki, rezerwacja) i przewodnik
  * po miejscu — opis, ciekawostki, historia i zdjęcia z Wikipedii/Commons z atrybucją (M8, etap 1).
+ * „Zdjęcia”: wpisy dziennika przy tym punkcie (`journal_entries.item_id`) — te same są w „Dzienniku”.
  */
 export default function ItemPage(props: PageProps<"/trips/[id]/item/[ref]">) {
   return (
@@ -44,7 +48,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   const { id, ref: rawRef } = await params;
   const wantsEdit = await editMode();
   const ref = decodeURIComponent(rawRef);
-  const { supabase } = await requireUser(`/trips/${id}/item/${rawRef}`);
+  const { supabase, userId } = await requireUser(`/trips/${id}/item/${rawRef}`);
   const [{ data, error }, membership] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
@@ -86,6 +90,9 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   // Bez miejsca, przejazdu, rezerwacji i opisu karta z podstawowymi danymi byłaby pusta.
   const hasInfo = place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || editing || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
+  const itemId = ids[item.ref];
+  const photos = itemId === undefined ? [] : await journalCards(supabase, payload, userId, (row) => row.item_id === itemId);
+  const journalDay = day === undefined || ids[day.ref] === undefined ? [] : [{ id: ids[day.ref]!, label: dayLabel(day.date), date: day.date, tz: day.tz }];
 
   return (
     <>
@@ -162,6 +169,21 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
           </p>
         )}
       </section>
+      )}
+
+      {itemId !== undefined && day !== undefined && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">Zdjęcia{photos.length > 0 ? ` (${photos.length})` : ""}</h2>
+            <Link href={`/trips/${id}/journal`} className="btn-mini">
+              cały dziennik
+            </Link>
+          </div>
+          {photos.map((entry) => (
+            <JournalEntry key={entry.id} entry={entry} tz={day.tz} canRemove={entry.mine || editing} />
+          ))}
+          <JournalNew tripId={id} days={journalDay} tz={day.tz} itemId={itemId} plannedTime={item.time && "start" in item.time ? item.time.start : undefined} label="+ Dodaj zdjęcia" />
+        </section>
       )}
 
       {item.kind === "meal" && !item.selfCooked && <ItemEatOut tripId={id} doc={doc} ids={ids} itemRef={item.ref} editing={editing} />}

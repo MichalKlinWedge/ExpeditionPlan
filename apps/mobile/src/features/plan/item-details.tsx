@@ -35,6 +35,7 @@ import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ItemFactsCard } from '@/features/plan/item-facts';
 import { type PlanChoice, PlanPlace } from '@/features/plan/plan-place';
 import { PlacePin } from '@/features/plan/place-pin';
+import { ItemPhotos } from '@/features/trip/journal-view';
 import { TrackCard } from '@/features/plan/track-card';
 import { TrackProfileCard } from '@/features/plan/track-profile';
 
@@ -67,7 +68,11 @@ type Props = {
   onMeal?: (itemRef: string) => void;
   /** Wybór z planu (scenariusz, warianty) — godziny i sąsiednie punkty jak w planie. Bez — domyślne warianty. */
   plan?: PlanChoice;
+  /** Zdjęcia punktu (dziennik): bez `onChanged` tylko podgląd, bez całości — brak sekcji. Wymaga `tripId`. */
+  journal?: Journal;
 };
+
+type Journal = { userId: string | null; canEditAll: boolean; onChanged?: () => void };
 
 /** Przewodnik punktu z wierszy `audio_guides` telefonu. */
 export function itemGuide(trip: CachedTrip, item: Item) {
@@ -99,7 +104,7 @@ export function prefetchGuideImages(trip: CachedTrip) {
   if (urls.length > 0) void Image.prefetch(urls, 'disk').catch(() => undefined);
 }
 
-export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online, onSaveEatOut, onContacts, plan, onMeal }: Props) {
+export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, online, onSaveEatOut, onContacts, plan, onMeal, journal }: Props) {
   // Przejścia po odnośnikach: stos punktów nad otwartym; nowy `item` z zewnątrz zaczyna od zera.
   // „Poprzedni” / „Następny” zastępują oglądany punkt (`base` albo szczyt stosu) — „← Wróć” nadal zamyka.
   const [path, setPath] = useState<{ root: string | null; base?: Item; stack: Item[] }>({ root: null, stack: [] });
@@ -125,7 +130,7 @@ export function ItemDetails({ trip, item, onClose, autoPlay = false, tripId, onl
         <ThemedView style={styles.fill}>
           <SafeAreaView style={styles.fill} edges={['top', 'bottom']}>
             {current !== null && (
-              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0 && base === undefined} tripId={tripId} online={online} onSaveEatOut={onSaveEatOut} onContacts={onContacts} onMeal={onMeal} plan={plan} onJump={jump} />
+              <Details key={current.ref} trip={trip} item={current} onBack={back} backLabel={stack.length > 0 ? '← Wstecz' : '← Wróć'} onOpen={go} autoPlay={autoPlay && stack.length === 0 && base === undefined} tripId={tripId} online={online} onSaveEatOut={onSaveEatOut} onContacts={onContacts} onMeal={onMeal} plan={plan} onJump={jump} journal={journal} />
             )}
           </SafeAreaView>
         </ThemedView>
@@ -149,9 +154,10 @@ type DetailsProps = {
   onMeal?: (itemRef: string) => void;
   plan?: PlanChoice;
   onJump: (ref: string) => void;
+  journal?: Journal;
 };
 
-function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online, onSaveEatOut, onContacts, plan, onJump, onMeal }: DetailsProps) {
+function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, online, onSaveEatOut, onContacts, plan, onJump, onMeal, journal }: DetailsProps) {
   const doc = trip.state.doc;
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
@@ -273,6 +279,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         {item.kind === 'meal' && !item.selfCooked && online && tripId !== undefined && <EateriesCard trip={trip} tripId={tripId} item={item} onSave={onSaveEatOut} />}
         <TrackCard doc={doc} item={item} />
         <TrackProfileCard trip={trip} item={item} plan={plan} />
+        {journal !== undefined && tripId !== undefined && <ItemPhotos trip={trip} tripId={tripId} itemRef={item.ref} userId={journal.userId} canEditAll={journal.canEditAll} onChanged={journal.onChanged} />}
 
         {guide !== null && (
           <View style={styles.guide}>
