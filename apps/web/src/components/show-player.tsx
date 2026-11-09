@@ -13,25 +13,32 @@ import { polishLabels } from "@/components/plan-map";
  * Odtwarzacz pokazu z lektorem: mapa sceny (przelot kamery do trasy dnia i rysowanie linii), potem zdjęcia z powolnym
  * zbliżeniem, na dole nagłówek sceny i napisy z tekstu lektora. Scena z nagraniem trwa tyle, co nagranie; bez nagrania —
  * tyle, ile czyta się napisy (`readingMs`). Start zawsze z kliknięcia: przeglądarka nie pozwala grać dźwięku bez niego.
- * Lektor wchodzi po chwili ciszy na pierwszej scenie (`LEAD_MS`), a po ostatnim zdaniu pokaz trwa jeszcze `TAIL_MS`.
+ * Film otwiera ekran startowy (nazwa i daty wyjazdu), zamyka ekran końcowy. Lektor wchodzi po chwili ciszy na pierwszej
+ * scenie (`LEAD_MS`), a po ostatnim zdaniu jest jeszcze `TAIL_MS` przed ekranem końcowym. Trasy dnia rysują się po kolei.
  * Kafle OpenFreeMap (wyświetlanie na żywo, bez pobierania na zapas — docs/USLUGI.md).
  */
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const SEA = "#2e7d74";
 const PIN = "#e0662f";
-const DRAW_MS = 2_500;
+/** Rysowanie tras sceny: na odcinek, w granicach całości (krótka scena nie miga, długa nie ciągnie się). */
+const DRAW_PER_LINE_MS = 900;
+const DRAW_MIN_MS = 2_500;
+const DRAW_MAX_MS = 7_000;
 const GAP_MS = 700;
 /** Cisza przed lektorem pierwszej sceny: mapa rusza, głos dopiero potem. */
-const LEAD_MS = 2_000;
-/** Przerwa po lektorze ostatniej sceny, zanim pokaz się skończy. */
+const LEAD_MS = 1_000;
+/** Przerwa po lektorze ostatniej sceny, zanim pojawi się ekran końcowy. */
 const TAIL_MS = 1_000;
+/** Ekrany startowy i końcowy. */
+const TITLE_MS = 4_000;
+const END_MS = 5_000;
 
 export type ShowMapData = { lines: { coordinates: [number, number][]; routed: boolean }[]; pins: { lng: number; lat: number; name: string }[] };
 
 export type PlayerScene = {
   key: string;
-  kind: "intro" | "day" | "outro";
+  kind: "intro" | "day" | "outro" | "title" | "end";
   heading: string;
   subheading?: string;
   text: string;
@@ -40,7 +47,48 @@ export type PlayerScene = {
   audio?: { url: string; durationMs: number };
 };
 
-const sceneMs = (scene: PlayerScene) => scene.audio?.durationMs ?? (scene.text.trim() === "" ? 5_000 : readingMs(scene.text));
+const sceneMs = (scene: PlayerScene) =>
+  scene.kind === "title" ? TITLE_MS : scene.kind === "end" ? END_MS : (scene.audio?.durationMs ?? (scene.text.trim() === "" ? 5_000 : readingMs(scene.text)));
+
+const isCard = (scene: PlayerScene) => scene.kind === "title" || scene.kind === "end";
+
+/** Długość odcinka w przybliżeniu płaskim (stopnie, długość skrócona o cos szerokości): do podziału czasu rysowania. */
+function lengthOf(coordinates: [number, number][]): number[] {
+  const steps: number[] = [];
+  for (let at = 1; at < coordinates.length; at++) {
+    const [a, b] = [coordinates[at - 1]!, coordinates[at]!];
+    const scale = Math.cos((((a[1] + b[1]) / 2) * Math.PI) / 180);
+    steps.push(Math.hypot((b[0] - a[0]) * scale, b[1] - a[1]));
+  }
+  return steps;
+}
+
+/** Trasy narysowane do ułamka `progress` całej długości, po kolei: wcześniejsze w całości, bieżąca do miejsca, dalsze wcale. */
+function drawnLines(lines: ShowMapData["lines"], progress: number): ShowMapData["lines"] {
+  if (progress >= 1) return lines;
+  const steps = lines.map((line) => lengthOf(line.coordinates));
+  const total = steps.flat().reduce((sum, step) => sum + step, 0);
+  let left = total * Math.max(progress, 0);
+  const out: ShowMapData["lines"] = [];
+  for (const [at, line] of lines.entries()) {
+    const coordinates: [number, number][] = [line.coordinates[0]!];
+    for (const [step, length] of steps[at]!.entries()) {
+      const [a, b] = [line.coordinates[step]!, line.coordinates[step + 1]!];
+      if (left >= length) {
+        coordinates.push(b);
+        left -= length;
+        continue;
+      }
+      const part = length === 0 ? 0 : left / length;
+      coordinates.push([a[0] + (b[0] - a[0]) * part, a[1] + (b[1] - a[1]) * part]);
+      left = 0;
+      break;
+    }
+    if (coordinates.length > 1) out.push({ ...line, coordinates });
+    if (left <= 0) break;
+  }
+  return out;
+}
 
 /** Zdania tekstu z udziałem w długości (napisy idą proporcjonalnie do liczby znaków). */
 function sentences(text: string): { text: string; until: number }[] {
@@ -68,10 +116,6 @@ function boundsOf(data: ShowMapData): [[number, number], [number, number]] | nul
   return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
 }
 
-/** Linia rysowana od początku do końca: gradient po długości linii z przezroczystym ogonem. */
-const drawn = (progress: number) =>
-  progress >= 1 ? SEA : ["step", ["line-progress"], SEA, Math.max(progress, 0.0001), "rgba(46,125,116,0)"];
-
 function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
@@ -98,9 +142,9 @@ function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
         created.on("load", () => {
           if (cancelled || created === undefined) return;
           polishLabels(created);
-          created.addSource("show-lines", { type: "geojson", data: geojson({ lines: [], pins: [] }).lines, lineMetrics: true });
+          created.addSource("show-lines", { type: "geojson", data: geojson({ lines: [], pins: [] }).lines });
           created.addLayer({ id: "show-lines-halo", type: "line", source: "show-lines", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": 8, "line-opacity": 0.6 } });
-          created.addLayer({ id: "show-lines", type: "line", source: "show-lines", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-width": 5, "line-gradient": drawn(0) as never } });
+          created.addLayer({ id: "show-lines", type: "line", source: "show-lines", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-width": 5, "line-color": SEA } });
           created.addSource("show-pins", { type: "geojson", data: geojson({ lines: [], pins: [] }).pins });
           created.addLayer({ id: "show-pins", type: "circle", source: "show-pins", paint: { "circle-radius": 7, "circle-color": PIN, "circle-stroke-color": "#ffffff", "circle-stroke-width": 2.5 } });
           created.addLayer({
@@ -121,22 +165,22 @@ function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
     };
   }, []);
 
-  // Nowa scena: przelot do jej trasy, potem linia rysuje się od startu do mety.
+  // Nowa scena: przelot do jej trasy, potem trasy rysują się po kolei, w kolejności planu.
   useEffect(() => {
     if (map === null) return;
-    const { lines, pins } = geojson(data);
-    map.setPaintProperty("show-lines", "line-gradient", drawn(0) as never);
-    (map.getSource("show-lines") as GeoJSONSource | undefined)?.setData(lines);
-    (map.getSource("show-pins") as GeoJSONSource | undefined)?.setData(pins);
+    const source = map.getSource("show-lines") as GeoJSONSource | undefined;
+    source?.setData(geojson({ lines: [], pins: [] }).lines);
+    (map.getSource("show-pins") as GeoJSONSource | undefined)?.setData(geojson(data).pins);
     const bounds = boundsOf(data);
     map.stop();
     if (bounds !== null) map.fitBounds(bounds, { padding: { top: 60, bottom: 140, left: 60, right: 60 }, maxZoom: 14, duration: 2_200, essential: true });
+    const drawMs = Math.min(Math.max(data.lines.length * DRAW_PER_LINE_MS, DRAW_MIN_MS), DRAW_MAX_MS);
     let frame = 0;
     let started = 0;
     const step = (now: number) => {
       started ||= now;
-      const progress = Math.min((now - started - 1_200) / DRAW_MS, 1);
-      if (progress > 0) map.setPaintProperty("show-lines", "line-gradient", drawn(progress) as never);
+      const progress = Math.min((now - started - 1_200) / drawMs, 1);
+      if (progress > 0) source?.setData(geojson({ lines: drawnLines(data.lines, progress), pins: [] }).lines);
       if (progress < 1) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
@@ -151,7 +195,18 @@ function ShowMap({ data, sceneKey }: { data: ShowMapData; sceneKey: string }) {
   );
 }
 
-export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits: ShowCredits }) {
+export function ShowPlayer({ scenes: story, credits, trip }: { scenes: PlayerScene[]; credits: ShowCredits; trip: { title: string; dates: string } }) {
+  // Ekrany startowy i końcowy: bez lektora, z mapą pierwszej i ostatniej sceny pod spodem (mapa zdąży się wczytać).
+  const scenes = useMemo<PlayerScene[]>(() => {
+    const first = story[0];
+    const last = story.at(-1);
+    const blank = { lines: [], pins: [] };
+    return [
+      { key: "title", kind: "title", heading: trip.title, subheading: trip.dates, text: "", images: [], map: first?.map ?? blank },
+      ...story,
+      { key: "end", kind: "end", heading: "Koniec", subheading: `${trip.title} · ${trip.dates}`, text: "", images: [], map: last?.map ?? blank },
+    ];
+  }, [story, trip.title, trip.dates]);
   const stage = useRef<HTMLDivElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
   const [index, setIndex] = useState(0);
@@ -163,8 +218,9 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
   const [ended, setEnded] = useState(false);
   const scene = scenes[index]!;
   const duration = sceneMs(scene);
-  const lead = index === 0 ? LEAD_MS : 0;
-  const gap = index === scenes.length - 1 ? TAIL_MS : GAP_MS;
+  const lead = index === 1 ? LEAD_MS : 0;
+  // Ekrany przechodzą od razu; po ostatniej scenie z lektorem dłuższa przerwa przed ekranem końcowym.
+  const gap = isCard(scene) ? 0 : index === scenes.length - 2 ? TAIL_MS : GAP_MS;
   const span = lead + duration;
   const lines = useMemo(() => sentences(scene.text), [scene.text]);
 
@@ -201,21 +257,23 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
       last = now;
       const element = audio.current;
       let voice: number;
+      let finished: boolean;
       if (scene.audio && element) {
         if (clock.current < lead) clock.current = Math.min(clock.current + step, lead);
         // Głos rusza dopiero po ciszy; przeglądarka pozwala, bo pokaz uruchomiło kliknięcie.
         else if (element.paused && !element.ended) void element.play().catch(() => setPlaying(false));
         voice = element.currentTime * 1000;
         if (clock.current >= lead) clock.current = lead + voice;
-        if (element.ended) waited += step;
+        finished = element.ended;
       } else {
-        if (clock.current >= span) waited += step;
+        finished = clock.current >= span;
         clock.current = Math.min(clock.current + step, span);
         voice = Math.max(clock.current - lead, 0);
       }
+      if (finished) waited += step;
       setElapsed(clock.current);
       setNarrated(voice);
-      if (waited >= gap) {
+      if (finished && waited >= gap) {
         moved = true;
         go(index + 1);
       }
@@ -270,6 +328,24 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
       <div ref={stage} className="relative aspect-[4/5] w-full sm:aspect-video overflow-hidden rounded-xl bg-black text-white [&:fullscreen]:rounded-none">
         <ShowMap data={scene.map} sceneKey={scene.key} />
 
+        <div className={`pointer-events-none absolute inset-0 z-[25] flex flex-col items-center justify-center gap-3 bg-[#1b2a3a] px-8 text-center transition-opacity duration-700 ${isCard(scene) ? "opacity-100" : "opacity-0"}`}>
+          <div className="topo absolute inset-0 opacity-60" />
+          {scene.kind === "end" ? (
+            <>
+              <p className="relative text-4xl font-bold sm:text-6xl">Koniec</p>
+              <p className="relative text-lg text-white/85 sm:text-2xl">{trip.title}</p>
+              <p className="relative text-sm text-white/70 sm:text-base">{trip.dates}</p>
+              <p className="relative mt-4 text-xs text-white/50">Mapy © OpenStreetMap · głos lektora: Gemini TTS · Expedition Planner</p>
+            </>
+          ) : (
+            <>
+              <p className="relative text-sm tracking-widest text-white/70 uppercase sm:text-base">Pokaz z wyjazdu</p>
+              <p className="relative text-4xl font-bold sm:text-6xl">{trip.title}</p>
+              <p className="relative text-lg text-white/85 sm:text-2xl">{trip.dates}</p>
+            </>
+          )}
+        </div>
+
         {scene.images.map((image, at) => (
           <figure key={`${scene.key}-${image.url}`} className={`absolute inset-0 z-10 transition-opacity duration-1000 ${photo === at ? "opacity-100" : "opacity-0"}`}>
             {/* Zdjęcia z Commons i podpisane z dziennika: zwykły <img>, adresy podpisane wygasają. */}
@@ -308,17 +384,15 @@ export function ShowPlayer({ scenes, credits }: { scenes: PlayerScene[]; credits
         <button onClick={() => go(index - 1)} disabled={index === 0} className="btn-secondary btn-sm" aria-label="Poprzednia scena">⏮</button>
         <button onClick={toggle} className="btn-secondary btn-sm">{playing ? "⏸ Pauza" : "▶ Odtwórz"}</button>
         <button onClick={() => go(index + 1)} disabled={index === scenes.length - 1} className="btn-secondary btn-sm" aria-label="Następna scena">⏭</button>
-        <span className="text-zinc-500">
-          scena {index + 1} z {scenes.length}
-        </span>
+        <span className="text-zinc-500">{scene.kind === "title" ? "ekran startowy" : scene.kind === "end" ? "ekran końcowy" : `scena ${index} z ${story.length}`}</span>
         <span className="flex-1" />
         <button onClick={() => setSubtitles((value) => !value)} className="btn-mini">{subtitles ? "ukryj napisy" : "pokaż napisy"}</button>
         <button onClick={fullscreen} className="btn-mini">pełny ekran</button>
       </div>
 
       <div className="flex flex-wrap gap-1">
-        {scenes.map((each, at) => (
-          <button key={each.key} onClick={() => go(at)} className={`btn-mini ${at === index ? "ring-2 ring-sea" : ""}`} title={`${each.heading}${each.audio ? " · z lektorem" : ""}`}>
+        {story.map((each, at) => (
+          <button key={each.key} onClick={() => go(at + 1)} className={`btn-mini ${at + 1 === index ? "ring-2 ring-sea" : ""}`} title={`${each.heading}${each.audio ? " · z lektorem" : ""}`}>
             {each.kind === "intro" ? "Start" : each.kind === "outro" ? "Koniec" : each.heading.split(" · ")[0]}
             {each.audio ? <SpeakerIcon className="size-3.5 text-green-700 dark:text-green-400" /> : each.text.trim() !== "" ? " ✎" : ""}
           </button>

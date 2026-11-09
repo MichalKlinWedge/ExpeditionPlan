@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PublicTripHeader } from "@/components/public-trip-header";
 import { Loading, Shell } from "@/components/shell";
 import { ShowPlayer } from "@/components/show-player";
+import { tripDates } from "@/lib/labels";
 import { EXPIRED_LINK } from "@/lib/public-trip";
 import { loadPublicShow } from "@/lib/trip-show";
 
@@ -33,7 +34,7 @@ async function PublicShow({ params }: { params: Promise<{ token: string }> }) {
   return (
     <>
       <PublicTripHeader token={token} trip={doc.trip} active="show" show />
-      <ShowPlayer scenes={player} credits={credits} />
+      <ShowPlayer scenes={player} credits={credits} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate) }} />
     </>
   );
 }

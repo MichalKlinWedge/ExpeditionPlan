@@ -90,10 +90,10 @@ export async function setShowVoice(tripId: string, voice: string): Promise<FormS
 const waitFor = (seconds: number | null) => Math.min(Math.max(seconds ?? 30, 5), 90);
 
 /**
- * Nagranie jednej sceny. Bez `refresh`: przeglądarka odświeża stronę po ostatniej scenie. Limit zapytań (darmowy poziom
+ * Nagranie jednej sceny (`retake`: nowe ujęcie, także gdy nagranie pasuje). Bez `refresh`: przeglądarka odświeża stronę po ostatniej scenie. Limit zapytań (darmowy poziom
  * Gemini TTS przepuszcza kilka nagrań na minutę) zwraca `wait`: przeglądarka odczeka i ponowi.
  */
-export async function recordShowScene(tripId: string, key: string): Promise<FormState & { wait?: number; seconds?: number }> {
+export async function recordShowScene(tripId: string, key: string, retake = false): Promise<FormState & { wait?: number; seconds?: number }> {
   const denied = await aiAccessError();
   if (denied) return { error: denied };
   const setup = await speechSetup();
@@ -107,7 +107,8 @@ export async function recordShowScene(tripId: string, key: string): Promise<Form
   try {
     const { speech, model } = await setup.speak(scene.text, script.voice);
     const hash = narrationHash(scene.text, script.voice, model);
-    const path = `${tripId}/${hash}.wav`;
+    // Nowe ujęcie tego samego tekstu („Nagraj od nowa wszystko”) idzie pod nową nazwą: stary plik usuwa `save` (`droppedAudio`).
+    const path = retake ? `${tripId}/${hash}-${Date.now().toString(36)}.wav` : `${tripId}/${hash}.wav`;
     const { error: uploadError } = await supabase.storage.from("show_audio").upload(path, speech.audio, { contentType: "audio/wav" });
     // Ten sam tekst, głos i model to ten sam plik: już wgrany wystarczy.
     if (uploadError && !/exists|duplicate/i.test(uploadError.message)) {

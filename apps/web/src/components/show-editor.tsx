@@ -155,22 +155,24 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
     });
   };
 
-  const record = async () => {
+  const written = scenes.filter((scene) => scene.status !== "none").map((scene) => scene.key);
+  const record = async (keys: string[], retake: boolean) => {
+    if (retake && !window.confirm(`Nagrać od nowa ${plural(keys.length, ["scenę", "sceny", "scen"])}? Obecne nagrania zastąpią nowe ujęcia.`)) return;
     setMessage(null);
-    setProgress({ done: 0, total: toRecord.length });
+    setProgress({ done: 0, total: keys.length });
     let seconds = 0;
     setLive({});
-    for (const [at, key] of toRecord.entries()) {
+    for (const [at, key] of keys.entries()) {
       setLive((now) => ({ ...now, [key]: "recording" }));
-      let answer = await recordShowScene(tripId, key);
+      let answer = await recordShowScene(tripId, key, retake);
       // Limit zapytań Google: odczekać i spróbować jeszcze raz, najwyżej kilka razy na scenę.
       for (let tries = 0; answer.wait !== undefined && tries < MAX_WAITS; tries += 1) {
         for (let left = answer.wait; left > 0; left -= 1) {
-          setProgress({ done: at, total: toRecord.length, waiting: left });
+          setProgress({ done: at, total: keys.length, waiting: left });
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-        setProgress({ done: at, total: toRecord.length });
-        answer = await recordShowScene(tripId, key);
+        setProgress({ done: at, total: keys.length });
+        answer = await recordShowScene(tripId, key, retake);
       }
       if (answer.error) {
         setLive((now) => {
@@ -178,17 +180,17 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
           delete next[key];
           return next;
         });
-        setMessage({ error: `Scena ${at + 1} z ${toRecord.length}: ${answer.error}` });
+        setMessage({ error: `Scena ${at + 1} z ${keys.length}: ${answer.error}` });
         setProgress(null);
         router.refresh();
         return;
       }
       seconds += answer.seconds ?? 0;
       setLive((now) => ({ ...now, [key]: { seconds: answer.seconds ?? 0 } }));
-      setProgress({ done: at + 1, total: toRecord.length });
+      setProgress({ done: at + 1, total: keys.length });
     }
     setProgress(null);
-    setMessage({ ok: `Nagrano ${plural(toRecord.length, ["scenę", "sceny", "scen"])}, razem ${seconds < 60 ? `${seconds} s` : `ok. ${(Math.round(seconds / 6) / 10).toLocaleString("pl-PL")} min`}.` });
+    setMessage({ ok: `Nagrano ${plural(keys.length, ["scenę", "sceny", "scen"])}, razem ${seconds < 60 ? `${seconds} s` : `ok. ${(Math.round(seconds / 6) / 10).toLocaleString("pl-PL")} min`}.` });
     router.refresh();
   };
 
@@ -208,10 +210,15 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
           </select>
         </label>
         <VoiceSample tripId={tripId} voice={picked} />
-        <button onClick={() => void record()} disabled={toRecord.length === 0 || progress !== null || pending} className="btn-secondary btn-sm">
+        <button onClick={() => void record(toRecord, false)} disabled={toRecord.length === 0 || progress !== null || pending} className="btn-secondary btn-sm">
           <MicIcon className="size-4" />
           {progress?.waiting ? `Limit zapytań Google, czekam ${progress.waiting} s…` : progress ? `Nagrywam ${progress.done + 1} z ${progress.total}…` : toRecord.length > 0 ? `Nagraj lektora (${plural(toRecord.length, ["scena", "sceny", "scen"])})` : "Wszystko nagrane"}
         </button>
+        {written.length > 0 && progress === null && (
+          <button onClick={() => void record(written, true)} disabled={pending} className="btn-mini" title="Nowe ujęcia wszystkich scen z tekstem, także już nagranych">
+            nagraj od nowa wszystko
+          </button>
+        )}
         <span className="text-xs text-zinc-500">Głos syntetyczny Gemini TTS; nagrywa się tylko scena z nowym tekstem</span>
       </div>
       {message?.error && <p className="text-sm text-red-600">{message.error}</p>}

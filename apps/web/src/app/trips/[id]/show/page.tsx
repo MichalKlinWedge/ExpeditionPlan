@@ -10,6 +10,7 @@ import { EditToggle } from "@/components/edit-toggle";
 import { type EditorScene, ShowEditor } from "@/components/show-editor";
 import { PublicShowToggle } from "@/components/public-show-toggle";
 import { ShowPlayer } from "@/components/show-player";
+import { tripDates } from "@/lib/labels";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
@@ -92,7 +93,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
             : `Lektor w ${recorded} z ${player.length} scen${written > recorded ? `, w ${written - recorded} na razie same napisy` : ""}.`}
         </p>
       </div>
-      <ShowPlayer scenes={player} credits={credits} />
+      <ShowPlayer scenes={player} credits={credits} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate) }} />
       {membership.data?.role === "owner" && <PublicShowToggle tripId={id} linkOn={share.data?.enabled === true} showOn={share.data?.enabled === true && share.data.show === true} />}
       {canEdit && <ShowEditor tripId={id} scenes={editor} voice={script.voice} voices={SPEECH_VOICES} toRecord={toRecord} />}
     </>
