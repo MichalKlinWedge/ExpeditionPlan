@@ -195,9 +195,9 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
             canEdit && !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile key="review" href={`/trips/${id}/compare?review=1`} icon={<SparkIcon />} title="Propozycje AI" hint="przegląd planu: trasy, mapa, opisy obok planu" />,
           ],
           [
+            (days.count ?? 0) > 0 && <Tile key="journal" href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />,
             !title.startsWith(DRAFT) && !postponed && trip.data.start_date! <= new Date().toISOString().slice(0, 10) && <Tile key="memories" href={`/trips/${id}/memories`} icon={<PeakIcon />} title="Pamiątka z wyjazdu" hint="liczby, trasa, zdjęcia dzień po dniu" />,
             !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile key="film" href={`/trips/${id}/film`} icon={<ClapperIcon />} title={SHOW_PAGES.film.title} hint={SHOW_PAGES.film.about} />,
-            (days.count ?? 0) > 0 && <Tile key="journal" href={`/trips/${id}/journal`} icon={<BookIcon />} title="Dziennik" hint="wpisy i zdjęcia z trasy" />,
           ],
         ]
           .map((group) => group.filter((tile) => tile !== false && tile !== null))

@@ -40,9 +40,9 @@ const SECTIONS = [
   { path: "votes", title: "Głosowanie", Icon: BallotIcon },
   { path: "tune", title: "Dostrajanie z AI", Icon: SparkIcon },
   null,
+  { path: "journal", title: "Dziennik", Icon: BookIcon },
   { path: "memories", title: "Pamiątka z wyjazdu", Icon: PeakIcon },
   { path: "film", title: "Film z wyjazdu", Icon: ClapperIcon },
-  { path: "journal", title: "Dziennik", Icon: BookIcon },
 ] as const;
 
 type Access = { canEdit: boolean; started: boolean; title: string; dates: string | null; postponed: boolean };
