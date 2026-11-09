@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { type ChangeEvent, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowMusicSettings, setShowVoice, voiceSample } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
 import { IconAction } from "@/components/icon-action";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -363,6 +363,41 @@ export function ShowMusicEditor({ tripId, kind, music }: { tripId: string; kind:
         MP3, M4A, AAC, OGG albo WAV do 20 MB. Gra w pętli przez cały pokaz (od pominiętego początku): pod lektorem ciszej, na ekranie końcowym wygasa. Nazwa pliku jest na ekranie końcowym (tam autor utworu z licencją CC BY).
         Wgrywaj utwory własne albo z licencją, która na to pozwala: pod publicznym linkiem pokazu muzyka też gra.
       </p>
+    </section>
+  );
+}
+
+/**
+ * Czy pokaz ma mapę dojazdu na początku i powrotu na końcu (`ShowScript.showApproach`, `showReturn`). Pole jest tylko
+ * wtedy, gdy plan taki przejazd ma (`approach`: opis „A → B · samolot”).
+ */
+export function ShowRouteOptions({ tripId, kind, approach, back }: { tripId: string; kind: ShowKind; approach: { on: boolean; title: string } | null; back: { on: boolean; title: string } | null }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [message, setMessage] = useState<FormState | null>(null);
+  if (approach === null && back === null) return null;
+  const change = (routes: { showApproach?: boolean; showReturn?: boolean }) =>
+    start(async () => {
+      const answer = await setShowRoutes(tripId, kind, routes);
+      setMessage(answer.error ? answer : null);
+      if (answer.ok) router.refresh();
+    });
+  return (
+    <section className="card flex flex-col gap-2 p-4 text-sm">
+      <h2 className="card-title">Dojazd i powrót</h2>
+      {approach && (
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={approach.on} disabled={pending} onChange={(event) => change({ showApproach: event.target.checked })} /> mapa dojazdu na początku
+          <span className="text-xs text-zinc-500">{approach.title}</span>
+        </label>
+      )}
+      {back && (
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={back.on} disabled={pending} onChange={(event) => change({ showReturn: event.target.checked })} /> mapa powrotu na końcu
+          <span className="text-xs text-zinc-500">{back.title}</span>
+        </label>
+      )}
+      {message?.error && <p className="text-red-600">{message.error}</p>}
     </section>
   );
 }

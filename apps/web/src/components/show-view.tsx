@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 
 import { EditToggle } from "@/components/edit-toggle";
 import { PublicShowToggle } from "@/components/public-show-toggle";
-import { type EditorScene, ShowEditor, ShowMusicEditor } from "@/components/show-editor";
+import { type EditorScene, ShowEditor, ShowMusicEditor, ShowRouteOptions } from "@/components/show-editor";
 import { ShowPlayer } from "@/components/show-player";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
@@ -58,6 +58,8 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
   const keys = new Set(scenes.map((scene) => scene.key));
   const toRecord = scenesToRecord(script).filter((key) => keys.has(key));
   const recorded = player.filter((scene) => scene.audio).length;
+  const approach = scenes.find((scene) => scene.kind === "intro")?.approach;
+  const back = scenes.find((scene) => scene.kind === "outro")?.approach;
   const written = player.filter((scene) => scene.text.trim() !== "").length;
 
   return (
@@ -86,6 +88,14 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
       {membership.data?.role === "owner" && <PublicShowToggle tripId={id} kind={kind} linkOn={share.data?.enabled === true} showOn={share.data?.enabled === true && (kind === "film" ? share.data.film : share.data.show) === true} />}
       {canEdit && <ShowEditor tripId={id} kind={kind} scenes={editor} voice={script.voice} voices={SPEECH_VOICES} toRecord={toRecord} />}
       {canEdit && <ShowMusicEditor tripId={id} kind={kind} music={music ?? null} />}
+      {canEdit && (
+        <ShowRouteOptions
+          tripId={id}
+          kind={kind}
+          approach={approach ? { on: script.showApproach, title: `${approach.title}${approach.facts ? ` · ${approach.facts}` : ""}` } : null}
+          back={back ? { on: script.showReturn, title: `${back.title}${back.facts ? ` · ${back.facts}` : ""}` } : null}
+        />
+      )}
     </>
   );
 }

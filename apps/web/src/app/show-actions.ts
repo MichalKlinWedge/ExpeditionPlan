@@ -136,6 +136,23 @@ export async function setShowMusicSettings(tripId: string, kind: ShowKind, setti
   return { ok: "Zapisano ustawienia podkładu." };
 }
 
+/** Mapa dojazdu na początku i powrotu na końcu pokazu: pola wyboru w edycji. */
+export async function setShowRoutes(tripId: string, kind: ShowKind, routes: { showApproach?: boolean; showReturn?: boolean }): Promise<FormState> {
+  const loaded = await load(tripId, kind);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, script } = loaded;
+  const next = {
+    ...script,
+    ...(typeof routes.showApproach === "boolean" ? { showApproach: routes.showApproach } : {}),
+    ...(typeof routes.showReturn === "boolean" ? { showReturn: routes.showReturn } : {}),
+  };
+  if (next.showApproach === script.showApproach && next.showReturn === script.showReturn) return { ok: "Bez zmian." };
+  const failed = await save(supabase, tripId, kind, script, next);
+  if (failed) return { error: failed };
+  refresh();
+  return { ok: "Zapisano." };
+}
+
 /** Ile przeglądarka czeka przy limicie minutowym: tyle, ile podał Google, w rozsądnych granicach. */
 const waitFor = (seconds: number | null) => Math.min(Math.max(seconds ?? 30, 5), 90);
 

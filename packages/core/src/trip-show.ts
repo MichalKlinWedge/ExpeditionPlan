@@ -60,6 +60,9 @@ export const ShowScript = z.object({
   voice: z.string().min(1).default('Sulafat'),
   scenes: z.array(ShowNarration).default([]),
   music: ShowMusic.optional(),
+  /** Mapa dojazdu na początku i powrotu na końcu pokazu (pola wyboru w edycji pokazu). */
+  showApproach: z.boolean().default(true),
+  showReturn: z.boolean().default(true),
 });
 
 export const SHOW_KINDS = ['preview', 'film'] as const;
@@ -131,8 +134,6 @@ const CAR_MODES: ReadonlySet<string> = new Set(['car', 'rental_car', 'taxi', 'hi
 /** Krótszy spacer nie dostaje własnego ujęcia (przejście między zabytkami). */
 const WALK_MIN_KM = 1.5;
 const POINTS_PER_DAY = 6;
-/** Zdjęcia we wstępie (pierwsze z kolejnych dni); zakończenie bierze o 2 więcej. */
-const HIGHLIGHTS = 4;
 
 /**
  * Punkt pieszy albo rowerowy (przejście, trekking, ślad GPX, aktywność z opisem trasy: km, podejście, trudność) — na
@@ -323,10 +324,8 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   const loose = journalAll.filter((entry) => entry.dayRef === undefined || !days.some((day) => day.ref === entry.dayRef));
   for (const entry of loose) if (entry.body.trim() !== '') outro.push(`Wpis z dziennika: ${clip(entry.body.trim(), 400)}`);
 
-  // Zdjęcia są główną pamiątką: wstęp zapowiada je pierwszym zdjęciem z kolejnych dni, zakończenie zbiera ostatnie
-  // (i wpisy bez dnia).
-  const introImages = dayScenes.flatMap((scene) => scene.images.slice(0, 1)).slice(0, HIGHLIGHTS);
-  const outroImages = [...journalImages(loose), ...dayScenes.flatMap((scene) => (scene.images.length > 1 ? [scene.images.at(-1)!] : []))].slice(0, HIGHLIGHTS + 2);
+  // Każde zdjęcie gra raz: wstęp ich nie powtarza, zakończenie ma tylko zdjęcia z wpisów bez dnia.
+  const outroImages = journalImages(loose);
   const outboundCard = approachCard(doc, outbound, 'Dojazd');
   const backCard = approachCard(doc, back, 'Powrót');
   const localRoute = stats.routeRefs.filter((ref) => !approachRefs.has(ref));
@@ -339,7 +338,7 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       heading: doc.trip.title,
       subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`,
       routeRefs: localRoute,
-      images: introImages,
+      images: [],
       stats: [plural(stats.days, ['dzień', 'dni', 'dni']), ...numbers],
       points: [],
       walks: [],

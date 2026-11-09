@@ -44,7 +44,6 @@ const MAX_WALKS = 2;
 /** Mapy w scenie ze zdjęciami: razem najwyżej taki ułamek sceny. */
 const MAP_SHARE = 0.4;
 const PHOTO_MIN_MS = 2_500;
-const PHOTO_MAX_MS = 7_000;
 const WALK_DRAW_MS = 2_500;
 const GAP_MS = 700;
 /** Cisza przed lektorem pierwszej sceny: mapa rusza, głos dopiero potem. */
@@ -114,9 +113,9 @@ export type ScenePhase = { kind: "approach" | "map" | "walk" | "pin" | "photo"; 
 /**
  * Etapy sceny w czasie `span`. Mapy po kolei, każda najwyżej `MAP_MS`: dojazd/powrót, widok, do `MAX_WALKS` tras pieszych.
  * Ze zdjęciami mapy razem biorą najwyżej `MAP_SHARE` sceny (najpierw odpadają trasy, potem mapy się skracają, do
- * `MAP_MIN_MS`), a zdjęcia resztę (`PHOTO_MIN_MS`–`PHOTO_MAX_MS` każde; co się nie zmieści, przepada). Czas, który
- * zostaje, wraca do odrzuconych tras, potem wypełniają go przybliżenia kolejnych miejsc sceny (każde do `MAP_MS`, co
- * najmniej `MAP_MIN_MS`), a gdy i ich braknie — dłuższe zdjęcia.
+ * `MAP_MIN_MS`), a zdjęcia całą resztę, po równo (co najmniej `PHOTO_MIN_MS`; co się nie zmieści, przepada): mało zdjęć
+ * to dłużej każde, nigdy powtórka. Scena bez zdjęć wypełnia czas odrzuconymi trasami, potem przybliżeniami kolejnych
+ * miejsc (każde do `MAP_MS`, co najmniej `MAP_MIN_MS`).
  * Ostatni etap trwa do końca sceny.
  */
 export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
@@ -134,8 +133,8 @@ export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
     const scale = limit / total();
     for (const shot of shots) shot.ms = photos > 0 ? Math.max(shot.ms * scale, MAP_MIN_MS) : shot.ms * scale;
   }
-  let perPhoto = photos === 0 ? 0 : Math.min(Math.max((span - total()) / photos, PHOTO_MIN_MS), PHOTO_MAX_MS);
-  let left = span - total() - perPhoto * photos;
+  const perPhoto = photos === 0 ? 0 : Math.max((span - total()) / photos, PHOTO_MIN_MS);
+  let left = photos === 0 ? span - total() : 0;
   // Wolny czas najpierw wraca do odrzuconych tras pieszych, potem idą miejsca sceny.
   const extra = [...dropped, ...[...scene.map.pins.keys()].map((index) => ({ kind: "pin" as const, index, ms: MAP_MS }))];
   for (const shot of extra) {
@@ -144,7 +143,6 @@ export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
     shots.push({ ...shot, ms });
     left -= ms;
   }
-  if (photos > 0 && left > 0) perPhoto += left / photos;
   const phases: ScenePhase[] = [];
   let at = 0;
   for (const shot of shots) {
@@ -427,7 +425,8 @@ export function ShowPlayer({
   /** Czas sceny od jej początku (z ciszą przed lektorem) i czas samego lektora. */
   const [elapsed, setElapsed] = useState(0);
   const [narrated, setNarrated] = useState(0);
-  const [subtitles, setSubtitles] = useState(true);
+  // Napisy domyślnie wyłączone: lektor mówi, a kadr zostaje dla zdjęć.
+  const [subtitles, setSubtitles] = useState(false);
   const [ended, setEnded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const scene = scenes[index]!;

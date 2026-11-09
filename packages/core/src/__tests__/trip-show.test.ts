@@ -124,13 +124,22 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(scenes.at(-1)!.approach?.label).toBe('Powrót');
   });
 
-  it('film: wstęp z pierwszymi zdjęciami dni, zakończenie z ostatnimi', () => {
+  it('film: każde zdjęcie raz — wstęp bez zdjęć, zakończenie tylko ze zdjęciami spoza dni', () => {
     const doc = fixture('maroko');
     const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
-    const journal = days.flatMap((day, at) => [1, 2].map((n) => ({ dayRef: day.ref, body: `D${at} ${n}`, photoUrl: `https://example.com/${at}-${n}.jpg` })));
+    const journal = [
+      ...days.flatMap((day, at) => [1, 2].map((n) => ({ dayRef: day.ref, body: `D${at} ${n}`, photoUrl: `https://example.com/${at}-${n}.jpg` }))),
+      { body: 'Po powrocie', photoUrl: 'https://example.com/po.jpg' },
+    ];
     const { scenes } = showScenes(doc, { ...base, kind: 'film', journal });
-    expect(scenes[0]!.images.map((image) => image.caption)).toEqual(['D0 1', 'D1 1', 'D2 1', 'D3 1']);
-    expect(scenes.at(-1)!.images.map((image) => image.caption)).toEqual(['D0 2', 'D1 2', 'D2 2', 'D3 2', 'D4 2']);
+    expect(scenes[0]!.images).toEqual([]);
+    expect(scenes.at(-1)!.images.map((image) => image.caption)).toEqual(['Po powrocie']);
+    const urls = scenes.flatMap((scene) => scene.images.map((image) => image.url));
+    expect(new Set(urls).size).toBe(urls.length);
+  });
+
+  it('starszy scenariusz bez pól wyboru pokazuje dojazd i powrót', () => {
+    expect(ShowScript.parse({ voice: 'Sulafat', scenes: [] })).toMatchObject({ showApproach: true, showReturn: true });
   });
 });
 
