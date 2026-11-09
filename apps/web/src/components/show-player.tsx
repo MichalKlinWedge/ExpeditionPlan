@@ -19,6 +19,8 @@ const ShowExport = dynamic(() => import("@/components/show-export").then((module
  * tyle, ile czyta się napisy (`readingMs`). Start zawsze z kliknięcia: przeglądarka nie pozwala grać dźwięku bez niego.
  * Film otwiera ekran startowy (nazwa i daty wyjazdu), zamyka ekran końcowy. Lektor wchodzi po chwili ciszy na pierwszej
  * scenie (`LEAD_MS`), a po ostatnim zdaniu jest jeszcze `TAIL_MS` przed ekranem końcowym. Trasy dnia rysują się po kolei.
+ * Scena dnia idzie etapami (`scenePhases`): najwyżej 5 s widoku dnia (trasa auta, karta „Plan dnia” z liczbami i punktami),
+ * potem przybliżenie każdej trasy pieszej z kartą (km, podejście, czas), na końcu zdjęcia. Trasy piesze mają inny kolor.
  * Podkład muzyczny (opcjonalny) gra w pętli od `skipS` (pominięty początek pliku): narasta na ekranie startowym, pod lektorem cichnie (`MUSIC_UNDER_VOICE`),
  * między scenami wraca, a na ekranie końcowym wygasa.
  * Kafle OpenFreeMap (wyświetlanie na żywo, bez pobierania na zapas — docs/USLUGI.md).
@@ -27,10 +29,19 @@ const ShowExport = dynamic(() => import("@/components/show-export").then((module
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const SEA = "#2e7d74";
 const PIN = "#e0662f";
+/** Trasy piesze i rowerowe: odróżniają się od przejazdów. */
+const FOOT = "#c2410c";
 /** Rysowanie tras sceny: na odcinek, w granicach całości (krótka scena nie miga, długa nie ciągnie się). */
 const DRAW_PER_LINE_MS = 900;
 const DRAW_MIN_MS = 2_500;
-const DRAW_MAX_MS = 7_000;
+const DRAW_MAX_MS = 3_500;
+/** Etapy sceny dnia: widok dnia najwyżej tyle, trasa piesza w tych granicach (najwyżej 3 trasy), zdjęcie co najmniej tyle. */
+const OVERVIEW_MS = 5_000;
+const WALK_MIN_MS = 4_000;
+const WALK_MAX_MS = 8_000;
+const MAX_WALKS = 3;
+const PHOTO_MIN_MS = 3_000;
+const WALK_DRAW_MS = 2_500;
 const GAP_MS = 700;
 /** Cisza przed lektorem pierwszej sceny: mapa rusza, głos dopiero potem. */
 const LEAD_MS = 1_000;
@@ -49,7 +60,13 @@ export type PlayerMusic = { url: string; volume: number; name: string; /** Pomin
 /** Miejsce startu podkładu: pominięty początek, chyba że plik jest od niego krótszy. */
 export const musicStart = (music: PlayerMusic, durationS: number) => (Number.isFinite(durationS) && music.skipS >= durationS ? 0 : music.skipS);
 
-export type ShowMapData = { lines: { coordinates: [number, number][]; routed: boolean }[]; pins: { lng: number; lat: number; name: string }[] };
+export type ShowMapData = { lines: { coordinates: [number, number][]; routed: boolean; foot?: boolean }[]; pins: { lng: number; lat: number; name: string }[] };
+
+/** Trasa piesza sceny: linie mapy sceny (`lines`, indeksy), a bez nich miejsce do przybliżenia (`at`). */
+export type PlayerWalk = { title: string; label: string; facts: string; lines: number[]; at?: [number, number] };
+
+/** Co mapa pokazuje: cały dzień (`null`) albo przybliżoną trasę pieszą. */
+export type MapFocus = { key: string; lines: number[]; at?: [number, number] } | null;
 
 export type PlayerScene = {
   key: string;
@@ -60,6 +77,10 @@ export type PlayerScene = {
   images: ShowImage[];
   map: ShowMapData;
   audio?: { url: string; durationMs: number };
+  /** Karta „Plan dnia” (liczby i najważniejsze punkty) i trasy piesze do przybliżenia. */
+  stats: string[];
+  points: string[];
+  walks: PlayerWalk[];
 };
 
 const sceneMs = (scene: PlayerScene) =>
@@ -76,12 +97,50 @@ export function sceneTiming(scenes: PlayerScene[], index: number): { lead: numbe
   return { lead: index === 1 ? LEAD_MS : 0, duration: sceneMs(scene), gap: isCard(scene) ? 0 : index === scenes.length - 2 ? TAIL_MS : GAP_MS };
 }
 
-/** Które zdjęcie sceny widać po `elapsed` ms (−1: jeszcze mapa); najpierw mapa, potem zdjęcia po równo. */
-export function photoAt(count: number, span: number, elapsed: number): { photo: number; mapPhase: number; perPhoto: number } {
-  const mapPhase = count === 0 ? span : Math.min(Math.max(4_500, span * 0.35), span * 0.6);
-  const perPhoto = count === 0 ? 0 : Math.max((span - mapPhase) / count, 3_000);
-  return { mapPhase, perPhoto, photo: elapsed < mapPhase ? -1 : Math.min(Math.floor((elapsed - mapPhase) / perPhoto), count - 1) };
+/** Etap sceny: widok dnia na mapie, przybliżenie trasy pieszej (`index` w `walks`) albo zdjęcie (`index` w `images`). */
+export type ScenePhase = { kind: "map" | "walk" | "photo"; index: number; start: number; end: number };
+
+/**
+ * Etapy sceny w czasie `span`: widok dnia najwyżej `OVERVIEW_MS` (krócej przy krótkiej scenie), trasy piesze (przy zdjęciach
+ * połowa reszty, 4–8 s na trasę), potem zdjęcia po równo, co najmniej `PHOTO_MIN_MS` (co się nie zmieści, przepada).
+ * Bez tras i zdjęć cała scena to widok dnia z kartą planu. Ostatni etap trwa do końca sceny.
+ */
+export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
+  const walks = scene.walks.slice(0, MAX_WALKS);
+  const photos = scene.images.length;
+  if (isCard(scene) || (walks.length === 0 && photos === 0)) return [{ kind: "map", index: 0, start: 0, end: span }];
+  const overview = Math.min(OVERVIEW_MS, Math.max(span * 0.3, Math.min(3_000, span)));
+  const rest = Math.max(span - overview, 0);
+  const walkTotal = walks.length === 0 ? 0 : photos === 0 ? rest : Math.min(rest, Math.max(rest * 0.5, walks.length * WALK_MIN_MS), walks.length * WALK_MAX_MS);
+  const phases: ScenePhase[] = [{ kind: "map", index: 0, start: 0, end: overview }];
+  let at = overview;
+  for (const index of walks.keys()) {
+    phases.push({ kind: "walk", index, start: at, end: at + walkTotal / walks.length });
+    at += walkTotal / walks.length;
+  }
+  const perPhoto = photos === 0 ? 0 : Math.max((span - at) / photos, PHOTO_MIN_MS);
+  for (let index = 0; index < photos; index += 1) {
+    phases.push({ kind: "photo", index, start: at, end: at + perPhoto });
+    at += perPhoto;
+  }
+  const last = phases.at(-1)!;
+  last.end = Math.max(last.end, span);
+  return phases;
 }
+
+/** Etap w chwili `elapsed` i ostatni etap mapy (widok albo trasa) do niej: zdjęcie zasłania mapę, która stoi, jak była. */
+export function phaseAt(phases: ScenePhase[], elapsed: number): { phase: ScenePhase; mapPhase: ScenePhase } {
+  const passed = phases.filter((phase) => phase.start <= elapsed);
+  const phase = passed.at(-1) ?? phases[0]!;
+  const mapPhase = passed.filter((each) => each.kind !== "photo").at(-1) ?? phases[0]!;
+  return { phase, mapPhase };
+}
+
+/** Przybliżenie mapy dla etapu: trasa piesza albo `null` (cały dzień). */
+export const mapFocus = (scene: PlayerScene, mapPhase: ScenePhase): MapFocus => {
+  const walk = mapPhase.kind === "walk" ? scene.walks[mapPhase.index] : undefined;
+  return walk === undefined ? null : { key: `${scene.key}:walk:${mapPhase.index}`, lines: walk.lines, ...(walk.at ? { at: walk.at } : {}) };
+};
 
 /** Długość odcinka w przybliżeniu płaskim (stopnie, długość skrócona o cos szerokości): do podziału czasu rysowania. */
 function lengthOf(coordinates: [number, number][]): number[] {
@@ -134,7 +193,7 @@ export function sentences(text: string): { text: string; until: number }[] {
 
 function geojson(data: ShowMapData) {
   return {
-    lines: { type: "FeatureCollection" as const, features: data.lines.map((line) => ({ type: "Feature" as const, properties: { routed: line.routed }, geometry: { type: "LineString" as const, coordinates: line.coordinates } })) },
+    lines: { type: "FeatureCollection" as const, features: data.lines.map((line) => ({ type: "Feature" as const, properties: { routed: line.routed, foot: line.foot === true }, geometry: { type: "LineString" as const, coordinates: line.coordinates } })) },
     pins: { type: "FeatureCollection" as const, features: data.pins.map((pin) => ({ type: "Feature" as const, properties: { name: pin.name }, geometry: { type: "Point" as const, coordinates: [pin.lng, pin.lat] } })) },
   };
 }
@@ -151,7 +210,20 @@ function boundsOf(data: ShowMapData): [[number, number], [number, number]] | nul
  * Mapa sceny. `capture`: do eksportu (bufor rysowania zostaje, żeby kadr dało się skopiować na kanwę, piksel 1:1),
  * `onMap` dostaje gotową mapę.
  */
-export function ShowMap({ data, sceneKey, capture = false, onMap }: { data: ShowMapData; sceneKey: string; capture?: boolean; onMap?: (map: MapLibreMap) => void }) {
+export function ShowMap({
+  data,
+  sceneKey,
+  focus = null,
+  capture = false,
+  onMap,
+}: {
+  data: ShowMapData;
+  sceneKey: string;
+  /** Przybliżona trasa piesza; obiekt stały dla etapu (zmiana = nowe ujęcie). */
+  focus?: MapFocus;
+  capture?: boolean;
+  onMap?: (map: MapLibreMap) => void;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const ready = useRef(onMap);
   const [map, setMap] = useState<MapLibreMap | null>(null);
@@ -181,7 +253,11 @@ export function ShowMap({ data, sceneKey, capture = false, onMap }: { data: Show
           polishLabels(created);
           created.addSource("show-lines", { type: "geojson", data: geojson({ lines: [], pins: [] }).lines });
           created.addLayer({ id: "show-lines-halo", type: "line", source: "show-lines", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": 8, "line-opacity": 0.6 } });
-          created.addLayer({ id: "show-lines", type: "line", source: "show-lines", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-width": 5, "line-color": SEA } });
+          created.addLayer({ id: "show-lines", type: "line", source: "show-lines", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-width": 5, "line-color": ["case", ["get", "foot"], FOOT, SEA] } });
+          // Przybliżona trasa piesza rysuje się na wierzchu, grubiej.
+          created.addSource("show-focus", { type: "geojson", data: geojson({ lines: [], pins: [] }).lines });
+          created.addLayer({ id: "show-focus-halo", type: "line", source: "show-focus", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": 11, "line-opacity": 0.8 } });
+          created.addLayer({ id: "show-focus", type: "line", source: "show-focus", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-width": 6, "line-color": FOOT } });
           created.addSource("show-pins", { type: "geojson", data: geojson({ lines: [], pins: [] }).pins });
           created.addLayer({ id: "show-pins", type: "circle", source: "show-pins", paint: { "circle-radius": 7, "circle-color": PIN, "circle-stroke-color": "#ffffff", "circle-stroke-width": 2.5 } });
           created.addLayer({
@@ -203,27 +279,46 @@ export function ShowMap({ data, sceneKey, capture = false, onMap }: { data: Show
     };
   }, [capture]);
 
-  // Nowa scena: przelot do jej trasy, potem trasy rysują się po kolei, w kolejności planu.
+  // Nowa scena: przelot do jej trasy, potem trasy rysują się po kolei, w kolejności planu. Etap trasy pieszej: cały dzień
+  // narysowany, przelot do tej trasy i rysowanie jej na wierzchu.
   useEffect(() => {
     if (map === null) return;
     const source = map.getSource("show-lines") as GeoJSONSource | undefined;
-    source?.setData(geojson({ lines: [], pins: [] }).lines);
+    const focusSource = map.getSource("show-focus") as GeoJSONSource | undefined;
+    const empty = geojson({ lines: [], pins: [] }).lines;
     (map.getSource("show-pins") as GeoJSONSource | undefined)?.setData(geojson(data).pins);
-    const bounds = boundsOf(data);
+    focusSource?.setData(empty);
     map.stop();
-    if (bounds !== null) map.fitBounds(bounds, { padding: { top: 60, bottom: 140, left: 60, right: 60 }, maxZoom: 14, duration: 2_200, essential: true });
-    const drawMs = Math.min(Math.max(data.lines.length * DRAW_PER_LINE_MS, DRAW_MIN_MS), DRAW_MAX_MS);
+    const padding = { top: 60, bottom: 140, left: 60, right: 60 };
+    let target = source;
+    let lines = data.lines;
+    let drawMs = Math.min(Math.max(data.lines.length * DRAW_PER_LINE_MS, DRAW_MIN_MS), DRAW_MAX_MS);
+    let delay = 1_200;
+    if (focus === null) {
+      source?.setData(empty);
+      const bounds = boundsOf(data);
+      if (bounds !== null) map.fitBounds(bounds, { padding, maxZoom: 14, duration: 2_200, essential: true });
+    } else {
+      source?.setData(geojson(data).lines);
+      lines = focus.lines.flatMap((at) => (data.lines[at] ? [data.lines[at]] : []));
+      const bounds = boundsOf({ lines, pins: [] });
+      if (bounds !== null) map.fitBounds(bounds, { padding, maxZoom: 15, duration: 1_800, essential: true });
+      else if (focus.at) map.flyTo({ center: focus.at, zoom: 13, duration: 1_800, essential: true });
+      target = focusSource;
+      drawMs = WALK_DRAW_MS;
+      delay = 900;
+    }
     let frame = 0;
     let started = 0;
     const step = (now: number) => {
       started ||= now;
-      const progress = Math.min((now - started - 1_200) / drawMs, 1);
-      if (progress > 0) source?.setData(geojson({ lines: drawnLines(data.lines, progress), pins: [] }).lines);
+      const progress = Math.min((now - started - delay) / drawMs, 1);
+      if (progress > 0) target?.setData(geojson({ lines: drawnLines(lines, progress), pins: [] }).lines);
       if (progress < 1) frame = requestAnimationFrame(step);
     };
-    frame = requestAnimationFrame(step);
+    if (lines.length > 0) frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [map, data, sceneKey]);
+  }, [map, data, sceneKey, focus]);
 
   return (
     <div className="absolute inset-0 bg-zinc-200">
@@ -260,9 +355,9 @@ export function ShowPlayer({
     const last = story.at(-1);
     const blank = { lines: [], pins: [] };
     return [
-      { key: "title", kind: "title", heading: trip.title, subheading: trip.dates, text: "", images: [], map: first?.map ?? blank },
+      { key: "title", kind: "title", heading: trip.title, subheading: trip.dates, text: "", images: [], map: first?.map ?? blank, stats: [], points: [], walks: [] },
       ...story,
-      { key: "end", kind: "end", heading: "Koniec", subheading: `${trip.title} · ${trip.dates}`, text: "", images: [], map: last?.map ?? blank },
+      { key: "end", kind: "end", heading: "Koniec", subheading: `${trip.title} · ${trip.dates}`, text: "", images: [], map: last?.map ?? blank, stats: [], points: [], walks: [] },
     ];
   }, [story, trip.title, trip.dates]);
   const stage = useRef<HTMLDivElement>(null);
@@ -393,7 +488,16 @@ export function ShowPlayer({
     return () => window.removeEventListener("keydown", key);
   });
 
-  const { photo, perPhoto } = photoAt(scene.images.length, span, elapsed);
+  const phases = useMemo(() => scenePhases(scene, span), [scene, span]);
+  const { phase, mapPhase } = phaseAt(phases, elapsed);
+  const photo = phase.kind === "photo" ? phase.index : -1;
+  const perPhoto = phase.end - phase.start;
+  const walk = mapPhase.kind === "walk" ? scene.walks[mapPhase.index] : undefined;
+  // Obiekt stały dla etapu: mapa robi nowe ujęcie tylko przy zmianie etapu.
+  const focusKey = `${scene.key}:${mapPhase.kind}:${mapPhase.index}`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const focus = useMemo(() => mapFocus(scene, mapPhase), [focusKey]);
+  const planCard = !isCard(scene) && phase.kind === "map" && (scene.stats.length > 0 || scene.points.length > 0);
   const share = span === 0 ? 0 : elapsed / span;
   // Napisy idą za głosem; w ciszy przed lektorem ich nie ma.
   const line = elapsed < lead ? undefined : (lines.find((each) => (duration === 0 ? 0 : narrated / duration) <= each.until) ?? lines.at(-1));
@@ -401,7 +505,31 @@ export function ShowPlayer({
   return (
     <div className="flex flex-col gap-3">
       <div ref={stage} className="relative aspect-[4/5] w-full sm:aspect-video overflow-hidden rounded-xl bg-black text-white [&:fullscreen]:rounded-none">
-        <ShowMap data={scene.map} sceneKey={scene.key} />
+        <ShowMap data={scene.map} sceneKey={scene.key} focus={focus} />
+
+        {(planCard || (phase.kind === "walk" && walk)) && (
+          <div className="pointer-events-none absolute top-3 right-3 z-[15] flex max-w-[55%] flex-col gap-1 rounded-lg bg-black/60 px-3 py-2 text-xs backdrop-blur-sm sm:max-w-[40%] sm:text-sm">
+            {phase.kind === "walk" && walk ? (
+              <>
+                <p className="text-[10px] tracking-wider text-white/70 uppercase sm:text-xs">{walk.label}</p>
+                <p className="font-semibold">{walk.title}</p>
+                {walk.facts && <p className="text-white/85">{walk.facts}</p>}
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] tracking-wider text-white/70 uppercase sm:text-xs">{scene.kind === "intro" ? "Wyjazd" : "Plan dnia"}</p>
+                {scene.stats.length > 0 && <p className="font-semibold">{scene.stats.join(" · ")}</p>}
+                {scene.points.length > 0 && (
+                  <ul className="flex flex-col gap-0.5 text-white/90">
+                    {scene.points.map((point) => (
+                      <li key={point}>• {point}</li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div className={`pointer-events-none absolute inset-0 z-[25] flex flex-col items-center justify-center gap-3 bg-[#1b2a3a] px-8 text-center transition-opacity duration-700 ${isCard(scene) ? "opacity-100" : "opacity-0"}`}>
           <div className="topo absolute inset-0 opacity-60" />

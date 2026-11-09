@@ -1,6 +1,6 @@
 import "server-only";
 
-import { audioFits, dayMap, type DayMap, guideFor, type GuideRow, type ShowKind, ShowScript, showScenes, type TripDocument } from "@expeditionplan/core";
+import { audioFits, dayMap, type DayMap, guideFor, type GuideRow, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument } from "@expeditionplan/core";
 import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 
 import type { PlayerMusic, PlayerScene, ShowMapData } from "@/components/show-player";
@@ -63,13 +63,19 @@ export async function loadShow(supabase: Supabase, tripId: string, payload: Pull
   return { doc, scenes, credits, script: parsed.success ? parsed.data : ShowScript.parse({}), exists: stored !== null, loadError: error?.message };
 }
 
-/** Mapa sceny bez dojazdów i powrotów (lot przez pół Europy gubi szczegóły na miejscu), chyba że nic innego nie ma. */
-function sceneMap(map: DayMap): ShowMapData {
+/**
+ * Mapa sceny bez dojazdów i powrotów (lot przez pół Europy gubi szczegóły na miejscu), chyba że nic innego nie ma.
+ * Linie piesze (ślad GPX albo punkt z `footRefs`) dostają `foot`; `refs` linii służą przypisaniu tras pieszych sceny.
+ */
+function sceneMap(map: DayMap, footRefs: ReadonlySet<string>): { data: ShowMapData; refs: string[][] } {
   const local = { lines: map.lines.filter((line) => !line.transit), pins: map.pins.filter((pin) => !pin.transit) };
   const used = local.pins.length > 0 ? local : map;
   return {
-    lines: used.lines.map((line) => ({ coordinates: line.coordinates as [number, number][], routed: line.routed })),
-    pins: used.pins.map((pin) => ({ lng: pin.lng, lat: pin.lat, name: pin.name })),
+    data: {
+      lines: used.lines.map((line) => ({ coordinates: line.coordinates as [number, number][], routed: line.routed, ...(line.track || line.refs?.some((ref) => footRefs.has(ref)) ? { foot: true } : {}) })),
+      pins: used.pins.map((pin) => ({ lng: pin.lng, lat: pin.lat, name: pin.name })),
+    },
+    refs: used.lines.map((line) => line.refs ?? []),
   };
 }
 
@@ -78,15 +84,17 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
   const narration = new Map(script.scenes.map((scene) => [scene.key, scene]));
   const playable = script.scenes.filter((scene) => audioFits(scene, script.voice));
   const audioUrls = playable.length > 0 ? await signer(supabase, "show_audio")(playable.map((scene) => scene.audio!.path)) : new Map<string, string>();
-  const maps = new Map<string, ShowMapData>();
+  const footRefs = new Set(doc.items.filter(isShowWalk).map((item) => item.ref));
+  const maps = new Map<string, ReturnType<typeof sceneMap>>();
   const mapFor = (refs: string[]) => {
     const key = refs.join(",");
-    if (!maps.has(key)) maps.set(key, sceneMap(dayMap(doc, refs)));
+    if (!maps.has(key)) maps.set(key, sceneMap(dayMap(doc, refs), footRefs));
     return maps.get(key)!;
   };
   return scenes.map((scene) => {
     const told = narration.get(scene.key);
     const url = told && audioFits(told, script.voice) ? audioUrls.get(told.audio.path) : undefined;
+    const map = mapFor(scene.routeRefs);
     return {
       key: scene.key,
       kind: scene.kind,
@@ -94,7 +102,16 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
       ...(scene.subheading ? { subheading: scene.subheading } : {}),
       text: told?.text ?? "",
       images: scene.images,
-      map: mapFor(scene.routeRefs),
+      map: map.data,
+      stats: scene.stats,
+      points: scene.points,
+      walks: scene.walks.map((walk) => ({
+        title: walk.title,
+        label: walk.label,
+        facts: walk.facts,
+        lines: map.refs.flatMap((refs, at) => (refs.some((ref) => walk.refs.includes(ref)) ? [at] : [])),
+        ...(walk.at ? { at: walk.at } : {}),
+      })),
       ...(url !== undefined && told?.audio ? { audio: { url, durationMs: told.audio.durationMs } } : {}),
     };
   });

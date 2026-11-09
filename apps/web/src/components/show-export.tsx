@@ -4,11 +4,11 @@ import type { ShowImage } from "@expeditionplan/core";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { isCard, MUSIC_EASE, musicLevel, musicStart, photoAt, type PlayerMusic, type PlayerScene, sceneTiming, sentences, ShowMap } from "@/components/show-player";
+import { isCard, type MapFocus, mapFocus, MUSIC_EASE, musicLevel, musicStart, phaseAt, type PlayerMusic, type PlayerScene, scenePhases, sceneTiming, sentences, ShowMap } from "@/components/show-player";
 
 /**
  * Eksport pokazu do pliku wideo w przeglądarce: ten sam film co w odtwarzaczu (te same czasy scen, `sceneTiming`,
- * `photoAt`, napisy i podkład), rysowany klatka po klatce na kanwie 1920×1080 i nagrywany przez `MediaRecorder`
+ * `scenePhases` z kartami planu i tras pieszych, napisy i podkład), rysowany klatka po klatce na kanwie 1920×1080 i nagrywany przez `MediaRecorder`
  * z dźwiękiem zmiksowanym w Web Audio (lektor + podkład). Mapa to osobna, niewidoczna MapLibre w tym rozmiarze
  * (`ShowMap capture`), kopiowana na kanwę. Nagranie idzie w czasie rzeczywistym, więc trwa tyle co film. Klatki
  * odmierza Web Worker (jego zegar nie zwalnia w zasłoniętym oknie jak `requestAnimationFrame`), ale schowana karta
@@ -106,7 +106,7 @@ export function ShowExport({
   const map = useRef<MapLibreMap | null>(null);
   const mapReady = useRef<(() => void) | null>(null);
   const stop = useRef<(() => void) | null>(null);
-  const [mapScene, setMapScene] = useState(0);
+  const [mapView, setMapView] = useState<{ scene: number; focus: MapFocus }>({ scene: 0, focus: null });
   const [status, setStatus] = useState<Status | null>(null);
   const type = useMemo(() => recordingType(), []);
 
@@ -153,7 +153,7 @@ export function ShowExport({
     stop.current = () => abort(null);
     document.addEventListener("visibilitychange", hidden);
 
-    setMapScene(0);
+    setMapView({ scene: 0, focus: null });
     setStatus({ phase: "prepare", note: "Wczytuję zdjęcia i nagrania…" });
     const urls = [...new Set(scenes.flatMap((scene) => scene.images.map((image) => image.url)))];
     const [images, voices, backing] = await Promise.all([
@@ -184,6 +184,13 @@ export function ShowExport({
     const t0 = audio.currentTime + 0.3;
     const { entries, total } = timeline;
 
+    // Cisza przez cały film: bez żadnego źródła ścieżka dźwięku nie daje próbek, a MP4 bez nich urywa obraz po kilku
+    // sekundach (pokaz bez lektora i podkładu).
+    const silence = audio.createConstantSource();
+    silence.offset.value = 0;
+    silence.connect(destination);
+    silence.start(audio.currentTime);
+    silence.stop(t0 + total / 1000 + 0.5);
     // Lektor scena po scenie, w tych samych chwilach co w odtwarzaczu.
     for (const [index, scene] of scenes.entries()) {
       const buffer = scene.audio ? voices.get(scene.audio.url) : null;
@@ -296,18 +303,22 @@ export function ShowExport({
       context.restore();
     };
 
-    let shownMap = 0;
+    let shownMap = "0:map:0";
+    const phasesOf = new Map(scenes.map((scene, index) => [scene.key, scenePhases(scene, entries[index]!.lead + entries[index]!.duration)]));
     const draw = (ms: number) => {
       const index = sceneAt(Math.max(ms, 0));
-      if (index !== shownMap) {
-        shownMap = index;
-        setMapScene(index);
-      }
       const scene = scenes[index]!;
       const entry = entries[index]!;
       const inScene = Math.max(ms - entry.start, 0);
       const span = entry.lead + entry.duration;
       const elapsed = Math.min(inScene, span);
+      const phases = phasesOf.get(scene.key)!;
+      const { phase, mapPhase } = phaseAt(phases, elapsed);
+      const viewKey = `${index}:${mapPhase.kind}:${mapPhase.index}`;
+      if (viewKey !== shownMap) {
+        shownMap = viewKey;
+        setMapView({ scene: index, focus: mapFocus(scene, mapPhase) });
+      }
 
       context.fillStyle = "#e4e4e7";
       context.fillRect(0, 0, W, H);
@@ -323,12 +334,48 @@ export function ShowExport({
       context.fillText(credit, 20, 18);
       context.restore();
 
-      const { photo, mapPhase, perPhoto } = photoAt(scene.images.length, span, elapsed);
-      if (photo >= 0) {
-        const since = elapsed - (mapPhase + photo * perPhoto);
+      if (phase.kind === "photo") {
+        const perPhoto = phase.end - phase.start;
+        const since = elapsed - phase.start;
         const fade = Math.min(since / PHOTO_FADE_MS, 1);
-        if (photo > 0 && fade < 1) drawPhoto(scene.images[photo - 1]!, since + perPhoto, perPhoto, 1);
-        drawPhoto(scene.images[photo]!, since, perPhoto, fade);
+        if (phase.index > 0 && fade < 1) drawPhoto(scene.images[phase.index - 1]!, since + perPhoto, perPhoto, 1);
+        drawPhoto(scene.images[phase.index]!, since, perPhoto, fade);
+      }
+      // Karta planu dnia albo trasy pieszej, jak w odtwarzaczu (prawy górny róg).
+      const walk = phase.kind === "walk" ? scene.walks[phase.index] : undefined;
+      if (!isCard(scene) && (walk || (phase.kind === "map" && (scene.stats.length > 0 || scene.points.length > 0)))) {
+        const rows: [string, string, string][] = walk
+          ? [
+              [walk.label.toUpperCase(), `20px ${font}`, "rgba(255,255,255,0.7)"],
+              [walk.title, `600 32px ${font}`, "#ffffff"],
+              ...(walk.facts ? [[walk.facts, `28px ${font}`, "rgba(255,255,255,0.85)"] as [string, string, string]] : []),
+            ]
+          : [
+              [scene.kind === "intro" ? "WYJAZD" : "PLAN DNIA", `20px ${font}`, "rgba(255,255,255,0.7)"],
+              ...(scene.stats.length > 0 ? [[scene.stats.join(" · "), `600 28px ${font}`, "#ffffff"] as [string, string, string]] : []),
+              ...scene.points.map((point): [string, string, string] => [`• ${point}`, `26px ${font}`, "rgba(255,255,255,0.9)"]),
+            ];
+        const maxWidth = W * 0.4;
+        const laid = rows.flatMap(([text, style, color]) => {
+          context.font = style;
+          return wrap(context, text, maxWidth).map((line) => ({ line, style, color, size: Number(/(\d+)px/.exec(style)![1]) }));
+        });
+        const width = Math.min(Math.max(...laid.map((row) => ((context.font = row.style), context.measureText(row.line).width))) + 40, maxWidth + 40);
+        const height = laid.reduce((sum, row) => sum + row.size * 1.35, 0) + 28;
+        context.save();
+        context.fillStyle = "rgba(0,0,0,0.6)";
+        context.beginPath();
+        context.roundRect(W - 28 - width, 28, width, height, 10);
+        context.fill();
+        context.textBaseline = "top";
+        let y = 42;
+        for (const row of laid) {
+          context.font = row.style;
+          context.fillStyle = row.color;
+          context.fillText(row.line, W - 28 - width + 20, y);
+          y += row.size * 1.35;
+        }
+        context.restore();
       }
 
       // Dół kadru: nagłówek sceny i napisy na ciemnym przejściu.
@@ -461,8 +508,9 @@ export function ShowExport({
         // Niewidoczna mapa w rozmiarze filmu: z niej kopiuje się kadr mapy.
         <div aria-hidden className="pointer-events-none fixed top-0" style={{ left: -W - 100, width: W, height: H }}>
           <ShowMap
-            data={scenes[mapScene]!.map}
-            sceneKey={scenes[mapScene]!.key}
+            data={scenes[mapView.scene]!.map}
+            sceneKey={scenes[mapView.scene]!.key}
+            focus={mapView.focus}
             capture
             onMap={(created) => {
               map.current = created;

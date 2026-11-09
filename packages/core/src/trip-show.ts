@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { itemsForDay, type ScheduleOptions } from './engine/schedule.ts';
 import { dayLabel, formatKm, plural } from './format.ts';
 import type { GuideContent, GuideImage } from './guide.ts';
-import { dayLodging } from './plan-info.ts';
+import { dayLodging, formatMinutes, isTransit } from './plan-info.ts';
 import { isRouteStop } from './route-stops.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { tripMemories } from './trip-memories.ts';
@@ -78,6 +78,12 @@ export type ShowDraft = z.infer<typeof ShowDraft>;
 
 export type ShowImage = { url: string; caption: string; credit?: string };
 
+/**
+ * Trasa piesza albo rowerowa dnia: odtwarzacz przybliża ją osobno, z kartą liczb. Bez linii na mapie (aktywność bez
+ * śladu GPX) przybliża jej miejsce (`at`, [lng, lat]).
+ */
+export type ShowWalk = { refs: string[]; title: string; label: string; facts: string; at?: [number, number] };
+
 export type ShowScene = {
   key: string;
   kind: 'intro' | 'day' | 'outro';
@@ -86,6 +92,10 @@ export type ShowScene = {
   /** Punkty na mapie sceny (`dayMap`): całej trasy albo dnia. */
   routeRefs: string[];
   images: ShowImage[];
+  /** Karta „Plan dnia” na widoku mapy: liczby dnia (autem, pieszo, podejścia) i najważniejsze punkty. */
+  stats: string[];
+  points: string[];
+  walks: ShowWalk[];
   /** Fakty sceny dla AI piszącego tekst lektora. */
   facts: string[];
 };
@@ -110,6 +120,48 @@ const IMAGES_PER_DAY = 6;
 /** Film z wyjazdu: tyle zdjęć z dziennika na dzień; zdjęcia z opisów miejsc dopełniają tylko do `IMAGES_PER_DAY`. */
 const FILM_IMAGES_PER_DAY = 10;
 const GUIDE_FACT_CHARS = 280;
+
+const FOOT_MODES: ReadonlySet<string> = new Set(['walk', 'hike', 'bike']);
+const CAR_MODES: ReadonlySet<string> = new Set(['car', 'rental_car', 'taxi', 'hired_driver']);
+/** Krótszy spacer nie dostaje własnego ujęcia (przejście między zabytkami). */
+const WALK_MIN_KM = 1.5;
+const POINTS_PER_DAY = 6;
+
+/**
+ * Punkt pieszy albo rowerowy (przejście, trekking, ślad GPX, aktywność z opisem trasy: km, podejście, trudność) — na
+ * mapie pokazu ma inny kolor i własne ujęcie.
+ */
+export const isShowWalk = (item: Item): boolean =>
+  (item.kind === 'transport' && item.leg !== undefined && FOOT_MODES.has(item.leg.mode)) || item.activity?.trackRef !== undefined || (item.kind === 'activity' && item.activity !== undefined);
+
+const walkKm = (item: Item) => item.activity?.distanceKm ?? item.leg?.distanceKm;
+
+/** „12,4 km · ↑ 650 m · 4 h 30 min” z liczb planu (czego nie ma, tego nie ma). */
+function walkFacts(item: Item): string {
+  const km = walkKm(item);
+  const minutes = item.durationMin ?? item.leg?.durationMin;
+  return [km !== undefined ? formatKm(km) : '', item.activity?.ascentM ? `↑ ${item.activity.ascentM} m` : '', minutes ? formatMinutes(minutes) : ''].filter((part) => part !== '').join(' · ');
+}
+
+/** Liczby dnia na kartę: autem (bez dojazdu i powrotu), pieszo z podejściami, rowerem. */
+function dayStats(doc: Doc, items: readonly Item[]): string[] {
+  let car = 0;
+  let foot = 0;
+  let bike = 0;
+  let ascent = 0;
+  for (const item of items) {
+    if (isShowWalk(item)) {
+      if (item.leg?.mode === 'bike') bike += walkKm(item) ?? 0;
+      else foot += walkKm(item) ?? 0;
+      ascent += item.activity?.ascentM ?? 0;
+    } else if (item.kind === 'transport' && item.leg !== undefined && CAR_MODES.has(item.leg.mode) && !isTransit(doc, item)) car += item.leg.distanceKm ?? 0;
+  }
+  return [
+    car >= 1 ? `autem ${formatKm(car)}` : '',
+    foot >= 1 ? `pieszo ${formatKm(foot)}${ascent > 0 ? ` · ↑ ${ascent} m` : ''}` : '',
+    bike >= 1 ? `rowerem ${formatKm(bike)}` : '',
+  ].filter((part) => part !== '');
+}
 
 const isSight = (item: Item) => item.kind === 'visit' || item.kind === 'activity' || (item.kind === 'transport' && item.leg?.mode === 'hike');
 
@@ -169,6 +221,23 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     }
     const lodging = dayLodging(doc, day.ref);
     if (lodging !== null) facts.push(`Nocleg: ${lodging.name}`);
+    const counted = items.filter((item) => !(after && skipped.has(item.ref)));
+    const walks = counted
+      // Krótkie przejście między zabytkami nie; trekking, ślad, aktywność z trasą zawsze.
+      .filter((item) => isShowWalk(item) && (item.activity !== undefined || item.leg?.mode === 'hike' || (walkKm(item) ?? 0) >= WALK_MIN_KM))
+      // Wejście i zejście tym samym śladem to jedno ujęcie (pierwszy punkt).
+      .filter((item, at, all) => item.activity?.trackRef === undefined || all.findIndex((each) => each.activity?.trackRef === item.activity?.trackRef) === at)
+      .map((item) => {
+        const place = doc.places.find((each) => each.ref === (item.leg?.toPlaceRef ?? item.placeRef));
+        const label = item.leg?.mode === 'bike' ? 'Rowerem' : item.kind === 'transport' ? 'Trasa piesza' : 'Trasa';
+        return { refs: [item.ref], title: item.title, label, facts: walkFacts(item), ...(place?.lat !== undefined && place.lng !== undefined ? { at: [place.lng, place.lat] as [number, number] } : {}) };
+      });
+    const points = [...sights.filter((item) => item.priority === 'must'), ...sights.filter((item) => item.priority !== 'must')]
+      .filter((item) => !isShowWalk(item))
+      .map((item) => item.title)
+      .filter((title, at, all) => all.indexOf(title) === at)
+      .slice(0, POINTS_PER_DAY);
+    if (lodging !== null) points.push(`Nocleg: ${lodging.name}`);
     return {
       key: `day:${day.ref}`,
       kind: 'day',
@@ -176,6 +245,9 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       subheading: dayLabel(day.date),
       routeRefs: items.map((item) => item.ref).filter((ref) => !(after && skipped.has(ref))),
       images,
+      stats: dayStats(doc, counted),
+      points,
+      walks,
       facts,
     };
   });
@@ -202,9 +274,9 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   for (const entry of loose) if (entry.body.trim() !== '') outro.push(`Wpis z dziennika: ${clip(entry.body.trim(), 400)}`);
 
   const scenes: ShowScene[] = [
-    { key: 'intro', kind: 'intro', heading: doc.trip.title, subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`, routeRefs: stats.routeRefs, images: [], facts: intro },
+    { key: 'intro', kind: 'intro', heading: doc.trip.title, subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`, routeRefs: stats.routeRefs, images: [], stats: [plural(stats.days, ['dzień', 'dni', 'dni']), ...numbers], points: [], walks: [], facts: intro },
     ...dayScenes,
-    { key: 'outro', kind: 'outro', heading: doc.trip.title, subheading: numbers.join(' · '), routeRefs: stats.routeRefs, images: journalImages(loose), facts: outro },
+    { key: 'outro', kind: 'outro', heading: doc.trip.title, subheading: numbers.join(' · '), routeRefs: stats.routeRefs, images: journalImages(loose), stats: [], points: [], walks: [], facts: outro },
   ];
   return {
     scenes,

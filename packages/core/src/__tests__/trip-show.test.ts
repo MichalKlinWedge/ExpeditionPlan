@@ -78,11 +78,36 @@ describe('sceny pokazu', () => {
   });
 });
 
+describe('ujęcia sceny dnia', () => {
+  it('trasy piesze z liczbami, liczby dnia i najważniejsze punkty na kartę', () => {
+    for (const slug of ['chatka', 'dinara', 'gruzja', 'maroko', 'barcelona']) {
+      const doc = fixture(slug);
+      const { scenes } = showScenes(doc, base);
+      for (const scene of scenes.filter((each) => each.kind === 'day')) {
+        expect(scene.points.length).toBeLessThanOrEqual(7);
+        for (const walk of scene.walks) {
+          const item = doc.items.find((each) => each.ref === walk.refs[0])!;
+          expect(item.kind === 'transport' || item.kind === 'activity' || item.activity?.trackRef !== undefined).toBe(true);
+          expect(['Trasa piesza', 'Rowerem', 'Trasa']).toContain(walk.label);
+        }
+      }
+    }
+    const chatka = showScenes(fixture('chatka'), base).scenes.filter((scene) => scene.kind === 'day');
+    expect(chatka[1]!.walks.map((walk) => walk.facts)).toContain('4,2 km · ↑ 170 m · 1 h 30 min');
+    // „Zejście tą samą drogą” idzie śladem wejścia: bez drugiego ujęcia.
+    expect(chatka[1]!.walks.map((walk) => walk.title)).not.toContain('Zejście tą samą drogą');
+    expect(chatka[1]!.stats).toEqual(['autem 130 km', 'pieszo 10 km · ↑ 170 m']);
+    // Trekking zapisany jako aktywność z kilometrami (bez śladu GPX) też jest trasą, z miejscem do przybliżenia.
+    const gruzja = showScenes(fixture('gruzja'), base).scenes.filter((scene) => scene.kind === 'day');
+    expect(gruzja.some((scene) => scene.walks.some((walk) => walk.label === 'Trasa' && walk.at !== undefined))).toBe(true);
+  });
+});
+
 describe('scenariusz lektora', () => {
   const scenes = [
-    { key: 'intro', kind: 'intro' as const, heading: '', routeRefs: [], images: [], facts: [] },
-    { key: 'day:a', kind: 'day' as const, heading: '', routeRefs: [], images: [], facts: [] },
-    { key: 'outro', kind: 'outro' as const, heading: '', routeRefs: [], images: [], facts: [] },
+    { key: 'intro', kind: 'intro' as const, heading: '', routeRefs: [], images: [], stats: [], points: [], walks: [], facts: [] },
+    { key: 'day:a', kind: 'day' as const, heading: '', routeRefs: [], images: [], stats: [], points: [], walks: [], facts: [] },
+    { key: 'outro', kind: 'outro' as const, heading: '', routeRefs: [], images: [], stats: [], points: [], walks: [], facts: [] },
   ];
 
   it('szkic AI nie nadpisuje tekstu poprawionego ręcznie i pomija obce klucze', () => {
