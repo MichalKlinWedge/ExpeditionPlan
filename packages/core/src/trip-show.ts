@@ -63,6 +63,11 @@ export const ShowScript = z.object({
   /** Mapa dojazdu na początku i powrotu na końcu pokazu (pola wyboru w edycji pokazu). */
   showApproach: z.boolean().default(true),
   showReturn: z.boolean().default(true),
+  /**
+   * Zdjęcie przed planszą końcową (`ShowImage.key`): brak = ostatnie zdjęcie wyjazdu, pusty tekst = bez zdjęcia
+   * (`withEndPhoto`).
+   */
+  endPhoto: z.string().max(1000).optional(),
 });
 
 export const SHOW_KINDS = ['preview', 'film'] as const;
@@ -80,7 +85,8 @@ export const ShowDraft = z.object({
 });
 export type ShowDraft = z.infer<typeof ShowDraft>;
 
-export type ShowImage = { url: string; caption: string; credit?: string };
+/** `key`: stały klucz zdjęcia (ścieżka w dzienniku albo plik z Commons) do wyboru zdjęcia na koniec; adres bywa podpisany. */
+export type ShowImage = { url: string; caption: string; credit?: string; key?: string };
 
 /**
  * Trasa piesza albo rowerowa dnia: odtwarzacz przybliża ją osobno, z kartą liczb. Bez linii na mapie (aktywność bez
@@ -104,6 +110,8 @@ export type ShowScene = {
   points: string[];
   walks: ShowWalk[];
   approach?: ShowApproach;
+  /** Kolaż we wstępie: po jednym zdjęciu z kolejnych dni (do 6), zapowiedź tego, co będzie w filmie. */
+  collage?: ShowImage[];
   /** Fakty sceny dla AI piszącego tekst lektora. */
   facts: string[];
 };
@@ -119,7 +127,7 @@ export type ShowInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
   /** Opis punktu (jak `guideOf` na stronach planu). */
   guideOf: (item: Item) => GuideContent | null;
   /** Zdjęcia i wpisy z dziennika (adresy już podpisane), dzień po `dayRef`; używa ich tylko film z wyjazdu. */
-  journal?: readonly { dayRef?: string; body: string; photoUrl?: string }[];
+  journal?: readonly { dayRef?: string; body: string; photoUrl?: string; photoKey?: string }[];
   /** Zapowiedź (czas przyszły, bez dziennika) albo film z wyjazdu (czas przeszły, dziennik na pierwszym planie). */
   kind: ShowKind;
 };
@@ -215,7 +223,34 @@ const clip = (text: string, limit: number) => (text.length <= limit ? text : `${
 
 /** Zdjęcia wpisów dziennika (podpis: pierwszy wiersz wpisu), najwyżej `FILM_IMAGES_PER_DAY`. */
 function journalImages(entries: ShowInput['journal'] & {}): ShowImage[] {
-  return entries.flatMap((entry) => (entry.photoUrl === undefined ? [] : [{ url: entry.photoUrl, caption: entry.body.split('\n')[0]?.trim() ?? '' }])).slice(0, FILM_IMAGES_PER_DAY);
+  return entries
+    .flatMap((entry) => (entry.photoUrl === undefined ? [] : [{ url: entry.photoUrl, caption: entry.body.split('\n')[0]?.trim() ?? '', ...(entry.photoKey ? { key: entry.photoKey } : {}) }]))
+    .slice(0, FILM_IMAGES_PER_DAY);
+}
+
+const COLLAGE_MAX = 6;
+
+/** Kolaż: pierwsze zdjęcia kolejnych dni, potem drugie itd., do `COLLAGE_MAX`; mniej niż 2 zdjęcia to nie kolaż. */
+function collageOf(days: readonly ShowScene[]): ShowImage[] {
+  const picked: ShowImage[] = [];
+  for (let round = 0; picked.length < COLLAGE_MAX && days.some((day) => day.images.length > round); round += 1) {
+    for (const day of days) if (day.images[round] && picked.length < COLLAGE_MAX) picked.push(day.images[round]!);
+  }
+  return picked.length >= 2 ? picked : [];
+}
+
+/**
+ * Zdjęcie przed planszą końcową, dopisane na koniec zakończenia: wybrane (`ShowScript.endPhoto` = `ShowImage.key` albo
+ * adres), domyślnie ostatnie zdjęcie ostatniego dnia, który je ma; pusty tekst = bez zdjęcia. Jedyne zdjęcie, które gra
+ * drugi raz — tak chciał organizator.
+ */
+export function withEndPhoto<S extends { kind: string; images: ShowImage[] }>(scenes: readonly S[], choice?: string): S[] {
+  if (choice === '') return [...scenes];
+  const days = scenes.filter((scene) => scene.kind === 'day');
+  const all = days.flatMap((scene) => scene.images);
+  const chosen = choice === undefined ? days.flatMap((scene) => scene.images).at(-1) : all.find((image) => (image.key ?? image.url) === choice);
+  if (chosen === undefined) return [...scenes];
+  return scenes.map((scene) => (scene.kind === 'outro' && !scene.images.some((image) => image.url === chosen.url) ? { ...scene, images: [...scene.images, chosen] } : scene));
 }
 
 export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; credits: ShowCredits } {
@@ -249,7 +284,7 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       if (guide && image !== undefined && images.length < IMAGES_PER_DAY) {
         seenUrls.add(image.url);
         usedImages.set(image.url, image);
-        images.push({ url: image.thumbUrl, caption: item.title, ...(image.author ? { credit: image.author } : {}) });
+        images.push({ url: image.thumbUrl, caption: item.title, key: image.url, ...(image.author ? { credit: image.author } : {}) });
       }
       const km = item.activity?.distanceKm ?? item.leg?.distanceKm;
       const parts = [
@@ -326,6 +361,7 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
 
   // Każde zdjęcie gra raz: wstęp ich nie powtarza, zakończenie ma tylko zdjęcia z wpisów bez dnia.
   const outroImages = journalImages(loose);
+  const collage = collageOf(dayScenes);
   const outboundCard = approachCard(doc, outbound, 'Dojazd');
   const backCard = approachCard(doc, back, 'Powrót');
   const localRoute = stats.routeRefs.filter((ref) => !approachRefs.has(ref));
@@ -339,6 +375,7 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`,
       routeRefs: localRoute,
       images: [],
+      ...(collage.length > 0 ? { collage } : {}),
       stats: [plural(stats.days, ['dzień', 'dni', 'dni']), ...numbers],
       points: [],
       walks: [],

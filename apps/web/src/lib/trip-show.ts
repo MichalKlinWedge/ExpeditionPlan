@@ -1,6 +1,6 @@
 import "server-only";
 
-import { audioFits, dayMap, type DayMap, guideFor, type GuideRow, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument } from "@expeditionplan/core";
+import { audioFits, dayMap, type DayMap, guideFor, type GuideRow, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument, withEndPhoto } from "@expeditionplan/core";
 import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 
 import type { PlayerMusic, PlayerScene, ShowMapData } from "@/components/show-player";
@@ -42,7 +42,7 @@ async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((p
     journal: entries.map((row) => {
       const day = row.day_id === null ? undefined : dayRef.get(row.day_id);
       const url = row.photo_path ? signed.get(row.photo_path) : undefined;
-      return { body: row.body ?? "", ...(day !== undefined ? { dayRef: day } : {}), ...(url !== undefined ? { photoUrl: url } : {}) };
+      return { body: row.body ?? "", ...(day !== undefined ? { dayRef: day } : {}), ...(url !== undefined ? { photoUrl: url, photoKey: row.photo_path! } : {}) };
     }),
   });
   return { doc, scenes, credits };
@@ -91,7 +91,8 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
     if (!maps.has(key)) maps.set(key, sceneMap(dayMap(doc, refs), footRefs));
     return maps.get(key)!;
   };
-  return scenes.map((scene) => {
+  // Zdjęcie przed planszą końcową (wybrane w edycji albo ostatnie) idzie na koniec zakończenia.
+  return withEndPhoto(scenes, script.endPhoto).map((scene) => {
     const told = narration.get(scene.key);
     const url = told && audioFits(told, script.voice) ? audioUrls.get(told.audio.path) : undefined;
     const map = mapFor(scene.routeRefs);
@@ -102,6 +103,7 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
       ...(scene.subheading ? { subheading: scene.subheading } : {}),
       text: told?.text ?? "",
       images: scene.images,
+      ...(scene.collage ? { collage: scene.collage } : {}),
       map: map.data,
       stats: scene.stats,
       points: scene.points,

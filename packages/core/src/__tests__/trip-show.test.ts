@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GuideContent } from '../guide.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
-import { applyShowDraft, audioFits, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenesToRecord, setShowAudio, ShowScript, showBrief, showMusicFile, showScenes } from '../trip-show.ts';
+import { applyShowDraft, audioFits, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenesToRecord, setShowAudio, ShowScript, showBrief, showMusicFile, showScenes, withEndPhoto } from '../trip-show.ts';
 
 const fixture = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
 
@@ -136,6 +136,28 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(scenes.at(-1)!.images.map((image) => image.caption)).toEqual(['Po powrocie']);
     const urls = scenes.flatMap((scene) => scene.images.map((image) => image.url));
     expect(new Set(urls).size).toBe(urls.length);
+  });
+
+  it('wstęp: kolaż z pierwszych zdjęć kolejnych dni (do 6), przy mniej niż 2 zdjęciach bez kolażu', () => {
+    const doc = fixture('maroko');
+    const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
+    const journal = days.flatMap((day, at) => [1, 2].map((n) => ({ dayRef: day.ref, body: `D${at} ${n}`, photoUrl: `https://example.com/${at}-${n}.jpg`, photoKey: `p/${at}-${n}.jpg` })));
+    const intro = showScenes(doc, { ...base, kind: 'film', journal }).scenes[0]!;
+    expect(intro.collage?.map((image) => image.caption)).toEqual(['D0 1', 'D1 1', 'D2 1', 'D3 1', 'D4 1', 'D0 2']);
+    expect(intro.images).toEqual([]);
+    const single = showScenes(doc, { ...base, kind: 'film', journal: journal.slice(0, 1) }).scenes[0]!;
+    expect(single.collage).toBeUndefined();
+  });
+
+  it('zdjęcie na koniec: domyślnie ostatnie, wybrane po kluczu, pusty wybór = bez zdjęcia', () => {
+    const doc = fixture('maroko');
+    const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
+    const journal = days.slice(0, 2).flatMap((day, at) => [1, 2].map((n) => ({ dayRef: day.ref, body: `D${at} ${n}`, photoUrl: `https://example.com/${at}-${n}.jpg`, photoKey: `p/${at}-${n}.jpg` })));
+    const { scenes } = showScenes(doc, { ...base, kind: 'film', journal });
+    expect(withEndPhoto(scenes).at(-1)!.images.map((image) => image.caption)).toEqual(['D1 2']);
+    expect(withEndPhoto(scenes, 'p/0-1.jpg').at(-1)!.images.map((image) => image.caption)).toEqual(['D0 1']);
+    expect(withEndPhoto(scenes, '').at(-1)!.images).toEqual([]);
+    expect(withEndPhoto(scenes, 'nie-ma').at(-1)!.images).toEqual([]);
   });
 
   it('starszy scenariusz bez pól wyboru pokazuje dojazd i powrót', () => {

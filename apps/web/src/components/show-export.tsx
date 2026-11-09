@@ -5,6 +5,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  collageGrid,
   isCard,
   mapDataFor,
   type MapFocus,
@@ -172,7 +173,7 @@ export function ShowExport({
 
     setMapView({ scene: 0, data: scenes[0]!.map, focus: null });
     setStatus({ phase: "prepare", note: "Wczytuję zdjęcia i nagrania…" });
-    const urls = [...new Set(scenes.flatMap((scene) => scene.images.map((image) => image.url)))];
+    const urls = [...new Set(scenes.flatMap((scene) => [...scene.images, ...(scene.collage ?? [])].map((image) => image.url)))];
     const [images, voices, backing] = await Promise.all([
       Promise.all(urls.map(async (each) => [each, await loadImage(each)] as const)).then((pairs) => new Map(pairs)),
       Promise.all(scenes.flatMap((scene) => (scene.audio ? [scene.audio.url] : [])).map(async (each) => [each, await loadAudio(audio, each)] as const)).then((pairs) => new Map(pairs)),
@@ -280,6 +281,37 @@ export function ShowExport({
       context.restore();
     };
 
+    // Kolaż jak w odtwarzaczu: siatka zdjęć na czarnym tle, całość powoli się przybliża.
+    const drawCollage = (collage: ShowImage[], since: number, ms: number, alpha: number) => {
+      if (alpha <= 0) return;
+      const { columns } = collageGrid(collage.length);
+      const rows = Math.ceil(collage.length / columns);
+      const gap = 8;
+      const [cellW, cellH] = [(W - gap * (columns + 1)) / columns, (H - gap * (rows + 1)) / rows];
+      const k = Math.min(Math.max(since / (ms + 1_000), 0), 1);
+      context.save();
+      context.globalAlpha = alpha;
+      context.fillStyle = "#000000";
+      context.fillRect(0, 0, W, H);
+      context.translate(W / 2, H / 2);
+      context.scale(1 + 0.12 * k, 1 + 0.12 * k);
+      context.translate(-W / 2 - 0.02 * W * k, -H / 2 - 0.01 * H * k);
+      for (const [at, image] of collage.entries()) {
+        const picture = images.get(image.url);
+        if (!picture) continue;
+        const [x, y] = [gap + (at % columns) * (cellW + gap), gap + Math.floor(at / columns) * (cellH + gap)];
+        const ratio = Math.max(cellW / picture.naturalWidth, cellH / picture.naturalHeight);
+        const [w, h] = [picture.naturalWidth * ratio, picture.naturalHeight * ratio];
+        context.save();
+        context.beginPath();
+        context.rect(x, y, cellW, cellH);
+        context.clip();
+        context.drawImage(picture, x + (cellW - w) / 2, y + (cellH - h) / 2, w, h);
+        context.restore();
+      }
+      context.restore();
+    };
+
     const drawCard = (scene: PlayerScene, alpha: number) => {
       if (alpha <= 0) return;
       context.save();
@@ -351,11 +383,15 @@ export function ShowExport({
       context.fillText(credit, 20, 18);
       context.restore();
 
+      if (phase.kind === "collage" && scene.collage) {
+        drawCollage(scene.collage, elapsed - phase.start, phase.end - phase.start, Math.min((elapsed - phase.start) / PHOTO_FADE_MS, 1));
+      }
       if (phase.kind === "photo") {
         const perPhoto = phase.end - phase.start;
         const since = elapsed - phase.start;
         const fade = Math.min(since / PHOTO_FADE_MS, 1);
         if (phase.index > 0 && fade < 1) drawPhoto(scene.images[phase.index - 1]!, since + perPhoto, perPhoto, 1);
+        else if (phase.index === 0 && fade < 1 && scene.collage) drawCollage(scene.collage, since + perPhoto, perPhoto, 1);
         drawPhoto(scene.images[phase.index]!, since, perPhoto, fade);
       }
       // Karta etapu, jak w odtwarzaczu (prawy górny róg, `phaseCard`).

@@ -153,6 +153,22 @@ export async function setShowRoutes(tripId: string, kind: ShowKind, routes: { sh
   return { ok: "Zapisano." };
 }
 
+/** Zdjęcie przed planszą końcową: klucz zdjęcia, `null` = ostatnie zdjęcie wyjazdu, pusty tekst = bez zdjęcia. */
+export async function setShowEndPhoto(tripId: string, kind: ShowKind, choice: string | null): Promise<FormState> {
+  if (choice !== null && (typeof choice !== "string" || choice.length > 1000)) return { error: "Nieprawidłowe zdjęcie." };
+  const loaded = await load(tripId, kind);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, script } = loaded;
+  if ((script.endPhoto ?? null) === choice) return { ok: "Bez zmian." };
+  const next = { ...script };
+  if (choice === null) delete next.endPhoto;
+  else next.endPhoto = choice;
+  const failed = await save(supabase, tripId, kind, script, next);
+  if (failed) return { error: failed };
+  refresh();
+  return { ok: "Zapisano zdjęcie na koniec." };
+}
+
 /** Ile przeglądarka czeka przy limicie minutowym: tyle, ile podał Google, w rozsądnych granicach. */
 const waitFor = (seconds: number | null) => Math.min(Math.max(seconds ?? 30, 5), 90);
 

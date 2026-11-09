@@ -88,10 +88,16 @@ export type PlayerScene = {
   points: string[];
   walks: PlayerWalk[];
   approach?: PlayerApproach;
+  /** Kolaż zdjęć (wstęp): jeden etap ze wszystkimi naraz. */
+  collage?: ShowImage[];
 };
 
 const sceneMs = (scene: PlayerScene) =>
   scene.kind === "title" ? TITLE_MS : scene.kind === "end" ? END_MS : (scene.audio?.durationMs ?? (scene.text.trim() === "" ? 5_000 : readingMs(scene.text)));
+
+/** Kolumny kolażu: 2 i 3 zdjęcia w rzędzie, 4 w kwadracie, więcej po 3 (na wąskim ekranie po 2). */
+export const collageGrid = (count: number) => (count <= 3 ? { columns: count } : count === 4 ? { columns: 2 } : { columns: 3 });
+const collageColumns = (count: number) => (count <= 2 ? "grid-cols-2" : count === 3 ? "grid-cols-3" : count === 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3");
 
 export const isCard = (scene: PlayerScene) => scene.kind === "title" || scene.kind === "end";
 
@@ -108,7 +114,10 @@ export function sceneTiming(scenes: PlayerScene[], index: number): { lead: numbe
  * Etap sceny: mapa dojazdu/powrotu, widok dnia (albo całej trasy), przybliżenie trasy pieszej (`index` w `walks`),
  * przybliżenie miejsca (`index` w `map.pins`) albo zdjęcie (`index` w `images`).
  */
-export type ScenePhase = { kind: "approach" | "map" | "walk" | "pin" | "photo"; index: number; start: number; end: number };
+export type ScenePhase = { kind: "approach" | "map" | "walk" | "pin" | "collage" | "photo"; index: number; start: number; end: number };
+
+/** Etap ze zdjęciami (kolaż albo zdjęcie): zasłania mapę i nie ma karty. */
+export const isPhotoPhase = (phase: ScenePhase) => phase.kind === "photo" || phase.kind === "collage";
 
 /**
  * Etapy sceny w czasie `span`. Mapy po kolei, każda najwyżej `MAP_MS`: dojazd/powrót, widok, do `MAX_WALKS` tras pieszych.
@@ -120,7 +129,12 @@ export type ScenePhase = { kind: "approach" | "map" | "walk" | "pin" | "photo"; 
  */
 export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
   if (isCard(scene)) return [{ kind: "map", index: 0, start: 0, end: span }];
-  const photos = scene.images.length;
+  // Kolaż liczy się jak jedno zdjęcie i idzie przed zdjęciami.
+  const slides: { kind: "collage" | "photo"; index: number }[] = [
+    ...(scene.collage && scene.collage.length > 0 ? [{ kind: "collage" as const, index: 0 }] : []),
+    ...scene.images.map((_, index) => ({ kind: "photo" as const, index })),
+  ];
+  const photos = slides.length;
   const shots: { kind: ScenePhase["kind"]; index: number; ms: number }[] = [];
   if (scene.approach) shots.push({ kind: "approach", index: 0, ms: MAP_MS });
   shots.push({ kind: "map", index: 0, ms: MAP_MS });
@@ -149,8 +163,8 @@ export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
     phases.push({ kind: shot.kind, index: shot.index, start: at, end: at + shot.ms });
     at += shot.ms;
   }
-  for (let index = 0; index < photos; index += 1) {
-    phases.push({ kind: "photo", index, start: at, end: at + perPhoto });
+  for (const slide of slides) {
+    phases.push({ ...slide, start: at, end: at + perPhoto });
     at += perPhoto;
   }
   const last = phases.at(-1)!;
@@ -162,7 +176,7 @@ export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
 export function phaseAt(phases: ScenePhase[], elapsed: number): { phase: ScenePhase; mapPhase: ScenePhase } {
   const passed = phases.filter((phase) => phase.start <= elapsed);
   const phase = passed.at(-1) ?? phases[0]!;
-  const mapPhase = passed.filter((each) => each.kind !== "photo").at(-1) ?? phases[0]!;
+  const mapPhase = passed.filter((each) => !isPhotoPhase(each)).at(-1) ?? phases[0]!;
   return { phase, mapPhase };
 }
 
@@ -603,6 +617,21 @@ export function ShowPlayer({
             </>
           )}
         </div>
+
+        {scene.collage && scene.collage.length > 0 && (
+          // Kolaż: wszystkie zdjęcia naraz, siatka 2–3 kolumny, całość powoli się przybliża.
+          <div className={`pointer-events-none absolute inset-0 z-10 bg-black p-1 transition-opacity duration-1000 ${phase.kind === "collage" ? "opacity-100" : "opacity-0"}`}>
+            <div
+              className={`grid size-full gap-1 ${phase.kind === "collage" ? "show-kenburns" : ""} ${collageColumns(scene.collage.length)}`}
+              style={{ gridAutoRows: "1fr", animationDuration: `${perPhoto + 1_000}ms` }}
+            >
+              {scene.collage.map((image) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={image.url} src={image.url} alt={image.caption} className="size-full min-h-0 object-cover" />
+              ))}
+            </div>
+          </div>
+        )}
 
         {scene.images.map((image, at) => (
           <figure key={`${scene.key}-${image.url}`} className={`absolute inset-0 z-10 transition-opacity duration-1000 ${photo === at ? "opacity-100" : "opacity-0"}`}>

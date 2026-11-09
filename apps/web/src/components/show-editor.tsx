@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { type ChangeEvent, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowEndPhoto, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
 import { IconAction } from "@/components/icon-action";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -397,6 +397,47 @@ export function ShowRouteOptions({ tripId, kind, approach, back }: { tripId: str
           <span className="text-xs text-zinc-500">{back.title}</span>
         </label>
       )}
+      {message?.error && <p className="text-red-600">{message.error}</p>}
+    </section>
+  );
+}
+
+/**
+ * Zdjęcie przed planszą końcową (`ShowScript.endPhoto`): ostatnie zdjęcie wyjazdu (domyślnie), wybrane z miniatur albo
+ * żadne. Wybór zapisuje się od razu.
+ */
+export function ShowEndPhoto({ tripId, kind, choice, photos }: { tripId: string; kind: ShowKind; choice: string | undefined; photos: { key: string; url: string; caption: string }[] }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [message, setMessage] = useState<FormState | null>(null);
+  if (photos.length === 0) return null;
+  const pick = (value: string | null) =>
+    start(async () => {
+      const answer = await setShowEndPhoto(tripId, kind, value);
+      setMessage(answer.error ? answer : null);
+      if (answer.ok) router.refresh();
+    });
+  const chosen = choice === undefined ? photos.at(-1)!.key : choice;
+  return (
+    <section className="card flex flex-col gap-2 p-4 text-sm">
+      <h2 className="card-title">Zdjęcie na koniec</h2>
+      <p className="text-xs text-zinc-500">Ostatnie ujęcie przed planszą końcową. Bez wyboru: ostatnie zdjęcie wyjazdu.</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => pick(null)} disabled={pending} className={`btn-secondary btn-sm ${choice === undefined ? "ring-2 ring-sea" : ""}`}>
+          Ostatnie zdjęcie
+        </button>
+        <button type="button" onClick={() => pick("")} disabled={pending} className={`btn-secondary btn-sm ${choice === "" ? "ring-2 ring-sea" : ""}`}>
+          Bez zdjęcia
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {photos.map((photo) => (
+          <button key={photo.key} type="button" onClick={() => pick(photo.key)} disabled={pending} title={photo.caption} className={`overflow-hidden rounded ${chosen === photo.key ? "ring-4 ring-sea" : "opacity-80 hover:opacity-100"}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photo.url} alt={photo.caption} className="h-16 w-24 object-cover" />
+          </button>
+        ))}
+      </div>
       {message?.error && <p className="text-red-600">{message.error}</p>}
     </section>
   );
