@@ -1,4 +1,4 @@
-import { isPostponed, localToday, tripStats, type TripStats } from '@expeditionplan/core';
+import { isDraft, isPostponed, localToday, tripStats, type TripStats } from '@expeditionplan/core';
 import { pendingCount } from '@expeditionplan/sync';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -39,10 +39,12 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
   useFocusEffect(
     useCallback(() => {
       void loadMyTrips(signedIn).then((result) => {
-        const trips = result.trips.map((trip) => ({ id: trip.id!, title: trip.title!, startDate: trip.start_date!, endDate: trip.end_date! }));
-        // Odłożone nie odliczają dni ani nie wchodzą do statystyk podróży; pobrane dane liczą się dalej.
-        const planned = trips.filter((_, index) => !isPostponed(result.trips[index]!));
-        setData({ stats: tripStats(planned, localToday()), local: localCounts(trips.map((trip) => trip.id)), offline: result.offline, postponed: trips.length - planned.length });
+        // Szkice AI to nie wyjazdy: nie liczą się nigdzie w statystykach (jak w sekcjach zakładki Wyjazdy).
+        const real = result.trips.filter((trip) => !isDraft(trip));
+        const summary = (trip: (typeof real)[number]) => ({ id: trip.id!, title: trip.title!, startDate: trip.start_date!, endDate: trip.end_date! });
+        // Odłożone nie odliczają dni ani nie wchodzą do statystyk podróży; pobrane dane liczą się dalej (szkice też leżą na telefonie).
+        const planned = real.filter((trip) => !isPostponed(trip)).map(summary);
+        setData({ stats: tripStats(planned, localToday()), local: localCounts(result.trips.map((trip) => trip.id!)), offline: result.offline, postponed: real.length - planned.length });
       });
     }, [signedIn]),
   );
