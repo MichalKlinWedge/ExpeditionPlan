@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 
-import { CloseIcon, PencilIcon, SelectIcon, TrashIcon } from "@/components/icons";
+import { ArrowDownIcon, ArrowUpIcon, CloseIcon, PencilIcon, SelectIcon, TrashIcon } from "@/components/icons";
 
 /**
  * Działanie przy wierszu jako sama ikona z dymkiem (`title`, też `aria-label`): ołówek = edycja,
@@ -12,6 +12,8 @@ const KIND = {
   remove: { Icon: TrashIcon, tip: "usuwanie" },
   change: { Icon: SelectIcon, tip: "zmiana" },
   close: { Icon: CloseIcon, tip: "zamknij" },
+  up: { Icon: ArrowUpIcon, tip: "wyżej" },
+  down: { Icon: ArrowDownIcon, tip: "niżej" },
 } as const;
 
 export type IconActionKind = keyof typeof KIND;

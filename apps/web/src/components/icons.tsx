@@ -83,6 +83,20 @@ export const PencilIcon = (props: Props) => (
   </Svg>
 );
 
+export const ArrowUpIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M12 19V5" />
+    <path d="m6 11 6-6 6 6" />
+  </Svg>
+);
+
+export const ArrowDownIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M12 5v14" />
+    <path d="m6 13 6 6 6-6" />
+  </Svg>
+);
+
 export const PeopleIcon = (props: Props) => (
   <Svg {...props}>
     <circle cx="9" cy="8" r="3.2" />

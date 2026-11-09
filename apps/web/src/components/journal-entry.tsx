@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { IconAction } from "@/components/icon-action";
 import type { JournalDay } from "@/components/journal-editor";
 import type { JournalCard } from "@/lib/journal";
 import { createClient } from "@/lib/supabase/client";
@@ -99,7 +100,7 @@ export function JournalEntry({ entry, tz, canEdit, item, days = [], upAt = null,
       {photo}
       <div className="flex flex-col gap-1 px-4 pb-3 first:pt-3">
         {entry.body && <p className="whitespace-pre-line">{entry.body}</p>}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs text-zinc-500">
           <span>
             {time} · {entry.author}
           </span>
@@ -110,27 +111,15 @@ export function JournalEntry({ entry, tz, canEdit, item, days = [], upAt = null,
           )}
           {canEdit && (
             <>
-              {upAt !== null && (
-                <button type="button" onClick={() => void update({ taken_at: upAt }, "Nie przesunięto wpisu.")} disabled={busy} title="Wyżej (wcześniej)" aria-label="Przesuń wpis wyżej" className="btn-mini">
-                  ↑
-                </button>
-              )}
-              {downAt !== null && (
-                <button type="button" onClick={() => void update({ taken_at: downAt }, "Nie przesunięto wpisu.")} disabled={busy} title="Niżej (później)" aria-label="Przesuń wpis niżej" className="btn-mini">
-                  ↓
-                </button>
-              )}
-              <button type="button" onClick={() => setEditing(true)} disabled={busy} className="btn-mini">
-                edytuj
-              </button>
+              {upAt !== null && <IconAction kind="up" tip="Wyżej (wcześniej)" onClick={() => void update({ taken_at: upAt }, "Nie przesunięto wpisu.")} disabled={busy} />}
+              {downAt !== null && <IconAction kind="down" tip="Niżej (później)" onClick={() => void update({ taken_at: downAt }, "Nie przesunięto wpisu.")} disabled={busy} />}
+              <IconAction kind="edit" tip="Edytuj wpis" onClick={() => setEditing(true)} disabled={busy} />
               {unlink && (
                 <button type="button" onClick={() => void update({ item_id: null }, "Nie odłączono wpisu.")} disabled={busy} title="Wpis zostaje w dzienniku, tylko bez tego punktu" className="btn-mini">
                   odłącz od punktu
                 </button>
               )}
-              <button type="button" onClick={remove} disabled={busy} className="btn-mini btn-mini-danger">
-                usuń
-              </button>
+              <IconAction kind="remove" tip="Usuń wpis" onClick={remove} disabled={busy} />
             </>
           )}
           {error && <span className="text-red-600">{error}</span>}
