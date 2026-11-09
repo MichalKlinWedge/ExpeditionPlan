@@ -5,7 +5,7 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { dropGuideImage, findGuideImages, pickGuideImage, removeGuide, saveGuideText } from "@/app/guide-actions";
+import { dropGuideImage, findGuideImages, pickGuideImage, removeGuide, reorderGuideImage, saveGuideText } from "@/app/guide-actions";
 import { GuideArticle, GuideFigure } from "@/components/guide-article";
 import { GuideButtons, PlaceGuideButtons } from "@/components/guide-button";
 import { IconAction } from "@/components/icon-action";
@@ -139,7 +139,7 @@ function MissingRow({ tripId, item, canEdit }: { tripId: string; item: { ref: st
   );
 }
 
-/** Zdjęcia opisu: każde można usunąć albo wymienić na inne z Wikimedia, a poniżej limitu dodać kolejne. */
+/** Zdjęcia opisu: każde można przesunąć, usunąć albo wymienić na inne z Wikimedia, a poniżej limitu dodać kolejne. */
 function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: TripGuide; onClose: () => void }) {
   const { images } = guide.content;
   /** Otwarty wybór: `replace` to zdjęcie do wymiany, bez niego wybór dodaje kolejne. */
@@ -151,6 +151,7 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
       setState(await dropGuideImage(tripId, guide.rowId, url));
       setPicking(null);
     });
+  const move = (url: string, by: -1 | 1 | "first") => start(async () => setState(await reorderGuideImage(tripId, guide.rowId, url, by)));
   const pick = (image: GuideImage) =>
     start(async () => {
       const result = await pickGuideImage(tripId, guide.rowId, image, picking?.replace);
@@ -164,9 +165,25 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
         <p className="text-xs text-zinc-500">Ten opis nie ma zdjęć.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {images.map((image) => (
+          {images.map((image, at) => (
             <li key={image.url} className={`flex flex-col gap-1 rounded-lg ${picking?.replace === image.url ? "ring-2 ring-sea" : ""}`}>
               <GuideFigure image={image} />
+              {images.length > 1 && (
+                <div className="flex flex-wrap items-center gap-1 text-xs">
+                  <span className="text-zinc-500">{at + 1}.</span>
+                  <button type="button" disabled={pending || at === 0} onClick={() => move(image.url, -1)} className="btn-mini" aria-label="Przesuń wcześniej" title="Wcześniej">
+                    ←
+                  </button>
+                  <button type="button" disabled={pending || at === images.length - 1} onClick={() => move(image.url, 1)} className="btn-mini" aria-label="Przesuń później" title="Później">
+                    →
+                  </button>
+                  {at > 0 && (
+                    <button type="button" disabled={pending} onClick={() => move(image.url, "first")} className="btn-mini" title="Pierwsze zdjęcie pokazuje się w „Opisie wyprawy”">
+                      na początek
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex gap-3 text-xs">
                 <button type="button" disabled={pending} onClick={() => setPicking({ replace: image.url })} className="btn-mini">
                   wymień

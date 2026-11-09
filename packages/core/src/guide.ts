@@ -123,6 +123,20 @@ export function removeGuideImage(content: GuideContent, url: string): GuideConte
   return { ...content, images: content.images.filter((image) => image.url !== url), imagesEdited: true };
 }
 
+/**
+ * Przesunięcie zdjęcia o `by` miejsc (−1 wcześniej, 1 później) albo na początek (`'first'`: pierwsze trafia do
+ * „Opisu wyprawy”). Zdjęcie spoza opisu albo ruch poza listę nic nie zmienia.
+ */
+export function moveGuideImage(content: GuideContent, url: string, by: -1 | 1 | 'first'): GuideContent {
+  const from = content.images.findIndex((image) => image.url === url);
+  const to = by === 'first' ? 0 : from + by;
+  if (from === -1 || to < 0 || to >= content.images.length || to === from) return content;
+  const images = [...content.images];
+  const [moved] = images.splice(from, 1);
+  images.splice(to, 0, moved!);
+  return { ...content, images, imagesEdited: true };
+}
+
 /** Wymiana zdjęcia `replaceUrl` na tym samym miejscu, bez niego dopisanie na końcu. Zdjęcie, które już jest w opisie, nic nie zmienia. */
 export function putGuideImage(content: GuideContent, image: GuideImage, replaceUrl?: string): GuideContent {
   if (content.images.some((each) => each.url === image.url)) return content;

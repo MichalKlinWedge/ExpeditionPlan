@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { editGuideText, GuideContent, type GuideImage, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, putGuideImage, removeGuideImage, speechParts, tripGuides, undescribedSights } from '../guide.ts';
+import { editGuideText, GuideContent, type GuideImage, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, moveGuideImage, putGuideImage, removeGuideImage, speechParts, tripGuides, undescribedSights } from '../guide.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const load = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
@@ -84,6 +84,19 @@ describe('opisy miejsc wyjazdu', () => {
       expect(putGuideImage(old, photo('c'), photo('a').url).images.map((image) => image.title)).toEqual(['c', 'b']);
       expect(putGuideImage(old, photo('c')).images.map((image) => image.title)).toEqual(['a', 'b', 'c']);
       expect(putGuideImage(old, photo('c'), 'https://upload.wikimedia.org/nie-ma.jpg').images.map((image) => image.title)).toEqual(['a', 'b', 'c']);
+    });
+
+    it('kolejność: o jedno miejsce albo na początek, poza listę nic nie zmienia', () => {
+      const old = withPhotos('a', 'b', 'c');
+      const titles = (next: GuideContent) => next.images.map((image) => image.title);
+      expect(titles(moveGuideImage(old, photo('b').url, -1))).toEqual(['b', 'a', 'c']);
+      expect(titles(moveGuideImage(old, photo('b').url, 1))).toEqual(['a', 'c', 'b']);
+      expect(titles(moveGuideImage(old, photo('c').url, 'first'))).toEqual(['c', 'a', 'b']);
+      expect(moveGuideImage(old, photo('c').url, 'first').imagesEdited).toBe(true);
+      expect(moveGuideImage(old, photo('a').url, -1)).toBe(old);
+      expect(moveGuideImage(old, photo('c').url, 1)).toBe(old);
+      expect(moveGuideImage(old, photo('a').url, 'first')).toBe(old);
+      expect(moveGuideImage(old, 'https://upload.wikimedia.org/nie-ma.jpg', 1)).toBe(old);
     });
 
     it('zdjęcie już będące w opisie nic nie zmienia, a limit nie przepuszcza kolejnego', () => {

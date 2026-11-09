@@ -1,6 +1,6 @@
 "use server";
 
-import { editGuideText, GuideContent, GuideDraft, GuideImage, GUIDE_LICENSE, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, putGuideImage, removeGuideImage, type TripDocument, undescribedSights } from "@expeditionplan/core";
+import { editGuideText, GuideContent, GuideDraft, GuideImage, GUIDE_LICENSE, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, moveGuideImage, putGuideImage, removeGuideImage, type TripDocument, undescribedSights } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { articleImages, commonsImages, coreName, describeFromPage, describePlace, type GuideLibrary, wikiArticleOf } from "@expeditionplan/planner";
 import { dbErrorMessage, refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
@@ -329,6 +329,12 @@ export async function pickGuideImage(tripId: string, guideId: string, image: Gui
 
 export async function dropGuideImage(tripId: string, guideId: string, url: string): Promise<FormState> {
   return changeGuide(tripId, guideId, (current) => removeGuideImage(current, url), "Usunięto zdjęcie.");
+}
+
+/** Zmiana kolejności zdjęć opisu: o jedno miejsce albo na początek (pierwsze idzie do „Opisu wyprawy” i pokazu). */
+export async function reorderGuideImage(tripId: string, guideId: string, url: string, by: -1 | 1 | "first"): Promise<FormState> {
+  if (by !== -1 && by !== 1 && by !== "first") return { error: "Nieznany kierunek." };
+  return changeGuide(tripId, guideId, (current) => moveGuideImage(current, url, by), "Zmieniono kolejność zdjęć.");
 }
 
 /** Usunięcie opisu (miękkie) — np. gdy artykuł okazał się o czymś innym. */
