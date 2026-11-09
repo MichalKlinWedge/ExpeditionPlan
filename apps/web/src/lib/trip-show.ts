@@ -1,6 +1,6 @@
 import "server-only";
 
-import { audioFits, dayMap, type DayMap, guideFor, type GuideRow, ShowScript, showScenes, type TripDocument } from "@expeditionplan/core";
+import { audioFits, dayMap, type DayMap, guideFor, type GuideRow, type ShowKind, ShowScript, showScenes, type TripDocument } from "@expeditionplan/core";
 import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 
 import type { PlayerMusic, PlayerScene, ShowMapData } from "@/components/show-player";
@@ -17,23 +17,23 @@ type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
 type JournalRow = { day_id: string | null; body?: string; photo_path: string | null; taken_at: string; deleted_at?: string | null };
 type Scenes = ReturnType<typeof showScenes>;
 
-/** Dzisiejsza data w strefie wyjazdu: od niej zależy, czy lektor zapowiada, czy wspomina. */
-export const todayIn = (tz: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: tz }).format(new Date());
+/** Strona pokazu danego rodzaju: zapowiedź `/trips/<id>/show`, film z wyjazdu `/trips/<id>/film`. */
+export const showPath = (tripId: string, kind: ShowKind) => `/trips/${tripId}/${kind === "film" ? "film" : "show"}`;
 
-/** Sceny z dokumentu wyjazdu, opisów miejsc i zdjęć dziennika (podpisanych przez `sign`). */
-async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((paths: string[]) => Promise<Map<string, string>>) | null) {
+/** Sceny z dokumentu wyjazdu, opisów miejsc i (w filmie) zdjęć dziennika podpisanych przez `sign`. */
+async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((paths: string[]) => Promise<Map<string, string>>) | null, kind: ShowKind) {
   const { doc, inputs } = stateFromPayload(payload);
   const ids = refIndex(payload.tables);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const dayRef = new Map(Object.entries(ids).map(([ref, id]) => [id, ref]));
   const entries = journal.filter((row) => !row.deleted_at).sort((a, b) => a.taken_at.localeCompare(b.taken_at));
   const paths = entries.flatMap((row) => (row.photo_path ? [row.photo_path] : []));
-  const signed = sign && paths.length > 0 ? await sign(paths) : new Map<string, string>();
+  // Zapowiedź nie pokazuje dziennika: nie ma czego podpisywać.
+  const signed = sign && kind === "film" && paths.length > 0 ? await sign(paths) : new Map<string, string>();
 
-  const today = todayIn(doc.trip.primaryTz);
   const { scenes, credits } = showScenes(doc, {
     ...inputs,
-    today,
+    kind,
     guideOf: (item) => {
       if (item.kind === "lodging") return null;
       const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
@@ -45,7 +45,7 @@ async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((p
       return { body: row.body ?? "", ...(day !== undefined ? { dayRef: day } : {}), ...(url !== undefined ? { photoUrl: url } : {}) };
     }),
   });
-  return { doc, today, scenes, credits };
+  return { doc, scenes, credits };
 }
 
 const signer = (supabase: Supabase, bucket: string) => async (paths: string[]) => {
@@ -55,12 +55,12 @@ const signer = (supabase: Supabase, bucket: string) => async (paths: string[]) =
   return signed;
 };
 
-export async function loadShow(supabase: Supabase, tripId: string, payload: PullPayload, options: { photos?: boolean } = {}) {
+export async function loadShow(supabase: Supabase, tripId: string, payload: PullPayload, options: { photos?: boolean; kind: ShowKind }) {
   const journal = (payload.tables as unknown as { journal_entries?: JournalRow[] }).journal_entries ?? [];
-  const { doc, today, scenes, credits } = await scenesFrom(payload, journal, options.photos ? signer(supabase, "journal") : null);
-  const { data: stored, error } = await supabase.from("trip_shows").select("content").eq("trip_id", tripId).maybeSingle();
+  const { doc, scenes, credits } = await scenesFrom(payload, journal, options.photos ? signer(supabase, "journal") : null, options.kind);
+  const { data: stored, error } = await supabase.from("trip_shows").select("content").eq("trip_id", tripId).eq("kind", options.kind).maybeSingle();
   const parsed = ShowScript.safeParse(stored?.content ?? {});
-  return { doc, today, scenes, credits, script: parsed.success ? parsed.data : ShowScript.parse({}), exists: stored !== null, loadError: error?.message };
+  return { doc, scenes, credits, script: parsed.success ? parsed.data : ShowScript.parse({}), exists: stored !== null, loadError: error?.message };
 }
 
 /** Mapa sceny bez dojazdów i powrotów (lot przez pół Europy gubi szczegóły na miejscu), chyba że nic innego nie ma. */
@@ -112,21 +112,22 @@ export async function playerMusic(supabase: Supabase, script: ShowScript): Promi
  * z `public_show`. Nagrania i zdjęcia podpisuje anon dzięki zgodzie właściciela (`public_shares.show`, polityki
  * `show_audio_public`, `journal_public_show`). `null`, gdy link wygasł albo pokazu pod nim nie ma.
  */
-export async function loadPublicShow(token: string) {
+export async function loadPublicShow(token: string, kind: ShowKind) {
   const supabase = await createClient();
-  const [trip, show] = await Promise.all([supabase.rpc("public_trip", { p_token: token }), supabase.rpc("public_show", { p_token: token })]);
+  const [trip, show] = await Promise.all([supabase.rpc("public_trip", { p_token: token }), supabase.rpc("public_show", { p_token: token, p_kind: kind })]);
   if (trip.error || trip.data === null || show.error || show.data === null) return null;
   const payload = trip.data as unknown as PullPayload;
   const stored = show.data as { content?: unknown; journal?: JournalRow[] };
-  const { doc, scenes, credits } = await scenesFrom(payload, stored.journal ?? [], signer(supabase, "journal"));
+  const { doc, scenes, credits } = await scenesFrom(payload, stored.journal ?? [], signer(supabase, "journal"), kind);
   const parsed = ShowScript.safeParse(stored.content ?? {});
   const script = parsed.success ? parsed.data : ShowScript.parse({});
   const [player, music] = await Promise.all([playerScenes(supabase, doc, scenes, script), playerMusic(supabase, script)]);
   return { doc, credits, player, music };
 }
 
-/** Czy pod publicznym linkiem jest pokaz (zakładka w nagłówku linku). */
-export async function publicShowOn(token: string): Promise<boolean> {
-  const { data } = await (await createClient()).rpc("public_show_on", { p_token: token });
-  return data === true;
+/** Które pokazy są pod publicznym linkiem (zakładki w nagłówku linku). */
+export async function publicShowsOn(token: string): Promise<{ show: boolean; film: boolean }> {
+  const supabase = await createClient();
+  const [show, film] = await Promise.all([supabase.rpc("public_show_on", { p_token: token, p_kind: "preview" }), supabase.rpc("public_show_on", { p_token: token, p_kind: "film" })]);
+  return { show: show.data === true, film: film.data === true };
 }

@@ -9,7 +9,11 @@ import type { TripDocument } from './schemas/trip-document.ts';
 import { tripMemories } from './trip-memories.ts';
 
 /**
- * Pokaz z lektorem (`/trips/[id]/show`): sceny zebrane z planu — wstęp z mapą całej trasy, po jednej scenie na dzień
+ * Dwa pokazy z lektorem jednego wyjazdu (`ShowKind`): zapowiedź (`/trips/[id]/show`, czas przyszły, zdjęcia z opisów
+ * miejsc) i film z wyjazdu (`/trips/[id]/film`, czas przeszły, przede wszystkim zdjęcia i wpisy z dziennika).
+ * Każdy ma własny scenariusz (tabela `trip_shows`, wiersz na wyjazd i rodzaj).
+ *
+ * Pokaz z lektorem: sceny zebrane z planu — wstęp z mapą całej trasy, po jednej scenie na dzień
  * (mapa dnia, zdjęcia z dziennika i z opisów miejsc) i zakończenie z podziękowaniami za zdjęcia i teksty.
  * Obraz liczy się zawsze od nowa z planu, a zapisany jest tylko tekst lektora i jego nagranie (`ShowScript`, tabela `trip_shows`).
  * Tekst pisze AI jako szkic z faktów sceny (`showBrief`), człowiek go poprawia; nagranie powstaje z tekstu (Gemini TTS)
@@ -57,6 +61,10 @@ export const ShowScript = z.object({
   music: ShowMusic.optional(),
 });
 
+export const SHOW_KINDS = ['preview', 'film'] as const;
+export type ShowKind = (typeof SHOW_KINDS)[number];
+export const isShowKind = (value: unknown): value is ShowKind => SHOW_KINDS.includes(value as ShowKind);
+
 export type ShowAudio = z.infer<typeof ShowAudio>;
 export type ShowMusic = z.infer<typeof ShowMusic>;
 export type ShowNarration = z.infer<typeof ShowNarration>;
@@ -92,25 +100,31 @@ export type ShowInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
   skipRefs: readonly string[];
   /** Opis punktu (jak `guideOf` na stronach planu). */
   guideOf: (item: Item) => GuideContent | null;
-  /** Zdjęcia i wpisy z dziennika (adresy już podpisane), dzień po `dayRef`. */
+  /** Zdjęcia i wpisy z dziennika (adresy już podpisane), dzień po `dayRef`; używa ich tylko film z wyjazdu. */
   journal?: readonly { dayRef?: string; body: string; photoUrl?: string }[];
-  /** Dzień dzisiejszy `YYYY-MM-DD`: po końcu wyjazdu lektor opowiada w czasie przeszłym. */
-  today: string;
+  /** Zapowiedź (czas przyszły, bez dziennika) albo film z wyjazdu (czas przeszły, dziennik na pierwszym planie). */
+  kind: ShowKind;
 };
 
 const IMAGES_PER_DAY = 6;
+/** Film z wyjazdu: tyle zdjęć z dziennika na dzień; zdjęcia z opisów miejsc dopełniają tylko do `IMAGES_PER_DAY`. */
+const FILM_IMAGES_PER_DAY = 10;
 const GUIDE_FACT_CHARS = 280;
 
 const isSight = (item: Item) => item.kind === 'visit' || item.kind === 'activity' || (item.kind === 'transport' && item.leg?.mode === 'hike');
 
 const clip = (text: string, limit: number) => (text.length <= limit ? text : `${text.slice(0, limit).replace(/\s+\S*$/, '')}…`);
 
-/** Czy wyjazd już się skończył: lektor mówi wtedy o tym, co było, a nie o tym, co będzie. */
-export const showIsAfter = (doc: Doc, today: string) => doc.trip.endDate < today;
+/** Zdjęcia wpisów dziennika (podpis: pierwszy wiersz wpisu), najwyżej `FILM_IMAGES_PER_DAY`. */
+function journalImages(entries: ShowInput['journal'] & {}): ShowImage[] {
+  return entries.flatMap((entry) => (entry.photoUrl === undefined ? [] : [{ url: entry.photoUrl, caption: entry.body.split('\n')[0]?.trim() ?? '' }])).slice(0, FILM_IMAGES_PER_DAY);
+}
 
 export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; credits: ShowCredits } {
   const schedule = { ...(input.activeVariants ? { activeVariants: input.activeVariants } : {}), ...(input.pulled ? { pulled: input.pulled } : {}) };
-  const after = showIsAfter(doc, input.today);
+  // Film opowiada o tym, co było; zapowiedź o tym, co będzie (niezależnie od daty).
+  const after = input.kind === 'film';
+  const journalAll = after ? (input.journal ?? []) : [];
   const done = new Set(input.done.map((each) => each.itemRef));
   const skipped = new Set(input.skipRefs);
   const stats = tripMemories(doc, { ...schedule, done: input.done, skipRefs: input.skipRefs });
@@ -122,12 +136,8 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   const dayScenes: ShowScene[] = days.map((day, index) => {
     const items = itemsForDay(doc, day.ref, schedule).filter((item) => item.parentRef === undefined || isRouteStop(doc, item));
     const sights = items.filter(isSight).filter((item) => !(after && skipped.has(item.ref)));
-    const journal = (input.journal ?? []).filter((entry) => entry.dayRef === day.ref);
-    const images: ShowImage[] = [];
-    for (const entry of journal) {
-      if (entry.photoUrl === undefined || images.length >= IMAGES_PER_DAY) continue;
-      images.push({ url: entry.photoUrl, caption: entry.body.split('\n')[0]?.trim() ?? '' });
-    }
+    const journal = journalAll.filter((entry) => entry.dayRef === day.ref);
+    const images = journalImages(journal);
     const facts: string[] = [`Dzień ${index + 1}: ${dayLabel(day.date)}${day.title ? ` — ${day.title}` : ''}`];
     if (day.summary) facts.push(`Opis dnia: ${day.summary}`);
     for (const item of sights) {
@@ -186,12 +196,15 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   // Liczba punktów planu brzmi jak raport, a nie opowieść: po wyjeździe liczy się, ile zrobiono.
   const outro: string[] = numbers.length > 0 ? [`Liczby: ${numbers.join(', ')}`] : [];
   if (after && stats.done > 0) outro.push(`Zrobione: ${stats.done} z ${stats.planned}`);
-  if (after && (input.journal?.length ?? 0) > 0) outro.push(`Wpisów w dzienniku: ${input.journal!.length}`);
+  if (after && journalAll.length > 0) outro.push(`Wpisów w dzienniku: ${journalAll.length}`);
+  // Wpisy bez dnia (np. dodane po powrocie) zamykają film.
+  const loose = journalAll.filter((entry) => entry.dayRef === undefined || !days.some((day) => day.ref === entry.dayRef));
+  for (const entry of loose) if (entry.body.trim() !== '') outro.push(`Wpis z dziennika: ${clip(entry.body.trim(), 400)}`);
 
   const scenes: ShowScene[] = [
     { key: 'intro', kind: 'intro', heading: doc.trip.title, subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`, routeRefs: stats.routeRefs, images: [], facts: intro },
     ...dayScenes,
-    { key: 'outro', kind: 'outro', heading: doc.trip.title, subheading: numbers.join(' · '), routeRefs: stats.routeRefs, images: [], facts: outro },
+    { key: 'outro', kind: 'outro', heading: doc.trip.title, subheading: numbers.join(' · '), routeRefs: stats.routeRefs, images: journalImages(loose), facts: outro },
   ];
   return {
     scenes,
@@ -202,9 +215,9 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   };
 }
 
-/** Dane dla AI piszącego tekst lektora: tytuł, czas opowieści i fakty kolejnych scen. */
-export function showBrief(doc: Doc, scenes: readonly ShowScene[], today: string) {
-  return { title: doc.trip.title, after: showIsAfter(doc, today), scenes: scenes.map((scene) => ({ key: scene.key, kind: scene.kind, facts: scene.facts })) };
+/** Dane dla AI piszącego tekst lektora: tytuł, czas opowieści (film: przeszły) i fakty kolejnych scen. */
+export function showBrief(doc: Doc, scenes: readonly ShowScene[], kind: ShowKind) {
+  return { title: doc.trip.title, after: kind === 'film', scenes: scenes.map((scene) => ({ key: scene.key, kind: scene.kind, facts: scene.facts })) };
 }
 export type ShowBrief = ReturnType<typeof showBrief>;
 

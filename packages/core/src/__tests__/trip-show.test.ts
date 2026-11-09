@@ -17,7 +17,7 @@ const guide = (title: string, image: string): GuideContent => ({
   article: { title, url: `https://pl.wikipedia.org/wiki/${encodeURIComponent(title)}`, lang: 'pl', site: 'wikipedia' },
 });
 
-const base = { done: [], skipRefs: [], guideOf: () => null, today: '2020-01-01' };
+const base = { done: [], skipRefs: [], guideOf: () => null, kind: 'preview' as const };
 
 describe('sceny pokazu', () => {
   it('wstęp, dzień po dniu i zakończenie dla każdego wyjazdu wzorcowego', () => {
@@ -43,16 +43,38 @@ describe('sceny pokazu', () => {
     expect(credits.articles).toHaveLength(1);
   });
 
-  it('po wyjeździe: zdjęcia z dziennika przed zdjęciami miejsc, wpisy w faktach, czas przeszły w danych dla AI', () => {
+  it('film: zdjęcia z dziennika przed zdjęciami miejsc, wpisy w faktach, czas przeszły w danych dla AI', () => {
     const doc = fixture('maroko');
     const day = [...doc.days].sort((a, b) => a.date.localeCompare(b.date))[0]!;
-    const input = { ...base, today: '2099-01-01', journal: [{ dayRef: day.ref, body: 'Dotarliśmy\nzmęczeni', photoUrl: 'https://example.com/a.jpg' }] };
-    const { scenes } = showScenes(doc, input);
+    const journal = [
+      { dayRef: day.ref, body: 'Dotarliśmy\nzmęczeni', photoUrl: 'https://example.com/a.jpg' },
+      { body: 'Po powrocie: było warto', photoUrl: 'https://example.com/b.jpg' },
+    ];
+    const { scenes } = showScenes(doc, { ...base, kind: 'film', journal });
     const scene = scenes.find((each) => each.key === `day:${day.ref}`)!;
     expect(scene.images[0]).toEqual({ url: 'https://example.com/a.jpg', caption: 'Dotarliśmy' });
     expect(scene.facts).toContain('Wpis z dziennika: Dotarliśmy\nzmęczeni');
-    expect(showBrief(doc, scenes, '2099-01-01').after).toBe(true);
-    expect(showBrief(doc, scenes, '2000-01-01').after).toBe(false);
+    const outro = scenes.at(-1)!;
+    expect(outro.images).toEqual([{ url: 'https://example.com/b.jpg', caption: 'Po powrocie: było warto' }]);
+    expect(outro.facts).toContain('Wpis z dziennika: Po powrocie: było warto');
+    expect(showBrief(doc, scenes, 'film').after).toBe(true);
+  });
+
+  it('zapowiedź: bez dziennika i w czasie przyszłym, także po wyjeździe', () => {
+    const doc = fixture('maroko');
+    const day = [...doc.days].sort((a, b) => a.date.localeCompare(b.date))[0]!;
+    const { scenes } = showScenes(doc, { ...base, journal: [{ dayRef: day.ref, body: 'Dotarliśmy', photoUrl: 'https://example.com/a.jpg' }] });
+    expect(scenes.flatMap((scene) => scene.images)).toEqual([]);
+    expect(scenes.flatMap((scene) => scene.facts).some((fact) => fact.startsWith('Wpis z dziennika'))).toBe(false);
+    expect(showBrief(doc, scenes, 'preview').after).toBe(false);
+  });
+
+  it('film: dzień z wieloma zdjęciami z dziennika bierze ich do 10', () => {
+    const doc = fixture('maroko');
+    const day = [...doc.days].sort((a, b) => a.date.localeCompare(b.date))[0]!;
+    const journal = Array.from({ length: 12 }, (_, at) => ({ dayRef: day.ref, body: `Zdjęcie ${at}`, photoUrl: `https://example.com/${at}.jpg` }));
+    const { scenes } = showScenes(doc, { ...base, kind: 'film', journal });
+    expect(scenes.find((each) => each.key === `day:${day.ref}`)!.images).toHaveLength(10);
   });
 });
 

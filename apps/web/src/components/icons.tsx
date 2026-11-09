@@ -211,6 +211,14 @@ export const FilmIcon = (props: Props) => (
   </Svg>
 );
 
+export const ClapperIcon = (props: Props) => (
+  <Svg {...props}>
+    <rect x="3" y="9" width="18" height="11" rx="2" />
+    <path d="m3.5 9 1-4 16 2.5-1 3" />
+    <path d="m8 5.5 2 3M13 6.3l2 3" />
+  </Svg>
+);
+
 export const SpeakerIcon = (props: Props) => (
   <Svg {...props}>
     <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" fill="currentColor" fillOpacity={0.25} />

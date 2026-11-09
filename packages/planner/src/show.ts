@@ -14,7 +14,7 @@ export function showPrompt(brief: ShowBrief): string {
   return [
     `Wyjazd: ${brief.title}. Napisz po polsku tekst lektora dla każdej sceny pokazu, w kolejności scen.`,
     brief.after
-      ? 'Wyjazd już się odbył: opowiadaj w czasie przeszłym, w pierwszej osobie liczby mnogiej („pojechaliśmy”, „zobaczyliśmy”), ciepło, jak wspomnienie. Wpisy z dziennika to słowa uczestników: korzystaj z ich treści, nie cytuj ich dosłownie w całości.'
+      ? 'To film z wyjazdu, który już się odbył: opowiadaj w czasie przeszłym, w pierwszej osobie liczby mnogiej („pojechaliśmy”, „zobaczyliśmy”), ciepło, jak wspomnienie. Najważniejsze są wpisy z dziennika: to słowa uczestników o tym, co naprawdę się wydarzyło, a plan jest tylko tłem; korzystaj z ich treści i nastroju, nie cytuj ich dosłownie w całości. Gdy dzień nie ma wpisów, opowiedz go krócej, z planu.'
       : 'Wyjazd jest przed nami: opowiadaj w czasie przyszłym albo teraźniejszym, w pierwszej osobie liczby mnogiej („pojedziemy”, „zobaczymy”), z zaciekawieniem, jak zapowiedź.',
     'Zasady:',
     '- wstęp (intro): 2–3 zdania, dokąd, kiedy i kto jedzie, o co chodzi w wyprawie;',

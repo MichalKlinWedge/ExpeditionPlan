@@ -248,7 +248,8 @@ export function ShowPlayer({
 }: {
   scenes: PlayerScene[];
   credits: ShowCredits;
-  trip: { title: string; dates: string };
+  /** `label`: nadtytuł ekranu startowego („Zapowiedź wyjazdu”, „Film z wyjazdu”). */
+  trip: { title: string; dates: string; label: string };
   music?: PlayerMusic;
   /** Przycisk eksportu do pliku wideo (w aplikacji; pod publicznym linkiem nie). */
   exportable?: boolean;
@@ -415,7 +416,7 @@ export function ShowPlayer({
             </>
           ) : (
             <>
-              <p className="relative text-sm tracking-widest text-white/70 uppercase sm:text-base">Pokaz z wyjazdu</p>
+              <p className="relative text-sm tracking-widest text-white/70 uppercase sm:text-base">{trip.label}</p>
               <p className="relative text-4xl font-bold sm:text-6xl">{trip.title}</p>
               <p className="relative text-lg text-white/85 sm:text-2xl">{trip.dates}</p>
             </>

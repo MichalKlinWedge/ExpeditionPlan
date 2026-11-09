@@ -1,6 +1,6 @@
 "use client";
 
-import { MUSIC_MAX_BYTES, plural, showMusicFile } from "@expeditionplan/core";
+import { MUSIC_MAX_BYTES, plural, type ShowKind, showMusicFile } from "@expeditionplan/core";
 import { dbErrorMessage } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, useRef, useState, useTransition } from "react";
@@ -103,7 +103,7 @@ function VoiceSample({ tripId, voice }: { tripId: string; voice: string }) {
   );
 }
 
-function SceneText({ tripId, scene, live }: { tripId: string; scene: EditorScene; live?: Live }) {
+function SceneText({ tripId, kind, scene, live }: { tripId: string; kind: ShowKind; scene: EditorScene; live?: Live }) {
   const router = useRouter();
   const [text, setText] = useState(scene.text);
   const [pending, start] = useTransition();
@@ -111,7 +111,7 @@ function SceneText({ tripId, scene, live }: { tripId: string; scene: EditorScene
   const changed = text.trim() !== scene.text.trim();
   const save = () =>
     start(async () => {
-      const answer = await saveShowText(tripId, scene.key, text);
+      const answer = await saveShowText(tripId, kind, scene.key, text);
       setResult(answer);
       if (answer.ok) router.refresh();
     });
@@ -140,7 +140,21 @@ function SceneText({ tripId, scene, live }: { tripId: string; scene: EditorScene
   );
 }
 
-export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId: string; scenes: EditorScene[]; voice: string; voices: readonly { name: string; label: string }[]; toRecord: string[] }) {
+export function ShowEditor({
+  tripId,
+  kind,
+  scenes,
+  voice,
+  voices,
+  toRecord,
+}: {
+  tripId: string;
+  kind: ShowKind;
+  scenes: EditorScene[];
+  voice: string;
+  voices: readonly { name: string; label: string }[];
+  toRecord: string[];
+}) {
   const router = useRouter();
   const [picked, setPicked] = useState(voice);
   const [progress, setProgress] = useState<{ done: number; total: number; waiting?: number } | null>(null);
@@ -151,7 +165,7 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
   const changeVoice = (name: string) => {
     setPicked(name);
     start(async () => {
-      const answer = await setShowVoice(tripId, name);
+      const answer = await setShowVoice(tripId, kind, name);
       setMessage(answer);
       if (answer.ok) router.refresh();
     });
@@ -166,7 +180,7 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
     setLive({});
     for (const [at, key] of keys.entries()) {
       setLive((now) => ({ ...now, [key]: "recording" }));
-      let answer = await recordShowScene(tripId, key, retake);
+      let answer = await recordShowScene(tripId, kind, key, retake);
       // Limit zapytań Google: odczekać i spróbować jeszcze raz, najwyżej kilka razy na scenę.
       for (let tries = 0; answer.wait !== undefined && tries < MAX_WAITS; tries += 1) {
         for (let left = answer.wait; left > 0; left -= 1) {
@@ -174,7 +188,7 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
         setProgress({ done: at, total: keys.length });
-        answer = await recordShowScene(tripId, key, retake);
+        answer = await recordShowScene(tripId, kind, key, retake);
       }
       if (answer.error) {
         setLive((now) => {
@@ -199,7 +213,12 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
   return (
     <section className="card flex flex-col gap-3 p-4">
       <h2 className="card-title">Lektor</h2>
-      <PlanActionButton ai run={draftShow.bind(null, tripId)} label={scenes.some((scene) => scene.text !== "") ? "Przygotuj tekst z AI od nowa" : "Przygotuj tekst z AI"} note="Z planu, opisów miejsc i dziennika; teksty poprawione ręcznie zostają" />
+      <PlanActionButton
+        ai
+        run={draftShow.bind(null, tripId, kind)}
+        label={scenes.some((scene) => scene.text !== "") ? "Przygotuj tekst z AI od nowa" : "Przygotuj tekst z AI"}
+        note={kind === "film" ? "Z wpisów i zdjęć dziennika, na tle planu; teksty poprawione ręcznie zostają" : "Zapowiedź z planu i opisów miejsc; teksty poprawione ręcznie zostają"}
+      />
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2">
           Głos
@@ -227,7 +246,7 @@ export function ShowEditor({ tripId, scenes, voice, voices, toRecord }: { tripId
       {message?.ok && <p className="text-sm text-green-700 dark:text-green-400">{message.ok}</p>}
       <ol className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
         {scenes.map((scene) => (
-          <SceneText key={`${scene.key}:${scene.text}`} tripId={tripId} scene={scene} {...(live[scene.key] !== undefined ? { live: live[scene.key] } : {})} />
+          <SceneText key={`${scene.key}:${scene.text}`} tripId={tripId} kind={kind} scene={scene} {...(live[scene.key] !== undefined ? { live: live[scene.key] } : {})} />
         ))}
       </ol>
     </section>
@@ -240,7 +259,7 @@ const MUSIC_ACCEPT = ".mp3,.m4a,.aac,.ogg,.wav,audio/mpeg,audio/mp4,audio/x-m4a,
  * Podkład muzyczny: plik idzie z przeglądarki prosto do bucketu `show_audio` (akcja serwera przyjmuje do 4 MB),
  * potem akcja zapisuje go w scenariuszu; nieudany zapis sprząta plik. Głośność zapisuje się po chwili od przesunięcia.
  */
-export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { url: string; name: string; volume: number; skipS: number } | null }) {
+export function ShowMusicEditor({ tripId, kind, music }: { tripId: string; kind: ShowKind; music: { url: string; name: string; volume: number; skipS: number } | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<FormState | null>(null);
@@ -264,7 +283,7 @@ export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { ur
       setBusy(false);
       return setMessage({ error: /row-level security|unauthorized/i.test(sent.error.message) ? "Podkład wgrywa tylko organizator albo edytor." : dbErrorMessage(sent.error, "Nie wgrano pliku. Spróbuj jeszcze raz.") });
     }
-    const answer = await setShowMusic(tripId, { path: target.path, name: file.name });
+    const answer = await setShowMusic(tripId, kind, { path: target.path, name: file.name });
     if (answer.error) await bucket.remove([target.path]);
     setBusy(false);
     setMessage(answer);
@@ -274,14 +293,14 @@ export function ShowMusicEditor({ tripId, music }: { tripId: string; music: { ur
   const remove = async () => {
     if (!window.confirm("Usunąć podkład muzyczny z pokazu?")) return;
     setBusy(true);
-    const answer = await setShowMusic(tripId, null);
+    const answer = await setShowMusic(tripId, kind, null);
     setBusy(false);
     setMessage(answer);
     if (answer.ok) router.refresh();
   };
 
   const saveSettings = (settings: { percent?: number; skipS?: number }) =>
-    void setShowMusicSettings(tripId, settings).then((answer) => {
+    void setShowMusicSettings(tripId, kind, settings).then((answer) => {
       setMessage(answer.error ? answer : null);
       if (answer.ok) router.refresh();
     });

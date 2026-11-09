@@ -5,7 +5,7 @@ import { PlanView } from "@/components/plan-view";
 import { PublicTripHeader } from "@/components/public-trip-header";
 import { Loading, Shell } from "@/components/shell";
 import { EXPIRED_LINK, loadPublicTrip } from "@/lib/public-trip";
-import { publicShowOn } from "@/lib/trip-show";
+import { publicShowsOn } from "@/lib/trip-show";
 
 /**
  * Publiczny podgląd planu z linku właściciela (`public_trip`) — bez logowania, tylko do odczytu.
@@ -35,7 +35,7 @@ async function PublicPlan({ params, searchParams }: { params: Promise<{ token: s
   const doc = { ...state.doc, trip: { ...state.doc.trip, summary: undefined, goal: undefined }, notes: state.doc.notes.filter((note) => note.scope !== "trip") };
   return (
     <>
-      <PublicTripHeader token={token} trip={state.doc.trip} active="plan" show={await publicShowOn(token)} />
+      <PublicTripHeader token={token} trip={state.doc.trip} active="plan" shows={await publicShowsOn(token)} />
       <PlanView
         state={{ ...state, doc }}
         tripId={tripId}

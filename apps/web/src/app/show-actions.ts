@@ -1,7 +1,7 @@
 "use server";
 
 import { isSpeechVoice, SpeechLimitError } from "@expeditionplan/ai";
-import { applyShowDraft, droppedAudio, editShowText, isShowMusicPath, narrationHash, plural, ShowScript, setShowAudio, showBrief } from "@expeditionplan/core";
+import { applyShowDraft, droppedAudio, editShowText, isShowKind, isShowMusicPath, narrationHash, plural, type ShowKind, ShowScript, setShowAudio, showBrief } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { draftShowNarration } from "@expeditionplan/planner";
 import { refresh } from "next/cache";
@@ -9,49 +9,52 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/app/actions";
 import { aiAccessError, geminiClient, speechSetup } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
-import { loadShow } from "@/lib/trip-show";
+import { loadShow, showPath } from "@/lib/trip-show";
 import { pullTrip } from "@/lib/trip-snapshot";
 
 /**
- * Pokaz z lektorem (`core/trip-show.ts`): szkic tekstu z AI, ręczne poprawki, głos i nagrania scen (Gemini TTS).
+ * Pokaz z lektorem (`core/trip-show.ts`), zapowiedź albo film z wyjazdu (`kind`, osobne scenariusze): szkic tekstu z AI, ręczne poprawki, głos i nagrania scen (Gemini TTS).
  * Zapisują organizator i edytor (RLS `trip_shows`, bucket `show_audio`); AI i nagrania tylko dla `AI_ALLOWED_EMAILS`.
  * Nagrania idą po jednej scenie na wywołanie: przeglądarka woła kolejne i pokazuje postęp, a żadne wywołanie nie trwa minut.
  */
 
 type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
 
-async function load(tripId: string) {
-  const { supabase } = await requireUser(`/trips/${tripId}/show`);
+async function load(tripId: string, kind: ShowKind) {
+  if (!isShowKind(kind)) return { error: "Nieznany rodzaj pokazu." } as const;
+  const { supabase } = await requireUser(showPath(tripId, kind));
   const pulled = await pullTrip(supabase, tripId);
   if (pulled.error !== undefined) return { error: pulled.error } as const;
   try {
-    return { supabase, ...(await loadShow(supabase, tripId, pulled.payload)) } as const;
+    return { supabase, ...(await loadShow(supabase, tripId, pulled.payload, { kind })) } as const;
   } catch (e) {
     return { error: `Plan w bazie nie przechodzi walidacji: ${e instanceof Error ? e.message : String(e)}` } as const;
   }
 }
 
 /** Zapis scenariusza i usunięcie plików, których już nie używa. */
-async function save(supabase: Supabase, tripId: string, before: ShowScript, after: ShowScript): Promise<string | null> {
-  const { error } = await supabase.from("trip_shows").upsert({ trip_id: tripId, content: after as unknown as NonNullable<Json>, updated_at: new Date().toISOString() });
+async function save(supabase: Supabase, tripId: string, kind: ShowKind, before: ShowScript, after: ShowScript): Promise<string | null> {
+  const { error } = await supabase
+    .from("trip_shows")
+    .upsert({ trip_id: tripId, kind, content: after as unknown as NonNullable<Json>, updated_at: new Date().toISOString() }, { onConflict: "trip_id,kind" });
   if (error) return error.code === "42501" ? "Pokaz zmienia tylko organizator albo edytor." : `Nie zapisano pokazu: ${error.message}`;
   const dropped = droppedAudio(before, after);
   if (dropped.length > 0) await supabase.storage.from("show_audio").remove(dropped);
   return null;
 }
 
-export async function draftShow(tripId: string): Promise<FormState> {
+export async function draftShow(tripId: string, kind: ShowKind): Promise<FormState> {
   const denied = await aiAccessError();
   if (denied) return { error: denied };
   const gemini = geminiClient();
   if (gemini === null) return { error: "Serwer nie ma klucza GEMINI_API_KEY." };
-  const loaded = await load(tripId);
+  const loaded = await load(tripId, kind);
   if ("error" in loaded) return { error: loaded.error };
-  const { supabase, doc, scenes, script, today } = loaded;
+  const { supabase, doc, scenes, script } = loaded;
   try {
-    const draft = await draftShowNarration(gemini.client, showBrief(doc, scenes, today), { timeoutMs: 120_000 });
+    const draft = await draftShowNarration(gemini.client, showBrief(doc, scenes, kind), { timeoutMs: 120_000 });
     const next = applyShowDraft(script, scenes, draft);
-    const failed = await save(supabase, tripId, script, next);
+    const failed = await save(supabase, tripId, kind, script, next);
     if (failed) return { error: failed };
     const kept = script.scenes.filter((scene) => scene.edited && scene.text.trim() !== "").length;
     refresh();
@@ -61,26 +64,26 @@ export async function draftShow(tripId: string): Promise<FormState> {
   }
 }
 
-export async function saveShowText(tripId: string, key: string, text: string): Promise<FormState> {
-  const loaded = await load(tripId);
+export async function saveShowText(tripId: string, kind: ShowKind, key: string, text: string): Promise<FormState> {
+  const loaded = await load(tripId, kind);
   if ("error" in loaded) return { error: loaded.error };
   const { supabase, scenes, script } = loaded;
   if (!scenes.some((scene) => scene.key === key)) return { error: "Tej sceny nie ma już w planie." };
   const next = editShowText(script, key, text);
   if (next === script) return { ok: "Bez zmian." };
-  const failed = await save(supabase, tripId, script, next);
+  const failed = await save(supabase, tripId, kind, script, next);
   if (failed) return { error: failed };
   refresh();
   return { ok: "Zapisano." };
 }
 
-export async function setShowVoice(tripId: string, voice: string): Promise<FormState> {
+export async function setShowVoice(tripId: string, kind: ShowKind, voice: string): Promise<FormState> {
   if (!isSpeechVoice(voice)) return { error: `Nie ma głosu „${voice}”.` };
-  const loaded = await load(tripId);
+  const loaded = await load(tripId, kind);
   if ("error" in loaded) return { error: loaded.error };
   const { supabase, script } = loaded;
   if (script.voice === voice) return { ok: "Bez zmian." };
-  const failed = await save(supabase, tripId, script, { ...script, voice });
+  const failed = await save(supabase, tripId, kind, script, { ...script, voice });
   if (failed) return { error: failed };
   refresh();
   return { ok: "Głos zmieniony: nagraj sceny od nowa." };
@@ -90,9 +93,9 @@ export async function setShowVoice(tripId: string, voice: string): Promise<FormS
  * Podkład muzyczny po wgraniu pliku z przeglądarki (`showMusicFile`, bucket `show_audio`); `null` usuwa podkład.
  * Poprzedni plik usuwa `save` (`droppedAudio`), głośność zostaje.
  */
-export async function setShowMusic(tripId: string, music: { path: string; name: string } | null): Promise<FormState> {
+export async function setShowMusic(tripId: string, kind: ShowKind, music: { path: string; name: string } | null): Promise<FormState> {
   if (music !== null && !isShowMusicPath(tripId, music.path)) return { error: "To nie jest plik podkładu tego wyjazdu." };
-  const loaded = await load(tripId);
+  const loaded = await load(tripId, kind);
   if ("error" in loaded) return { error: loaded.error };
   const { supabase, script } = loaded;
   let next: ShowScript;
@@ -103,7 +106,7 @@ export async function setShowMusic(tripId: string, music: { path: string; name: 
   } else {
     next = { ...script, music: { path: music.path, name: music.name.trim().slice(0, 200) || "podkład", volume: script.music?.volume ?? 0.5, skipS: 0 } };
   }
-  const failed = await save(supabase, tripId, script, next);
+  const failed = await save(supabase, tripId, kind, script, next);
   if (failed) return { error: failed };
   refresh();
   return { ok: music === null ? "Usunięto podkład." : "Podkład zapisany." };
@@ -113,11 +116,11 @@ export async function setShowMusic(tripId: string, music: { path: string; name: 
  * Ustawienia podkładu: głośność między scenami (5–100%; pod lektorem odtwarzacz ścisza go jeszcze bardziej)
  * i ile sekund z początku pliku pominąć (0–3600, co 0,1 s).
  */
-export async function setShowMusicSettings(tripId: string, settings: { percent?: number; skipS?: number }): Promise<FormState> {
+export async function setShowMusicSettings(tripId: string, kind: ShowKind, settings: { percent?: number; skipS?: number }): Promise<FormState> {
   const { percent, skipS } = settings;
   if (percent !== undefined && (!Number.isFinite(percent) || percent < 5 || percent > 100)) return { error: "Głośność od 5 do 100%." };
   if (skipS !== undefined && (!Number.isFinite(skipS) || skipS < 0 || skipS > 3600)) return { error: "Początek do pominięcia: od 0 do 3600 s." };
-  const loaded = await load(tripId);
+  const loaded = await load(tripId, kind);
   if ("error" in loaded) return { error: loaded.error };
   const { supabase, script } = loaded;
   if (script.music === undefined) return { error: "Pokaz nie ma podkładu." };
@@ -127,7 +130,7 @@ export async function setShowMusicSettings(tripId: string, settings: { percent?:
     ...(skipS !== undefined ? { skipS: Math.round(skipS * 10) / 10 } : {}),
   };
   if (music.volume === script.music.volume && music.skipS === script.music.skipS) return { ok: "Bez zmian." };
-  const failed = await save(supabase, tripId, script, { ...script, music });
+  const failed = await save(supabase, tripId, kind, script, { ...script, music });
   if (failed) return { error: failed };
   refresh();
   return { ok: "Zapisano ustawienia podkładu." };
@@ -140,12 +143,12 @@ const waitFor = (seconds: number | null) => Math.min(Math.max(seconds ?? 30, 5),
  * Nagranie jednej sceny (`retake`: nowe ujęcie, także gdy nagranie pasuje). Bez `refresh`: przeglądarka odświeża stronę po ostatniej scenie. Limit zapytań (darmowy poziom
  * Gemini TTS przepuszcza kilka nagrań na minutę) zwraca `wait`: przeglądarka odczeka i ponowi.
  */
-export async function recordShowScene(tripId: string, key: string, retake = false): Promise<FormState & { wait?: number; seconds?: number }> {
+export async function recordShowScene(tripId: string, kind: ShowKind, key: string, retake = false): Promise<FormState & { wait?: number; seconds?: number }> {
   const denied = await aiAccessError();
   if (denied) return { error: denied };
   const setup = await speechSetup();
   if ("error" in setup) return { error: setup.error };
-  const loaded = await load(tripId);
+  const loaded = await load(tripId, kind);
   if ("error" in loaded) return { error: loaded.error };
   const { supabase, script } = loaded;
   const scene = script.scenes.find((each) => each.key === key);
@@ -155,20 +158,22 @@ export async function recordShowScene(tripId: string, key: string, retake = fals
     const { speech, model } = await setup.speak(scene.text, script.voice);
     const hash = narrationHash(scene.text, script.voice, model);
     // Nowe ujęcie tego samego tekstu („Nagraj od nowa wszystko”) idzie pod nową nazwą: stary plik usuwa `save` (`droppedAudio`).
-    const path = retake ? `${tripId}/${hash}-${Date.now().toString(36)}.wav` : `${tripId}/${hash}.wav`;
+    // Film ma własne pliki: ten sam tekst w zapowiedzi i filmie nie dzieli nagrania (usunięcie w jednym nie rusza drugiego).
+    const name = `${tripId}/${kind === "film" ? "film-" : ""}${hash}`;
+    const path = retake ? `${name}-${Date.now().toString(36)}.wav` : `${name}.wav`;
     const { error: uploadError } = await supabase.storage.from("show_audio").upload(path, speech.audio, { contentType: "audio/wav" });
     // Ten sam tekst, głos i model to ten sam plik: już wgrany wystarczy.
     if (uploadError && !/exists|duplicate/i.test(uploadError.message)) {
       return { error: /row-level security|unauthorized/i.test(uploadError.message) ? "Nagrania dodaje tylko organizator albo edytor." : `Nie zapisano nagrania: ${uploadError.message}` };
     }
     // Świeży odczyt: w trakcie nagrywania ktoś mógł zmienić tekst albo inną scenę.
-    const { data: current } = await supabase.from("trip_shows").select("content").eq("trip_id", tripId).maybeSingle();
+    const { data: current } = await supabase.from("trip_shows").select("content").eq("trip_id", tripId).eq("kind", kind).maybeSingle();
     const latest = ShowScript.safeParse(current?.content ?? {});
     const base = latest.success ? latest.data : script;
     if (base.voice !== script.voice) return { error: "W trakcie nagrywania zmienił się głos. Nagraj jeszcze raz." };
     const next = setShowAudio(base, key, { path, hash, model, durationMs: speech.durationMs }, scene.text);
     if (next.scenes.find((each) => each.key === key)?.audio?.path !== path) return { error: "W trakcie nagrywania zmienił się tekst sceny. Nagraj jeszcze raz." };
-    const failed = await save(supabase, tripId, base, next);
+    const failed = await save(supabase, tripId, kind, base, next);
     if (failed) return { error: failed };
     const seconds = Math.round(speech.durationMs / 1000);
     return { ok: `Nagrano ${seconds} s.`, seconds };
@@ -219,11 +224,13 @@ export async function voiceSample(tripId: string, voice: string): Promise<FormSt
  * Pokaz pod publicznym linkiem (`/p/<token>/show`): osobna zgoda właściciela, bo tekst i głos lektora mogą zawierać imiona
  * i kwoty, a zdjęcia z dziennika twarze (`public_shares.show`, RPC `set_public_show`). Link musi już istnieć.
  */
-export async function setPublicShow(tripId: string, on: boolean): Promise<FormState> {
-  const { supabase } = await requireUser(`/trips/${tripId}/show`);
-  const { data, error } = await supabase.rpc("set_public_show", { p_trip: tripId, p_show: on });
+export async function setPublicShow(tripId: string, kind: ShowKind, on: boolean): Promise<FormState> {
+  if (!isShowKind(kind)) return { error: "Nieznany rodzaj pokazu." };
+  const { supabase } = await requireUser(showPath(tripId, kind));
+  const { data, error } = await supabase.rpc("set_public_show", { p_trip: tripId, p_show: on, p_kind: kind });
   if (error) return { error: error.code === "42501" ? "Pokaz pod linkiem włącza tylko właściciel wyjazdu." : error.message };
   if (data !== true) return { error: "Najpierw utwórz publiczny link na stronie „Uczestnicy i dostęp”." };
   refresh();
-  return { ok: on ? "Pokaz jest pod publicznym linkiem: zakładka „Pokaz z lektorem”." : "Pokaz zniknął z publicznego linku." };
+  const tab = kind === "film" ? "Film z wyjazdu" : "Pokaz z lektorem";
+  return { ok: on ? `Pokaz jest pod publicznym linkiem: zakładka „${tab}”.` : "Pokaz zniknął z publicznego linku." };
 }

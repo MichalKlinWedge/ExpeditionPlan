@@ -97,7 +97,7 @@ export function ShowExport({
   onClose,
 }: {
   scenes: PlayerScene[];
-  trip: { title: string; dates: string };
+  trip: { title: string; dates: string; label: string };
   music?: PlayerMusic;
   subtitles: boolean;
   onClose: () => void;
@@ -273,7 +273,7 @@ export function ShowExport({
               [`Mapy © OpenStreetMap · głos lektora: Gemini TTS${music ? ` · muzyka: ${music.name.replace(/\.[a-z0-9]+$/i, "")}` : ""} · Expedition Planner`, `22px ${font}`, "rgba(255,255,255,0.5)"],
             ]
           : [
-              ["POKAZ Z WYJAZDU", `30px ${font}`, "rgba(255,255,255,0.7)"],
+              [trip.label.toUpperCase(), `30px ${font}`, "rgba(255,255,255,0.7)"],
               [trip.title, `bold 120px ${font}`, "#ffffff"],
               [trip.dates, `48px ${font}`, "rgba(255,255,255,0.85)"],
             ];

@@ -10,7 +10,7 @@ import { PublicTripHeader } from "@/components/public-trip-header";
 import { Loading, Shell } from "@/components/shell";
 import { Stat } from "@/components/stat";
 import { EXPIRED_LINK, loadPublicTrip } from "@/lib/public-trip";
-import { publicShowOn } from "@/lib/trip-show";
+import { publicShowsOn } from "@/lib/trip-show";
 
 /**
  * Wejście z publicznego linku: najważniejsze informacje o wyprawie na jednej stronie, zebrane z planu (`tripOverview`),
@@ -69,7 +69,7 @@ async function Overview({ params, searchParams }: { params: Promise<{ token: str
 
   return (
     <>
-      <PublicTripHeader token={token} trip={doc.trip} active="overview" show={await publicShowOn(token)} />
+      <PublicTripHeader token={token} trip={doc.trip} active="overview" shows={await publicShowsOn(token)} />
 
       {(overview.subtitle || overview.goal || overview.summary || overview.route.length > 0 || overview.names.length > 0) && (
         <section className="flex flex-col gap-2">
