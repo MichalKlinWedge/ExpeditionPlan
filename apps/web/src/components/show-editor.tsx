@@ -339,16 +339,16 @@ export function ShowMusicEditor({ tripId, kind, music }: { tripId: string; kind:
           </label>
           <label className="flex items-center gap-2" title="Ile sekund z początku pliku pominąć, np. ciszę albo wstęp">
             Pomiń początek
-            <input type="text" inputMode="decimal" value={skip} onChange={(event) => changeSkip(event.target.value)} disabled={busy} className="field w-16 px-2 py-1 text-right text-sm" />
+            <input type="text" inputMode="decimal" value={skip} onChange={(event) => changeSkip(event.target.value)} disabled={busy} className="field h-8 w-16 px-2 py-1 text-right text-sm" />
             s
           </label>
           {/* Wgranie innego pliku to nie edycja, więc tekst; usunięcie to kosz jak w innych sekcjach (`IconAction`). */}
           <span className="flex items-center gap-1">
-            <label title="wgraj inny plik z muzyką" className={`btn-mini cursor-pointer ${busy ? "opacity-50" : ""}`}>
+            <label title="wgraj inny plik z muzyką" className={`btn-mini h-8 cursor-pointer px-2.5 ${busy ? "opacity-50" : ""}`}>
               {busy ? "wgrywam…" : "Wgraj"}
               {picker}
             </label>
-            <IconAction kind="remove" tip="usuń muzykę" onClick={() => void remove()} disabled={busy} />
+            <IconAction kind="remove" tip="usuń muzykę" onClick={() => void remove()} disabled={busy} className="h-8 w-8 justify-center" />
           </span>
         </div>
       ) : (
