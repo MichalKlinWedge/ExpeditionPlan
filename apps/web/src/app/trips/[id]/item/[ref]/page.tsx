@@ -16,6 +16,7 @@ import { ItemHeaderEditor } from "@/components/item-header";
 import { ItemPlanNav } from "@/components/item-plan-nav";
 import { JournalNew } from "@/components/journal-editor";
 import { JournalEntry } from "@/components/journal-entry";
+import { JournalLink } from "@/components/journal-link";
 import { journalCards } from "@/lib/journal";
 import { ItemTexts } from "@/components/item-texts";
 import { LodgingEditor } from "@/components/lodging-editor";
@@ -31,7 +32,8 @@ export const metadata: Metadata = { title: "Punkt planu — Expedition Planner" 
 /**
  * Karta punktu planu: wszystko o punkcie (kiedy, gdzie, opis, notatki, linki, rezerwacja) i przewodnik
  * po miejscu — opis, ciekawostki, historia i zdjęcia z Wikipedii/Commons z atrybucją (M8, etap 1).
- * „Zdjęcia”: wpisy dziennika przy tym punkcie (`journal_entries.item_id`) — te same są w „Dzienniku”.
+ * „Zdjęcia” na końcu karty: wpisy dziennika przy tym punkcie (`journal_entries.item_id`) — te same są w „Dzienniku” —
+ * i łączenie z wpisami tego dnia dodanymi wcześniej bez punktu (`JournalLink`).
  */
 export default function ItemPage(props: PageProps<"/trips/[id]/item/[ref]">) {
   return (
@@ -91,7 +93,14 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   const hasInfo = place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || editing || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
   const itemId = ids[item.ref];
-  const photos = itemId === undefined ? [] : await journalCards(supabase, payload, userId, (row) => row.item_id === itemId);
+  // Wpisy przy punkcie i do połączenia: z dnia punktu i bez dnia, jednym podpisaniem zdjęć.
+  const dayId = day === undefined ? undefined : ids[day.ref];
+  const nearby = itemId === undefined ? [] : await journalCards(supabase, payload, userId, (row) => row.item_id === itemId || row.day_id === null || row.day_id === dayId);
+  const photos = nearby.filter((entry) => entry.itemId === itemId);
+  const titleById = new Map(doc.items.flatMap((each) => (ids[each.ref] === undefined ? [] : [[ids[each.ref]!, each.title] as const])));
+  const linkable = nearby
+    .filter((entry) => entry.itemId !== itemId)
+    .map((entry) => ({ ...entry, canEdit: entry.mine || editing, ...(entry.itemId !== null && titleById.has(entry.itemId) ? { linkedTo: titleById.get(entry.itemId)! } : {}) }));
   const journalDay = day === undefined || ids[day.ref] === undefined ? [] : [{ id: ids[day.ref]!, label: dayLabel(day.date), date: day.date, tz: day.tz }];
 
   return (
@@ -169,21 +178,6 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
           </p>
         )}
       </section>
-      )}
-
-      {itemId !== undefined && day !== undefined && (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold">Zdjęcia{photos.length > 0 ? ` (${photos.length})` : ""}</h2>
-            <Link href={`/trips/${id}/journal`} className="btn-mini">
-              cały dziennik
-            </Link>
-          </div>
-          {photos.map((entry) => (
-            <JournalEntry key={entry.id} entry={entry} tz={day.tz} canEdit={entry.mine || editing} days={journalDay} />
-          ))}
-          <JournalNew tripId={id} days={journalDay} tz={day.tz} itemId={itemId} plannedTime={item.time && "start" in item.time ? item.time.start : undefined} label="+ Dodaj zdjęcia" />
-        </section>
       )}
 
       {item.kind === "meal" && !item.selfCooked && <ItemEatOut tripId={id} doc={doc} ids={ids} itemRef={item.ref} editing={editing} />}
@@ -299,6 +293,23 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
           {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guideRow?.place_id === null ? guide.hint : undefined} />}
         </GuideArticle>
       )
+      )}
+
+      {/* Zdjęcia na końcu karty: wpisy dziennika przy punkcie, nowy wpis i połączenie z wpisami dodanymi wcześniej. */}
+      {itemId !== undefined && day !== undefined && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">Zdjęcia{photos.length > 0 ? ` (${photos.length})` : ""}</h2>
+            <Link href={`/trips/${id}/journal`} className="btn-mini">
+              cały dziennik
+            </Link>
+          </div>
+          {photos.map((entry) => (
+            <JournalEntry key={entry.id} entry={entry} tz={day.tz} canEdit={entry.mine || editing} days={journalDay} unlink />
+          ))}
+          <JournalNew tripId={id} days={journalDay} tz={day.tz} itemId={itemId} plannedTime={item.time && "start" in item.time ? item.time.start : undefined} label="+ Dodaj zdjęcia" />
+          <JournalLink itemId={itemId} tz={day.tz} candidates={linkable} />
+        </section>
       )}
     </>
   );

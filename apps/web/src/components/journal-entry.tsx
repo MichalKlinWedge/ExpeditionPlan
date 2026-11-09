@@ -29,9 +29,11 @@ type Props = {
   days?: JournalDay[];
   upAt?: string | null;
   downAt?: string | null;
+  /** Na karcie punktu: „odłącz od punktu” (wpis zostaje w dzienniku, bez punktu). */
+  unlink?: boolean;
 };
 
-export function JournalEntry({ entry, tz, canEdit, item, days = [], upAt = null, downAt = null }: Props) {
+export function JournalEntry({ entry, tz, canEdit, item, days = [], upAt = null, downAt = null, unlink = false }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -121,6 +123,11 @@ export function JournalEntry({ entry, tz, canEdit, item, days = [], upAt = null,
               <button type="button" onClick={() => setEditing(true)} disabled={busy} className="btn-mini">
                 edytuj
               </button>
+              {unlink && (
+                <button type="button" onClick={() => void update({ item_id: null }, "Nie odłączono wpisu.")} disabled={busy} title="Wpis zostaje w dzienniku, tylko bez tego punktu" className="btn-mini">
+                  odłącz od punktu
+                </button>
+              )}
               <button type="button" onClick={remove} disabled={busy} className="btn-mini btn-mini-danger">
                 usuń
               </button>
