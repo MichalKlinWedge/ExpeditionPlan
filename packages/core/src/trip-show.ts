@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { itemsForDay, type ScheduleOptions } from './engine/schedule.ts';
 import { dayLabel, formatKm, plural } from './format.ts';
 import type { GuideContent, GuideImage } from './guide.ts';
-import { dayLodging, formatMinutes, isTransit } from './plan-info.ts';
+import { LEG_MODE } from './labels.ts';
+import { dayLodging, formatMinutes, isTransit, transitPlaceRefs } from './plan-info.ts';
 import { isRouteStop } from './route-stops.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { tripMemories } from './trip-memories.ts';
@@ -84,6 +85,9 @@ export type ShowImage = { url: string; caption: string; credit?: string };
  */
 export type ShowWalk = { refs: string[]; title: string; label: string; facts: string; at?: [number, number] };
 
+/** Dojazd (wstęp) albo powrót (zakończenie): osobna mapa na początku i na końcu; mapy dni go nie pokazują. */
+export type ShowApproach = { refs: string[]; label: 'Dojazd' | 'Powrót'; title: string; facts: string };
+
 export type ShowScene = {
   key: string;
   kind: 'intro' | 'day' | 'outro';
@@ -96,6 +100,7 @@ export type ShowScene = {
   stats: string[];
   points: string[];
   walks: ShowWalk[];
+  approach?: ShowApproach;
   /** Fakty sceny dla AI piszącego tekst lektora. */
   facts: string[];
 };
@@ -126,6 +131,8 @@ const CAR_MODES: ReadonlySet<string> = new Set(['car', 'rental_car', 'taxi', 'hi
 /** Krótszy spacer nie dostaje własnego ujęcia (przejście między zabytkami). */
 const WALK_MIN_KM = 1.5;
 const POINTS_PER_DAY = 6;
+/** Zdjęcia we wstępie (pierwsze z kolejnych dni); zakończenie bierze o 2 więcej. */
+const HIGHLIGHTS = 4;
 
 /**
  * Punkt pieszy albo rowerowy (przejście, trekking, ślad GPX, aktywność z opisem trasy: km, podejście, trudność) — na
@@ -163,6 +170,44 @@ function dayStats(doc: Doc, items: readonly Item[]): string[] {
   ].filter((part) => part !== '');
 }
 
+/**
+ * Dojazd i powrót: przejazdy pierwszego i ostatniego dnia z domu albo do domu (miejsce startu pierwszego przejazdu
+ * wyjazdu, które nie jest noclegiem ani miejscem żadnego punktu) oraz loty i przejazdy dłuższe niż 250 km
+ * (`isTransit`) albo z miejsc tylko dojazdowych (`transitPlaceRefs`).
+ */
+function approaches(doc: Doc, firstDay: readonly Item[], lastDay: readonly Item[], allItems: readonly Item[]): { outbound: Item[]; back: Item[] } {
+  const legs = allItems.filter((item) => item.kind === 'transport' && item.leg !== undefined);
+  const bases = new Set(doc.days.flatMap((day) => (day.baseRef === undefined ? [] : [day.baseRef])));
+  const visited = new Set(allItems.filter((item) => item.kind !== 'transport').flatMap((item) => (item.placeRef === undefined ? [] : [item.placeRef])));
+  const start = legs[0]?.leg?.fromPlaceRef;
+  const home = start !== undefined && !bases.has(start) && !visited.has(start) ? start : undefined;
+  const transitPlaces = transitPlaceRefs(doc);
+  // Lot bywa punktem bez `leg` (przylot z rezerwacją lotu): `isTransit` rozpoznaje go po rezerwacji.
+  const isApproach = (item: Item) =>
+    item.kind === 'transport' &&
+    (isTransit(doc, item) || [item.leg?.fromPlaceRef, item.leg?.toPlaceRef].some((ref) => ref !== undefined && (ref === home || transitPlaces.has(ref))));
+  const outbound = firstDay.filter(isApproach);
+  return { outbound, back: firstDay === lastDay ? [] : lastDay.filter(isApproach) };
+}
+
+/** „Wrocław → Parking …” i „autem 130 km” dla karty dojazdu albo powrotu. */
+function approachCard(doc: Doc, items: readonly Item[], label: ShowApproach['label']): ShowApproach | undefined {
+  if (items.length === 0) return undefined;
+  const name = (ref: string | undefined) => doc.places.find((place) => place.ref === ref)?.name;
+  const from = name(items[0]!.leg?.fromPlaceRef ?? items[0]!.placeRef);
+  const to = name(items.at(-1)!.leg?.toPlaceRef ?? items.at(-1)!.placeRef);
+  const km = items.reduce((sum, item) => sum + (item.leg?.distanceKm ?? 0), 0);
+  const mode = (item: Item) => (item.leg !== undefined ? (LEG_MODE[item.leg.mode] ?? item.leg.mode) : isTransit(doc, item) ? LEG_MODE.flight! : '');
+  const modes = [...new Set(items.map(mode).filter((each) => each !== ''))];
+  return {
+    refs: items.map((item) => item.ref),
+    label,
+    // Sam przylot (punkt bez „skąd”) ma tylko cel: wtedy nazwa punktu („Lądowanie w Agadirze”).
+    title: from && to && from !== to ? `${from} → ${to}` : items.length === 1 ? items[0]!.title : (to ?? from ?? items[0]!.title),
+    facts: [modes.join(', '), km >= 1 ? formatKm(km) : ''].filter((part) => part !== '').join(' · '),
+  };
+}
+
 const isSight = (item: Item) => item.kind === 'visit' || item.kind === 'activity' || (item.kind === 'transport' && item.leg?.mode === 'hike');
 
 const clip = (text: string, limit: number) => (text.length <= limit ? text : `${text.slice(0, limit).replace(/\s+\S*$/, '')}…`);
@@ -185,8 +230,13 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   const usedArticles = new Map<string, GuideContent['article']>();
   const seenUrls = new Set<string>();
 
+  const dayItems = days.map((day) => itemsForDay(doc, day.ref, schedule).filter((item) => item.parentRef === undefined || isRouteStop(doc, item)));
+  const { outbound, back } = approaches(doc, dayItems[0] ?? [], dayItems.at(-1) ?? [], dayItems.flat());
+  // Dojazd i powrót mają własne mapy we wstępie i zakończeniu: mapy dni zaczynają się na miejscu.
+  const approachRefs = new Set([...outbound, ...back].map((item) => item.ref));
+
   const dayScenes: ShowScene[] = days.map((day, index) => {
-    const items = itemsForDay(doc, day.ref, schedule).filter((item) => item.parentRef === undefined || isRouteStop(doc, item));
+    const items = dayItems[index]!.filter((item) => !approachRefs.has(item.ref));
     const sights = items.filter(isSight).filter((item) => !(after && skipped.has(item.ref)));
     const journal = journalAll.filter((entry) => entry.dayRef === day.ref);
     const images = journalImages(journal);
@@ -273,10 +323,43 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   const loose = journalAll.filter((entry) => entry.dayRef === undefined || !days.some((day) => day.ref === entry.dayRef));
   for (const entry of loose) if (entry.body.trim() !== '') outro.push(`Wpis z dziennika: ${clip(entry.body.trim(), 400)}`);
 
+  // Zdjęcia są główną pamiątką: wstęp zapowiada je pierwszym zdjęciem z kolejnych dni, zakończenie zbiera ostatnie
+  // (i wpisy bez dnia).
+  const introImages = dayScenes.flatMap((scene) => scene.images.slice(0, 1)).slice(0, HIGHLIGHTS);
+  const outroImages = [...journalImages(loose), ...dayScenes.flatMap((scene) => (scene.images.length > 1 ? [scene.images.at(-1)!] : []))].slice(0, HIGHLIGHTS + 2);
+  const outboundCard = approachCard(doc, outbound, 'Dojazd');
+  const backCard = approachCard(doc, back, 'Powrót');
+  const localRoute = stats.routeRefs.filter((ref) => !approachRefs.has(ref));
+  if (outboundCard) intro.push(`Dojazd: ${outboundCard.title}${outboundCard.facts ? ` (${outboundCard.facts})` : ''}`);
+
   const scenes: ShowScene[] = [
-    { key: 'intro', kind: 'intro', heading: doc.trip.title, subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`, routeRefs: stats.routeRefs, images: [], stats: [plural(stats.days, ['dzień', 'dni', 'dni']), ...numbers], points: [], walks: [], facts: intro },
+    {
+      key: 'intro',
+      kind: 'intro',
+      heading: doc.trip.title,
+      subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`,
+      routeRefs: localRoute,
+      images: introImages,
+      stats: [plural(stats.days, ['dzień', 'dni', 'dni']), ...numbers],
+      points: [],
+      walks: [],
+      ...(outboundCard ? { approach: outboundCard } : {}),
+      facts: intro,
+    },
     ...dayScenes,
-    { key: 'outro', kind: 'outro', heading: doc.trip.title, subheading: numbers.join(' · '), routeRefs: stats.routeRefs, images: journalImages(loose), stats: [], points: [], walks: [], facts: outro },
+    {
+      key: 'outro',
+      kind: 'outro',
+      heading: doc.trip.title,
+      subheading: numbers.join(' · '),
+      routeRefs: localRoute,
+      images: outroImages,
+      stats: [],
+      points: [],
+      walks: [],
+      ...(backCard ? { approach: backCard } : {}),
+      facts: outro,
+    },
   ];
   return {
     scenes,

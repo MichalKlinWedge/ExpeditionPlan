@@ -35,7 +35,7 @@ describe('sceny pokazu', () => {
     const doc = fixture('maroko');
     const sight = doc.items.find((item) => item.kind === 'visit' && item.dayRef !== undefined)!;
     const { scenes, credits } = showScenes(doc, { ...base, guideOf: (item) => (item.title === sight.title ? guide(sight.title, 'Foto') : null) });
-    const withImage = scenes.filter((scene) => scene.images.length > 0);
+    const withImage = scenes.filter((scene) => scene.kind === 'day' && scene.images.length > 0);
     expect(withImage).toHaveLength(1);
     expect(withImage[0]!.images[0]!.url).toContain('/thumb/');
     expect(withImage[0]!.facts.some((fact) => fact.includes('warto zobaczyć'))).toBe(true);
@@ -96,10 +96,41 @@ describe('ujęcia sceny dnia', () => {
     expect(chatka[1]!.walks.map((walk) => walk.facts)).toContain('4,2 km · ↑ 170 m · 1 h 30 min');
     // „Zejście tą samą drogą” idzie śladem wejścia: bez drugiego ujęcia.
     expect(chatka[1]!.walks.map((walk) => walk.title)).not.toContain('Zejście tą samą drogą');
-    expect(chatka[1]!.stats).toEqual(['autem 130 km', 'pieszo 10 km · ↑ 170 m']);
+    expect(chatka[1]!.stats).toEqual(['pieszo 10 km · ↑ 170 m']);
     // Trekking zapisany jako aktywność z kilometrami (bez śladu GPX) też jest trasą, z miejscem do przybliżenia.
     const gruzja = showScenes(fixture('gruzja'), base).scenes.filter((scene) => scene.kind === 'day');
     expect(gruzja.some((scene) => scene.walks.some((walk) => walk.label === 'Trasa' && walk.at !== undefined))).toBe(true);
+  });
+});
+
+describe('dojazd i zdjęcia we wstępie', () => {
+  it('dojazd z domu na początku, powrót na końcu, mapy dni bez nich', () => {
+    const doc = fixture('chatka');
+    const { scenes } = showScenes(doc, base);
+    const intro = scenes[0]!;
+    const outro = scenes.at(-1)!;
+    expect(intro.approach?.label).toBe('Dojazd');
+    expect(intro.approach?.facts).toMatch(/km/);
+    expect(outro.approach?.label).toBe('Powrót');
+    const days = scenes.filter((scene) => scene.kind === 'day');
+    const approach = new Set([...intro.approach!.refs, ...outro.approach!.refs]);
+    for (const scene of days) expect(scene.routeRefs.some((ref) => approach.has(ref))).toBe(false);
+    expect(intro.routeRefs.some((ref) => approach.has(ref))).toBe(false);
+  });
+
+  it('lot tam i z powrotem to dojazd i powrót', () => {
+    const { scenes } = showScenes(fixture('maroko'), base);
+    expect(scenes[0]!.approach?.facts).toContain('samolot');
+    expect(scenes.at(-1)!.approach?.label).toBe('Powrót');
+  });
+
+  it('film: wstęp z pierwszymi zdjęciami dni, zakończenie z ostatnimi', () => {
+    const doc = fixture('maroko');
+    const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
+    const journal = days.flatMap((day, at) => [1, 2].map((n) => ({ dayRef: day.ref, body: `D${at} ${n}`, photoUrl: `https://example.com/${at}-${n}.jpg` })));
+    const { scenes } = showScenes(doc, { ...base, kind: 'film', journal });
+    expect(scenes[0]!.images.map((image) => image.caption)).toEqual(['D0 1', 'D1 1', 'D2 1', 'D3 1']);
+    expect(scenes.at(-1)!.images.map((image) => image.caption)).toEqual(['D0 2', 'D1 2', 'D2 2', 'D3 2', 'D4 2']);
   });
 });
 

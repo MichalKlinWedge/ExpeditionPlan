@@ -112,9 +112,18 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
         lines: map.refs.flatMap((refs, at) => (refs.some((ref) => walk.refs.includes(ref)) ? [at] : [])),
         ...(walk.at ? { at: walk.at } : {}),
       })),
+      ...(scene.approach ? { approach: { map: approachMap(dayMap(doc, scene.approach.refs)), label: scene.approach.label, title: scene.approach.title, facts: scene.approach.facts } } : {}),
       ...(url !== undefined && told?.audio ? { audio: { url, durationMs: told.audio.durationMs } } : {}),
     };
   });
+}
+
+/** Mapa dojazdu albo powrotu: cała, z lotem i lotniskiem w domu (tu dojazd jest tematem, nie przeszkadza). */
+function approachMap(map: DayMap): ShowMapData {
+  return {
+    lines: map.lines.map((line) => ({ coordinates: line.coordinates as [number, number][], routed: line.routed })),
+    pins: map.pins.map((pin) => ({ lng: pin.lng, lat: pin.lat, name: pin.name })),
+  };
 }
 
 /** Podkład dla odtwarzacza: podpisany plik, głośność i nazwa (na ekranie końcowym). */

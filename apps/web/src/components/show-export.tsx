@@ -4,7 +4,24 @@ import type { ShowImage } from "@expeditionplan/core";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { isCard, type MapFocus, mapFocus, MUSIC_EASE, musicLevel, musicStart, phaseAt, type PlayerMusic, type PlayerScene, scenePhases, sceneTiming, sentences, ShowMap } from "@/components/show-player";
+import {
+  isCard,
+  mapDataFor,
+  type MapFocus,
+  mapFocus,
+  MUSIC_EASE,
+  musicLevel,
+  musicStart,
+  phaseAt,
+  phaseCard,
+  type PlayerMusic,
+  type PlayerScene,
+  scenePhases,
+  sceneTiming,
+  sentences,
+  ShowMap,
+  type ShowMapData,
+} from "@/components/show-player";
 
 /**
  * Eksport pokazu do pliku wideo w przeglądarce: ten sam film co w odtwarzaczu (te same czasy scen, `sceneTiming`,
@@ -106,7 +123,7 @@ export function ShowExport({
   const map = useRef<MapLibreMap | null>(null);
   const mapReady = useRef<(() => void) | null>(null);
   const stop = useRef<(() => void) | null>(null);
-  const [mapView, setMapView] = useState<{ scene: number; focus: MapFocus }>({ scene: 0, focus: null });
+  const [mapView, setMapView] = useState<{ scene: number; data: ShowMapData; focus: MapFocus }>({ scene: 0, data: scenes[0]!.map, focus: null });
   const [status, setStatus] = useState<Status | null>(null);
   const type = useMemo(() => recordingType(), []);
 
@@ -153,7 +170,7 @@ export function ShowExport({
     stop.current = () => abort(null);
     document.addEventListener("visibilitychange", hidden);
 
-    setMapView({ scene: 0, focus: null });
+    setMapView({ scene: 0, data: scenes[0]!.map, focus: null });
     setStatus({ phase: "prepare", note: "Wczytuję zdjęcia i nagrania…" });
     const urls = [...new Set(scenes.flatMap((scene) => scene.images.map((image) => image.url)))];
     const [images, voices, backing] = await Promise.all([
@@ -317,7 +334,7 @@ export function ShowExport({
       const viewKey = `${index}:${mapPhase.kind}:${mapPhase.index}`;
       if (viewKey !== shownMap) {
         shownMap = viewKey;
-        setMapView({ scene: index, focus: mapFocus(scene, mapPhase) });
+        setMapView({ scene: index, data: mapDataFor(scene, mapPhase), focus: mapFocus(scene, mapPhase) });
       }
 
       context.fillStyle = "#e4e4e7";
@@ -341,20 +358,15 @@ export function ShowExport({
         if (phase.index > 0 && fade < 1) drawPhoto(scene.images[phase.index - 1]!, since + perPhoto, perPhoto, 1);
         drawPhoto(scene.images[phase.index]!, since, perPhoto, fade);
       }
-      // Karta planu dnia albo trasy pieszej, jak w odtwarzaczu (prawy górny róg).
-      const walk = phase.kind === "walk" ? scene.walks[phase.index] : undefined;
-      if (!isCard(scene) && (walk || (phase.kind === "map" && (scene.stats.length > 0 || scene.points.length > 0)))) {
-        const rows: [string, string, string][] = walk
-          ? [
-              [walk.label.toUpperCase(), `20px ${font}`, "rgba(255,255,255,0.7)"],
-              [walk.title, `600 32px ${font}`, "#ffffff"],
-              ...(walk.facts ? [[walk.facts, `28px ${font}`, "rgba(255,255,255,0.85)"] as [string, string, string]] : []),
-            ]
-          : [
-              [scene.kind === "intro" ? "WYJAZD" : "PLAN DNIA", `20px ${font}`, "rgba(255,255,255,0.7)"],
-              ...(scene.stats.length > 0 ? [[scene.stats.join(" · "), `600 28px ${font}`, "#ffffff"] as [string, string, string]] : []),
-              ...scene.points.map((point): [string, string, string] => [`• ${point}`, `26px ${font}`, "rgba(255,255,255,0.9)"]),
-            ];
+      // Karta etapu, jak w odtwarzaczu (prawy górny róg, `phaseCard`).
+      const card = phaseCard(scene, phase);
+      if (card) {
+        const rows: [string, string, string][] = [
+          [card.label.toUpperCase(), `20px ${font}`, "rgba(255,255,255,0.7)"],
+          ...(card.title ? [[card.title, `600 30px ${font}`, "#ffffff"] as [string, string, string]] : []),
+          ...card.lines.map((line): [string, string, string] => [line, `28px ${font}`, "rgba(255,255,255,0.85)"]),
+          ...card.bullets.map((point): [string, string, string] => [`• ${point}`, `26px ${font}`, "rgba(255,255,255,0.9)"]),
+        ];
         const maxWidth = W * 0.4;
         const laid = rows.flatMap(([text, style, color]) => {
           context.font = style;
@@ -508,7 +520,7 @@ export function ShowExport({
         // Niewidoczna mapa w rozmiarze filmu: z niej kopiuje się kadr mapy.
         <div aria-hidden className="pointer-events-none fixed top-0" style={{ left: -W - 100, width: W, height: H }}>
           <ShowMap
-            data={scenes[mapView.scene]!.map}
+            data={mapView.data}
             sceneKey={scenes[mapView.scene]!.key}
             focus={mapView.focus}
             capture

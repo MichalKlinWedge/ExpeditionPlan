@@ -19,8 +19,9 @@ const ShowExport = dynamic(() => import("@/components/show-export").then((module
  * tyle, ile czyta się napisy (`readingMs`). Start zawsze z kliknięcia: przeglądarka nie pozwala grać dźwięku bez niego.
  * Film otwiera ekran startowy (nazwa i daty wyjazdu), zamyka ekran końcowy. Lektor wchodzi po chwili ciszy na pierwszej
  * scenie (`LEAD_MS`), a po ostatnim zdaniu jest jeszcze `TAIL_MS` przed ekranem końcowym. Trasy dnia rysują się po kolei.
- * Scena dnia idzie etapami (`scenePhases`): najwyżej 5 s widoku dnia (trasa auta, karta „Plan dnia” z liczbami i punktami),
- * potem przybliżenie każdej trasy pieszej z kartą (km, podejście, czas), na końcu zdjęcia. Trasy piesze mają inny kolor.
+ * Scena idzie etapami (`scenePhases`), każda mapa najwyżej 5 s: wstęp zaczyna dojazd, zakończenie powrót, potem cała
+ * trasa; dzień to widok dnia z kartą „Plan dnia”, przybliżenia tras pieszych (inny kolor), a gdy zostaje czas — kolejne
+ * miejsca dnia. Zdjęcia są najważniejsze: mapy biorą najwyżej 40% sceny ze zdjęciami, resztę dostają zdjęcia.
  * Podkład muzyczny (opcjonalny) gra w pętli od `skipS` (pominięty początek pliku): narasta na ekranie startowym, pod lektorem cichnie (`MUSIC_UNDER_VOICE`),
  * między scenami wraca, a na ekranie końcowym wygasa.
  * Kafle OpenFreeMap (wyświetlanie na żywo, bez pobierania na zapas — docs/USLUGI.md).
@@ -36,11 +37,14 @@ const DRAW_PER_LINE_MS = 900;
 const DRAW_MIN_MS = 2_500;
 const DRAW_MAX_MS = 3_500;
 /** Etapy sceny dnia: widok dnia najwyżej tyle, trasa piesza w tych granicach (najwyżej 3 trasy), zdjęcie co najmniej tyle. */
-const OVERVIEW_MS = 5_000;
-const WALK_MIN_MS = 4_000;
-const WALK_MAX_MS = 8_000;
-const MAX_WALKS = 3;
-const PHOTO_MIN_MS = 3_000;
+const MAP_MS = 5_000;
+const MAP_MIN_MS = 2_500;
+const WALK_MS = 4_000;
+const MAX_WALKS = 2;
+/** Mapy w scenie ze zdjęciami: razem najwyżej taki ułamek sceny. */
+const MAP_SHARE = 0.4;
+const PHOTO_MIN_MS = 2_500;
+const PHOTO_MAX_MS = 7_000;
 const WALK_DRAW_MS = 2_500;
 const GAP_MS = 700;
 /** Cisza przed lektorem pierwszej sceny: mapa rusza, głos dopiero potem. */
@@ -65,8 +69,11 @@ export type ShowMapData = { lines: { coordinates: [number, number][]; routed: bo
 /** Trasa piesza sceny: linie mapy sceny (`lines`, indeksy), a bez nich miejsce do przybliżenia (`at`). */
 export type PlayerWalk = { title: string; label: string; facts: string; lines: number[]; at?: [number, number] };
 
-/** Co mapa pokazuje: cały dzień (`null`) albo przybliżoną trasę pieszą. */
+/** Co mapa pokazuje: cały dzień (`null`) albo przybliżoną trasę pieszą lub miejsce (`at`). */
 export type MapFocus = { key: string; lines: number[]; at?: [number, number] } | null;
+
+/** Dojazd (wstęp) albo powrót (zakończenie): własna mapa, cała, z lotem. */
+export type PlayerApproach = { map: ShowMapData; label: string; title: string; facts: string };
 
 export type PlayerScene = {
   key: string;
@@ -81,6 +88,7 @@ export type PlayerScene = {
   stats: string[];
   points: string[];
   walks: PlayerWalk[];
+  approach?: PlayerApproach;
 };
 
 const sceneMs = (scene: PlayerScene) =>
@@ -97,28 +105,52 @@ export function sceneTiming(scenes: PlayerScene[], index: number): { lead: numbe
   return { lead: index === 1 ? LEAD_MS : 0, duration: sceneMs(scene), gap: isCard(scene) ? 0 : index === scenes.length - 2 ? TAIL_MS : GAP_MS };
 }
 
-/** Etap sceny: widok dnia na mapie, przybliżenie trasy pieszej (`index` w `walks`) albo zdjęcie (`index` w `images`). */
-export type ScenePhase = { kind: "map" | "walk" | "photo"; index: number; start: number; end: number };
+/**
+ * Etap sceny: mapa dojazdu/powrotu, widok dnia (albo całej trasy), przybliżenie trasy pieszej (`index` w `walks`),
+ * przybliżenie miejsca (`index` w `map.pins`) albo zdjęcie (`index` w `images`).
+ */
+export type ScenePhase = { kind: "approach" | "map" | "walk" | "pin" | "photo"; index: number; start: number; end: number };
 
 /**
- * Etapy sceny w czasie `span`: widok dnia najwyżej `OVERVIEW_MS` (krócej przy krótkiej scenie), trasy piesze (przy zdjęciach
- * połowa reszty, 4–8 s na trasę), potem zdjęcia po równo, co najmniej `PHOTO_MIN_MS` (co się nie zmieści, przepada).
- * Bez tras i zdjęć cała scena to widok dnia z kartą planu. Ostatni etap trwa do końca sceny.
+ * Etapy sceny w czasie `span`. Mapy po kolei, każda najwyżej `MAP_MS`: dojazd/powrót, widok, do `MAX_WALKS` tras pieszych.
+ * Ze zdjęciami mapy razem biorą najwyżej `MAP_SHARE` sceny (najpierw odpadają trasy, potem mapy się skracają, do
+ * `MAP_MIN_MS`), a zdjęcia resztę (`PHOTO_MIN_MS`–`PHOTO_MAX_MS` każde; co się nie zmieści, przepada). Czas, który
+ * zostaje, wraca do odrzuconych tras, potem wypełniają go przybliżenia kolejnych miejsc sceny (każde do `MAP_MS`, co
+ * najmniej `MAP_MIN_MS`), a gdy i ich braknie — dłuższe zdjęcia.
+ * Ostatni etap trwa do końca sceny.
  */
 export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
-  const walks = scene.walks.slice(0, MAX_WALKS);
+  if (isCard(scene)) return [{ kind: "map", index: 0, start: 0, end: span }];
   const photos = scene.images.length;
-  if (isCard(scene) || (walks.length === 0 && photos === 0)) return [{ kind: "map", index: 0, start: 0, end: span }];
-  const overview = Math.min(OVERVIEW_MS, Math.max(span * 0.3, Math.min(3_000, span)));
-  const rest = Math.max(span - overview, 0);
-  const walkTotal = walks.length === 0 ? 0 : photos === 0 ? rest : Math.min(rest, Math.max(rest * 0.5, walks.length * WALK_MIN_MS), walks.length * WALK_MAX_MS);
-  const phases: ScenePhase[] = [{ kind: "map", index: 0, start: 0, end: overview }];
-  let at = overview;
-  for (const index of walks.keys()) {
-    phases.push({ kind: "walk", index, start: at, end: at + walkTotal / walks.length });
-    at += walkTotal / walks.length;
+  const shots: { kind: ScenePhase["kind"]; index: number; ms: number }[] = [];
+  if (scene.approach) shots.push({ kind: "approach", index: 0, ms: MAP_MS });
+  shots.push({ kind: "map", index: 0, ms: MAP_MS });
+  for (const index of scene.walks.slice(0, MAX_WALKS).keys()) shots.push({ kind: "walk", index, ms: WALK_MS });
+  const total = () => shots.reduce((sum, shot) => sum + shot.ms, 0);
+  const limit = photos > 0 ? Math.max(span * MAP_SHARE, MAP_MIN_MS) : span;
+  const dropped: typeof shots = [];
+  while (total() > limit && shots.at(-1)!.kind === "walk") dropped.unshift(shots.pop()!);
+  if (total() > limit) {
+    const scale = limit / total();
+    for (const shot of shots) shot.ms = photos > 0 ? Math.max(shot.ms * scale, MAP_MIN_MS) : shot.ms * scale;
   }
-  const perPhoto = photos === 0 ? 0 : Math.max((span - at) / photos, PHOTO_MIN_MS);
+  let perPhoto = photos === 0 ? 0 : Math.min(Math.max((span - total()) / photos, PHOTO_MIN_MS), PHOTO_MAX_MS);
+  let left = span - total() - perPhoto * photos;
+  // Wolny czas najpierw wraca do odrzuconych tras pieszych, potem idą miejsca sceny.
+  const extra = [...dropped, ...[...scene.map.pins.keys()].map((index) => ({ kind: "pin" as const, index, ms: MAP_MS }))];
+  for (const shot of extra) {
+    if (left < MAP_MIN_MS) break;
+    const ms = Math.min(shot.ms, left);
+    shots.push({ ...shot, ms });
+    left -= ms;
+  }
+  if (photos > 0 && left > 0) perPhoto += left / photos;
+  const phases: ScenePhase[] = [];
+  let at = 0;
+  for (const shot of shots) {
+    phases.push({ kind: shot.kind, index: shot.index, start: at, end: at + shot.ms });
+    at += shot.ms;
+  }
   for (let index = 0; index < photos; index += 1) {
     phases.push({ kind: "photo", index, start: at, end: at + perPhoto });
     at += perPhoto;
@@ -136,11 +168,38 @@ export function phaseAt(phases: ScenePhase[], elapsed: number): { phase: ScenePh
   return { phase, mapPhase };
 }
 
-/** Przybliżenie mapy dla etapu: trasa piesza albo `null` (cały dzień). */
+/** Przybliżenie mapy dla etapu: trasa piesza, miejsce albo `null` (cały widok). */
 export const mapFocus = (scene: PlayerScene, mapPhase: ScenePhase): MapFocus => {
+  if (mapPhase.kind === "pin") {
+    const pin = scene.map.pins[mapPhase.index];
+    return pin === undefined ? null : { key: `${scene.key}:pin:${mapPhase.index}`, lines: [], at: [pin.lng, pin.lat] };
+  }
   const walk = mapPhase.kind === "walk" ? scene.walks[mapPhase.index] : undefined;
   return walk === undefined ? null : { key: `${scene.key}:walk:${mapPhase.index}`, lines: walk.lines, ...(walk.at ? { at: walk.at } : {}) };
 };
+
+/** Dane mapy etapu: mapa dojazdu albo powrotu, inaczej mapa sceny. */
+export const mapDataFor = (scene: PlayerScene, mapPhase: ScenePhase): ShowMapData => (mapPhase.kind === "approach" && scene.approach ? scene.approach.map : scene.map);
+
+/** Karta w prawym górnym rogu dla etapu (wspólna dla odtwarzacza i eksportu); zdjęcia i ekrany jej nie mają. */
+export type PhaseCard = { label: string; title?: string; lines: string[]; bullets: string[] };
+
+export function phaseCard(scene: PlayerScene, phase: ScenePhase): PhaseCard | null {
+  if (isCard(scene)) return null;
+  if (phase.kind === "approach" && scene.approach) return { label: scene.approach.label, title: scene.approach.title, lines: scene.approach.facts ? [scene.approach.facts] : [], bullets: [] };
+  if (phase.kind === "walk") {
+    const walk = scene.walks[phase.index];
+    return walk ? { label: walk.label, title: walk.title, lines: walk.facts ? [walk.facts] : [], bullets: [] } : null;
+  }
+  if (phase.kind === "pin") {
+    const pin = scene.map.pins[phase.index];
+    return pin ? { label: scene.kind === "day" ? "Na trasie dnia" : "Na trasie", title: pin.name, lines: [], bullets: [] } : null;
+  }
+  if (phase.kind === "map" && (scene.stats.length > 0 || scene.points.length > 0)) {
+    return { label: scene.kind === "day" ? "Plan dnia" : "Wyjazd", ...(scene.stats.length > 0 ? { title: scene.stats.join(" · ") } : {}), lines: [], bullets: scene.points };
+  }
+  return null;
+}
 
 /** Długość odcinka w przybliżeniu płaskim (stopnie, długość skrócona o cos szerokości): do podziału czasu rysowania. */
 function lengthOf(coordinates: [number, number][]): number[] {
@@ -492,12 +551,12 @@ export function ShowPlayer({
   const { phase, mapPhase } = phaseAt(phases, elapsed);
   const photo = phase.kind === "photo" ? phase.index : -1;
   const perPhoto = phase.end - phase.start;
-  const walk = mapPhase.kind === "walk" ? scene.walks[mapPhase.index] : undefined;
   // Obiekt stały dla etapu: mapa robi nowe ujęcie tylko przy zmianie etapu.
   const focusKey = `${scene.key}:${mapPhase.kind}:${mapPhase.index}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const focus = useMemo(() => mapFocus(scene, mapPhase), [focusKey]);
-  const planCard = !isCard(scene) && phase.kind === "map" && (scene.stats.length > 0 || scene.points.length > 0);
+  const mapData = mapDataFor(scene, mapPhase);
+  const card = phaseCard(scene, phase);
   const share = span === 0 ? 0 : elapsed / span;
   // Napisy idą za głosem; w ciszy przed lektorem ich nie ma.
   const line = elapsed < lead ? undefined : (lines.find((each) => (duration === 0 ? 0 : narrated / duration) <= each.until) ?? lines.at(-1));
@@ -505,28 +564,23 @@ export function ShowPlayer({
   return (
     <div className="flex flex-col gap-3">
       <div ref={stage} className="relative aspect-[4/5] w-full sm:aspect-video overflow-hidden rounded-xl bg-black text-white [&:fullscreen]:rounded-none">
-        <ShowMap data={scene.map} sceneKey={scene.key} focus={focus} />
+        <ShowMap data={mapData} sceneKey={scene.key} focus={focus} />
 
-        {(planCard || (phase.kind === "walk" && walk)) && (
+        {card && (
           <div className="pointer-events-none absolute top-3 right-3 z-[15] flex max-w-[55%] flex-col gap-1 rounded-lg bg-black/60 px-3 py-2 text-xs backdrop-blur-sm sm:max-w-[40%] sm:text-sm">
-            {phase.kind === "walk" && walk ? (
-              <>
-                <p className="text-[10px] tracking-wider text-white/70 uppercase sm:text-xs">{walk.label}</p>
-                <p className="font-semibold">{walk.title}</p>
-                {walk.facts && <p className="text-white/85">{walk.facts}</p>}
-              </>
-            ) : (
-              <>
-                <p className="text-[10px] tracking-wider text-white/70 uppercase sm:text-xs">{scene.kind === "intro" ? "Wyjazd" : "Plan dnia"}</p>
-                {scene.stats.length > 0 && <p className="font-semibold">{scene.stats.join(" · ")}</p>}
-                {scene.points.length > 0 && (
-                  <ul className="flex flex-col gap-0.5 text-white/90">
-                    {scene.points.map((point) => (
-                      <li key={point}>• {point}</li>
-                    ))}
-                  </ul>
-                )}
-              </>
+            <p className="text-[10px] tracking-wider text-white/70 uppercase sm:text-xs">{card.label}</p>
+            {card.title && <p className="font-semibold">{card.title}</p>}
+            {card.lines.map((line) => (
+              <p key={line} className="text-white/85">
+                {line}
+              </p>
+            ))}
+            {card.bullets.length > 0 && (
+              <ul className="flex flex-col gap-0.5 text-white/90">
+                {card.bullets.map((point) => (
+                  <li key={point}>• {point}</li>
+                ))}
+              </ul>
             )}
           </div>
         )}
