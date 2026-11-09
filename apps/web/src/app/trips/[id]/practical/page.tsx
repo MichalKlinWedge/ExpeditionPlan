@@ -6,8 +6,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { draftPractical } from "@/app/practical-actions";
-import { PlanActionButton } from "@/components/plan-action-button";
+import { PracticalDraftButton } from "@/components/practical-draft";
 import { PracticalReview } from "@/components/practical-review";
 import { Loading, Shell } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
@@ -43,7 +42,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase
       .from("ai_runs")
-      .select("id, output, created_at, status")
+      .select("id, input, output, created_at, status")
       .eq("trip_id", id)
       .eq("stage", "practical")
       .in("status", ["ok", "accepted"])
@@ -55,6 +54,8 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
   if (data === null) notFound();
   const doc = stateFromPayload(data as PullPayload).doc;
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
+  // Opis potrzeby z ostatniego szkicu wraca w polu.
+  const lastFocus = ((draftRow.data?.input ?? {}) as { focus?: string }).focus ?? "";
   const output = draftRow.data?.output as { info?: unknown; sources?: SourceCheck[] } | null | undefined;
   const draft = PracticalInfo.safeParse(output?.info);
   const notes = doc.notes.filter((note) => note.scope === "trip");
@@ -69,9 +70,9 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
       </div>
 
       {canEdit && (
-        <PlanActionButton
-          ai
-          run={draftPractical.bind(null, id)}
+        <PracticalDraftButton
+          tripId={id}
+          saved={lastFocus}
           label={draft.success ? "Przygotuj nowy szkic z AI" : "Przygotuj z AI"}
           note="Notatki, kontakty alarmowe, sprzęt, zadania i źródła — szkic do akceptacji (Gemini, ok. 30 s)"
         />

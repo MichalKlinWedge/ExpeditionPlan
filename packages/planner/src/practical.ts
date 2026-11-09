@@ -64,7 +64,11 @@ export function practicalContext(doc: Doc, brief: TripBrief | null) {
   };
 }
 
-export function practicalPrompt(doc: Doc, brief: TripBrief | null): string {
+/** Najdłuższy opis potrzeby użytkownika w prompcie. */
+export const PRACTICAL_FOCUS_MAX = 500;
+
+export function practicalPrompt(doc: Doc, brief: TripBrief | null, focus = ''): string {
+  const need = focus.trim().slice(0, PRACTICAL_FOCUS_MAX);
   return [
     'Etap 5 — informacje praktyczne do wyjazdu. Przygotuj to, czego plan dnia nie mówi, a co trzeba wiedzieć i zrobić.',
     '',
@@ -77,6 +81,8 @@ export function practicalPrompt(doc: Doc, brief: TripBrief | null): string {
     '6. Strefa czasowa, różnica względem domu, wschody i zachody słońca — WYŁĄCZNIE z `facts` (liczy je kod z aktualnej bazy stref); nie podawaj ich z pamięci, przepisy o czasie bywają zmieniane.',
     '7. Wszystko po polsku, zwięźle.',
     '',
+    // Potrzeba użytkownika ustawia akcent, ale nie znosi zasad (bez zmyślonych numerów, źródła sprawdzane).
+    ...(need === '' ? [] : ['Czego szczególnie potrzebuje organizator (skup się na tym, ale zasady wyżej obowiązują):', need, '']),
     'JSON Schema:',
     schemaOf(PracticalInfo),
     '',
@@ -108,9 +114,9 @@ export type PracticalDraft = { info: PracticalInfo; sources: SourceCheck[] };
 export async function practicalInfo(
   doc: Doc,
   brief: TripBrief | null,
-  deps: { client: AiClient; timeoutMs?: number; onUsage?: (usage: AiUsage) => void; fetchImpl?: typeof fetch },
+  deps: { client: AiClient; timeoutMs?: number; onUsage?: (usage: AiUsage) => void; fetchImpl?: typeof fetch; focus?: string },
 ): Promise<PracticalDraft> {
-  const answer = await askStructured(deps.client, PracticalInfo, practicalPrompt(doc, brief), {
+  const answer = await askStructured(deps.client, PracticalInfo, practicalPrompt(doc, brief, deps.focus), {
     system: SYSTEM,
     maxTokens: 12_000,
     timeoutMs: deps.timeoutMs ?? 120_000,

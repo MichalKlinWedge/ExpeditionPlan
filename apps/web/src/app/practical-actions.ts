@@ -2,7 +2,7 @@
 
 import { PracticalInfo, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
-import { mergePractical, type PracticalDraft, type PracticalPick, practicalInfo } from "@expeditionplan/planner";
+import { mergePractical, PRACTICAL_FOCUS_MAX, type PracticalDraft, type PracticalPick, practicalInfo } from "@expeditionplan/planner";
 import { dbErrorMessage, type ElementWrite, type PullPayload, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -31,7 +31,9 @@ async function load(tripId: string) {
 }
 
 /** Nowy szkic etapu 5 (zastępuje poprzedni — strona pokazuje najnowszy). Trwa ok. 20–60 s. */
-export async function draftPractical(tripId: string): Promise<FormState> {
+/** `focus`: czego organizator szczególnie potrzebuje (pole nad przyciskiem); zapisane w `ai_runs.input`, żeby wróciło w polu. */
+export async function draftPractical(tripId: string, focus = ""): Promise<FormState> {
+  const need = focus.trim().slice(0, PRACTICAL_FOCUS_MAX);
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
   const denied = await aiAccessError();
@@ -44,6 +46,7 @@ export async function draftPractical(tripId: string): Promise<FormState> {
   try {
     draft = await practicalInfo(loaded.doc, loaded.brief, {
       client: setup.deps.client,
+      focus: need,
       onUsage: (each) => {
         usage.inputTokens += each.inputTokens;
         usage.outputTokens += each.outputTokens;
@@ -58,7 +61,7 @@ export async function draftPractical(tripId: string): Promise<FormState> {
     stage: "practical",
     provider: "GEMINI",
     model: setup.model,
-    input: {} as Json,
+    input: (need === "" ? {} : { focus: need }) as Json,
     output: draft as unknown as Json,
     status: "ok",
     tokens_in: usage.inputTokens,

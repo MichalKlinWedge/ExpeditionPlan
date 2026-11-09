@@ -5,7 +5,7 @@ import type { AiClient } from '@expeditionplan/ai';
 import { type PracticalInfo, TripDocument } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
-import { checkSource, mergePractical, practicalContext, practicalInfo } from '../practical.ts';
+import { checkSource, mergePractical, practicalContext, practicalInfo, practicalPrompt } from '../practical.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
 
@@ -35,6 +35,13 @@ describe('etap 5 — informacje praktyczne', () => {
     // Maroko od 20.09.2026 na UTC+0 — fakt z kodu, nie z pamięci modelu.
     expect(context.facts).toMatchObject({ utcOffset: '+0:00', differenceFromHomeMin: -60 });
     expect(context.facts.sun.length).toBeGreaterThan(0);
+  });
+
+  it('potrzeba organizatora trafia do promptu, przycięta; pusta nic nie dodaje', () => {
+    expect(practicalPrompt(maroko, null, '  jedziemy z 2-latkiem  ')).toContain('Czego szczególnie potrzebuje organizator');
+    expect(practicalPrompt(maroko, null, '  jedziemy z 2-latkiem  ')).toContain('\njedziemy z 2-latkiem\n');
+    expect(practicalPrompt(maroko, null, 'x'.repeat(900))).not.toContain('x'.repeat(501));
+    expect(practicalPrompt(maroko, null, '   ')).toBe(practicalPrompt(maroko, null));
   });
 
   it('martwe źródła wypadają, indeksy w notatkach się przeliczają', async () => {
