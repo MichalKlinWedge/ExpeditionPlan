@@ -604,8 +604,8 @@ export function ShowPlayer({
         <button onClick={() => go(index + 1)} disabled={index === scenes.length - 1} className="btn-secondary btn-sm" aria-label="Następna scena">⏭</button>
         <span className="text-zinc-500">{scene.kind === "title" ? "ekran startowy" : scene.kind === "end" ? "ekran końcowy" : `scena ${index} z ${story.length}`}</span>
         <span className="flex-1" />
-        <button onClick={() => setSubtitles((value) => !value)} className="btn-mini">{subtitles ? "ukryj napisy" : "pokaż napisy"}</button>
-        <button onClick={fullscreen} className="btn-mini">pełny ekran</button>
+        <button onClick={() => setSubtitles((value) => !value)} className="btn-secondary btn-sm">{subtitles ? "Ukryj napisy" : "Pokaż napisy"}</button>
+        <button onClick={fullscreen} className="btn-secondary btn-sm">Pełny ekran</button>
         {exportable && (
           <button
             onClick={() => {
@@ -613,10 +613,10 @@ export function ShowPlayer({
               setExporting(true);
             }}
             disabled={exporting}
-            className="btn-mini"
+            className="btn-secondary btn-sm"
             title="Nagranie filmu do pliku w tej przeglądarce"
           >
-            eksport do MP4
+            Eksport do MP4
           </button>
         )}
       </div>
