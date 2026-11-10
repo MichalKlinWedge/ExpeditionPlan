@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { addEatOutChoices, cuisineLabel, type Eatery, eaterySummary, eatOutOptions, mealSearchCenter, mealSlot, openAtMeal, pinnedEateryFacts } from '../eat-out.ts';
-import { parseRatingInput, ratingInputText, setVenueRating } from '../venue-info.ts';
+import { parseRatingInput, ratingInputText, ratingStarsText, setVenueRating } from '../venue-info.ts';
 import { itemsForDay } from '../engine/schedule.ts';
 import { mealList } from '../meals.ts';
 import { dayItems } from '../plan-edits.ts';
@@ -106,6 +106,8 @@ describe('knajpy w pobliżu posiłku', () => {
     expect(parseRatingInput('6')).toBe('invalid');
     expect(parseRatingInput('dobra')).toBe('invalid');
     expect(ratingInputText({ value: 4.5, count: 120 })).toBe('4,5 (120)');
+    expect(ratingStarsText({ value: 4.3, scale: 5, count: 1287 })).toBe('★★★★☆ 4,3 (1287)');
+    expect(ratingStarsText({ value: 8.6, scale: 10 })).toBe('★★★★☆ 8,6');
 
     const maroko = load('maroko');
     const rating = parseRatingInput('4,4 (88)') as Exclude<ReturnType<typeof parseRatingInput>, null | 'invalid'>;

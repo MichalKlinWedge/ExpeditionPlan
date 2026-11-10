@@ -18,6 +18,7 @@ import {
   type PlanItem as Item,
   speechParts,
   mealEateries,
+  ratingStarsText,
 } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { Image } from 'expo-image';
@@ -266,6 +267,11 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
                     {onMeal ? <Button small label={label} onPress={() => onMeal(item.ref)} /> : <ThemedText type="small">{label}</ThemedText>}
                     {spot && <PlacePin place={spot} />}
                   </View>
+                  {spot?.venue?.rating ? (
+                    <ThemedText type="small" style={styles.eateryRating} accessibilityLabel={`ocena ${spot.venue.rating.value} na ${spot.venue.rating.scale}`}>
+                      {ratingStarsText(spot.venue.rating)}
+                    </ThemedText>
+                  ) : null}
                   {eatery.summary ? (
                     <ThemedText type="small" themeColor="textSecondary" style={styles.eaterySummary}>
                       {eatery.summary}
@@ -359,6 +365,7 @@ const styles = StyleSheet.create({
   eateries: { gap: Spacing.one },
   eatery: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
   eaterySummary: { flexShrink: 1 },
+  eateryRating: { color: '#D97706' },
   eateryName: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.two },
   fill: { flex: 1 },
   top: { flexDirection: 'row', paddingHorizontal: Spacing.four, paddingVertical: Spacing.three },

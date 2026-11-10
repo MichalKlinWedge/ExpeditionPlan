@@ -185,6 +185,12 @@ export function parseRatingInput(text: string, source = 'Google'): VenueRating |
 export const ratingInputText = (rating: Pick<VenueRating, 'value' | 'count'>) =>
   `${rating.value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })}${rating.count ? ` (${rating.count})` : ''}`;
 
+/** Ocena jako tekst z gwiazdkami (telefon): „★★★★☆ 4,3 (1287)”; gwiazdki zaokrąglone do pełnych w skali 5. */
+export function ratingStarsText(rating: Pick<VenueRating, 'value' | 'scale' | 'count'>): string {
+  const full = Math.max(0, Math.min(5, Math.round((rating.value / rating.scale) * 5)));
+  return `${'★'.repeat(full)}${'☆'.repeat(5 - full)} ${ratingInputText(rating)}`;
+}
+
 /** Ustawia albo (`null`) usuwa ocenę knajpy. `null` = nie ma miejsca albo nie ma czego usunąć. */
 export function setVenueRating(doc: Doc, placeRef: string, rating: VenueRating | null): VenueEdit | null {
   if (rating === null) return removeVenueRating(doc, placeRef);
