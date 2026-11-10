@@ -195,24 +195,42 @@ function approaches(doc: Doc, firstDay: readonly Item[], lastDay: readonly Item[
   const isApproach = (item: Item) =>
     item.kind === 'transport' &&
     (isTransit(doc, item) || [item.leg?.fromPlaceRef, item.leg?.toPlaceRef].some((ref) => ref !== undefined && (ref === home || transitPlaces.has(ref))));
-  const outbound = firstDay.filter(isApproach);
-  return { outbound, back: firstDay === lastDay ? [] : lastDay.filter(isApproach) };
+  // Punkty, które nie są przejazdem, ale należą do dojazdu: oznaczone jako dojazd (lot z rezerwacji, „Dojazd lub powrót”)
+  // albo stojące tam, skąd dojazd rusza (zbiórka i odprawa na lotnisku w domu); przy powrocie — tam, dokąd wraca.
+  const along = (legs: readonly Item[], end: 'fromPlaceRef' | 'toPlaceRef') => {
+    const places = new Set(legs.flatMap((leg) => (leg.leg?.[end] === undefined ? [] : [leg.leg[end]!])));
+    // Cel dojazdu (lotnisko na miejscu) i start powrotu to już wyjazd: odbiór i zwrot auta zostają w dniu.
+    const local = end === 'fromPlaceRef' ? legs.at(-1)?.leg?.toPlaceRef : legs[0]?.leg?.fromPlaceRef;
+    if (local !== undefined) places.delete(local);
+    return (item: Item) => item.kind !== 'transport' && (isTransit(doc, item) || (item.placeRef !== undefined && places.has(item.placeRef)));
+  };
+  const outboundLegs = firstDay.filter(isApproach);
+  const backLegs = firstDay === lastDay ? [] : lastDay.filter(isApproach);
+  const outboundStop = along(outboundLegs, 'fromPlaceRef');
+  const backStop = along(backLegs, 'toPlaceRef');
+  return {
+    outbound: outboundLegs.length === 0 ? [] : firstDay.filter((item) => outboundLegs.includes(item) || outboundStop(item)),
+    back: backLegs.length === 0 ? [] : lastDay.filter((item) => backLegs.includes(item) || backStop(item)),
+  };
 }
 
 /** „Wrocław → Parking …” i „autem 130 km” dla karty dojazdu albo powrotu. */
 function approachCard(doc: Doc, items: readonly Item[], label: ShowApproach['label']): ShowApproach | undefined {
   if (items.length === 0) return undefined;
   const name = (ref: string | undefined) => doc.places.find((place) => place.ref === ref)?.name;
-  const from = name(items[0]!.leg?.fromPlaceRef ?? items[0]!.placeRef);
-  const to = name(items.at(-1)!.leg?.toPlaceRef ?? items.at(-1)!.placeRef);
-  const km = items.reduce((sum, item) => sum + (item.leg?.distanceKm ?? 0), 0);
-  const mode = (item: Item) => (item.leg !== undefined ? (LEG_MODE[item.leg.mode] ?? item.leg.mode) : isTransit(doc, item) ? LEG_MODE.flight! : '');
-  const modes = [...new Set(items.map(mode).filter((each) => each !== ''))];
+  // Opis „A → B · samolot” z samych przejazdów; zbiórka czy odprawa obok nich idą tylko na mapę.
+  const legs = items.some((item) => item.kind === 'transport') ? items.filter((item) => item.kind === 'transport') : items;
+  const from = name(legs[0]!.leg?.fromPlaceRef ?? legs[0]!.placeRef);
+  const to = name(legs.at(-1)!.leg?.toPlaceRef ?? legs.at(-1)!.placeRef);
+  const km = legs.reduce((sum, item) => sum + (item.leg?.distanceKm ?? 0), 0);
+  const flightBooking = (item: Item) => item.bookingRef !== undefined && doc.bookings.find((booking) => booking.ref === item.bookingRef)?.kind === 'flight';
+  const mode = (item: Item) => (item.leg !== undefined ? (LEG_MODE[item.leg.mode] ?? item.leg.mode) : flightBooking(item) || (item.kind === 'transport' && isTransit(doc, item)) ? LEG_MODE.flight! : '');
+  const modes = [...new Set(legs.map(mode).filter((each) => each !== ''))];
   return {
     refs: items.map((item) => item.ref),
     label,
     // Sam przylot (punkt bez „skąd”) ma tylko cel: wtedy nazwa punktu („Lądowanie w Agadirze”).
-    title: from && to && from !== to ? `${from} → ${to}` : items.length === 1 ? items[0]!.title : (to ?? from ?? items[0]!.title),
+    title: from && to && from !== to ? `${from} → ${to}` : legs.length === 1 ? legs[0]!.title : (to ?? from ?? legs[0]!.title),
     facts: [modes.join(', '), km >= 1 ? formatKm(km) : ''].filter((part) => part !== '').join(' · '),
   };
 }

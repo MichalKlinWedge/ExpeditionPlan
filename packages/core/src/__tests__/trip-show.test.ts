@@ -118,6 +118,19 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(intro.routeRefs.some((ref) => approach.has(ref))).toBe(false);
   });
 
+  it('punkty na lotnisku w domu należą do powrotu (i dojazdu), a punkty na lotnisku na miejscu zostają w dniu', () => {
+    const doc = fixture('maroko');
+    // Ostatni dzień: lot z Agadiru (p-aga) do Wrocławia (p-wro).
+    const errand = (ref: string, placeRef: string, sortKey: string) => ({ ref, dayRef: 'd5', sortKey, kind: 'errand' as const, title: ref, placeRef });
+    const withAirport = TripDocument.parse({ ...doc, items: [...doc.items, errand('odbior-bagazu', 'p-wro', 'zz1'), errand('oddanie-auta', 'p-aga', '0')] });
+    const { scenes } = showScenes(withAirport, base);
+    const back = scenes.at(-1)!.approach!;
+    expect(back.refs).toContain('odbior-bagazu');
+    expect(back.refs).not.toContain('oddanie-auta');
+    expect(back.facts).toContain('samolot');
+    for (const scene of scenes) expect(scene.routeRefs).not.toContain('odbior-bagazu');
+  });
+
   it('lot tam i z powrotem to dojazd i powrót', () => {
     const { scenes } = showScenes(fixture('maroko'), base);
     expect(scenes[0]!.approach?.facts).toContain('samolot');
