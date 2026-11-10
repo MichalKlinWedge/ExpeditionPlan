@@ -64,8 +64,6 @@ const OPEN = {
   closed: { label: "zamknięte w porze posiłku", className: "text-red-600" },
   unknown: { label: "godziny nieznane", className: "text-zinc-500" },
 } as const;
-/** To samo krócej, w kolumnie „W porze posiłku” tabeli przypiętych knajp. */
-const OPEN_SHORT = { open: "otwarte", partly: "tylko część", closed: "zamknięte", unknown: "nie wiadomo" } as const;
 
 const input = "field min-w-0 px-2 py-1 text-sm";
 /** Tyle wyników naraz; resztę pokazuje „pokaż więcej”. */
@@ -509,7 +507,6 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
               <th className="py-1 pr-3 font-normal">Knajpa</th>
               <th className="py-1 pr-3 font-normal">Co to</th>
               <th className="py-1 pr-3 font-normal">Ocena</th>
-              <th className="py-1 pr-3 font-normal">W porze posiłku</th>
               <th className="py-1 pr-3 font-normal">Linki</th>
               {canEdit && <th className="py-1 font-normal" />}
             </tr>
@@ -520,7 +517,8 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
               const facts = pinnedEateryFacts(doc, itemRef, eatery.placeRef, eatery.summary);
               const chosen = group !== undefined && eatery.active;
               const hours = doc.places.find((each) => each.ref === eatery.placeRef)?.openingHours;
-              const hasDetails = facts?.address !== undefined || hours !== undefined;
+              // W szczegółach zawsze jest co najmniej otwarcie w porze posiłku.
+              const hasDetails = facts !== null;
               const expanded = hasDetails && details.has(eatery.placeRef);
               const tint = chosen ? "bg-green-50 dark:bg-green-950" : "";
               return (
@@ -553,7 +551,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                       {(hasDetails || (canEdit && eatery.variantRef !== undefined && !eatery.active)) && (
                         <div className="flex flex-wrap items-center gap-1">
                           {hasDetails && (
-                            <button type="button" onClick={() => toggleDetails(eatery.placeRef)} aria-expanded={expanded} title="Adres i godziny otwarcia" className="btn-mini">
+                            <button type="button" onClick={() => toggleDetails(eatery.placeRef)} aria-expanded={expanded} title="Adres, otwarcie w porze posiłku i godziny" className="btn-mini">
                               szczegóły {expanded ? "▴" : "▾"}
                             </button>
                           )}
@@ -570,14 +568,6 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                   <td className="py-1 pr-3">
                     <RatingCell tripId={tripId} doc={doc} ids={ids} placeRef={eatery.placeRef} rating={facts?.rating} canEdit={canEdit} />
                   </td>
-                  <td className="py-1 pr-3">{facts ? (
-                      <span className={OPEN[facts.open.state].className}>
-                        {OPEN_SHORT[facts.open.state]}
-                        {facts.open.hours && facts.open.state !== "closed" && <span className="block text-zinc-500">{facts.open.hours}</span>}
-                      </span>
-                    ) : (
-                      "—"
-                    )}</td>
                   <td className="py-1 pr-3">
                     <span className="flex flex-wrap gap-x-2">
                       {(facts?.links ?? []).length === 0 && "—"}
@@ -598,10 +588,16 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                 </tr>
                 {expanded && (
                   <tr className={tint}>
-                    <td colSpan={canEdit ? 6 : 5} className="pb-1.5 pl-1 pr-3 text-zinc-500">
+                    <td colSpan={canEdit ? 5 : 4} className="pb-1.5 pl-1 pr-3 text-zinc-500">
                       {facts?.address && (
                         <span className="block">
                           <span className="font-medium text-zinc-600 dark:text-zinc-400">Adres:</span> {facts.address}
+                        </span>
+                      )}
+                      {facts && (
+                        <span className="block">
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">W porze posiłku:</span> <span className={OPEN[facts.open.state].className}>{OPEN[facts.open.state].label.replace(" w porze posiłku", "")}</span>
+                          {facts.open.hours && facts.open.state !== "closed" && <> ({facts.open.hours})</>}
                         </span>
                       )}
                       {hours && (
