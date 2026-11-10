@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 const REGENERATE = "Przygotować nowy opis? Obecny zostanie zastąpiony.";
 const REGENERATE_EDITED = "Przygotować nowy opis? Obecny, razem z ręcznymi poprawkami, zostanie zastąpiony.";
 
-export function GuideList({ tripId, guides, missing, canEdit }: { tripId: string; guides: TripGuide[]; missing: { ref: string; title: string }[]; canEdit: boolean }) {
+export function GuideList({ tripId, guides, missing, canEdit, openId }: { tripId: string; guides: TripGuide[]; missing: { ref: string; title: string }[]; canEdit: boolean; openId?: string }) {
   return (
     <div className="flex flex-col gap-6">
       {guides.length === 0 ? (
@@ -25,7 +25,7 @@ export function GuideList({ tripId, guides, missing, canEdit }: { tripId: string
       ) : (
         <ul className="flex flex-col gap-2">
           {guides.map((guide) => (
-            <GuideRowCard key={guide.rowId} tripId={tripId} guide={guide} canEdit={canEdit} />
+            <GuideRowCard key={guide.rowId} tripId={tripId} guide={guide} canEdit={canEdit} startOpen={guide.rowId === openId} />
           ))}
         </ul>
       )}
@@ -43,13 +43,13 @@ export function GuideList({ tripId, guides, missing, canEdit }: { tripId: string
   );
 }
 
-function GuideRowCard({ tripId, guide, canEdit }: { tripId: string; guide: TripGuide; canEdit: boolean }) {
-  const [open, setOpen] = useState(false);
+function GuideRowCard({ tripId, guide, canEdit, startOpen }: { tripId: string; guide: TripGuide; canEdit: boolean; startOpen: boolean }) {
+  const [open, setOpen] = useState(startOpen);
   const [editing, setEditing] = useState<"text" | "images" | null>(null);
   const { content } = guide;
   const confirm = content.edited || content.imagesEdited ? REGENERATE_EDITED : REGENERATE;
   return (
-    <li className="card flex flex-col gap-2 p-3 text-sm">
+    <li id={`opis-${guide.rowId}`} className={`card flex scroll-mt-4 flex-col gap-2 p-3 text-sm ${startOpen ? "ring-2 ring-sea" : ""}`}>
       <div className="card-title flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-left font-semibold hover:text-sea">
           {guide.title}

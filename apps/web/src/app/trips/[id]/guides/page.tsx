@@ -24,14 +24,17 @@ export default function GuidesPage(props: PageProps<"/trips/[id]/guides">) {
   return (
     <Shell>
       <Suspense fallback={<Loading />}>
-        <View params={props.params} />
+        <View params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </Shell>
   );
 }
 
-async function View({ params }: { params: Promise<{ id: string }> }) {
+async function View({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
+  // `?opis=<id>` (np. z „Miejsc”) rozwija ten opis od razu, a kotwica `#opis-<id>` przewija do niego.
+  const asked = (await searchParams).opis;
+  const openId = typeof asked === "string" ? asked : undefined;
   const { supabase } = await requireUser(`/trips/${id}/guides`);
   const [{ data, error }, membership] = await Promise.all([supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }), supabase.from("my_trips").select("role").eq("id", id).maybeSingle()]);
   if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
@@ -65,7 +68,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         </p>
       </div>
       {canEdit && missing.length > 0 && <PlanActionButton ai run={describeTrip.bind(null, id)} label={`Przygotuj brakujące opisy (${missing.length})`} note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />}
-      <GuideList tripId={id} guides={guides} missing={missing} canEdit={canEdit} />
+      <GuideList tripId={id} guides={guides} missing={missing} canEdit={canEdit} openId={openId} />
     </>
   );
 }

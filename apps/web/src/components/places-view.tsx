@@ -234,6 +234,12 @@ function PlaceDescription({ tripId, place, canEdit }: { tripId: string; place: P
           </p>
         )}
         {buttons}
+        <p className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+          <Link href={`/trips/${tripId}/guides?opis=${encodeURIComponent(guide.rowId)}#opis-${guide.rowId}`} className="btn-mini">
+            {canEdit ? "Edytuj opis ›" : "Opis w „Opisach miejsc” ›"}
+          </Link>
+          {canEdit && "Tam poprawisz tekst, zmienisz zdjęcia (także na własne) albo usuniesz opis."}
+        </p>
       </GuideArticle>
     )
   );
