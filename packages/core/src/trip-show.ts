@@ -16,7 +16,8 @@ import { tripMemories } from './trip-memories.ts';
  * miejsc) i film z wyjazdu (`/trips/[id]/film`, czas przeszły, przede wszystkim zdjęcia i wpisy z dziennika).
  * Każdy ma własny scenariusz (tabela `trip_shows`, wiersz na wyjazd i rodzaj).
  *
- * Pokaz z lektorem: sceny zebrane z planu — wstęp z mapą całej trasy, po jednej scenie na dzień
+ * Pokaz z lektorem: sceny zebrane z planu — wstęp z mapą całej trasy, plansza „Dokąd jedziemy” (ogólnie o kraju albo
+ * mieście, tekst AI z wiedzy ogólnej), po jednej scenie na dzień
  * (mapa dnia, zdjęcia z dziennika i z opisów miejsc) i zakończenie z podziękowaniami za zdjęcia i teksty.
  * Obraz liczy się zawsze od nowa z planu, a zapisany jest tylko tekst lektora i jego nagranie (`ShowScript`, tabela `trip_shows`).
  * Tekst pisze AI jako szkic z faktów sceny (`showBrief`), człowiek go poprawia; nagranie powstaje z tekstu (Gemini TTS)
@@ -39,7 +40,10 @@ export const ShowAudio = z.object({
 export const ShowNarration = z.object({
   key: z.string().min(1),
   text: z.string().max(3000),
-  /** Poprawione ręcznie: nowy szkic z AI tego nie zastąpi. */
+  /**
+   * Zatwierdzone (pole „zatwierdzone” w edytorze): nowy szkic z AI tego tekstu nie zastąpi. Ręczna poprawka zatwierdza
+   * sama, odznaczenie oddaje tekst AI (`setShowLocked`).
+   */
   edited: z.boolean().optional(),
   audio: ShowAudio.optional(),
 });
@@ -70,6 +74,8 @@ export const ShowScript = z.object({
    * (`withEndPhoto`).
    */
   endPhoto: z.string().max(1000).optional(),
+  /** Wiersz pod „Dokąd jedziemy” (kraj, miejsca), zapisany przy szkicu AI z briefu (`destinationLine`), więc publiczny link pokazuje to samo. */
+  destination: z.string().max(300).optional(),
 });
 
 export const SHOW_KINDS = ['preview', 'film'] as const;
@@ -102,7 +108,7 @@ export type ShowApproach = { refs: string[]; label: 'Dojazd' | 'Powrót'; title:
 
 export type ShowScene = {
   key: string;
-  kind: 'intro' | 'day' | 'outro';
+  kind: 'intro' | 'about' | 'day' | 'outro';
   heading: string;
   subheading?: string;
   /** Punkty na mapie sceny (`dayMap`): całej trasy albo dnia. */
@@ -413,6 +419,20 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     }
     if (guideCollage.length < 2) guideCollage.length = 0;
   }
+  // Scena o celu: AI dostaje miejsca noclegów i najważniejsze punkty, a kraj i miejsca z briefu dokłada `showBrief`.
+  const bases = days
+    .map((day) => doc.places.find((place) => place.ref === day.baseRef)?.name ?? dayLodging(doc, day.ref)?.name)
+    .filter((name): name is string => name !== undefined)
+    .filter((name, at, all) => all.indexOf(name) === at);
+  const highlights = dayItems
+    .flat()
+    .filter((item) => isSight(item) && item.priority === 'must' && !approachRefs.has(item.ref))
+    .map((item) => item.title)
+    .filter((title, at, all) => all.indexOf(title) === at)
+    .slice(0, 8);
+  const aboutFacts = [`Wyjazd: ${doc.trip.title}${doc.trip.subtitle ? ` — ${doc.trip.subtitle}` : ''}`];
+  if (bases.length > 0) aboutFacts.push(`Noclegi: ${bases.join(', ')}`);
+  if (highlights.length > 0) aboutFacts.push(`Najważniejsze punkty: ${highlights.join(', ')}`);
   const outboundCard = approachCard(doc, outbound, 'Dojazd');
   const backCard = approachCard(doc, back, 'Powrót');
   const localRoute = stats.routeRefs.filter((ref) => !approachRefs.has(ref));
@@ -435,6 +455,19 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       // Wstęp filmu nie ma mapy, więc i mapy dojazdu (opis dojazdu zostaje w faktach dla lektora).
       ...(outboundCard && !after ? { approach: outboundCard } : {}),
       facts: intro,
+    },
+    {
+      key: 'about',
+      kind: 'about',
+      heading: after ? 'Dokąd pojechaliśmy' : 'Dokąd jedziemy',
+      routeRefs: [],
+      images: [],
+      // Plansza z tekstem: mapa całej trasy była przed chwilą we wstępie.
+      mapless: true,
+      stats: [],
+      points: [],
+      walks: [],
+      facts: aboutFacts,
     },
     ...dayScenes,
     {
@@ -460,9 +493,35 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   };
 }
 
-/** Dane dla AI piszącego tekst lektora: tytuł, czas opowieści (film: przeszły) i fakty kolejnych scen. */
-export function showBrief(doc: Doc, scenes: readonly ShowScene[], kind: ShowKind) {
-  return { title: doc.trip.title, after: kind === 'film', scenes: scenes.map((scene) => ({ key: scene.key, kind: scene.kind, facts: scene.facts })) };
+/** Cel wyjazdu z briefu: kody krajów (ISO 3166-1) i miejsca tak, jak je wpisano. */
+export type ShowDestination = { countries: readonly string[]; places: readonly string[] };
+
+/** Polska nazwa kraju z kodu („GE” → „Gruzja”); nieznany kod zostaje kodem. */
+export function countryName(code: string): string {
+  try {
+    return new Intl.DisplayNames(['pl'], { type: 'region' }).of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** Wiersz pod „Dokąd jedziemy”: „Gruzja · Kutaisi, Zugdidi, Mestia” (najwyżej 5 miejsc). */
+export function destinationLine(destination: ShowDestination): string {
+  const places = destination.places.slice(0, 5).join(', ');
+  return [destination.countries.map(countryName).join(', '), places].filter((part) => part !== '').join(' · ');
+}
+
+/**
+ * Dane dla AI piszącego tekst lektora: tytuł, czas opowieści (film: przeszły) i fakty kolejnych scen; scena o celu
+ * dostaje kraje i miejsca z briefu, gdy jest.
+ */
+export function showBrief(doc: Doc, scenes: readonly ShowScene[], kind: ShowKind, destination?: ShowDestination) {
+  const extra = destination ? [`Kraj: ${destination.countries.map(countryName).join(', ')}`, ...(destination.places.length > 0 ? [`Miejsca z briefu: ${destination.places.join(', ')}`] : [])] : [];
+  return {
+    title: doc.trip.title,
+    after: kind === 'film',
+    scenes: scenes.map((scene) => ({ key: scene.key, kind: scene.kind, facts: scene.kind === 'about' ? [...scene.facts, ...extra] : scene.facts })),
+  };
 }
 export type ShowBrief = ReturnType<typeof showBrief>;
 
@@ -482,6 +541,17 @@ export function applyShowDraft(script: ShowScript, scenes: readonly ShowScene[],
       return [{ key: scene.key, text, ...(old?.audio ? { audio: old.audio } : {}) }];
     }),
   };
+}
+
+/** Zatwierdzenie tekstu sceny (AI go nie zmieni) albo jego zdjęcie (następny szkic AI napisze go od nowa). Scena bez tekstu bez zmian. */
+export function setShowLocked(script: ShowScript, key: string, locked: boolean): ShowScript {
+  const at = script.scenes.findIndex((scene) => scene.key === key);
+  const old = script.scenes[at];
+  if (old === undefined || old.text.trim() === '' || (old.edited === true) === locked) return script;
+  const next: ShowNarration = { ...old };
+  if (locked) next.edited = true;
+  else delete next.edited;
+  return { ...script, scenes: script.scenes.map((scene, index) => (index === at ? next : scene)) };
 }
 
 /** Tekst sceny poprawiony ręcznie; pusty tekst usuwa scenę ze scenariusza (wraca szkic przy następnym AI). */

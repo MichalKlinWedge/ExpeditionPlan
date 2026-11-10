@@ -46,10 +46,11 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
   const editor: EditorScene[] = scenes.map((scene) => {
     const told = narration.get(scene.key);
     const fits = told !== undefined && audioFits(told, script.voice);
+    const subheading = scene.kind === "about" ? script.destination : scene.subheading;
     return {
       key: scene.key,
       heading: scene.heading,
-      ...(scene.subheading ? { subheading: scene.subheading } : {}),
+      ...(subheading ? { subheading } : {}),
       text: told?.text ?? "",
       edited: told?.edited === true,
       status: told === undefined || told.text.trim() === "" ? "none" : fits ? "ready" : told.audio ? "old" : "new",

@@ -3,10 +3,10 @@
 import { MUSIC_MAX_BYTES, plural, type ShowKind, showMusicFile } from "@expeditionplan/core";
 import { dbErrorMessage } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
-import { type ChangeEvent, useRef, useState, useTransition } from "react";
+import { type ChangeEvent, useOptimistic, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowMusic, setShowEndPhoto, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowTextLock, setShowMusic, setShowEndPhoto, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
 import { IconAction } from "@/components/icon-action";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -116,21 +116,36 @@ function SceneText({ tripId, kind, scene, live }: { tripId: string; kind: ShowKi
       setResult(answer);
       if (answer.ok) router.refresh();
     });
+  // Pole zmienia się od razu; po zapisie i odświeżeniu stan bierze się znów z serwera (przy błędzie wraca).
+  const [locked, setLocked] = useOptimistic(scene.edited);
+  const lock = (value: boolean) =>
+    start(async () => {
+      setLocked(value);
+      const answer = await setShowTextLock(tripId, kind, scene.key, value);
+      setResult(answer);
+      if (answer.ok) router.refresh();
+    });
   return (
     <li className="flex flex-col gap-1.5 p-3">
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-medium">{scene.heading}</span>
         {scene.subheading && <span className="text-xs text-zinc-500">{scene.subheading}</span>}
         <span className="flex-1" />
-        {scene.edited && <span className="text-xs text-zinc-500">poprawione ręcznie</span>}
+        {/* Zatwierdzony tekst zostaje przy „Przygotuj tekst z AI od nowa”; ręczna poprawka zatwierdza sama. */}
+        {scene.text.trim() !== "" && (
+          <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400" title="Zaznaczone: AI nie zmieni tego tekstu przy następnym szkicu">
+            <input type="checkbox" checked={locked} disabled={pending || changed} onChange={(event) => lock(event.target.checked)} />
+            zatwierdzone
+          </label>
+        )}
         <RecordingBadge status={scene.status} {...(scene.seconds !== undefined ? { seconds: scene.seconds } : {})} {...(live !== undefined ? { live } : {})} unsaved={changed} />
       </div>
       <textarea value={text} onChange={(event) => setText(event.target.value)} rows={Math.min(8, Math.max(2, Math.ceil(text.length / 90)))} maxLength={3000} className="field p-2 text-sm" placeholder="Tekst lektora tej sceny (pusty: scena bez lektora, z samym nagłówkiem)" />
       {(changed || result) && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {changed && (
-            <button onClick={save} disabled={pending} className="btn-mini">
-              {pending ? "zapisuję…" : "zapisz"}
+            <button onClick={save} disabled={pending} className="btn-primary btn-sm">
+              {pending ? "Zapisuję…" : "Zapisz"}
             </button>
           )}
           {result?.error && <span className="msg-error">{result.error}</span>}
@@ -218,7 +233,7 @@ export function ShowEditor({
         ai
         run={draftShow.bind(null, tripId, kind)}
         label={scenes.some((scene) => scene.text !== "") ? "Przygotuj tekst z AI od nowa" : "Przygotuj tekst z AI"}
-        note={kind === "film" ? "Z wpisów i zdjęć dziennika, na tle planu; teksty poprawione ręcznie zostają" : "Zapowiedź z planu i opisów miejsc; teksty poprawione ręcznie zostają"}
+        note={kind === "film" ? "Z wpisów i zdjęć dziennika, na tle planu; teksty zatwierdzone zostają bez zmian" : "Zapowiedź z planu i opisów miejsc; teksty zatwierdzone zostają bez zmian"}
       />
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2">

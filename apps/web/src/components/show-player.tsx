@@ -88,7 +88,7 @@ export type PlayerApproach = { map: ShowMapData; label: string; title: string; f
 
 export type PlayerScene = {
   key: string;
-  kind: "intro" | "day" | "outro" | "title" | "end";
+  kind: "intro" | "about" | "day" | "outro" | "title" | "end";
   heading: string;
   subheading?: string;
   text: string;
@@ -778,7 +778,7 @@ export function ShowPlayer({
       <div className="flex flex-wrap gap-1">
         {story.map((each, at) => (
           <button key={each.key} onClick={() => go(at + 1)} className={`btn-mini ${at + 1 === index ? "ring-2 ring-sea" : ""}`} title={`${each.heading}${each.audio ? " · z lektorem" : ""}`}>
-            {each.kind === "intro" ? "Start" : each.kind === "outro" ? "Koniec" : each.heading.split(" · ")[0]}
+            {each.kind === "intro" ? "Start" : each.kind === "about" ? "Dokąd" : each.kind === "outro" ? "Koniec" : each.heading.split(" · ")[0]}
             {each.audio ? <SpeakerIcon className="size-3.5 msg-ok" /> : each.text.trim() !== "" ? " ✎" : ""}
           </button>
         ))}

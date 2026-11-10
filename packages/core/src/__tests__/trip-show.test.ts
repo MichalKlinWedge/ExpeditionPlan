@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GuideContent } from '../guide.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
-import { applyShowDraft, audioFits, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenesToRecord, setShowAudio, ShowScript, showBrief, showMusicFile, showScenes, withEndPhoto } from '../trip-show.ts';
+import { applyShowDraft, audioFits, destinationLine, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenesToRecord, setShowAudio, setShowLocked, ShowScript, showBrief, showMusicFile, showScenes, withEndPhoto } from '../trip-show.ts';
 
 const fixture = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
 
@@ -29,6 +29,22 @@ describe('sceny pokazu', () => {
       expect(scenes.filter((scene) => scene.kind === 'day')).toHaveLength(doc.days.length);
       expect(new Set(scenes.map((scene) => scene.key)).size).toBe(scenes.length);
     }
+  });
+
+  it('po wstępie plansza „Dokąd jedziemy” z noclegami; kraj i miejsca z briefu dochodzą do faktów dla AI', () => {
+    const doc = fixture('gruzja');
+    const { scenes } = showScenes(doc, base);
+    const about = scenes[1]!;
+    expect(about).toMatchObject({ key: 'about', kind: 'about', heading: 'Dokąd jedziemy', mapless: true, images: [] });
+    expect(about.facts).toContain('Noclegi: Zugdidi, Mestia, Szekwetili');
+    expect(showScenes(doc, { ...base, kind: 'film' }).scenes[1]!.heading).toBe('Dokąd pojechaliśmy');
+    const destination = { countries: ['GE'], places: ['Kutaisi', 'Mestia'] };
+    const brief = showBrief(doc, scenes, 'preview', destination);
+    expect(brief.scenes[1]!.facts).toContain('Kraj: Gruzja');
+    expect(brief.scenes[1]!.facts).toContain('Miejsca z briefu: Kutaisi, Mestia');
+    expect(brief.scenes[0]!.facts).not.toContain('Kraj: Gruzja');
+    expect(destinationLine(destination)).toBe('Gruzja · Kutaisi, Mestia');
+    expect(destinationLine({ countries: ['HR'], places: ['a', 'b', 'c', 'd', 'e', 'f'] })).toBe('Chorwacja · a, b, c, d, e');
   });
 
   it('zdjęcia z opisów miejsc trafiają do dnia raz i do podziękowań', () => {
@@ -208,6 +224,18 @@ describe('scenariusz lektora', () => {
     const next = applyShowDraft(script, scenes, { scenes: [{ key: 'intro', text: 'AI wstęp' }, { key: 'day:a', text: ' AI dzień ' }, { key: 'day:zz', text: 'obcy' }] });
     expect(next.scenes).toEqual([{ key: 'intro', text: 'Mój wstęp', edited: true }, { key: 'day:a', text: 'AI dzień', audio }]);
     expect(audioFits(next.scenes[1]!, 'Sulafat')).toBe(false);
+  });
+
+  it('zatwierdzony tekst zostaje przy szkicu AI, odznaczony wraca do AI; scena bez tekstu bez zmian', () => {
+    const script = ShowScript.parse({ scenes: [{ key: 'intro', text: 'tekst AI' }] });
+    const locked = setShowLocked(script, 'intro', true);
+    expect(locked.scenes[0]).toEqual({ key: 'intro', text: 'tekst AI', edited: true });
+    expect(applyShowDraft(locked, scenes, { scenes: [{ key: 'intro', text: 'nowy' }] }).scenes[0]!.text).toBe('tekst AI');
+    const unlocked = setShowLocked(locked, 'intro', false);
+    expect(unlocked.scenes[0]).toEqual({ key: 'intro', text: 'tekst AI' });
+    expect(applyShowDraft(unlocked, scenes, { scenes: [{ key: 'intro', text: 'nowy' }] }).scenes[0]!.text).toBe('nowy');
+    expect(setShowLocked(script, 'outro', true)).toBe(script);
+    expect(setShowLocked(locked, 'intro', true)).toBe(locked);
   });
 
   it('poprawka ręczna zostawia stare nagranie do usunięcia; pusty tekst usuwa scenę i jej plik', () => {

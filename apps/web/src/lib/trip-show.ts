@@ -100,11 +100,13 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
     const told = narration.get(scene.key);
     const url = told && audioFits(told, script.voice) ? audioUrls.get(told.audio.path) : undefined;
     const map = mapFor(scene.routeRefs);
+    // „Dokąd jedziemy”: kraj i miejsca zapisane przy szkicu AI (z briefu), ten sam wiersz pod publicznym linkiem.
+    const subheading = scene.kind === "about" ? script.destination : scene.subheading;
     return {
       key: scene.key,
       kind: scene.kind,
       heading: scene.heading,
-      ...(scene.subheading ? { subheading: scene.subheading } : {}),
+      ...(subheading ? { subheading } : {}),
       text: told?.text ?? "",
       images: scene.images,
       ...(scene.collage ? { collage: scene.collage } : {}),

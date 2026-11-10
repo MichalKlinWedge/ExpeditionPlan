@@ -1,7 +1,7 @@
 "use server";
 
 import { isSpeechVoice, SpeechLimitError } from "@expeditionplan/ai";
-import { applyShowDraft, droppedAudio, editShowText, isShowKind, isShowMusicPath, narrationHash, plural, type ShowKind, ShowScript, setShowAudio, showBrief } from "@expeditionplan/core";
+import { applyShowDraft, BriefLocation, destinationLine, droppedAudio, editShowText, isShowKind, isShowMusicPath, narrationHash, plural, type ShowKind, ShowScript, setShowAudio, setShowLocked, showBrief } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { draftShowNarration } from "@expeditionplan/planner";
 import { refresh } from "next/cache";
@@ -53,14 +53,19 @@ export async function draftShow(tripId: string, kind: ShowKind): Promise<FormSta
   const loaded = await load(tripId, kind);
   if ("error" in loaded) return { error: loaded.error };
   const { supabase, doc, scenes, script } = loaded;
+  // Kraj i miejsca z briefu do sceny „Dokąd jedziemy” (brief bywa niepełny albo go nie ma: wtedy same noclegi z planu).
+  const { data: briefRow } = await supabase.from("trip_brief").select("brief").eq("trip_id", tripId).maybeSingle();
+  const location = BriefLocation.safeParse((briefRow?.brief as { location?: unknown } | null | undefined)?.location);
+  const destination = location.success ? { countries: location.data.countries, places: location.data.places } : undefined;
   try {
-    const draft = await draftShowNarration(gemini.client, showBrief(doc, scenes, kind), { timeoutMs: 120_000 });
-    const next = applyShowDraft(script, scenes, draft);
+    const draft = await draftShowNarration(gemini.client, showBrief(doc, scenes, kind, destination), { timeoutMs: 120_000 });
+    const drafted = applyShowDraft(script, scenes, draft);
+    const next = destination ? { ...drafted, destination: destinationLine(destination) } : drafted;
     const failed = await save(supabase, tripId, kind, script, next);
     if (failed) return { error: failed };
     const kept = script.scenes.filter((scene) => scene.edited && scene.text.trim() !== "").length;
     refresh();
-    return { ok: `Tekst lektora gotowy: ${plural(next.scenes.length - kept, ["scena", "sceny", "scen"])} z AI${kept > 0 ? `, poprawione ręcznie zostały (${kept})` : ""}. Przeczytaj go przed nagraniem.` };
+    return { ok: `Tekst lektora gotowy: ${plural(next.scenes.length - kept, ["scena", "sceny", "scen"])} z AI${kept > 0 ? `, zatwierdzone zostały bez zmian (${kept})` : ""}. Przeczytaj go przed nagraniem.` };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
@@ -77,6 +82,19 @@ export async function saveShowText(tripId: string, kind: ShowKind, key: string, 
   if (failed) return { error: failed };
   refresh();
   return { ok: "Zapisano." };
+}
+
+/** „Zatwierdzone” przy tekście sceny: zaznaczone — nowy szkic AI go nie zmieni; odznaczone — napisze go od nowa. */
+export async function setShowTextLock(tripId: string, kind: ShowKind, key: string, locked: boolean): Promise<FormState> {
+  const loaded = await load(tripId, kind);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, script } = loaded;
+  const next = setShowLocked(script, key, locked);
+  if (next === script) return { ok: "Bez zmian." };
+  const failed = await save(supabase, tripId, kind, script, next);
+  if (failed) return { error: failed };
+  refresh();
+  return { ok: locked ? "Zatwierdzone: AI tego tekstu nie zmieni." : "AI może napisać ten tekst od nowa." };
 }
 
 export async function setShowVoice(tripId: string, kind: ShowKind, voice: string): Promise<FormState> {
