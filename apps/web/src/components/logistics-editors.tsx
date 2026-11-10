@@ -48,8 +48,8 @@ const small = "btn-mini";
 const primary = "btn-primary btn-sm";
 
 function Status({ state }: { state: FormState }) {
-  if (state.error) return <p className="text-xs text-red-600">{state.error}</p>;
-  if (state.ok) return <p className="text-xs text-green-700 dark:text-green-400">{state.ok}</p>;
+  if (state.error) return <p className="text-xs msg-error">{state.error}</p>;
+  if (state.ok) return <p className="text-xs msg-ok">{state.ok}</p>;
   return null;
 }
 
@@ -164,7 +164,7 @@ export function ExpenseVehicleEditor({ tripId, expenseId, cars, vehicleId, canEd
           ))}
         </select>
       </label>
-      {save.state.error && <span className="text-red-600">{save.state.error}</span>}
+      {save.state.error && <span className="msg-error">{save.state.error}</span>}
     </span>
   );
 }
@@ -523,7 +523,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
           )}
           <td className="py-1 pr-3 align-top break-words">
             <span className={`block ${muted}`}>
-              {task.priority === "high" ? <span className="text-red-600" title="pilne">! </span> : null}
+              {task.priority === "high" ? <span className="msg-error" title="pilne">! </span> : null}
               {task.title}
             </span>
             {/* Na telefonie rodzaj, termin, osoby i działania pod nazwą: tyle kolumn się nie mieści. */}
@@ -545,7 +545,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
             {checkColumn && <td />}
             <td colSpan={span - (checkColumn ? 1 : 0)} className="pb-1.5 text-xs break-words">
               {task.body && <span className="block whitespace-pre-line text-zinc-500">{task.body}</span>}
-              {task.answer && <span className="block whitespace-pre-line text-green-700 dark:text-green-400">→ {task.answer}</span>}
+              {task.answer && <span className="block whitespace-pre-line msg-ok">→ {task.answer}</span>}
             </td>
           </tr>
         )}
@@ -613,7 +613,7 @@ export function BookingStatusSelect({ tripId, bookingRef, status, statuses, tone
         ))}
       </select>
       {action.pending && <span className="text-xs text-zinc-500">zapisuję…</span>}
-      {action.state.error && <span className="text-xs text-red-600">{action.state.error}</span>}
+      {action.state.error && <span className="text-xs msg-error">{action.state.error}</span>}
     </span>
   );
 }
@@ -626,7 +626,7 @@ export function RemoveCancelledBooking({ tripId, bookingRef, title, note }: { tr
     <span className="inline-flex items-center gap-1">
       <IconAction kind="remove" tip="Usuń anulowaną rezerwację z listy" disabled={action.pending} onClick={() => action.run(() => removeCancelledBooking(tripId, bookingRef), question)} />
       {action.pending && <span className="text-xs text-zinc-500">usuwam…</span>}
-      {action.state.error && <span className="text-xs text-red-600">{action.state.error}</span>}
+      {action.state.error && <span className="text-xs msg-error">{action.state.error}</span>}
     </span>
   );
 }
@@ -654,7 +654,7 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
     startTransition(() => action(data));
   };
   return (
-    <form action={action} onSubmit={submit} className="mt-1 flex flex-col gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+    <form action={action} onSubmit={submit} className="mt-1 flex flex-col gap-3 panel p-3">
       <datalist id={listId}>
         {zones.map((zone) => (
           <option key={zone} value={zone} />
@@ -1024,7 +1024,7 @@ function BookingItemsForm({ tripId, bookingRef, items, chosen, onDone }: { tripI
   const [picked, setPicked] = useState<Set<string>>(() => new Set(chosen));
   const action = useAction();
   return (
-    <div className="mt-1 flex flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+    <div className="mt-1 flex flex-col gap-2 panel p-3 text-sm">
       <p className="text-xs text-zinc-500">Zaznacz punkty planu, które ta rezerwacja obejmuje — dostaną płatność „w cenie” i nie trafią osobno do budżetu.</p>
       <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
         {items.map((item) => (
@@ -1072,7 +1072,7 @@ function ContactForm({ tripId, contact, bookings, onDone, defaultRole = "host" }
     return result;
   }, {});
   return (
-    <form action={action} className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+    <form action={action} className="flex flex-col gap-2 panel p-3">
       <div className="flex flex-wrap gap-2">
         <input name="name" required defaultValue={contact?.name} placeholder="np. Youssef (riad)" className={`${input} min-w-40 flex-1`} aria-label="Nazwa" />
         <select name="role" defaultValue={contact?.role ?? defaultRole} className={input} aria-label="Rola">
@@ -1254,11 +1254,11 @@ export function TripCurrency({ tripId, base, known, canEdit }: { tripId: string;
             <IconAction kind="change" onClick={() => setOpen(true)} />
           </>
         )}
-        {state.ok && <span className="text-green-700 dark:text-green-400"> {state.ok}</span>}
+        {state.ok && <span className="msg-ok"> {state.ok}</span>}
       </p>
     );
   return (
-    <form action={action} className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+    <form action={action} className="flex flex-col gap-2 panel p-3 text-sm">
       <p className="text-xs text-zinc-500">Przeliczą się sumy, plan dzień po dniu, rozliczenie i kursy. Kwoty pozycji i wydatków zostają w swoich walutach.</p>
       <div className="flex flex-wrap items-center gap-2">
         <input name="currency" required defaultValue={base} list="trip-currencies" maxLength={3} className={`${input} w-20 uppercase`} aria-label="Waluta wyjazdu" />
@@ -1307,13 +1307,13 @@ export function FxEditor({ tripId, fx, base, missing, canEdit }: { tripId: strin
             </button>
           </>
         )}
-        {fetched.ok && <span className="text-green-700 dark:text-green-400"> {fetched.ok}</span>}
-        {fetched.error && <span className="text-red-600"> {fetched.error}</span>}
+        {fetched.ok && <span className="msg-ok"> {fetched.ok}</span>}
+        {fetched.error && <span className="msg-error"> {fetched.error}</span>}
       </p>
     );
   }
   return (
-    <form action={action} className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+    <form action={action} className="flex flex-col gap-2 panel p-3 text-sm">
       <p className="text-xs text-zinc-500">Ile {base} za 1 jednostkę waluty — np. MAD 0,43. Data: z kiedy kurs (np. z dnia zakupu).</p>
       {rows.map((row) => (
         <div key={row.key} className="flex flex-wrap items-center gap-2">
@@ -1365,8 +1365,8 @@ function ShoppingForm({ tripId, item, onDone }: { tripId: string; item?: Shoppin
           {pending ? "Zapisuję…" : item ? "Zapisz" : "Dodaj"}
         </button>
         {onDone && (
-          <button type="button" onClick={onDone} className={small}>
-            anuluj
+          <button type="button" onClick={onDone} className="btn-secondary btn-sm">
+            Anuluj
           </button>
         )}
         <Status state={state} />
@@ -1382,7 +1382,7 @@ export function SelfCookedToggle({ tripId, itemRef, value }: { tripId: string; i
     <label className="inline-flex items-center gap-1 text-xs">
       <input type="checkbox" checked={value} disabled={toggle.pending} onChange={(event) => toggle.run(() => setSelfCooked(tripId, itemRef, event.target.checked))} />
       gotujemy sami
-      {toggle.state.error && <span className="text-red-600"> {toggle.state.error}</span>}
+      {toggle.state.error && <span className="msg-error"> {toggle.state.error}</span>}
     </label>
   );
 }

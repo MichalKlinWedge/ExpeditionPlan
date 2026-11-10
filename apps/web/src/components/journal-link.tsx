@@ -52,7 +52,7 @@ export function JournalLink({ itemId, tz, candidates }: { itemId: string; tz: st
       </div>
       <ul className="grid gap-2 sm:grid-cols-2">
         {candidates.map((entry) => (
-          <li key={entry.id} className="flex gap-2 rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
+          <li key={entry.id} className="flex gap-2 panel p-2">
             {entry.url ? (
               // Podpisany URL z bucketu — zwykły <img> (adres wygasa).
               // eslint-disable-next-line @next/next/no-img-element
@@ -80,7 +80,7 @@ export function JournalLink({ itemId, tz, candidates }: { itemId: string; tz: st
           </li>
         ))}
       </ul>
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <p className="msg-error">{error}</p>}
     </section>
   );
 }

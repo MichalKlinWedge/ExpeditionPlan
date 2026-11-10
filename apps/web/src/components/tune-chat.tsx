@@ -38,7 +38,7 @@ export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Tu
       )}
 
       {preview && (
-        <div className="flex flex-col gap-2 rounded-lg border border-blue-200 p-3 dark:border-blue-900">
+        <div className="flex flex-col gap-2 panel-ai p-3">
           <p className="text-xs text-zinc-500">Proponowane zmiany — jeszcze nie w planie:</p>
           <ul className="flex flex-col gap-1">
             {preview.results.map((result, i) => (
@@ -75,14 +75,14 @@ export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Tu
               className="btn-primary">
               {deciding ? "Zapisuję…" : "Zastosuj"}
             </button>
-            <button disabled={deciding} onClick={() => start(async () => setDecision(await rejectPatch(tripId, preview.runId)))} className="btn-mini">
+            <button disabled={deciding} onClick={() => start(async () => setDecision(await rejectPatch(tripId, preview.runId)))} className="btn-mini btn-mini-danger">
               Odrzuć
             </button>
           </div>
         </div>
       )}
-      {decision.error && <p className="text-red-600">{decision.error}</p>}
-      {decision.ok && <p className="text-green-700 dark:text-green-400">{decision.ok}</p>}
+      {decision.error && <p className="msg-error">{decision.error}</p>}
+      {decision.ok && <p className="msg-ok">{decision.ok}</p>}
 
       <form action={action} className="flex flex-col gap-2">
         <textarea
@@ -104,7 +104,7 @@ export function TuneChat({ tripId, turns, preview }: { tripId: string; turns: Tu
             </button>
           ))}
         </div>
-        {state.error && <p className="text-red-600">{state.error}</p>}
+        {state.error && <p className="msg-error">{state.error}</p>}
       </form>
     </div>
   );

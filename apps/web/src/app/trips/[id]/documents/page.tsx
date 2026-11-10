@@ -38,14 +38,14 @@ async function Documents({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, profiles(display_name)").eq("trip_id", id).order("created_at"),
   ]);
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const payload = data as PullPayload;
   let doc: TripDocument;
   try {
     doc = stateFromPayload(payload).doc;
   } catch (e) {
-    return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const role = membership.data?.role;
   const mayEdit = role === "owner" || role === "editor";

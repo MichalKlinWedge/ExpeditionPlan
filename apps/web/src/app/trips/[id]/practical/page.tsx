@@ -51,7 +51,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
       .limit(1)
       .maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const doc = stateFromPayload(data as PullPayload).doc;
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
@@ -75,7 +75,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
       )}
       {canEdit && draft.success && draftRow.data?.status === "ok" && <PracticalReview tripId={id} runId={draftRow.data.id} info={draft.data} checks={output?.sources ?? []} />}
       {/* Po „Dodaj zaznaczone” szkic znika z odświeżonej strony — potwierdzenie zostaje tutaj. */}
-      {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm text-green-700 dark:text-green-400">Ostatni szkic AI dodany do planu — notatki, kontakty i źródła są niżej, pakowanie w telefonie, zadania na stronie rezerwacji i zadań.</p>}
+      {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm msg-ok">Ostatni szkic AI dodany do planu — notatki, kontakty i źródła są niżej, pakowanie w telefonie, zadania na stronie rezerwacji i zadań.</p>}
 
       <section className={card}>
         <h2 className="card-title">Notatki ({notes.length})</h2>

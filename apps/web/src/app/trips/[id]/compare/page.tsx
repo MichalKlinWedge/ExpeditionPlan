@@ -50,7 +50,7 @@ async function Compare({ params, searchParams }: { params: Promise<{ id: string 
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
   ]);
   const error = planRes.error ?? draftRes.error;
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (planRes.data === null || draftRes.data === null) notFound();
   const role = membership.data?.role;
   if (role !== "owner" && role !== "editor") return <p className="text-sm text-zinc-500">Przenosić punkty do planu może organizator albo edytor.</p>;
@@ -61,7 +61,7 @@ async function Compare({ params, searchParams }: { params: Promise<{ id: string 
     plan = stateFromPayload(planRes.data as Payload);
     draft = stateFromPayload(draftRes.data as Payload);
   } catch (e) {
-    return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const tables = (planRes.data as { tables: Parameters<typeof refIndex>[0] }).tables;
   const locked = [...lockedRefs(tables)];
@@ -90,7 +90,7 @@ async function Review({ id, supabase }: { id: string; supabase: Supabase }) {
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase.from("ai_runs").select("id, output").eq("trip_id", id).eq("stage", "review").eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
-  if (pulled.error) return <p className="text-sm text-red-600">{dbLoadError(pulled.error)}</p>;
+  if (pulled.error) return <p className="text-sm msg-error">{dbLoadError(pulled.error)}</p>;
   if (pulled.data === null) notFound();
   const role = membership.data?.role;
   if (role !== "owner" && role !== "editor") return <p className="text-sm text-zinc-500">Przeglądać plan z AI może organizator albo edytor.</p>;
@@ -99,7 +99,7 @@ async function Review({ id, supabase }: { id: string; supabase: Supabase }) {
   try {
     doc = stateFromPayload(payload).doc;
   } catch (e) {
-    return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const locked = lockedRefs(payload.tables);
   const stored = StoredReview.safeParse(runRow.data?.output);

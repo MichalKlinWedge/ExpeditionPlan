@@ -47,7 +47,7 @@ export function TripReadiness({ tripId, issues, daysLeft, people }: { tripId: st
       <summary className="card-title cursor-pointer">
         Gotowość do wyjazdu <span className="font-normal text-zinc-500">· {when}</span>{" "}
         {total === 0 ? (
-          <span className="font-normal text-emerald-700 dark:text-emerald-400">· ✓ bez zaległości</span>
+          <span className="font-normal msg-ok">· ✓ bez zaległości</span>
         ) : (
           <span className="font-normal text-zinc-500">
             · do zrobienia: {total}

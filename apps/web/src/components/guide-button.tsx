@@ -33,8 +33,8 @@ function GuideSourceForm({ tripId, target, confirmRegenerate }: { tripId: string
           <SparkIcon className="size-4" />
           {pending ? "Czytam i piszę… (ok. 10–30 s)" : "Przygotuj z tego źródła (AI)"}
         </button>
-        {state.error && <p className="text-red-600">{state.error}</p>}
-        {state.ok && <p className="text-green-700 dark:text-green-400">{state.ok}</p>}
+        {state.error && <p className="msg-error">{state.error}</p>}
+        {state.ok && <p className="msg-ok">{state.ok}</p>}
       </div>
     </details>
   );
@@ -63,8 +63,8 @@ export function PlaceGuideButtons({ tripId, placeRef, guideId, label, which: sav
           <IconAction kind="remove" tip="Usuń opis" disabled={pending} onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))} />
         )}
       </div>
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
-      {state.ok && <p className="text-xs text-green-700 dark:text-green-400">{state.ok}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
+      {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
       <GuideSourceForm tripId={tripId} target={{ placeRef }} confirmRegenerate={confirmRegenerate} />
     </div>
   );
@@ -101,8 +101,8 @@ export function GuideButtons({ tripId, itemRef, guideId, hint: saved = "", label
           <IconAction kind="remove" tip="Usuń opis" disabled={pending} onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))} />
         )}
       </div>
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
-      {state.ok && <p className="text-xs text-green-700 dark:text-green-400">{state.ok}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
+      {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
       <GuideSourceForm tripId={tripId} target={{ itemRef }} confirmRegenerate={confirmRegenerate} />
     </div>
   );

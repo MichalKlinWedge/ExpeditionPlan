@@ -122,7 +122,7 @@ function GroupCard({ tripId, group, person, canEdit }: { tripId: string; group: 
   const vote = (variantId: string | null, withdrawn = false) => run(() => castVote(tripId, person!.id, { groupId: group.id, variantId }, withdrawn));
 
   return (
-    <div id={`glos-${group.ref}`} className="flex scroll-mt-20 flex-col gap-2 rounded-md border border-zinc-200 p-3 text-sm target:border-signal dark:border-zinc-800">
+    <div id={`glos-${group.ref}`} className="flex scroll-mt-20 flex-col gap-2 panel p-3 text-sm target:border-signal">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-medium">{group.title}</p>
         <span className="text-xs text-zinc-500">{[group.where, group.decideBy ? `decyzja do ${group.decideBy}` : null].filter(Boolean).join(" · ")}</span>
@@ -189,7 +189,7 @@ function GroupCard({ tripId, group, person, canEdit }: { tripId: string; group: 
         {group.indifferent.length > 0 && <span>wszystko jedno: {group.indifferent.join(", ")}</span>}
         {group.missing.length > 0 && <span>nie głosowali: {group.missing.join(", ")}</span>}
       </div>
-      {message.error && <p className="text-xs text-red-600">{message.error}</p>}
+      {message.error && <p className="text-xs msg-error">{message.error}</p>}
     </div>
   );
 }
@@ -316,8 +316,8 @@ function DateSection({ tripId, poll, length, terms, answers, dayCounts, trip, ca
                 Anuluj
               </button>
             )}
-            {message.ok && <span className="text-xs text-emerald-700 dark:text-emerald-400">{message.ok}</span>}
-            {message.error && <span className="text-xs text-red-600">{message.error}</span>}
+            {message.ok && <span className="text-xs msg-ok">{message.ok}</span>}
+            {message.error && <span className="text-xs msg-error">{message.error}</span>}
           </div>
         </div>
       )}
@@ -391,8 +391,8 @@ function PollForm({ tripId, poll }: { tripId: string; poll: DatePoll | null }) {
         </button>
       </div>
       <p>Długość terminu to długość wyjazdu. Okno najwyżej na 4 miesiące; puste daty zamykają ankietę (odpowiedzi zostają).</p>
-      {state.ok && <p className="text-emerald-700 dark:text-emerald-400">{state.ok}</p>}
-      {state.error && <p className="text-red-600">{state.error}</p>}
+      {state.ok && <p className="msg-ok">{state.ok}</p>}
+      {state.error && <p className="msg-error">{state.error}</p>}
     </form>
   );
 }

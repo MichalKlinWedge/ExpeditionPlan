@@ -90,7 +90,7 @@ export function CompareView({ tripId, plan: initialPlan, ids: initialIds, locked
   return (
     <div className="flex flex-col gap-6">
       <p className="sticky top-0 z-10 -mx-4 bg-[var(--background)] px-4 py-1 text-xs text-zinc-500">
-        {status.pending ? "Zapisuję…" : status.error ? <span className="text-red-600">{status.error}</span> : status.ok ? <span className="text-green-700 dark:text-green-400">{status.ok}</span> : "Zmienia się tylko plan — szkic zostaje bez zmian."}
+        {status.pending ? "Zapisuję…" : status.error ? <span className="msg-error">{status.error}</span> : status.ok ? <span className="msg-ok">{status.ok}</span> : "Zmienia się tylko plan — szkic zostaje bez zmian."}
       </p>
 
       {pairs.map((pair) => {
@@ -133,7 +133,7 @@ export function CompareView({ tripId, plan: initialPlan, ids: initialIds, locked
                 empty="Szkic nie ma punktów tego dnia."
                 marker={(item) =>
                   inPlan.has(key(item.title)) ? (
-                    <span className="text-xs text-green-700 dark:text-green-400">✓ w planie</span>
+                    <span className="text-xs msg-ok">✓ w planie</span>
                   ) : (
                     <button disabled={status.pending} onClick={() => copy([item.ref], pair.date)} className={button}>
                       → do planu
@@ -155,7 +155,7 @@ export function CompareView({ tripId, plan: initialPlan, ids: initialIds, locked
                 <span>{item.title}</span>
                 {item.area && <span className="text-zinc-500">· {item.area}</span>}
                 {inPool.has(key(item.title)) ? (
-                  <span className="text-xs text-green-700 dark:text-green-400">✓ w puli planu</span>
+                  <span className="text-xs msg-ok">✓ w puli planu</span>
                 ) : (
                   <button disabled={status.pending} onClick={() => copy([item.ref], null)} className={button}>
                     → do puli planu

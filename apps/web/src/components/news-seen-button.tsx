@@ -11,7 +11,7 @@ export function NewsSeenButton({ tripId }: { tripId: string }) {
   const [pending, start] = useTransition();
   return (
     <span className="flex items-center gap-2">
-      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+      {state.error && <span className="text-xs msg-error">{state.error}</span>}
       <button type="button" disabled={pending} onClick={() => start(async () => setState(await markTripNewsSeen(tripId)))} className="btn-secondary btn-sm">
         {pending ? "zapisuję…" : "Przejrzane"}
       </button>

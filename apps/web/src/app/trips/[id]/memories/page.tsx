@@ -247,7 +247,7 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, userId } = await requireUser(`/trips/${id}/memories`);
   const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const payload = data as PullPayload;
   let doc: TripDocument;
@@ -255,7 +255,7 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
   try {
     ({ doc, inputs } = stateFromPayload(payload));
   } catch (e) {
-    return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const tables = payload.tables as unknown as Record<string, unknown[] | undefined>;
   const entries = ((tables.journal_entries ?? []) as JournalRow[]).filter((row) => row.deleted_at === null).sort((a, b) => a.taken_at.localeCompare(b.taken_at));

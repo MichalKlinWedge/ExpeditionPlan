@@ -70,8 +70,8 @@ export function PlaceMemory({ placeId, summary, canRate }: { placeId: string; su
         <div className="flex flex-col gap-1">
           <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000} rows={2} aria-label="Notatka na przyszłość" placeholder="Np. „rano tłumy, wejść przed 8:00”, „parking tylko za gotówkę”" className="field px-2 py-1 text-sm" />
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" disabled={pending} onClick={() => save(mine?.verdict ?? null, note, () => setEditing(false))} className="btn-mini">
-              zapisz
+            <button type="button" disabled={pending} onClick={() => save(mine?.verdict ?? null, note, () => setEditing(false))} className="btn-primary btn-sm">
+              Zapisz
             </button>
             <button type="button" disabled={pending} onClick={() => setEditing(false)} className="btn-secondary btn-sm">
               Anuluj
@@ -92,7 +92,7 @@ export function PlaceMemory({ placeId, summary, canRate }: { placeId: string; su
             <li key={entry.userId} className="text-zinc-700 dark:text-zinc-300">
               <span className="font-medium">{entry.author}</span>
               {entry.verdict && (
-                <span className={entry.verdict === "worth" ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}>
+                <span className={entry.verdict === "worth" ? "msg-ok" : "text-red-700 dark:text-red-400"}>
                   {" "}
                   {VERDICT_ICON[entry.verdict]} {PLACE_VERDICT[entry.verdict]}
                 </span>
@@ -102,7 +102,7 @@ export function PlaceMemory({ placeId, summary, canRate }: { placeId: string; su
           ))}
         </ul>
       )}
-      {message.error && <p className="text-xs text-red-600">{message.error}</p>}
+      {message.error && <p className="text-xs msg-error">{message.error}</p>}
     </div>
   );
 }

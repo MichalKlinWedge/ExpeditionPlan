@@ -15,8 +15,8 @@ const button = "btn-primary";
 const label = "flex flex-col gap-1 text-sm";
 
 function Status({ state }: { state: FormState }) {
-  if (state.error) return <p className="text-sm text-red-600">{state.error}</p>;
-  if (state.ok) return <p className="text-sm text-green-700 dark:text-green-400">{state.ok}</p>;
+  if (state.error) return <p className="text-sm msg-error">{state.error}</p>;
+  if (state.ok) return <p className="text-sm msg-ok">{state.ok}</p>;
   return null;
 }
 

@@ -60,7 +60,7 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
         <ItemPlaceEditor key={item.placeRef ?? "brak"} tripId={tripId} doc={doc} item={item} onEdit={(edit) => save(edit)} disabled={pending} />
       )}
       {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs msg-error">{error}</p>}
     </div>
   );
 }

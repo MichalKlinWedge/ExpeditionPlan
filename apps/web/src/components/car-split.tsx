@@ -28,8 +28,8 @@ export type CarPerson = {
 const input = "field min-w-0 px-2 py-1 text-sm";
 
 function Status({ state }: { state: FormState }) {
-  if (state.error) return <p className="text-sm text-red-600">{state.error}</p>;
-  if (state.ok) return <p className="text-sm text-green-700 dark:text-green-400">{state.ok}</p>;
+  if (state.error) return <p className="text-sm msg-error">{state.error}</p>;
+  if (state.ok) return <p className="text-sm msg-ok">{state.ok}</p>;
   return null;
 }
 
@@ -119,11 +119,11 @@ export function CarSplit({ tripId, people, cars, places, canEdit }: { tripId: st
       <ul className="flex flex-col gap-2">
         {plan.cars.map((seat) =>
           editing === seat.car.id ? (
-            <li key={seat.car.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <li key={seat.car.id} className="panel p-3">
               <VehicleForm tripId={tripId} car={seat.car} people={people} onDone={() => setEditing(null)} />
             </li>
           ) : (
-            <li key={seat.car.id} className="flex flex-col gap-1 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <li key={seat.car.id} className="flex flex-col gap-1 panel p-3">
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-medium">🚗 {seat.car.label}</span>
                 <span
@@ -188,12 +188,12 @@ export function CarSplit({ tripId, people, cars, places, canEdit }: { tripId: st
             ))}
         </div>
       )}
-      {plan.doubled.length > 0 && <p className="text-xs text-red-600">W dwóch autach naraz: {names(plan.doubled)}. Popraw jedno z nich.</p>}
+      {plan.doubled.length > 0 && <p className="text-xs msg-error">W dwóch autach naraz: {names(plan.doubled)}. Popraw jedno z nich.</p>}
       {plan.idleDrivers.length > 0 && <p className="text-xs text-zinc-500">Kierowcy bez auta: {names(plan.idleDrivers)}</p>}
       <Status state={result} />
       {canEdit &&
         (adding ? (
-          <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="panel p-3">
             <VehicleForm tripId={tripId} people={people} onDone={() => setAdding(false)} />
           </div>
         ) : (

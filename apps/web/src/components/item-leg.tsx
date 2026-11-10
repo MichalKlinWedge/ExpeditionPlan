@@ -50,7 +50,7 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
   // Przycisk z pinezką do miejsca na stronie Miejsc — gdy wpisana nazwa to miejsce z tego wyjazdu.
   const pin = (typed: string) => <PlacePin tripId={tripId} places={doc.places} name={typed} />;
   return (
-    <div className="mt-2 flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+    <div className="mt-2 flex flex-col gap-2 panel p-3 text-sm">
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs text-zinc-500">
           Skąd
@@ -118,8 +118,8 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
           </button>
         )}
       </div>
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
-      {state.ok && <p className="text-xs text-emerald-700 dark:text-emerald-400">{state.ok}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
+      {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
     </div>
   );
 }

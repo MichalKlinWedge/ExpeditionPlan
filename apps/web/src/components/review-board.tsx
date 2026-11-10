@@ -78,8 +78,8 @@ export function ReviewBoard({ tripId, runId, view, checks }: { tripId: string; r
           </button>
           {view && <span className="text-xs text-zinc-500">Nowy przegląd zastępuje obecne propozycje.</span>}
         </div>
-        {state.error && <p className="text-red-600">{state.error}</p>}
-        {state.ok && <p className="text-green-700 dark:text-green-400">{state.ok}</p>}
+        {state.error && <p className="msg-error">{state.error}</p>}
+        {state.ok && <p className="msg-ok">{state.ok}</p>}
       </form>
 
       <Checks checks={checks} />
@@ -105,13 +105,13 @@ export function ReviewBoard({ tripId, runId, view, checks }: { tripId: string; r
                 <button type="button" disabled={deciding || live.length === 0} onClick={() => decide("apply", live)} className="btn-primary">
                   {deciding ? "Zapisuję…" : `Zastosuj zaznaczone (${live.length})`}
                 </button>
-                <button type="button" disabled={deciding || live.length === 0} onClick={() => decide("dismiss", live)} className="btn-secondary btn-sm">
+                <button type="button" disabled={deciding || live.length === 0} onClick={() => decide("dismiss", live)} className="btn-mini btn-mini-danger">
                   Odrzuć zaznaczone
                 </button>
               </>
             )}
-            {decision.error && <span className="text-red-600">{decision.error}</span>}
-            {decision.ok && <span className="text-green-700 dark:text-green-400">{decision.ok}</span>}
+            {decision.error && <span className="msg-error">{decision.error}</span>}
+            {decision.ok && <span className="msg-ok">{decision.ok}</span>}
           </div>
 
           {view.suggestions.length === 0 && <p className="card p-4 text-zinc-600 dark:text-zinc-400">Wszystkie propozycje są rozstrzygnięte.</p>}
@@ -155,7 +155,7 @@ function SuggestionCard(props: { suggestion: ReviewSuggestionView; checked: bool
   const { suggestion, checked, disabled } = props;
   const possible = suggestion.results.some((each) => each.ok);
   return (
-    <div className="flex gap-3 rounded-lg border border-blue-200 p-3 dark:border-blue-900">
+    <div className="flex gap-3 panel-ai p-3">
       <input type="checkbox" checked={checked} disabled={disabled || !possible} onChange={props.onToggle} className="mt-1" aria-label={`Zaznacz: ${suggestion.title}`} />
       <div className="flex flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">

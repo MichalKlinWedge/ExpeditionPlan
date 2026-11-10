@@ -83,7 +83,7 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
                   </span>
                 </div>
                 <MealEateries tripId={tripId} doc={doc} ids={ids} itemRef={meal.itemRef} canEdit selection={selection} />
-                {pinned?.itemRef === meal.itemRef && <p className="text-xs text-emerald-700 dark:text-emerald-400">Przypięto i zapisano: {pinned.names.join(", ")}.</p>}
+                {pinned?.itemRef === meal.itemRef && <p className="text-xs msg-ok">Przypięto i zapisano: {pinned.names.join(", ")}.</p>}
                 {searching === meal.itemRef && (
                   <EatOutSearch
                     tripId={tripId}
@@ -112,7 +112,7 @@ export function MealEditor({ tripId, doc, ids, selection }: { tripId: string; do
         </section>
       )}
       {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs msg-error">{error}</p>}
     </div>
   );
 }

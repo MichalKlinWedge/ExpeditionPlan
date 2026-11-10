@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 
+import { DialogTitle } from "@/components/dialog-title";
 import { LinkedText } from "@/components/linked-text";
 import { CodeScreen } from "@/components/vault";
 import { bookingHref, contactHref } from "@/lib/booking-link";
@@ -46,17 +47,12 @@ export function BookingDialog({ tripId, details, documents, onClose }: Props) {
       onKeyDown={(event) => event.key === "Escape" && code !== null && event.preventDefault()}
       onClick={(event) => event.target === dialog.current && dialog.current.close()}
       aria-label={`Rezerwacja: ${booking.title}`}
-      className="card m-auto max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto p-0 text-sm backdrop:bg-black/40">
-      <div className="flex flex-col gap-3 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-0.5">
-            <h2 className="text-lg font-semibold">🎫 {booking.title}</h2>
-            <p className="text-xs text-zinc-500">{[details.kind, details.status].join(" · ")}</p>
-          </div>
-          <button type="button" onClick={() => dialog.current?.close()} className="btn-mini" aria-label="Zamknij">
-            ✕
-          </button>
-        </div>
+      className="card dialog">
+      <div className="flex flex-col gap-3">
+        <DialogTitle onClose={() => dialog.current?.close()}>
+          <h2>🎫 {booking.title}</h2>
+          <p className="text-xs text-zinc-500">{[details.kind, details.status].join(" · ")}</p>
+        </DialogTitle>
 
         <div className="flex flex-col gap-1 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
           {details.when !== "" && <p className="font-medium">{details.when}</p>}
@@ -202,7 +198,7 @@ function DocumentLine({ document, onShow }: { document: VaultDocument; onShow: (
           otwórz plik
         </button>
       </div>
-      {problem && <p className="text-xs text-red-600">{problem}</p>}
+      {problem && <p className="text-xs msg-error">{problem}</p>}
     </li>
   );
 }

@@ -135,7 +135,7 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
 
   return (
     <form
-      className="my-2 grid grid-cols-2 gap-2 rounded-md border border-zinc-200 p-3 sm:grid-cols-4 dark:border-zinc-800"
+      className="my-2 grid grid-cols-2 gap-2 panel p-3 sm:grid-cols-4"
       onSubmit={(event) => {
         event.preventDefault();
         onSave(toPatch(draft, item, transitNow));

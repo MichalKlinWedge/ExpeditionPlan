@@ -66,7 +66,7 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef }: Props) {
       {hydrated && !scheduled && item.dayRef !== undefined && <p className="text-zinc-500">Punkt nie wchodzi do wyliczeń dnia (pominięty albo wyłączony przez wybrany wariant).</p>}
       {switched && <p className="text-zinc-500">W planie wybrany jest inny wariant — godziny i kolejność wg wariantu „{switched}”, do którego należy ten punkt.</p>}
       {plan?.warnings.map((warning, index) => (
-        <p key={index} className={warning.severity === "hard" ? "text-red-600" : "text-amber-600"}>
+        <p key={index} className={warning.severity === "hard" ? "msg-error" : "text-amber-600"}>
           {warning.severity === "hard" ? "⚠ " : "· "}
           {warning.message}
         </p>

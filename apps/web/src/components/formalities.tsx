@@ -33,7 +33,7 @@ export function Formalities({ tripId, present, drivers }: { tripId: string; pres
                 <input type="checkbox" disabled={done || pending} checked={done || chosen.has(formality.key)} onChange={() => toggle(formality.key)} />
                 <span>
                   <span className="font-medium">{formality.title}</span>
-                  {done && <span className="text-xs text-emerald-700 dark:text-emerald-400"> · ✓ jest w zadaniach</span>}
+                  {done && <span className="text-xs msg-ok"> · ✓ jest w zadaniach</span>}
                   {formality.url && (
                     <>
                       {" "}
@@ -58,8 +58,8 @@ export function Formalities({ tripId, present, drivers }: { tripId: string; pres
         <Link href={`/trips/${tripId}/tasks`} className="btn-mini">
           Zadania
         </Link>
-        {state.ok && <span className="text-xs text-emerald-700 dark:text-emerald-400">{state.ok}</span>}
-        {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+        {state.ok && <span className="text-xs msg-ok">{state.ok}</span>}
+        {state.error && <span className="text-xs msg-error">{state.error}</span>}
       </div>
     </div>
   );

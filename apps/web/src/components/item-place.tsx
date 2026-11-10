@@ -20,7 +20,7 @@ export function ItemPlaceEditor({ tripId, doc, item, onEdit, disabled = false }:
   const changed = typed !== "" && typed !== place?.name;
   const uses = place === undefined ? 0 : placeUses(doc, place.ref);
   return (
-    <div className="mt-2 flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+    <div className="mt-2 flex flex-col gap-2 panel p-3 text-sm">
       <label className="flex flex-col gap-1 text-xs text-zinc-500">
         Miejsce
         <span className="flex items-stretch gap-1">

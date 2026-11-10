@@ -61,15 +61,15 @@ export function ItemTexts({ tripId, doc, ids, itemRef, editing }: { tripId: stri
           <textarea value={lines} onChange={(event) => setLines(event.target.value)} rows={Math.max(3, notes.length + 1)} placeholder="np. Na górze wieje, weźcie kurtki." className="field px-2 py-1 text-sm text-ink dark:text-zinc-100" />
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          <button disabled={pending} className="btn-secondary btn-sm">
+          <button disabled={pending} className="btn-primary btn-sm">
             Zapisz
           </button>
-          <button type="button" onClick={() => setOpen(false)} disabled={pending} className="btn-mini">
-            anuluj
+          <button type="button" onClick={() => setOpen(false)} disabled={pending} className="btn-secondary btn-sm">
+            Anuluj
           </button>
           {pending && <span className="text-xs text-zinc-500">Zapisuję…</span>}
         </div>
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs msg-error">{error}</p>}
       </form>
     );
   }

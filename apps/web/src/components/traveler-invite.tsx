@@ -35,7 +35,7 @@ export function TravelerInvite({ tripId, travelerId, name, tripTitle, dates }: {
           className="btn-secondary btn-sm">
           {pending ? "tworzę link…" : "Zaproś"}
         </button>
-        {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+        {state.error && <span className="text-xs msg-error">{state.error}</span>}
       </span>
     );
   }
@@ -53,8 +53,8 @@ export function TravelerInvite({ tripId, travelerId, name, tripTitle, dates }: {
           <button disabled={pending} className="btn-primary btn-sm">
             {pending ? "Wysyłam…" : "Wyślij e-mailem"}
           </button>
-          {sent.ok && <span className="text-xs text-emerald-700 dark:text-emerald-400">{sent.ok}</span>}
-          {sent.error && <span className="text-xs text-red-600">{sent.error}</span>}
+          {sent.ok && <span className="text-xs msg-ok">{sent.ok}</span>}
+          {sent.error && <span className="text-xs msg-error">{sent.error}</span>}
         </form>
       )}
       <span className="flex flex-wrap items-center gap-2">

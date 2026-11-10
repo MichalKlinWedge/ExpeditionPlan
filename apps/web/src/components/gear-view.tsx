@@ -25,8 +25,8 @@ const amount = (item: Pick<Item, "unit">, value: number) => `${number(value)}${i
 const row = "border-t border-zinc-100 dark:border-zinc-900";
 
 function Status({ state }: { state: FormState }) {
-  if (state.error) return <p className="text-xs text-red-600">{state.error}</p>;
-  if (state.ok) return <p className="text-xs text-green-700 dark:text-green-400">{state.ok}</p>;
+  if (state.error) return <p className="text-xs msg-error">{state.error}</p>;
+  if (state.ok) return <p className="text-xs msg-ok">{state.ok}</p>;
   return null;
 }
 
@@ -79,7 +79,6 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
   const tentative = new Set(doc.travelers.filter((each) => each.tentative).map((each) => each.ref));
   const nameOf = (ref: string) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?";
   const isFilter = (other: Filter) => (typeof other === "object" ? typeof filter === "object" && filter.person === other.person : filter === other);
-  const chip = (active: boolean) => `rounded-full border px-2.5 py-0.5 text-xs ${active ? "border-sea bg-sea/10 font-medium" : "border-zinc-300 dark:border-zinc-700"}`;
 
   const anyWeight = loads.some((load) => load.weightG > 0);
   const measure = (load: (typeof loads)[number]) => (anyWeight ? load.weightG : load.shared.length);
@@ -121,14 +120,14 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
       )}
 
       <div className="flex flex-wrap gap-1.5">
-        <button type="button" onClick={() => setFilter("all")} className={chip(isFilter("all"))}>
+        <button type="button" onClick={() => setFilter("all")} aria-pressed={isFilter("all")} className="toggle-chip">
           Wszystko ({gear.length})
         </button>
-        <button type="button" onClick={() => setFilter("open")} className={chip(isFilter("open"))}>
+        <button type="button" onClick={() => setFilter("open")} aria-pressed={isFilter("open")} className="toggle-chip">
           Do ustalenia ({open.length})
         </button>
         {doc.travelers.map((each) => (
-          <button key={each.ref} type="button" onClick={() => setFilter({ person: each.ref })} className={chip(isFilter({ person: each.ref }))}>
+          <button key={each.ref} type="button" onClick={() => setFilter({ person: each.ref })} aria-pressed={isFilter({ person: each.ref })} className="toggle-chip">
             {each.name}
           </button>
         ))}
@@ -302,7 +301,7 @@ function ShareBadge({ item, share }: { item: Item; share: GearShare }) {
     case "over":
       return <span className="rounded bg-red-100 px-1.5 text-xs font-medium text-red-800 dark:bg-red-950 dark:text-red-300">za dużo: {number(share.taken)} z {number(share.needed)}</span>;
     case "covered":
-      return <span className="text-xs text-emerald-700 dark:text-emerald-400">✓</span>;
+      return <span className="text-xs msg-ok">✓</span>;
   }
 }
 
@@ -445,8 +444,8 @@ function GearForm({ tripId, doc, item, itemId, categories, onDone }: { tripId: s
         <button disabled={pending} className="btn-primary btn-sm">
           {pending ? "Zapisuję…" : item ? "Zapisz" : "Dodaj"}
         </button>
-        <button type="button" onClick={onDone} className={small}>
-          anuluj
+        <button type="button" onClick={onDone} className="btn-secondary btn-sm">
+          Anuluj
         </button>
         <Status state={state} />
       </div>

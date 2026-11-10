@@ -111,7 +111,7 @@ export function ClimateHint({ tripId, source, name, countryCode, start, end, tod
   if (!far) return null;
   const climate = data && start && end ? climateFor(data, start, end) : null;
   return (
-    <div className="flex flex-col gap-0.5 rounded-md border border-zinc-200 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+    <div className="flex flex-col gap-0.5 panel px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400">
       {climate ? (
         <>
           <p>

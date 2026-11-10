@@ -30,7 +30,7 @@ async function View() {
   try {
     loaded = await loadPlacesAcross(supabase);
   } catch (e) {
-    return <p className="text-sm text-red-600">{e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">{e instanceof Error ? e.message : String(e)}</p>;
   }
   const { places: shared, memories, visited } = loaded;
 

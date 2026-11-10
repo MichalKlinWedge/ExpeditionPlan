@@ -56,7 +56,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const payload = data as PullPayload;
   let doc: TripDocument;
@@ -64,7 +64,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   try {
     ({ doc, inputs } = stateFromPayload(payload));
   } catch (e) {
-    return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const item = doc.items.find((each) => each.ref === ref);
   if (item === undefined) notFound();

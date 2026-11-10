@@ -123,7 +123,7 @@ function VenueEditor({ tripId, place, canClear }: { tripId: string; place: Place
       </div>
 
       {draft && (
-        <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-3">
+        <div className="flex flex-col gap-2 panel-ai p-3">
           <p className="font-medium">Co dopisać?</p>
           <ul className="flex flex-col gap-1.5">
             {draft.rows.map((row) => (
@@ -160,8 +160,8 @@ function VenueEditor({ tripId, place, canClear }: { tripId: string; place: Place
           </div>
         </div>
       )}
-      {state.ok && <p className="text-xs text-emerald-700 dark:text-emerald-400">{state.ok}</p>}
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
     </div>
   );
 }

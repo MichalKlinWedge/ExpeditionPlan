@@ -38,7 +38,7 @@ export function MemberAccess({ tripId, userId, name, role, canAddExpenses }: { t
         odbierz dostęp
       </button>
       {pending && <span className="text-xs text-zinc-500">zapisuję…</span>}
-      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+      {state.error && <span className="text-xs msg-error">{state.error}</span>}
     </span>
   );
 }

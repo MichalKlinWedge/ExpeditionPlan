@@ -590,7 +590,7 @@ export function ShowExport({
         <span className="text-xs text-zinc-500">1920×1080, {mmss(timeline.total)}</span>
       </div>
       {type === null ? (
-        <p className="text-sm text-red-600">Ta przeglądarka nie nagrywa wideo. Otwórz pokaz w Chrome albo Edge.</p>
+        <p className="text-sm msg-error">Ta przeglądarka nie nagrywa wideo. Otwórz pokaz w Chrome albo Edge.</p>
       ) : (
         <>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -609,7 +609,7 @@ export function ShowExport({
               </div>
             </div>
           )}
-          {status?.phase === "error" && <p className="text-sm text-red-600">{status.message}</p>}
+          {status?.phase === "error" && <p className="text-sm msg-error">{status.message}</p>}
           <div className="flex flex-wrap items-center gap-2 text-sm">
             {status?.phase === "done" && (
               <a href={status.url} download={status.name} className="btn-secondary btn-sm">

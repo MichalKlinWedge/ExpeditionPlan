@@ -56,8 +56,8 @@ export function TrackUpload({ tripId, itemRef, hasLine }: { tripId: string; item
         </div>
       </div>
       {pending && <p className="text-xs text-zinc-500">Zapisuję ślad…</p>}
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
-      {state.ok && <p className="text-xs text-green-700 dark:text-green-400">{state.ok}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
+      {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
     </div>
   );
 }

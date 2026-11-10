@@ -48,8 +48,8 @@ export function AiPlanButton({ tripId, children }: { tripId: string; children?: 
           {pending ? "Warianty, dni i punkty, potem miejsca z OpenStreetMap. Zwykle 30–90 s." : "Powstanie osobny szkic „Szkic AI: …” — ten plan zostaje nietknięty."}
         </span>
       </div>
-      {result?.error && <p className="text-sm text-red-600">{result.error}</p>}
-      {result?.ok && <p className="text-sm text-green-700 dark:text-green-400">{result.ok} Otwieram plan…</p>}
+      {result?.error && <p className="text-sm msg-error">{result.error}</p>}
+      {result?.ok && <p className="text-sm msg-ok">{result.ok} Otwieram plan…</p>}
       {children}
       <p className="text-xs text-zinc-400">Miejsca: © OpenStreetMap, Geoapify.</p>
     </div>

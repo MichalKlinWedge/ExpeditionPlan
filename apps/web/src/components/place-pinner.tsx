@@ -22,7 +22,7 @@ export function PlacePinner({ tripId, places }: { tripId: string; places: OffMap
       <p className="mt-2 text-xs text-zinc-500">
         Współrzędne: w Google Maps przytrzymaj miejsce i skopiuj liczby z dołu ekranu albo wklej pełny link; w OpenStreetMap — link z paska adresu.
       </p>
-      {last.ok && <p className="mt-2 text-xs text-green-700 dark:text-green-400">{last.ok}</p>}
+      {last.ok && <p className="mt-2 text-xs msg-ok">{last.ok}</p>}
       <ul className="mt-3 flex flex-col gap-4">
         {places.map((place) => (
           <PlaceRow key={place.id} tripId={tripId} place={place} onSaved={setLast} />
@@ -64,8 +64,8 @@ function PlaceRow({ tripId, place, onSaved }: { tripId: string; place: OffMapPla
           {pending ? "Szukam…" : "Szukaj"}
         </button>
       </form>
-      {result.error && <p className="text-xs text-red-600">{result.error}</p>}
-      {result.ok && <p className="text-xs text-green-700 dark:text-green-400">{result.ok}</p>}
+      {result.error && <p className="text-xs msg-error">{result.error}</p>}
+      {result.ok && <p className="text-xs msg-ok">{result.ok}</p>}
     </li>
   );
 }

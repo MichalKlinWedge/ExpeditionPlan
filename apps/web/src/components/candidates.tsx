@@ -19,7 +19,7 @@ export function CandidatesReview({ tripId, runId, info, checks }: { tripId: stri
   const [pending, start] = useTransition();
   const toggle = (i: number) => setPicked((current) => (current.includes(i) ? current.filter((each) => each !== i) : [...current, i]));
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-blue-200 p-4 text-sm dark:border-blue-900">
+    <div className="flex flex-col gap-4 panel-ai p-4 text-sm">
       <p className="text-xs text-zinc-500">Szkic AI — kandydaci to rodzaje ofert z szacunkiem ceny, nie konkretne obiekty. Zaznacz decyzje, które chcesz porównywać w planie.</p>
       {info.advice.length > 0 && (
         <ul className="list-disc pl-5 text-zinc-600 dark:text-zinc-400">
@@ -86,8 +86,8 @@ export function CandidatesReview({ tripId, runId, info, checks }: { tripId: stri
           className="btn-primary">
           {pending ? "Dodaję…" : `Dodaj do porównania (${picked.length})`}
         </button>
-        {result.error && <span className="text-red-600">{result.error}</span>}
-        {result.ok && <span className="text-green-700 dark:text-green-400">{result.ok}</span>}
+        {result.error && <span className="msg-error">{result.error}</span>}
+        {result.ok && <span className="msg-ok">{result.ok}</span>}
       </div>
     </div>
   );
@@ -116,7 +116,7 @@ export function ComparisonTable({ tripId, group, canEdit }: { tripId: string; gr
     <details className="text-sm">
       <summary className="cursor-pointer">
         <span className="font-medium">{group.title}</span>
-        <span className="text-green-700 dark:text-green-400"> — ✓ wybrane: {chosen.label}</span>
+        <span className="msg-ok"> — ✓ wybrane: {chosen.label}</span>
         {chosen.price ? <span className="text-zinc-500"> · {chosen.price}</span> : null}
       </summary>
       <div className="mt-2">
@@ -157,7 +157,7 @@ function ComparisonBody({ tripId, group, canEdit }: { tripId: string; group: Com
                   <td className="py-1 pr-3">
                     {chosen ? "✓ " : row.recommended ? "★ " : ""}
                     <span className={chosen ? "font-medium" : ""}>{row.label}</span>
-                    {row.pros.length > 0 && <span className="block text-green-700 dark:text-green-400">+ {row.pros.join("; ")}</span>}
+                    {row.pros.length > 0 && <span className="block msg-ok">+ {row.pros.join("; ")}</span>}
                     {row.cons.length > 0 && <span className="block text-zinc-500">− {row.cons.join("; ")}</span>}
                     {row.notes.length > 0 && <span className="block text-zinc-500">{row.notes.join(" · ")}</span>}
                     {row.links.map((link) => (
@@ -185,8 +185,8 @@ function ComparisonBody({ tripId, group, canEdit }: { tripId: string; group: Com
           </tbody>
         </table>
       </div>
-      {result.error && <p className="text-xs text-red-600">{result.error}</p>}
-      {result.ok && <p className="text-xs text-green-700 dark:text-green-400">{result.ok}</p>}
+      {result.error && <p className="text-xs msg-error">{result.error}</p>}
+      {result.ok && <p className="text-xs msg-ok">{result.ok}</p>}
     </div>
   );
 }

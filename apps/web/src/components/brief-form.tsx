@@ -113,7 +113,8 @@ function Choices({ options, value, onChange }: { options: Record<string, string>
             key={key}
             type="button"
             onClick={() => onChange(on ? value.filter((each) => each !== key) : [...value, key])}
-            className={`rounded-full border px-3 py-1 text-sm ${on ? "border-sea bg-sea text-white" : "border-zinc-300 dark:border-zinc-700"}`}>
+            aria-pressed={on}
+            className="toggle-chip">
             {name}
           </button>
         );
@@ -292,7 +293,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId
         <div className="flex flex-col gap-4">
           <p className="text-sm text-zinc-500">Kupione loty, noclegi, bilety — AI zaplanuje wokół nich, nie zamiast nich.</p>
           {draft.fixed.map((each, index) => (
-            <fieldset key={index} className="grid grid-cols-2 gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+            <fieldset key={index} className="grid grid-cols-2 gap-3 panel p-3">
               <label className={label}>
                 Rodzaj
                 <select className={input} value={each.kind} onChange={(event) => setFixed(index, { kind: event.target.value })}>
@@ -352,8 +353,8 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId
         </div>
       )}
 
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.ok && <p className="text-sm text-green-700 dark:text-green-400">{state.ok}</p>}
+      {state.error && <p className="text-sm msg-error">{state.error}</p>}
+      {state.ok && <p className="text-sm msg-ok">{state.ok}</p>}
       <div className="flex gap-3">
         <button type="button" className={secondary} disabled={step === 0} onClick={() => setStep(step - 1)}>
           Wstecz

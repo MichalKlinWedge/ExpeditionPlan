@@ -36,8 +36,8 @@ export default function PeoplePage(props: PageProps<"/trips/[id]/people">) {
   );
 }
 
-const section = "card flex flex-col gap-3 p-5";
-const heading = "text-lg font-semibold";
+const section = "card flex flex-col gap-3 p-4";
+const heading = "card-title";
 
 async function People({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -81,7 +81,7 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
         <h2 className={heading}>Uczestnicy</h2>
         {travelers.error || places.error ? (
           // Bez formularza dodawania: pusta lista wyglądałaby jak utrata danych i zachęcała do wpisywania osób od nowa.
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm msg-error">
             Nie udało się wczytać uczestników. To błąd odczytu, nie usunięcie danych: nie dodawaj ich od nowa, odśwież stronę za chwilę. ({(travelers.error ?? places.error)!.message})
           </p>
         ) : (
@@ -101,7 +101,7 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
         <section className={section}>
           <h2 className={heading}>Podział na auta</h2>
           {vehicles.error ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm msg-error">
               Nie udało się wczytać aut. ({vehicles.error.message})
             </p>
           ) : (

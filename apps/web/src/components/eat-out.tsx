@@ -59,9 +59,9 @@ const DIETS = [
   ["halal", "halal"],
 ] as const;
 const OPEN = {
-  open: { label: "otwarte w porze posiłku", className: "text-emerald-700 dark:text-emerald-400" },
+  open: { label: "otwarte w porze posiłku", className: "msg-ok" },
   partly: { label: "otwarte tylko część posiłku", className: "text-amber-700 dark:text-amber-400" },
-  closed: { label: "zamknięte w porze posiłku", className: "text-red-600" },
+  closed: { label: "zamknięte w porze posiłku", className: "msg-error" },
   unknown: { label: "godziny nieznane", className: "text-zinc-500" },
 } as const;
 
@@ -194,7 +194,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
   );
 
   return (
-    <div className="mt-1 flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+    <div className="mt-1 flex flex-col gap-2 panel p-3">
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(event) => {
@@ -285,7 +285,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
       </form>
 
       {pending && <p className="text-xs text-zinc-500">Chwila…</p>}
-      {answer && "error" in answer && <p className="text-xs text-red-600">{answer.error}</p>}
+      {answer && "error" in answer && <p className="text-xs msg-error">{answer.error}</p>}
       {answer && "results" in answer && (
         <>
           <p className="text-xs text-zinc-500">
@@ -444,7 +444,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
           </p>
         </>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs msg-error">{error}</p>}
     </div>
   );
 }
@@ -616,7 +616,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
           </tbody>
         </table>
       </div>
-      {error && <span className="text-red-600"> {error}</span>}
+      {error && <span className="msg-error"> {error}</span>}
     </div>
   );
 }
@@ -681,7 +681,7 @@ function RatingCell({ tripId, doc, ids, placeRef, rating, canEdit }: { tripId: s
           </button>
           <IconAction kind="close" tip="anuluj" disabled={pending} onClick={() => setOpen(false)} />
         </span>
-        {error && <span className="text-red-600">{error}</span>}
+        {error && <span className="msg-error">{error}</span>}
       </span>
     );
 

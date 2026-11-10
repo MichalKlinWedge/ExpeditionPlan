@@ -206,6 +206,10 @@ h2 {
     background: var(--nav-bg-hover);
     border-color: var(--nav-line);
   }
+  /* Główne przejście („Nowy wyjazd”) zostaje pomarańczowe, ale ma kształt pigułki jak każde przejście. */
+  a.btn-primary:not([download]) {
+    border-radius: 999px;
+  }
   .btn-mini:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -376,6 +380,95 @@ h2 {
       color: #9fd8cf;
     }
   }
+
+  /* Przełącznik (filtr, wybór jednej z opcji, zaznaczanie kilku): pigułka z ramką; włączony to
+     `aria-pressed="true"` — wypełniony morskim. Jeden wygląd na wszystkich stronach. */
+  .toggle-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 1px solid var(--color-zinc-300);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.15rem;
+    color: var(--foreground);
+    cursor: pointer;
+    transition:
+      background-color 120ms,
+      border-color 120ms,
+      color 120ms;
+  }
+  .toggle-chip:hover:not(:disabled) {
+    border-color: var(--color-sea);
+  }
+  .toggle-chip[aria-pressed="true"] {
+    border-color: var(--color-sea);
+    background: var(--color-sea);
+    color: #fff;
+  }
+  .toggle-chip:focus-visible {
+    outline: 2px solid var(--color-sea);
+    outline-offset: 2px;
+  }
+  .toggle-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  @media (prefers-color-scheme: dark) {
+    .toggle-chip {
+      border-color: var(--color-zinc-700);
+    }
+  }
+
+  /* Komunikat po działaniu: błąd i powodzenie, z kolorem czytelnym też na ciemnym tle. Rozmiar daje miejsce użycia. */
+  .msg-error {
+    color: #dc2626;
+  }
+  .msg-ok {
+    color: #15803d;
+  }
+  @media (prefers-color-scheme: dark) {
+    .msg-error {
+      color: #f87171;
+    }
+    .msg-ok {
+      color: #4ade80;
+    }
+  }
+
+  /* Ramka w środku karty (formularz, grupa pól, wpis listy). Padding daje miejsce użycia. */
+  .panel {
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+  }
+  /* Szkic do akceptacji (AI, odczyt z wklejonego tekstu): przerywana ramka = jeszcze nie w planie. */
+  .panel-ai {
+    border: 1.5px dashed color-mix(in srgb, var(--color-sea) 65%, var(--surface));
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--color-sea) 5%, var(--surface));
+  }
+
+  /* Okno dialogowe (`card dialog` + `DialogTitle`): karta na środku ekranu, ta sama szerokość i padding wszędzie
+     (padding jak `p-4`, więc belka `card-title` sięga krawędzi). */
+  .dialog {
+    margin: auto;
+    width: min(36rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    padding: 1rem;
+    font-size: 0.875rem;
+  }
+  .dialog::backdrop {
+    background: rgb(0 0 0 / 0.4);
+  }
+}
+
+/* Pola wyboru w kolorze motywu zamiast domyślnego niebieskiego przeglądarki. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-sea);
 }
 
 /* Wydruk (strona `/trips/[id]/print`): biała kartka, bez tła motywu. */

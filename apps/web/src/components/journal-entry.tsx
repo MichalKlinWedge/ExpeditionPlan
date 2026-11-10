@@ -122,7 +122,7 @@ export function JournalEntry({ entry, tz, canEdit, item, days = [], upAt = null,
               <IconAction kind="remove" tip="Usuń wpis" onClick={remove} disabled={busy} />
             </>
           )}
-          {error && <span className="text-red-600">{error}</span>}
+          {error && <span className="msg-error">{error}</span>}
         </div>
       </div>
     </article>
@@ -197,7 +197,7 @@ function EntryForm({ entry, tz, startTime, days, busy, error, onCancel, onSave }
             <IconAction kind="remove" tip="Usuń zdjęcie z wpisu (plik zostaje)" onClick={() => setDropPhoto(true)} />
           ))}
       </div>
-      {(invalid ?? error) && <p className="text-sm text-red-600">{invalid ?? error}</p>}
+      {(invalid ?? error) && <p className="text-sm msg-error">{invalid ?? error}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={save} disabled={busy} className="btn-primary btn-sm">
           {busy ? "zapisuję…" : "Zapisz"}

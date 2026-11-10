@@ -28,7 +28,8 @@ export function EditToggle({ editing }: { editing: boolean }) {
     <button
       type="button"
       onClick={toggle}
-      className={editing ? "inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border border-signal bg-signal px-3 py-1 text-sm text-white transition hover:bg-signal-dark" : "btn-secondary shrink-0 self-start rounded-full px-3 py-1"}>
+      // Przycisk funkcji, więc prostokątny (pigułka to przejście na inną stronę); w edycji pomarańczowy, żeby było widać tryb.
+      className={`${editing ? "btn-primary" : "btn-secondary"} btn-sm shrink-0 self-start`}>
       {!editing && <PencilIcon className="size-4" />}
       {editing ? "Zakończ edycję" : "Edytuj"}
     </button>

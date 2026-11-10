@@ -24,7 +24,7 @@ export function TravelerAccount({ tripId, userId, travelers, current }: { tripId
           </option>
         ))}
       </select>
-      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+      {state.error && <span className="text-xs msg-error">{state.error}</span>}
     </span>
   );
 }

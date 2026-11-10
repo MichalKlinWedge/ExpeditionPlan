@@ -43,14 +43,14 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
     supabase.from("place_memories").select("id, user_id, author_name, name, lat, lng, verdict, note, updated_at").limit(5000),
     loadVisited(supabase).catch((): VisitedPlaceRow[] => []),
   ]);
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const payload = data as PullPayload;
   let doc: TripDocument;
   try {
     doc = stateFromPayload(payload).doc;
   } catch (e) {
-    return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const canEdit = mayEdit && (await editMode());

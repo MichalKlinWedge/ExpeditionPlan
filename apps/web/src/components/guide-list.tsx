@@ -115,7 +115,7 @@ function OrphanGuide({ tripId, guideId }: { tripId: string; guideId: string }) {
     <p className="flex flex-wrap items-baseline gap-2 text-xs text-zinc-500">
       Tego punktu ani miejsca już nie ma w planie.
       <IconAction kind="remove" tip="Usuń opis" disabled={pending} onClick={() => window.confirm("Usunąć ten opis?") && start(async () => setState(await removeGuide(tripId, guideId)))} />
-      {state.error && <span className="text-red-600">{state.error}</span>}
+      {state.error && <span className="msg-error">{state.error}</span>}
     </p>
   );
 }
@@ -194,7 +194,7 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
           ))}
         </ul>
       )}
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
       {picking !== null && <OwnPhotoUpload tripId={tripId} guideId={guide.rowId} title={guide.title} replaceUrl={picking.replace} onDone={() => setPicking(null)} onState={setState} />}
       {picking !== null ? (
         <ImagePicker tripId={tripId} guideId={guide.rowId} title={picking.replace ? "Wybierz zdjęcie na wymianę" : "Wybierz kolejne zdjęcie"} used={images.map((image) => image.url)} saving={pending} onPick={pick} onCancel={() => setPicking(null)} />
@@ -290,12 +290,12 @@ function ImagePicker({ tripId, guideId, title, used, saving, onPick, onCancel }:
         <button disabled={loading || query.trim() === ""} className="btn-secondary btn-sm">
           Szukaj
         </button>
-        <button type="button" onClick={onCancel} className="btn-mini">
-          anuluj
+        <button type="button" onClick={onCancel} className="btn-secondary btn-sm">
+          Anuluj
         </button>
       </form>
       {loading && <p className="text-xs text-zinc-500">Szukam zdjęć…</p>}
-      {!loading && found !== null && "error" in found && <p className="text-xs text-red-600">{found.error}</p>}
+      {!loading && found !== null && "error" in found && <p className="text-xs msg-error">{found.error}</p>}
       {!loading && found !== null && "images" in found && images.length === 0 && <p className="text-xs text-zinc-500">Nie ma innych zdjęć. Spróbuj innego hasła.</p>}
       {!loading && images.length > 0 && (
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -363,14 +363,14 @@ function GuideTextForm({ tripId, guide, onClose }: { tripId: string; guide: Trip
         <textarea value={tips} onChange={(event) => setTips(event.target.value)} rows={Math.max(2, tipList.length + 1)} disabled={pending} className={field} />
       </label>
       <p className="text-xs text-zinc-500">Poprawka dotyczy tylko tego wyjazdu. Zdjęcia i źródło zostają.</p>
-      {tooMany && <p className="text-xs text-red-600">{tooMany}</p>}
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {tooMany && <p className="text-xs msg-error">{tooMany}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
       <div className="flex items-center gap-2">
         <button disabled={pending || summary.trim() === "" || tooMany !== null} className="btn-primary btn-sm">
           {pending ? "Zapisuję…" : "Zapisz"}
         </button>
-        <button type="button" disabled={pending} onClick={onClose} className="btn-mini">
-          anuluj
+        <button type="button" disabled={pending} onClick={onClose} className="btn-secondary btn-sm">
+          Anuluj
         </button>
       </div>
     </form>

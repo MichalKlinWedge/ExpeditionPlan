@@ -49,7 +49,7 @@ const STATUS_TONE: Record<string, string> = {
   candidate: "text-zinc-500",
   to_book: "text-amber-700 dark:text-amber-400",
   booked: "text-blue-700 dark:text-blue-400",
-  paid: "text-green-700 dark:text-green-400",
+  paid: "msg-ok",
   cancelled: "text-zinc-400 line-through",
   unknown: "text-amber-700 dark:text-amber-400",
   not_required: "text-zinc-500",
@@ -78,14 +78,14 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   // Domyślnie podgląd; formularze po „Edytuj” (wspólny tryb edycji).
   const canEdit = mayEdit && wantsEdit;
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const payload = data as PullPayload;
   let doc: Doc;
   try {
     doc = stateFromPayload(payload).doc;
   } catch (e) {
-    return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const expenses = (payload.tables.expenses ?? []).filter((row) => row.deleted_at === null);
   const budget = budgetSummary(doc);
@@ -277,7 +277,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
           />
         )}
         {/* Po „Dodaj do porównania” szkic znika z odświeżonej strony — potwierdzenie zostaje tutaj. */}
-        {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm text-green-700 dark:text-green-400">Ostatni szkic AI dodany do porównania — grupy są niżej.</p>}
+        {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm msg-ok">Ostatni szkic AI dodany do porównania — grupy są niżej.</p>}
         {canEdit && candidatesDraft.success && draftRow.data?.status === "ok" && (
           <CandidatesReview tripId={id} runId={draftRow.data.id} info={candidatesDraft.data} checks={draftOutput?.checks ?? []} />
         )}

@@ -245,8 +245,8 @@ export function TrackProfile({ tripId, doc, inputs, itemRef, canEdit }: Props) {
             {pending ? "Szukam w OpenStreetMap… (do minuty)" : track.pois === undefined ? "Szukaj wody, schronisk i zejść" : "Sprawdź ponownie"}
           </button>
         )}
-        {state.error && <p className="text-xs text-red-600">{state.error}</p>}
-        {state.ok && <p className="text-xs text-emerald-700 dark:text-emerald-400">{state.ok}</p>}
+        {state.error && <p className="text-xs msg-error">{state.error}</p>}
+        {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
       </div>
     </section>
   );

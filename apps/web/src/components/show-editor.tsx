@@ -99,7 +99,7 @@ function VoiceSample({ tripId, voice }: { tripId: string; voice: string }) {
         <SpeakerIcon className="size-4" />
         {state === "loading" ? "nagrywam próbkę…" : state === "playing" ? "zatrzymaj" : "posłuchaj"}
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs msg-error">{error}</span>}
     </>
   );
 }
@@ -133,8 +133,8 @@ function SceneText({ tripId, kind, scene, live }: { tripId: string; kind: ShowKi
               {pending ? "zapisuję…" : "zapisz"}
             </button>
           )}
-          {result?.error && <span className="text-red-600">{result.error}</span>}
-          {!changed && result?.ok && <span className="text-green-700 dark:text-green-400">{result.ok}</span>}
+          {result?.error && <span className="msg-error">{result.error}</span>}
+          {!changed && result?.ok && <span className="msg-ok">{result.ok}</span>}
         </div>
       )}
     </li>
@@ -243,9 +243,9 @@ export function ShowEditor({
         )}
         <span className="text-xs text-zinc-500">Głos syntetyczny Gemini TTS; nagrywa się tylko scena z nowym tekstem</span>
       </div>
-      {message?.error && <p className="text-sm text-red-600">{message.error}</p>}
-      {message?.ok && <p className="text-sm text-green-700 dark:text-green-400">{message.ok}</p>}
-      <ol className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+      {message?.error && <p className="text-sm msg-error">{message.error}</p>}
+      {message?.ok && <p className="text-sm msg-ok">{message.ok}</p>}
+      <ol className="divide-y divide-zinc-200 panel dark:divide-zinc-800">
         {scenes.map((scene) => (
           <SceneText key={`${scene.key}:${scene.text}`} tripId={tripId} kind={kind} scene={scene} {...(live[scene.key] !== undefined ? { live: live[scene.key] } : {})} />
         ))}
@@ -357,8 +357,8 @@ export function ShowMusicEditor({ tripId, kind, music }: { tripId: string; kind:
           {picker}
         </label>
       )}
-      {message?.error && <p className="text-sm text-red-600">{message.error}</p>}
-      {message?.ok && <p className="text-sm text-green-700 dark:text-green-400">{message.ok}</p>}
+      {message?.error && <p className="text-sm msg-error">{message.error}</p>}
+      {message?.ok && <p className="text-sm msg-ok">{message.ok}</p>}
       <p className="text-xs text-zinc-500">
         MP3, M4A, AAC, OGG albo WAV do 20 MB. Gra w pętli przez cały pokaz (od pominiętego początku): pod lektorem ciszej, na ekranie końcowym wygasa. Nazwa pliku jest na ekranie końcowym (tam autor utworu z licencją CC BY).
         Wgrywaj utwory własne albo z licencją, która na to pozwala: pod publicznym linkiem pokazu muzyka też gra.
@@ -397,7 +397,7 @@ export function ShowRouteOptions({ tripId, kind, approach, back }: { tripId: str
           <span className="text-xs text-zinc-500">{back.title}</span>
         </label>
       )}
-      {message?.error && <p className="text-red-600">{message.error}</p>}
+      {message?.error && <p className="msg-error">{message.error}</p>}
     </section>
   );
 }
@@ -423,10 +423,10 @@ export function ShowEndPhoto({ tripId, kind, choice, photos }: { tripId: string;
       <h2 className="card-title">Zdjęcie na koniec</h2>
       <p className="text-xs text-zinc-500">Ostatnie ujęcie przed planszą końcową. Bez wyboru: ostatnie zdjęcie wyjazdu.</p>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => pick(null)} disabled={pending} className={`btn-secondary btn-sm ${choice === undefined ? "ring-2 ring-sea" : ""}`}>
+        <button type="button" onClick={() => pick(null)} disabled={pending} aria-pressed={choice === undefined} className="toggle-chip">
           Ostatnie zdjęcie
         </button>
-        <button type="button" onClick={() => pick("")} disabled={pending} className={`btn-secondary btn-sm ${choice === "" ? "ring-2 ring-sea" : ""}`}>
+        <button type="button" onClick={() => pick("")} disabled={pending} aria-pressed={choice === ""} className="toggle-chip">
           Bez zdjęcia
         </button>
       </div>
@@ -438,7 +438,7 @@ export function ShowEndPhoto({ tripId, kind, choice, photos }: { tripId: string;
           </button>
         ))}
       </div>
-      {message?.error && <p className="text-red-600">{message.error}</p>}
+      {message?.error && <p className="msg-error">{message.error}</p>}
     </section>
   );
 }

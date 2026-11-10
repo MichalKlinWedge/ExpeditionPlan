@@ -280,7 +280,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
   // Pasek zapisu tylko przy zapisie, błędzie albo po zapisie — bez stałego „zapisuje się od razu”.
   const status = canEdit && (saving.pending > 0 || saving.error || saving.ok) && (
     <p className="sticky top-0 z-10 -mx-4 bg-[var(--background)] px-4 py-1 text-xs text-zinc-500">
-      {saving.pending > 0 ? "Zapisuję…" : saving.error ? <span className="text-red-600">{saving.error}</span> : `Zapisano.${saving.note ? ` ${saving.note}` : ""}`}
+      {saving.pending > 0 ? "Zapisuję…" : saving.error ? <span className="msg-error">{saving.error}</span> : `Zapisano.${saving.note ? ` ${saving.note}` : ""}`}
     </p>
   );
   const top = (
@@ -293,7 +293,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
           <button
             key={each}
             onClick={() => setScenario(each)}
-            className={`rounded-full border px-3 py-1 ${scenario === each ? "border-sea bg-sea text-white" : "border-zinc-300 dark:border-zinc-700"}`}>
+            aria-pressed={scenario === each}
+            className="toggle-chip">
             {each === "optimistic" ? "optymistyczny (krótsze czasy)" : "pesymistyczny (dłuższe czasy)"}
           </button>
         ))}
@@ -364,8 +365,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
             {pick?.place && (
               <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-2 text-sm">
                 <p className="text-xs text-zinc-500">Kliknij mapę tam, gdzie jest „{pick.place.name}” — potem pinezkę można przeciągnąć.</p>
-                <button onClick={() => setPick(null)} className="btn-mini self-start">
-                  anuluj
+                <button onClick={() => setPick(null)} className="btn-secondary btn-sm self-start">
+                  Anuluj
                 </button>
               </div>
             )}
@@ -389,8 +390,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                         }}
                       />
                     )}
-                    <button onClick={() => setPick(null)} className="btn-mini self-start">
-                      anuluj
+                    <button onClick={() => setPick(null)} className="btn-secondary btn-sm self-start">
+                      Anuluj
                     </button>
                   </div>
                 )}
@@ -744,7 +745,7 @@ function PoolAddForm({ areas, onAdd }: { areas: string[]; onAdd: Actions["addToP
     );
   return (
     <form
-      className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+      className="flex flex-col gap-2 panel p-3 text-sm"
       onSubmit={(event) => {
         event.preventDefault();
         if (title.trim() === "") return;
@@ -819,14 +820,13 @@ function RouteLink({ doc, item }: { doc: TripDocument; item: Item }) {
 /** Grupowanie, opis (wszystkie / z opisem / bez), filtry z licznikami i szukanie; „wyczyść” wraca do całej puli. */
 function PoolToolbar({ doc, pool, guided, query, onChange }: { doc: TripDocument; pool: TripDocument["items"]; guided: ReadonlySet<string>; query: PoolQuery; onChange: (query: PoolQuery) => void }) {
   const toggle = (filter: PoolFilter) => onChange({ ...query, filters: query.filters.includes(filter) ? query.filters.filter((each) => each !== filter) : [...query.filters, filter] });
-  const chip = (active: boolean) => `rounded-full border px-2.5 py-0.5 text-xs ${active ? "border-sea bg-sea text-white" : "border-zinc-300 hover:border-sea dark:border-zinc-700"}`;
   const narrowed = query.guide !== "all" || query.filters.length > 0 || query.text.trim() !== "";
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       <span className="flex items-center gap-1.5">
         <span className="text-xs text-zinc-500">grupuj:</span>
         {(Object.keys(POOL_GROUP) as PoolGroupBy[]).map((key) => (
-          <button key={key} onClick={() => onChange({ ...query, groupBy: key })} aria-pressed={query.groupBy === key} className={chip(query.groupBy === key)}>
+          <button key={key} onClick={() => onChange({ ...query, groupBy: key })} aria-pressed={query.groupBy === key} className="toggle-chip">
             {POOL_GROUP[key]}
           </button>
         ))}
@@ -834,7 +834,7 @@ function PoolToolbar({ doc, pool, guided, query, onChange }: { doc: TripDocument
       <span className="flex items-center gap-1.5">
         <span className="text-xs text-zinc-500">opis:</span>
         {(Object.keys(POOL_GUIDE) as PoolGuide[]).map((key) => (
-          <button key={key} onClick={() => onChange({ ...query, guide: key })} aria-pressed={query.guide === key} className={chip(query.guide === key)}>
+          <button key={key} onClick={() => onChange({ ...query, guide: key })} aria-pressed={query.guide === key} className="toggle-chip">
             {POOL_GUIDE[key]} ({guideCount(pool, guided, key)})
           </button>
         ))}
@@ -846,7 +846,7 @@ function PoolToolbar({ doc, pool, guided, query, onChange }: { doc: TripDocument
             const count = poolCount(doc, pool, key);
             if (count === 0 && !query.filters.includes(key)) return null;
             return (
-              <button key={key} onClick={() => toggle(key)} aria-pressed={query.filters.includes(key)} className={chip(query.filters.includes(key))}>
+              <button key={key} onClick={() => toggle(key)} aria-pressed={query.filters.includes(key)} className="toggle-chip">
                 {POOL_FILTER[key]} ({count})
               </button>
             );
@@ -988,7 +988,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
 
       <DayVariants doc={doc} dayRef={dayRef} active={active} onChoose={onChoose} onRules={onRules} field={fieldVariants} votesHref={tripId ? `/trips/${tripId}/votes` : undefined} />
 
-      {failure && <p className="text-sm text-red-600">Nie udało się policzyć dnia: {failure}</p>}
+      {failure && <p className="text-sm msg-error">Nie udało się policzyć dnia: {failure}</p>}
 
       {schedule && (
         <ol className="flex flex-col gap-1 text-sm">
@@ -1123,7 +1123,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                   </a>
                 )}
                 {warnings.map((warning, index) => (
-                  <p key={index} className={`ml-31 text-xs ${warning.severity === "hard" ? "text-red-600" : "text-amber-600"}`}>
+                  <p key={index} className={`ml-31 text-xs ${warning.severity === "hard" ? "msg-error" : "text-amber-600"}`}>
                     {warning.severity === "hard" ? "⚠ " : "· "}
                     {warning.message}
                   </p>
@@ -1232,7 +1232,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
       {schedule?.warnings
         .filter((warning) => warning.itemRef === undefined)
         .map((warning, index) => (
-          <p key={index} className={`text-xs ${warning.severity === "hard" ? "text-red-600" : "text-amber-600"}`}>
+          <p key={index} className={`text-xs ${warning.severity === "hard" ? "msg-error" : "text-amber-600"}`}>
             {warning.severity === "hard" ? "⚠ " : "· "}
             {warning.message}
           </p>

@@ -44,8 +44,8 @@ export function PlanActionButton({ run, label, note, ai = false, end = false }: 
         </button>
         <span className="text-xs text-zinc-500">{note}</span>
       </div>
-      {result?.error && <p className="text-red-600">{result.error}</p>}
-      {result?.ok && <p className="text-green-700 dark:text-green-400">{result.ok}</p>}
+      {result?.error && <p className="msg-error">{result.error}</p>}
+      {result?.ok && <p className="msg-ok">{result.ok}</p>}
     </div>
   );
 }

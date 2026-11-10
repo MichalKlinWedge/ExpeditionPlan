@@ -42,7 +42,7 @@ export function TripTitle({ tripId, title, canEdit, hasDrafts = false }: { tripI
             />
           )}
         </span>
-        {message?.ok && <span className="text-sm text-green-700 dark:text-green-400">{message.ok}</span>}
+        {message?.ok && <span className="text-sm msg-ok">{message.ok}</span>}
       </span>
     );
   }
@@ -67,7 +67,7 @@ export function TripTitle({ tripId, title, canEdit, hasDrafts = false }: { tripI
         </button>
         {hasDrafts && <span className="text-xs text-zinc-500">Szkice AI tego planu dostaną tę samą nową nazwę.</span>}
       </span>
-      {message?.error && <span className="text-sm text-red-600">{message.error}</span>}
+      {message?.error && <span className="text-sm msg-error">{message.error}</span>}
     </form>
   );
 }

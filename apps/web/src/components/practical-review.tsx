@@ -42,7 +42,7 @@ export function PracticalReview({ tripId, runId, info, checks }: { tripId: strin
   const dead = checks.filter((check) => !check.ok);
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-blue-200 p-4 text-sm dark:border-blue-900">
+    <div className="flex flex-col gap-4 panel-ai p-4 text-sm">
       <p className="text-xs text-zinc-500">Szkic AI — nic nie jest jeszcze w planie. Odznacz, czego nie chcesz, i dodaj resztę.</p>
       {section(
         "Notatki",
@@ -102,7 +102,7 @@ export function PracticalReview({ tripId, runId, info, checks }: { tripId: strin
             <li key={i} className="flex gap-2">
               {box("tasks", i)}
               <span>
-                {task.priority === "high" ? <span className="text-red-600">! </span> : null}
+                {task.priority === "high" ? <span className="msg-error">! </span> : null}
                 {task.title}
                 {task.daysBefore !== undefined ? (
                   <span className="text-xs text-zinc-500"> · {task.daysBefore === 0 ? "w dniu wyjazdu" : `${task.daysBefore} dni przed wyjazdem`}</span>
@@ -135,8 +135,8 @@ export function PracticalReview({ tripId, runId, info, checks }: { tripId: strin
           className="btn-primary">
           {pending ? "Dodaję…" : `Dodaj zaznaczone do planu (${total})`}
         </button>
-        {result.error && <span className="text-red-600">{result.error}</span>}
-        {result.ok && <span className="text-green-700 dark:text-green-400">{result.ok}</span>}
+        {result.error && <span className="msg-error">{result.error}</span>}
+        {result.ok && <span className="msg-ok">{result.ok}</span>}
       </div>
     </div>
   );

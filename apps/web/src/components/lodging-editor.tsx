@@ -48,11 +48,11 @@ export function LodgingEditor({ tripId, itemRef, link }: { tripId: string; itemR
           <input value={url} onChange={(event) => setUrl(event.target.value)} inputMode="url" placeholder="https://www.booking.com/hotel/…" disabled={pending} className="field px-2 py-1 text-sm" />
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" disabled={pending} onClick={() => start(async () => setLinkState(await saveLodgingLink(tripId, itemRef, url)))} className="btn-secondary btn-sm">
+          <button type="button" disabled={pending} onClick={() => start(async () => setLinkState(await saveLodgingLink(tripId, itemRef, url)))} className="btn-primary btn-sm">
             Zapisz link
           </button>
-          {linkState.ok && <span className="text-xs text-emerald-700 dark:text-emerald-400">{linkState.ok}</span>}
-          {linkState.error && <span className="text-xs text-red-600">{linkState.error}</span>}
+          {linkState.ok && <span className="text-xs msg-ok">{linkState.ok}</span>}
+          {linkState.error && <span className="text-xs msg-error">{linkState.error}</span>}
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export function LodgingEditor({ tripId, itemRef, link }: { tripId: string; itemR
       </div>
 
       {draft && (
-        <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-3">
+        <div className="flex flex-col gap-2 panel-ai p-3">
           <p className="font-medium">Co zapisać?</p>
           <ul className="flex flex-col gap-1.5">
             {draft.rows.map((row) => (
@@ -106,8 +106,8 @@ export function LodgingEditor({ tripId, itemRef, link }: { tripId: string; itemR
           </div>
         </div>
       )}
-      {state.ok && <p className="text-xs text-emerald-700 dark:text-emerald-400">{state.ok}</p>}
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
     </div>
   );
 }

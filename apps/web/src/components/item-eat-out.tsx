@@ -28,7 +28,7 @@ export function ItemEatOut({ tripId, doc, ids, itemRef, editing }: { tripId: str
     <section className="card flex flex-col gap-2 p-4 text-sm">
       <h2 className="card-title">Gdzie jemy</h2>
       {hasEateries ? <MealEateries tripId={tripId} doc={doc} ids={ids} itemRef={itemRef} canEdit={editing} selection={selection} /> : <p className="text-zinc-500">Nie ma jeszcze przypiętej knajpy.</p>}
-      {pinned && <p className="text-xs text-emerald-700 dark:text-emerald-400">Przypięto i zapisano: {pinned.join(", ")}.</p>}
+      {pinned && <p className="text-xs msg-ok">Przypięto i zapisano: {pinned.join(", ")}.</p>}
       {editing && !searching && (
         <button onClick={() => setSearching(true)} className="btn-secondary btn-sm self-start">
           Knajpy w pobliżu

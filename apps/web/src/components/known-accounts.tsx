@@ -68,8 +68,8 @@ function KnownRow({ tripId, account, travelers, canMail }: { tripId: string; acc
           {pending ? "Dodaję…" : "Dodaj"}
         </button>
       </span>
-      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
-      {state.ok && <span className="text-xs text-green-700 dark:text-green-400">{state.ok}</span>}
+      {state.error && <span className="text-xs msg-error">{state.error}</span>}
+      {state.ok && <span className="text-xs msg-ok">{state.ok}</span>}
     </li>
   );
 }

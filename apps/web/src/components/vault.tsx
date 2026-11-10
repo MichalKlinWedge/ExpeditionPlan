@@ -150,7 +150,7 @@ function DocumentRow({ tripId, document, names, editing, bookings, items, people
           </>
         )}
       </div>
-      {problem && <p className="text-xs text-red-600">{problem}</p>}
+      {problem && <p className="text-xs msg-error">{problem}</p>}
       {changing && (
         <DocumentFields
           tripId={tripId}
@@ -206,7 +206,7 @@ function DocumentFields({ initial, bookings, items, people, userId, owner, submi
 
   return (
     <form
-      className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
+      className="flex flex-col gap-2 panel p-3"
       onSubmit={(event) => {
         event.preventDefault();
         if (name.trim() === "" && initial !== undefined) return setProblem("Podaj nazwę dokumentu.");
@@ -316,7 +316,7 @@ function DocumentFields({ initial, bookings, items, people, userId, owner, submi
           </select>
         </label>
       </div>
-      {problem && <p className="text-xs text-red-600">{problem}</p>}
+      {problem && <p className="text-xs msg-error">{problem}</p>}
       <div className="flex gap-2">
         <button disabled={pending || busy} className="btn-primary btn-sm">
           {pending ? "Zapisuję…" : submit}
@@ -382,7 +382,7 @@ function UploadForm({ tripId, bookings, items, people, userId, owner, onDone }: 
         <input type="file" accept={DOCUMENT_MIME.join(",")} onChange={(event) => void choose(event.target.files?.[0] ?? null)} className="text-sm" />
       </label>
       {reading && <p className="text-xs text-zinc-500">Szukam kodu w pliku…</p>}
-      {status && !reading && <p className={`text-xs ${detected ? "text-green-700 dark:text-green-400" : "text-zinc-500"}`}>{status}</p>}
+      {status && !reading && <p className={`text-xs ${detected ? "msg-ok" : "text-zinc-500"}`}>{status}</p>}
     </DocumentFields>
   );
 }

@@ -208,7 +208,7 @@ export function JournalNew({ tripId, days, tz, itemId, plannedTime, label = "+ N
           </span>
         )}
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm msg-error">{error}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => void save()} disabled={busy !== null || (body.trim() === "" && files.length === 0)} className="btn-primary btn-sm">
           {busy ?? "Zapisz wpis"}

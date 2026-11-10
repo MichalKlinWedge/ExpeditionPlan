@@ -29,7 +29,7 @@ export default function Home() {
 async function TripList() {
   const { supabase, canCreateTrips } = await requireUser("/");
   const { data, error } = await supabase.from("my_trips").select("*").order("start_date");
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   const today = new Date().toISOString().slice(0, 10);
   const { ahead, postponed, archive, drafts } = tripSections(data, today);
   return (

@@ -28,13 +28,13 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase.from("public_shares").select("enabled, show, film").eq("trip_id", id).maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   let loaded: Awaited<ReturnType<typeof loadShow>>;
   try {
     loaded = await loadShow(supabase, id, data as PullPayload, { photos: true, kind, variants: await chosenVariantsFromCookie(id) });
   } catch (e) {
-    return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
+    return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
   const { doc, scenes, credits, script } = loaded;
   const journalPhotos = ((data as PullPayload).tables as unknown as { journal_entries?: { photo_path: string | null; deleted_at?: string | null }[] }).journal_entries?.filter((row) => row.photo_path && !row.deleted_at).length ?? 0;

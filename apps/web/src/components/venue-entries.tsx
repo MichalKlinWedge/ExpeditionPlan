@@ -114,7 +114,7 @@ export function VenueEntries({ tripId, place, editing }: { tripId: string; place
             ))}
         </div>
       )}
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
     </>
   );
 }
@@ -133,8 +133,8 @@ function PointForm({ initial, pending, onCancel, onSave }: { initial: string; pe
         <button disabled={pending || text.trim() === ""} className="btn-primary btn-sm">
           Zapisz
         </button>
-        <button type="button" disabled={pending} onClick={onCancel} className="btn-mini">
-          anuluj
+        <button type="button" disabled={pending} onClick={onCancel} className="btn-secondary btn-sm">
+          Anuluj
         </button>
       </div>
     </form>
@@ -176,8 +176,8 @@ function PriceForm({ initial, pending, onCancel, onSave }: { initial: VenuePrice
       <button disabled={pending || !valid} className="btn-primary btn-sm">
         Zapisz
       </button>
-      <button type="button" disabled={pending} onClick={onCancel} className="btn-mini">
-        anuluj
+      <button type="button" disabled={pending} onClick={onCancel} className="btn-secondary btn-sm">
+        Anuluj
       </button>
     </form>
   );

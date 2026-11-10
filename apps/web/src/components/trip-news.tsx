@@ -46,7 +46,7 @@ function hrefOf(tripId: string, line: NewsLine): string {
 function Line({ tripId, line, now }: { tripId: string; line: NewsLine; now: number }) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-1.5">
-      <span className={line.action === "removed" ? "text-red-700 dark:text-red-400" : line.action === "added" ? "text-emerald-700 dark:text-emerald-400" : ""}>{NEWS_ACTION[line.action]}</span>
+      <span className={line.action === "removed" ? "text-red-700 dark:text-red-400" : line.action === "added" ? "msg-ok" : ""}>{NEWS_ACTION[line.action]}</span>
       <span className="text-zinc-500">{line.kind}</span>
       <Link href={hrefOf(tripId, line)} className="btn-mini">
         {line.title ? `„${line.title}”` : "(bez nazwy)"}

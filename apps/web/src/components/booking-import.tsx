@@ -69,7 +69,7 @@ export function BookingImport({ tripId, owner }: { tripId: string; owner: boolea
           <SparkIcon className="size-4" />
           Importuj z potwierdzenia
         </button>
-        {message.ok && <p className="text-xs text-emerald-700 dark:text-emerald-400">{message.ok}</p>}
+        {message.ok && <p className="text-xs msg-ok">{message.ok}</p>}
       </div>
     );
   }
@@ -143,7 +143,7 @@ export function BookingImport({ tripId, owner }: { tripId: string; owner: boolea
   const canSave = preview !== null && (newBooking || picked.size > 0);
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+    <div className="flex flex-col gap-3 panel p-3 text-sm">
       <p className="font-medium">Import rezerwacji z potwierdzenia</p>
       {preview === null ? (
         <>
@@ -157,7 +157,7 @@ export function BookingImport({ tripId, owner }: { tripId: string; owner: boolea
               <textarea value={text} onChange={(event) => setText(event.target.value)} rows={5} disabled={pending} placeholder="Zaznacz i skopiuj treść maila, bez danych karty." className="field p-2 text-sm" />
             </label>
           )}
-          {file !== null && code && <p className="text-xs text-emerald-700 dark:text-emerald-400">W pliku jest {codeLabel(code.format)} — trafi do sejfu razem z plikiem.</p>}
+          {file !== null && code && <p className="text-xs msg-ok">W pliku jest {codeLabel(code.format)} — trafi do sejfu razem z plikiem.</p>}
           <p className="text-xs text-zinc-500">AI (Gemini) przygotuje szkic, a Ty wybierzesz, co zapisać. Dane karty i hasła nie są odczytywane.</p>
           <div className="flex gap-2">
             <button type="button" disabled={pending || (file === null && text.trim() === "")} onClick={read} className="btn-primary btn-sm">
@@ -236,7 +236,7 @@ export function BookingImport({ tripId, owner }: { tripId: string; owner: boolea
           </div>
         </>
       )}
-      {message.error && <p className="text-xs text-red-600">{message.error}</p>}
+      {message.error && <p className="text-xs msg-error">{message.error}</p>}
     </div>
   );
 }

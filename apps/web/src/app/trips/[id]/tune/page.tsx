@@ -52,7 +52,7 @@ async function Tune({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("ai_messages").select("role, content").eq("trip_id", id).order("created_at", { ascending: false }).limit(20),
     supabase.from("ai_runs").select("id, output").eq("trip_id", id).eq("stage", "tune").eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
-  if (error) return <p className="text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const canEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const payload = data as PullPayload;

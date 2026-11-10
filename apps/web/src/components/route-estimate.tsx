@@ -111,8 +111,8 @@ export function RouteEstimate({ tripId, itemRef, url, plannerUrl, current, fromF
         </button>
       )}
       <p className="text-xs text-zinc-500">Wpisz liczby z mapy albo wgraj niżej plik GPX, który sam je wypełni i narysuje przebieg na mapie planu (czas z pliku liczy norma DIN). Czas przeliczy godziny tego dnia, a „Przelicz przejazdy” nie nadpisze go szacunkiem.</p>
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
-      {state.ok && <p className="text-xs text-emerald-700 dark:text-emerald-400">{state.ok}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
+      {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
     </div>
   );
 }

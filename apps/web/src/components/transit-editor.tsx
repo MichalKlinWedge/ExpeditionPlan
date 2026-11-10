@@ -26,7 +26,7 @@ export function TransitDetails({ tripId, itemRef, rows }: { tripId: string; item
           <IconAction kind="remove" disabled={pending} onClick={() => remove(row.key)} />
         </p>
       ))}
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
     </>
   );
 }
@@ -101,7 +101,7 @@ export function TransitEditor({ tripId, itemRef, routeUrl, canDraw }: { tripId: 
       )}
 
       {draft && (
-        <div className="flex flex-col gap-2 rounded-lg border border-signal/60 p-3">
+        <div className="flex flex-col gap-2 panel-ai p-3">
           <p className="font-medium">Co zapisać?</p>
           <ul className="flex flex-col gap-1.5">
             {draft.rows.map((row) => (
@@ -138,8 +138,8 @@ export function TransitEditor({ tripId, itemRef, routeUrl, canDraw }: { tripId: 
           </div>
         </div>
       )}
-      {state.ok && <p className="text-xs text-emerald-700 dark:text-emerald-400">{state.ok}</p>}
-      {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
+      {state.error && <p className="text-xs msg-error">{state.error}</p>}
     </div>
   );
 }

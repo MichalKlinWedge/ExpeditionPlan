@@ -37,6 +37,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { BallotIcon } from "@/components/icons";
+import { DialogTitle } from "@/components/dialog-title";
 import { IconAction } from "@/components/icon-action";
 
 /**
@@ -179,8 +180,10 @@ function VariantDialog({ title, options, onPick, onClose }: { title: string; opt
         // Kliknięcie w tło (poza oknem) zamyka, jak na telefonie.
         if (event.target === dialog.current) dialog.current?.close();
       }}
-      className="card m-auto flex max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100vw-2rem))] flex-col gap-2 overflow-y-auto p-4 text-sm backdrop:bg-black/40">
-      <h2 className="card-title">{title}</h2>
+      className="card dialog flex flex-col gap-2">
+      <DialogTitle onClose={() => dialog.current?.close()}>
+        <h2>{title}</h2>
+      </DialogTitle>
       <ul className="flex flex-col">
         {options.map(({ variant, name, on }) => (
           <li key={variant.ref} className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800">
@@ -196,9 +199,6 @@ function VariantDialog({ title, options, onPick, onClose }: { title: string; opt
           </li>
         ))}
       </ul>
-      <button type="button" onClick={() => dialog.current?.close()} className="btn-secondary btn-sm self-end">
-        Anuluj
-      </button>
     </dialog>
   );
 }
@@ -210,7 +210,7 @@ function NewGroup({ onAdd, onCancel }: { onAdd: (fields: Pick<VariantGroup, "tit
   const [second, setSecond] = useState("B");
   return (
     <form
-      className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      className="flex flex-col gap-2 panel p-3"
       onSubmit={(event) => {
         event.preventDefault();
         if (title.trim() === "" || first.trim() === "" || second.trim() === "") return;
@@ -243,8 +243,8 @@ function NewGroup({ onAdd, onCancel }: { onAdd: (fields: Pick<VariantGroup, "tit
       </div>
       <div className="flex gap-2">
         <button className="btn-secondary btn-sm">Dodaj warianty</button>
-        <button type="button" onClick={onCancel} className="btn-mini">
-          anuluj
+        <button type="button" onClick={onCancel} className="btn-secondary btn-sm">
+          Anuluj
         </button>
       </div>
     </form>
@@ -267,7 +267,7 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
 
   return (
     <form
-      className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      className="flex flex-col gap-3 panel p-3"
       onSubmit={(event) => {
         event.preventDefault();
         onRules((current) =>
@@ -370,9 +370,9 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
         <input value={extra} onChange={(event) => setExtra(event.target.value)} placeholder="np. C · leniwy dzień" className={input} />
       </label>
       <div className="flex flex-wrap items-center gap-2">
-        <button className="btn-secondary btn-sm">Zapisz</button>
-        <button type="button" onClick={onDone} className="btn-mini">
-          anuluj
+        <button className="btn-primary btn-sm">Zapisz</button>
+        <button type="button" onClick={onDone} className="btn-secondary btn-sm">
+          Anuluj
         </button>
         <span className="ml-auto flex items-center gap-1 text-xs text-zinc-500">
           Koniec wyboru, zostaje:
@@ -574,7 +574,7 @@ export function DayConstraints({ doc, dayRef, items, warnings, onRules }: Constr
                 {details.length > 0 && <span className="text-zinc-600 dark:text-zinc-400">{details.join(" · ")}</span>}
                 {constraint.reason && <span className="text-zinc-500">— {constraint.reason}</span>}
                 {constraint.dayRef === undefined && constraint.itemRef === undefined && <span className="text-xs text-zinc-500">(cały wyjazd)</span>}
-                {violation && <span className={`text-xs ${violation.severity === "hard" ? "text-red-600" : "text-amber-600"}`}>naruszone o {violation.minutes} min</span>}
+                {violation && <span className={`text-xs ${violation.severity === "hard" ? "msg-error" : "text-amber-600"}`}>naruszone o {violation.minutes} min</span>}
                 {onRules && constraint.ref && (
                   <span className="text-xs text-zinc-500">
                     <IconAction kind={editing === ref ? "close" : "change"} onClick={() => setEditing(editing === ref ? null : ref)} />
@@ -647,7 +647,7 @@ function ConstraintForm({ dayRef, items, initial, submit, onSave, onCancel }: Fo
 
   return (
     <form
-      className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      className="flex flex-col gap-2 panel p-3"
       onSubmit={(event) => {
         event.preventDefault();
         if (needs.item && itemRef === "") return setProblem("Wybierz punkt, którego dotyczy ograniczenie.");
@@ -723,11 +723,11 @@ function ConstraintForm({ dayRef, items, initial, submit, onSave, onCancel }: Fo
           {kind === "must_be_open" ? "Silnik sprawdza godziny otwarcia przy punkcie z miejscem z OSM." : "Tego silnik nie sprawdza — zostaje jako przypomnienie w planie."}
         </p>
       )}
-      {problem && <p className="text-xs text-red-600">{problem}</p>}
+      {problem && <p className="text-xs msg-error">{problem}</p>}
       <div className="flex gap-2">
         <button className="btn-secondary btn-sm">{submit}</button>
-        <button type="button" onClick={onCancel} className="btn-mini">
-          anuluj
+        <button type="button" onClick={onCancel} className="btn-secondary btn-sm">
+          Anuluj
         </button>
       </div>
     </form>
@@ -809,7 +809,7 @@ function NoteForm({ initial, submit, onSave, onCancel }: { initial?: Note; submi
   const kinds = NOTE_KINDS.includes(kind) ? NOTE_KINDS : [...NOTE_KINDS, kind];
   return (
     <form
-      className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      className="flex flex-col gap-2 panel p-3"
       onSubmit={(event) => {
         event.preventDefault();
         if (body.trim() === "") return;
@@ -837,8 +837,8 @@ function NoteForm({ initial, submit, onSave, onCancel }: { initial?: Note; submi
       </label>
       <div className="flex gap-3">
         <button className="btn-secondary btn-sm">{submit}</button>
-        <button type="button" onClick={onCancel} className="btn-mini">
-          anuluj
+        <button type="button" onClick={onCancel} className="btn-secondary btn-sm">
+          Anuluj
         </button>
       </div>
     </form>

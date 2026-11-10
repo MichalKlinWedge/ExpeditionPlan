@@ -43,9 +43,9 @@ export function PublicShare({ tripId, enabled, hide }: { tripId: string; enabled
           )}
         </div>
       </form>
-      {state.error && <p className="text-red-600">{state.error}</p>}
-      {off.error && <p className="text-red-600">{off.error}</p>}
-      {off.ok && <p className="text-green-700 dark:text-green-400">{off.ok}</p>}
+      {state.error && <p className="msg-error">{state.error}</p>}
+      {off.error && <p className="msg-error">{off.error}</p>}
+      {off.ok && <p className="msg-ok">{off.ok}</p>}
       {link && (
         <div className="flex flex-col gap-2 rounded-xl bg-zinc-100 p-3 dark:bg-zinc-800">
           <p>{state.ok}</p>

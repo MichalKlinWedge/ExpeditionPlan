@@ -185,7 +185,7 @@ export function PlacesView({ tripId, places, canEdit, hasRouted, initial = null 
               ["unused", "Nieużywane"],
             ] as const
           ).map(([key, label]) => (
-            <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={`rounded-full px-3 py-1 ${filter === key ? "bg-sea text-white" : "bg-sea-light text-sea"}`}>
+            <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className="toggle-chip">
               {label} ({counts[key]})
             </button>
           ))}
@@ -422,7 +422,7 @@ function PlaceRow({
               Adres
               <input value={address} onChange={(event) => setAddress(event.target.value)} disabled={pending} className={input} />
             </label>
-            <button disabled={pending || name.trim() === "" || (name.trim() === place.name && address.trim() === (place.address ?? ""))} className={`${button} self-start`}>
+            <button disabled={pending || name.trim() === "" || (name.trim() === place.name && address.trim() === (place.address ?? ""))} className="btn-primary btn-sm self-start">
               Zapisz nazwę i adres
             </button>
           </form>
@@ -481,7 +481,7 @@ function PlaceRow({
             </form>
             {/* Na końcu sekcji, pod oboma polami; należy do formularza współrzędnych. */}
             <div className="flex flex-wrap items-center gap-3">
-              <button form={coordsForm} disabled={pending || coords.trim() === ""} className={button}>
+              <button form={coordsForm} disabled={pending || coords.trim() === ""} className="btn-primary btn-sm">
                 Zapisz
               </button>
               {located && (
@@ -516,8 +516,8 @@ function PlaceRow({
       )}
 
       {pending && <p className="text-xs text-zinc-500">Zapisuję…</p>}
-      {result.error && <p className="text-xs text-red-600">{result.error}</p>}
-      {result.ok && <p className="text-xs text-green-700 dark:text-green-400">{result.ok}</p>}
+      {result.error && <p className="text-xs msg-error">{result.error}</p>}
+      {result.ok && <p className="text-xs msg-ok">{result.ok}</p>}
       {moved && hasRouted && usage.total > 0 && (
         <p className="text-xs text-zinc-500">
           Czasy przejazdów nie zmieniają się same:{" "}

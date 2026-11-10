@@ -39,7 +39,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}/print`);
   const { data, error } = await supabase.rpc("pull_changes", { p_trip: id, p_since: 0 });
-  if (error) return <p className="p-6 text-sm text-red-600">{dbLoadError(error)}</p>;
+  if (error) return <p className="p-6 text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
   const payload = data as PullPayload;
   const { doc, inputs } = stateFromPayload(payload);

@@ -42,8 +42,8 @@ export function PublicShowToggle({ tripId, kind, linkOn, showOn }: { tripId: str
           </p>
         </>
       )}
-      {result.error && <p className="text-red-600">{result.error}</p>}
-      {result.ok && <p className="text-green-700 dark:text-green-400">{result.ok}</p>}
+      {result.error && <p className="msg-error">{result.error}</p>}
+      {result.ok && <p className="msg-ok">{result.ok}</p>}
     </section>
   );
 }

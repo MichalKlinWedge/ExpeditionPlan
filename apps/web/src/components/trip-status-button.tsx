@@ -27,7 +27,7 @@ export function TripStatusButton({ tripId, postponed, startDate, endDate, today,
       <button disabled={pending} onClick={toggle} className="btn-secondary btn-sm">
         {pending ? "Zapisuję…" : postponed ? "Przywróć do planów" : "Odłóż wyjazd"}
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs msg-error">{error}</span>}
       {choosing && <RescheduleDialog tripId={tripId} startDate={startDate} endDate={endDate} today={today} hasDrafts={hasDrafts} initial={suggestNewStart(startDate, today)} restore onClose={() => setChoosing(false)} />}
     </span>
   );

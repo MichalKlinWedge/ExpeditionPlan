@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { applyReschedule, previewReschedule, type ReschedulePreview } from "@/app/reschedule-actions";
 import { setTripPostponed } from "@/app/actions";
 import { ClimateHint } from "@/components/climate-hint";
+import { DialogTitle } from "@/components/dialog-title";
 import { tripDates } from "@/lib/labels";
 
 const shortDate = (date: string) => `${Number(date.slice(8))}.${date.slice(5, 7)}.${date.slice(0, 4)}`;
@@ -89,9 +90,11 @@ export function RescheduleDialog({ tripId, startDate, endDate, today, hasDrafts,
   const busy = loading || saving;
 
   return (
-    <dialog ref={dialog} onClose={onClose} className="card m-auto w-[min(36rem,calc(100vw-2rem))] p-5 text-sm backdrop:bg-black/40">
+    <dialog ref={dialog} onClose={onClose} className="card dialog">
       <div className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">{restore ? "Nowy termin przed przywróceniem" : "Zmień termin"}</h2>
+        <DialogTitle onClose={() => dialog.current?.close()} disabled={saving}>
+          <h2>{restore ? "Nowy termin przed przywróceniem" : "Zmień termin"}</h2>
+        </DialogTitle>
         {restore && <p>Termin tego wyjazdu już minął. Podaj nową datę początku — bez niej wyjazd po przywróceniu trafi do „Archiwum”.</p>}
         <label className="flex flex-col gap-1">
           <span className="font-medium">Nowa data początku</span>
@@ -161,7 +164,7 @@ export function RescheduleDialog({ tripId, startDate, endDate, today, hasDrafts,
         )}
 
         {restore && newEnd !== null && newEnd < today && <p className="text-amber-700 dark:text-amber-400">Ten termin też już minął — wyjazd trafi do „Archiwum”.</p>}
-        {error && <p className="text-red-600">{error}</p>}
+        {error && <p className="msg-error">{error}</p>}
 
         <div className="flex flex-wrap justify-end gap-2">
           {restore && (

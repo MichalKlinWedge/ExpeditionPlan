@@ -78,8 +78,8 @@ export function LoginForm() {
           Wyślij link
         </button>
       </form>
-      {status.error && <p className="text-sm text-red-600">{status.error}</p>}
-      {status.ok && <p className="text-sm text-green-700 dark:text-green-400">{status.ok}</p>}
+      {status.error && <p className="text-sm msg-error">{status.error}</p>}
+      {status.ok && <p className="text-sm msg-ok">{status.ok}</p>}
     </div>
   );
 }
