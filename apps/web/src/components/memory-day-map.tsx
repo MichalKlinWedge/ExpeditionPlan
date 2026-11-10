@@ -9,7 +9,7 @@ import { MemoriesMap } from "@/components/memories-map";
  * Mapa dnia na osi czasu pamiątki. Przeglądarka ma kilkanaście kontekstów WebGL na stronę, a dni bywa więcej:
  * mapa powstaje dopiero blisko ekranu i znika, gdy odjedzie daleko. Do druku jest ślad trasy obok (`RouteTrace`).
  */
-export function MemoryDayMap({ map }: { map: DayMap }) {
+export function MemoryDayMap({ map, square = false }: { map: DayMap; square?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
   useEffect(() => {
@@ -21,7 +21,11 @@ export function MemoryDayMap({ map }: { map: DayMap }) {
   }, []);
   return (
     <div ref={box} className="print:hidden">
-      {near ? <MemoriesMap map={map} banner /> : <div className="h-72 rounded-xl border border-zinc-200 bg-zinc-50 lg:h-[calc(50vh-4rem)] dark:border-zinc-800 dark:bg-zinc-900" />}
+      {near ? (
+        <MemoriesMap map={map} banner={!square} square={square} fitLines={square} />
+      ) : (
+        <div className={`rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 ${square ? "aspect-square" : "h-72 lg:h-[calc(50vh-4rem)]"}`} />
+      )}
     </div>
   );
 }

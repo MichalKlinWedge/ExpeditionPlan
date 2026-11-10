@@ -64,6 +64,28 @@ describe('pamiątka jako oś czasu', () => {
     expect(timeline.loose.map((entry) => entry.id)).toEqual(['c']);
   });
 
+  it('trekking: duża karta z profilem wysokości ze śladu GPX; ten sam ślad drugi raz bez profilu', () => {
+    const doc = fixture('dinara');
+    const first = memoryTimeline(doc, { done: [], skipRefs: [], guideOf: () => null, journal: [] });
+    const withTrack = first.days.flatMap((day) => day.entries).flatMap((entry) => (entry.kind === 'point' ? [entry] : [])).filter((point) => doc.items.find((item) => item.ref === point.ref)?.activity?.trackRef !== undefined);
+    expect(withTrack.length).toBeGreaterThan(0);
+    expect(withTrack.every((point) => point.key && point.walk !== undefined && point.walk.profile === undefined)).toBe(true);
+
+    const trackRef = doc.items.find((item) => item.ref === withTrack[0]!.ref)!.activity!.trackRef!;
+    const line = { type: 'LineString' as const, coordinates: [[16.4, 44.06, 900], [16.41, 44.05, 1400], [16.42, 44.04, 1831], [16.43, 44.03, 1200]] };
+    const second = { ...doc, tracks: doc.tracks.map((track) => (track.ref === trackRef ? { ...track, geojson: line } : track)) };
+    // Drugi punkt z tym samym śladem (zejście).
+    const host = second.items.find((item) => item.ref === withTrack[0]!.ref)!;
+    const twin = { ...host, ref: `${host.ref}-zejscie`, title: 'Zejście' };
+    second.items = [...second.items, twin];
+    const timeline = memoryTimeline(second, { done: [], skipRefs: [], guideOf: () => null, journal: [] });
+    const points = timeline.days.flatMap((day) => day.entries).flatMap((entry) => (entry.kind === 'point' && second.items.find((item) => item.ref === entry.ref)?.activity?.trackRef === trackRef ? [entry] : []));
+    expect(points.length).toBeGreaterThan(1);
+    expect(points[0]!.walk).toMatchObject({ minEle: 900, maxEle: 1831 });
+    expect(points[0]!.walk!.profile).toHaveLength(120);
+    expect(points.slice(1).every((point) => point.walk !== undefined && point.walk.profile === undefined)).toBe(true);
+  });
+
   it('skrót: pełne zdania do limitu, zbyt długie pierwsze zdanie ucięte na słowie', () => {
     expect(shortText('Jedno. Dwa zdania tutaj. Trzy.', 20)).toBe('Jedno.');
     expect(shortText('Bardzo długie zdanie bez kropki aż do końca', 20)).toBe('Bardzo długie…');

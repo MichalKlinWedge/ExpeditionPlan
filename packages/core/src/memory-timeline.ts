@@ -3,9 +3,11 @@ import { instantToZoned } from './engine/time.ts';
 import { dayLabel } from './format.ts';
 import type { GuideContent } from './guide.ts';
 import { itemIcon } from './item-icon.ts';
+import type { TrackLine } from './gpx.ts';
 import { dayLodging } from './plan-info.ts';
 import { isRouteStop } from './route-stops.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
+import { profileSketch, trackProfile } from './track-profile.ts';
 import { dayStats, isShowWalk, walkFacts } from './trip-show.ts';
 
 /**
@@ -13,6 +15,8 @@ import { dayStats, isShowWalk, walkFacts } from './trip-show.ts';
  * punkty z krótkim opisem i zdjęciem z opisu miejsca, reszta planu w jednej linijce, a pomiędzy nimi wpisy z dziennika
  * w kolejności godzin. Wpis przypięty do punktu stoi pod tym punktem; wpis bez dnia zamyka oś.
  * Godziny punktów to godziny planu z silnika (te same warianty co reszta pamiątki); pominięte w terenie zostają skreślone.
+ * Trekking (ślad GPX, trasa `hike`, aktywność z km albo podejściem) to zawsze duża karta z własną mapą trasy, a ślad
+ * z wysokościami daje też profil (`walk.profile`); wejście i zejście tym samym śladem mają profil tylko przy pierwszym.
  */
 
 type Doc = TripDocument;
@@ -38,6 +42,8 @@ export type TimelinePoint = {
   /** „12,4 km · ↑ 650 m · 4 h” przy trasie pieszej. */
   facts?: string;
   image?: TimelineImage;
+  /** Trekking: karta dostaje mapę samej trasy; `profile` — zarys profilu wysokości ze śladu GPX (km, m n.p.m.). */
+  walk?: { profile?: { km: number; ele: number }[]; minEle?: number; maxEle?: number };
   /** Wpisy z dziennika przypięte do tego punktu. */
   journal: TimelineJournal[];
 };
@@ -84,6 +90,12 @@ export function shortText(text: string, limit: number): string {
 
 const isSight = (item: Item) => item.kind === 'visit' || item.kind === 'activity' || (item.kind === 'transport' && item.leg?.mode === 'hike');
 
+/** Trekking na osi: ślad GPX, trasa piesza w góry albo aktywność z liczbami trasy. */
+const isTrek = (item: Item) =>
+  item.activity?.trackRef !== undefined || (item.kind === 'transport' && item.leg?.mode === 'hike') || (item.kind === 'activity' && (item.activity?.distanceKm !== undefined || item.activity?.ascentM !== undefined));
+
+const PROFILE_POINTS = 120;
+
 export function memoryTimeline(doc: Doc, input: TimelineInput): MemoryTimeline {
   const schedule = { ...(input.activeVariants ? { activeVariants: input.activeVariants } : {}), ...(input.pulled ? { pulled: input.pulled } : {}) };
   const done = new Set(input.done.map((each) => each.itemRef));
@@ -92,6 +104,8 @@ export function memoryTimeline(doc: Doc, input: TimelineInput): MemoryTimeline {
   const dayRefs = new Set(dates.map((day) => day.ref));
   const seenImages = new Set<string>();
   const placed = new Set<string>();
+  const seenTracks = new Set<string>();
+  const tracks = new Map(doc.tracks.map((track) => [track.ref, track]));
 
   const days = dates.map((day, index): TimelineDay => {
     const items = itemsForDay(doc, day.ref, schedule).filter((item) => item.parentRef === undefined || isRouteStop(doc, item));
@@ -104,11 +118,17 @@ export function memoryTimeline(doc: Doc, input: TimelineInput): MemoryTimeline {
         const guide = item.kind === 'transport' && !isShowWalk(item) ? null : input.guideOf(item);
         const image = guide?.images.find((each) => !seenImages.has(each.url));
         const journal = ofDay.filter((entry) => entry.itemRef === item.ref);
-        const key = isSight(item) && (item.priority === 'must' || guide !== null || journal.some((entry) => entry.photoUrl !== undefined));
+        const trek = isTrek(item);
+        const key = trek || (isSight(item) && (item.priority === 'must' || guide !== null || journal.some((entry) => entry.photoUrl !== undefined)));
         if (key && image !== undefined) seenImages.add(image.url);
         for (const entry of journal) placed.add(entry.id);
         const facts = isShowWalk(item) ? walkFacts(item) : '';
         const time = times.get(item.ref);
+        const trackRef = item.activity?.trackRef;
+        const line = trackRef === undefined || seenTracks.has(trackRef) ? undefined : (tracks.get(trackRef)?.geojson as TrackLine | undefined);
+        if (trackRef !== undefined) seenTracks.add(trackRef);
+        const profile = line === undefined ? null : profileSketch(trackProfile(line), PROFILE_POINTS);
+        const heights = profile?.map((point) => point.ele) ?? [];
         return {
           kind: 'point',
           ref: item.ref,
@@ -122,6 +142,7 @@ export function memoryTimeline(doc: Doc, input: TimelineInput): MemoryTimeline {
           ...(key && image !== undefined
             ? { image: { url: image.thumbUrl, caption: item.title, sourceUrl: image.sourceUrl, ...(image.author ? { credit: image.author } : {}), ...(image.license ? { license: image.license } : {}) } }
             : {}),
+          ...(trek ? { walk: profile ? { profile, minEle: Math.min(...heights), maxEle: Math.max(...heights) } : {} } : {}),
           journal,
         };
       });

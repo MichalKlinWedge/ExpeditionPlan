@@ -17,13 +17,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const FIT = { padding: 48, maxZoom: 15 };
 
-/** Prostokąt obejmujący punkty dnia; szare kropki z puli liczą się tylko, gdy nie ma innych pinezek. */
-function boundsOf(pins: MapPin[]): LngLatBoundsLike | null {
+/** Prostokąt obejmujący punkty dnia (i podane linie); szare kropki z puli liczą się tylko, gdy nie ma innych pinezek. */
+function boundsOf(pins: MapPin[], lines: readonly { coordinates: readonly (readonly number[])[] }[] = []): LngLatBoundsLike | null {
   const main = pins.filter((pin) => pin.stops.length > 0 || pin.base || pin.arrival);
   const focus = main.length > 0 ? main : pins;
   if (focus.length === 0) return null;
-  const lngs = focus.map((pin) => pin.lng);
-  const lats = focus.map((pin) => pin.lat);
+  const along = lines.flatMap((line) => line.coordinates);
+  const lngs = [...focus.map((pin) => pin.lng), ...along.map((point) => point[0]!)];
+  const lats = [...focus.map((pin) => pin.lat), ...along.map((point) => point[1]!)];
   return [
     [Math.min(...lngs), Math.min(...lats)],
     [Math.max(...lngs), Math.max(...lats)],
@@ -61,9 +62,11 @@ type Props = {
   banner?: boolean;
   /** Dopasowanie widoku na ten punkt zamiast na wszystkie (wejście z odnośnikiem do miejsca, także powrót na zachowaną stronę). */
   focus?: string | null;
+  /** Dopasowanie widoku także do linii (mapa jednej trasy: ślad wychodzi daleko poza pinezki). */
+  fitLines?: boolean;
 };
 
-export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null, emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.", square = false, banner = false, focus = null }: Props) {
+export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null, emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.", square = false, banner = false, focus = null, fitLines = false }: Props) {
   const container = useRef<HTMLDivElement>(null);
   // Dojazd i powrót (lot, długa droga) domyślnie ukryte — skala kraju gubi szczegóły na miejscu.
   const [showTransit, setShowTransit] = useState(false);
@@ -116,6 +119,8 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
         created.on("load", () => {
           if (cancelled || created === undefined) return;
           polishLabels(created);
+          // Na wąskiej mapie (kwadrat obok profilu trasy) rozwinięta atrybucja zasłania pół widoku: zostaje ikona ⓘ, która ją rozwija.
+          if ((container.current?.clientWidth ?? Infinity) < 420) container.current?.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
           created.addSource("path", { type: "geojson", data: lines([]) });
           // Prosto między miejscami — przerywana; trasa po drogach z ORS — ciągła.
           created.addLayer({
@@ -199,12 +204,12 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       // dopasowanie dałoby widok całego świata; czekamy, aż kontener się pokaże.
       if (container.current === null || container.current.clientWidth === 0 || container.current.clientHeight === 0) return;
       const focused = data.pins.filter((pin) => focus !== null && pin.stops.some((stop) => stop.ref === focus));
-      const bounds = boundsOf(focused.length > 0 ? focused : data.pins);
+      const bounds = focused.length > 0 ? boundsOf(focused) : boundsOf(data.pins, fitLines ? data.lines : []);
       if (bounds === null) return;
       fitted.current = fitKey;
       fitTo(map, bounds);
     });
-  }, [map, data, fitKey, movable, shown, focus]);
+  }, [map, data, fitKey, movable, shown, focus, fitLines]);
 
   // Najechanie na link do trasy: ślad, trasa po drogach albo kawałek prostej tego punktu w kolorze sygnałowym.
   useEffect(() => {
@@ -274,7 +279,7 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
         <button
           type="button"
           onClick={() => {
-            const bounds = boundsOf(data.pins);
+            const bounds = boundsOf(data.pins, fitLines ? data.lines : []);
             if (bounds !== null) fitTo(map, bounds);
           }}
           title="Pokaż wszystkie punkty"

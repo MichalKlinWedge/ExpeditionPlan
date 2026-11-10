@@ -27,6 +27,7 @@ import { PrintButton } from "@/components/print-button";
 import { Settlement } from "@/components/settlement";
 import { Loading, Shell } from "@/components/shell";
 import { Stat } from "@/components/stat";
+import { WalkProfile } from "@/components/walk-profile";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
 
@@ -118,8 +119,33 @@ function JournalCard({ entry, time, compact = false }: { entry: TimelineJournal;
   );
 }
 
-/** Najważniejszy punkt: zdjęcie z opisu miejsca, skrót opisu i wpisy przypięte do punktu. */
-function KeyPoint({ point, tripId }: { point: TimelinePoint; tripId: string }) {
+/** Trekking na karcie punktu: mapa samej trasy (ślad GPX albo trasa po drogach) i profil wysokości, gdy ślad go ma. */
+function WalkSection({ point, doc }: { point: TimelinePoint; doc: TripDocument }) {
+  const walk = point.walk;
+  if (walk === undefined) return null;
+  const route = dayMap(doc, [point.ref]);
+  const mapped = route.lines.some((line) => line.track || line.routed);
+  if (!mapped && walk.profile === undefined) return null;
+  return (
+    <div className={`grid gap-3 ${mapped && walk.profile ? "sm:grid-cols-[minmax(0,18rem)_1fr] sm:items-center" : ""}`}>
+      {mapped && (
+        <div className={walk.profile ? "" : "sm:max-w-sm"}>
+          <MemoryDayMap map={route} square />
+          <RouteTrace map={route} height={260} />
+        </div>
+      )}
+      {walk.profile && walk.minEle !== undefined && walk.maxEle !== undefined && (
+        <div className="flex flex-col gap-1">
+          <p className="text-xs font-semibold text-zinc-500">Profil wysokości</p>
+          <WalkProfile profile={walk.profile} minEle={walk.minEle} maxEle={walk.maxEle} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Najważniejszy punkt: zdjęcie z opisu miejsca, skrót opisu, trasa trekkingu z profilem i wpisy przypięte do punktu. */
+function KeyPoint({ point, tripId, doc }: { point: TimelinePoint; tripId: string; doc: TripDocument }) {
   const skipped = point.status === "skipped";
   return (
     <article className={`card flex break-inside-avoid flex-col overflow-hidden sm:flex-row ${skipped ? "opacity-60" : ""}`}>
@@ -136,8 +162,8 @@ function KeyPoint({ point, tripId }: { point: TimelinePoint; tripId: string }) {
           </figcaption>
         </figure>
       )}
-      <div className="flex flex-col gap-1 p-4">
-        <p className="text-xs font-semibold tracking-wide text-signal uppercase">★ najważniejsze{point.time ? ` · ${point.time}` : ""}</p>
+      <div className="flex min-w-0 flex-1 flex-col gap-1 p-4">
+        <p className="text-xs font-semibold tracking-wide text-signal uppercase">{point.walk ? "⛰ trasa" : "★ najważniejsze"}{point.time ? ` · ${point.time}` : ""}</p>
         <h3 className={`text-base font-semibold ${skipped ? "line-through" : ""}`}>
           {point.icon} {point.title} <Status point={point} />
         </h3>
@@ -157,6 +183,7 @@ function KeyPoint({ point, tripId }: { point: TimelinePoint; tripId: string }) {
             karta punktu
           </Link>
         </div>
+        <WalkSection point={point} doc={doc} />
         {point.journal.length > 0 && (
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {point.journal.map((entry) => (
@@ -192,7 +219,7 @@ function PlainPoints({ points }: { points: TimelinePoint[] }) {
 }
 
 /** Wpisy dnia po kolei; sąsiednie zwykłe punkty sklejone w jedną listę. */
-function DayEntries({ entries, tripId }: { entries: TimelineEntry[]; tripId: string }) {
+function DayEntries({ entries, tripId, doc }: { entries: TimelineEntry[]; tripId: string; doc: TripDocument }) {
   const blocks: ({ kind: "plain"; points: TimelinePoint[] } | { kind: "one"; entry: TimelineEntry })[] = [];
   for (const entry of entries) {
     const last = blocks.at(-1);
@@ -207,7 +234,7 @@ function DayEntries({ entries, tripId }: { entries: TimelineEntry[]; tripId: str
         block.kind === "plain" ? (
           <PlainPoints key={`plain:${block.points[0]!.ref}`} points={block.points} />
         ) : block.entry.kind === "point" ? (
-          <KeyPoint key={block.entry.ref} point={block.entry} tripId={tripId} />
+          <KeyPoint key={block.entry.ref} point={block.entry} tripId={tripId} doc={doc} />
         ) : (
           <JournalCard key={block.entry.id} entry={block.entry} time={block.entry.time} />
         ),
@@ -351,7 +378,7 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
                     <RouteTrace map={shown} height={220} />
                   </>
                 )}
-                <DayEntries entries={day.entries} tripId={id} />
+                <DayEntries entries={day.entries} tripId={id} doc={doc} />
               </Node>
             );
           })}
