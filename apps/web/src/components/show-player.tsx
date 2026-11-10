@@ -808,8 +808,12 @@ export function ShowPlayer({
                   <a href={image.sourceUrl} target="_blank" rel="noreferrer" className="underline">
                     {image.title.replace(/^File:/, "")}
                   </a>
-                  {image.author ? ` — ${image.author}` : ""}
-                  {image.license ? `, ${image.license}` : ""} (Wikimedia Commons)
+                  {image.own ? ` — fot. ${image.author || "własne"}` : (
+                    <>
+                      {image.author ? ` — ${image.author}` : ""}
+                      {image.license ? `, ${image.license}` : ""} (Wikimedia Commons)
+                    </>
+                  )}
                 </li>
               ))}
             </ul>

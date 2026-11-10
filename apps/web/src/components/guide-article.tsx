@@ -1,4 +1,4 @@
-import { GUIDE_SITE, type GuideContent, type GuideImage, type GuideLinkTarget, type GuideSegment, linkGuideText } from "@expeditionplan/core";
+import { GUIDE_SITE, type GuideContent, type GuideImage, guideImageCredit, type GuideLinkTarget, type GuideSegment, linkGuideText } from "@expeditionplan/core";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -75,7 +75,7 @@ export function GuideArticle({ guide, targets, itemBase, title, heading, childre
   );
 }
 
-/** Zdjęcie z Commons z autorem i licencją: wymaga ich licencja, więc nie ma go bez podpisu. */
+/** Zdjęcie z Commons z autorem i licencją (wymaga ich licencja, więc nie ma go bez podpisu) albo własne z autorem. */
 export function GuideFigure({ image }: { image: GuideImage }) {
   return (
     <figure className="flex flex-col gap-1">
@@ -85,6 +85,15 @@ export function GuideFigure({ image }: { image: GuideImage }) {
         <img src={image.thumbUrl} alt={image.title} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />
       </a>
       <figcaption className="text-[11px] leading-tight text-zinc-500">
+        {image.own ? guideImageCredit(image) : <CommonsCredit image={image} />}
+      </figcaption>
+    </figure>
+  );
+}
+
+function CommonsCredit({ image }: { image: GuideImage }) {
+  return (
+    <>
         {image.author ? `${image.author}, ` : ""}
         {image.licenseUrl ? (
           <a href={image.licenseUrl} target="_blank" rel="noreferrer" className="underline">
@@ -94,8 +103,7 @@ export function GuideFigure({ image }: { image: GuideImage }) {
           image.license
         )}
         , Wikimedia Commons
-      </figcaption>
-    </figure>
+    </>
   );
 }
 

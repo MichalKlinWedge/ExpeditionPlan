@@ -19,8 +19,10 @@ export const GuideImage = z.object({
   author: z.string().optional(),
   license: z.string().optional(),
   licenseUrl: z.url().optional(),
-  /** Strona pliku w Commons — tam pełna atrybucja. */
+  /** Strona pliku w Commons — tam pełna atrybucja. Przy zdjęciu własnym: sam plik. */
   sourceUrl: z.url(),
+  /** Zdjęcie wgrane przez organizatora (publiczny bucket `guide_photos`), nie z Commons: podpis „fot. autor”, bez licencji. */
+  own: z.boolean().optional(),
 });
 
 /** Część od AI — tylko z tekstu artykułu. */
@@ -117,6 +119,36 @@ const WIKIMEDIA_PAGE = /^https:\/\/([a-z0-9-]+\.)*(wikimedia|wikipedia|wikivoyag
 /** Zdjęcie wybrane ręcznie musi pochodzić z Wikimedia i mieć licencję: opis jest też na publicznym linku. */
 export function isWikimediaImage(image: GuideImage): boolean {
   return WIKIMEDIA_FILE.test(image.url) && WIKIMEDIA_FILE.test(image.thumbUrl) && WIKIMEDIA_PAGE.test(image.sourceUrl) && Boolean(image.license?.trim());
+}
+
+/** Publiczny bucket na własne zdjęcia opisów: opis jest też pod publicznym linkiem, w pokazie i offline na telefonie. */
+export const GUIDE_PHOTO_BUCKET = 'guide_photos';
+
+/** Ścieżka własnego zdjęcia: `<wyjazd>/<id>.jpg` (pierwszy człon decyduje o prawach w storage). */
+export const guidePhotoPath = (tripId: string, id: string) => `${tripId}/${id}.jpg`;
+
+/** Własne zdjęcie z publicznego adresu pliku w `guide_photos`. */
+export function ownGuideImage(url: string, title: string, author: string): GuideImage {
+  return { url, thumbUrl: url, sourceUrl: url, title: title.trim() || 'Zdjęcie', author: author.trim(), own: true };
+}
+
+/** Plik własnego zdjęcia w `guide_photos` (ścieżka po `/public/guide_photos/`) albo `null`, gdy to nie nasze zdjęcie. */
+export function ownGuidePhotoPath(image: Pick<GuideImage, 'url' | 'own'>): string | null {
+  if (image.own !== true) return null;
+  const match = new RegExp(`/storage/v1/object/public/${GUIDE_PHOTO_BUCKET}/(.+)$`).exec(image.url);
+  return match ? decodeURIComponent(match[1]!) : null;
+}
+
+/** Podpis zdjęcia: Commons wymaga autora i licencji, własne ma tylko autora. */
+export function guideImageCredit(image: Pick<GuideImage, 'author' | 'license' | 'own'>): string {
+  if (image.own === true) return `fot. ${image.author || 'własne'}`;
+  return `${image.author ? `${image.author}, ` : ''}${image.license ?? ''}, Wikimedia Commons`;
+}
+
+/** Pliki własnych zdjęć, które zmiana usunęła z opisu: do skasowania z bucketu. */
+export function droppedGuidePhotos(before: GuideContent, after: GuideContent): string[] {
+  const kept = new Set(after.images.map((image) => image.url));
+  return before.images.filter((image) => !kept.has(image.url)).flatMap((image) => ownGuidePhotoPath(image) ?? []);
 }
 
 export function removeGuideImage(content: GuideContent, url: string): GuideContent {

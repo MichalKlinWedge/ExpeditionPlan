@@ -1,14 +1,16 @@
 "use client";
 
-import { type GuideImage, MAX_GUIDE_IMAGES, type TripGuide } from "@expeditionplan/core";
+import { GUIDE_PHOTO_BUCKET, type GuideImage, guidePhotoPath, MAX_GUIDE_IMAGES, type TripGuide } from "@expeditionplan/core";
+import { dbErrorMessage, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { type FormEvent, useEffect, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { dropGuideImage, findGuideImages, pickGuideImage, removeGuide, reorderGuideImage, saveGuideText } from "@/app/guide-actions";
+import { addOwnGuideImage, dropGuideImage, findGuideImages, pickGuideImage, removeGuide, reorderGuideImage, saveGuideText } from "@/app/guide-actions";
 import { GuideArticle, GuideFigure } from "@/components/guide-article";
 import { GuideButtons, PlaceGuideButtons } from "@/components/guide-button";
 import { IconAction } from "@/components/icon-action";
+import { createClient } from "@/lib/supabase/client";
 
 /** Lista opisów na stronie „Opisy miejsc”: skrót, a po rozwinięciu cały opis, nowa wersja z AI, ręczna poprawka tekstu i zdjęć oraz usunięcie. */
 
@@ -137,7 +139,7 @@ function MissingRow({ tripId, item, canEdit }: { tripId: string; item: { ref: st
   );
 }
 
-/** Zdjęcia opisu: każde można przesunąć, usunąć albo wymienić na inne z Wikimedia, a poniżej limitu dodać kolejne. */
+/** Zdjęcia opisu: każde można przesunąć, usunąć albo wymienić na inne z Wikimedia lub własne, a poniżej limitu dodać kolejne. */
 function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: TripGuide; onClose: () => void }) {
   const { images } = guide.content;
   /** Otwarty wybór: `replace` to zdjęcie do wymiany, bez niego wybór dodaje kolejne. */
@@ -193,6 +195,7 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
         </ul>
       )}
       {state.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {picking !== null && <OwnPhotoUpload tripId={tripId} guideId={guide.rowId} title={guide.title} replaceUrl={picking.replace} onDone={() => setPicking(null)} onState={setState} />}
       {picking !== null ? (
         <ImagePicker tripId={tripId} guideId={guide.rowId} title={picking.replace ? "Wybierz zdjęcie na wymianę" : "Wybierz kolejne zdjęcie"} used={images.map((image) => image.url)} saving={pending} onPick={pick} onCancel={() => setPicking(null)} />
       ) : (
@@ -208,6 +211,61 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
         </div>
       )}
     </div>
+  );
+}
+
+/** Najdłuższy bok wgrywanego zdjęcia: wystarcza na pełny ekran pokazu, a plik ma kilkaset kB. */
+const OWN_PHOTO_PX = 1920;
+
+/** Zdjęcie z dysku → JPEG najwyżej `OWN_PHOTO_PX` (bez EXIF, więc bez położenia z aparatu). */
+async function ownPhotoJpeg(file: File): Promise<Blob | string> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, OWN_PHOTO_PX / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+    return blob ?? "Nie udało się przygotować zdjęcia.";
+  } catch {
+    return "Nie da się odczytać tego pliku jako zdjęcia (JPG, PNG albo WebP).";
+  }
+}
+
+/** Własne zdjęcie z dysku: plik idzie z przeglądarki do publicznego `guide_photos`, potem do opisu. */
+function OwnPhotoUpload({ tripId, guideId, title, replaceUrl, onDone, onState }: { tripId: string; guideId: string; title: string; replaceUrl?: string; onDone: () => void; onState: (state: FormState) => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [caption, setCaption] = useState(title);
+  const [author, setAuthor] = useState("");
+  const [pending, start] = useTransition();
+  const upload = (event: FormEvent) => {
+    event.preventDefault();
+    if (file === null) return;
+    start(async () => {
+      const jpeg = await ownPhotoJpeg(file);
+      if (typeof jpeg === "string") return onState({ error: jpeg });
+      const id = uuidv7();
+      const sent = await createClient().storage.from(GUIDE_PHOTO_BUCKET).upload(guidePhotoPath(tripId, id), jpeg, { contentType: "image/jpeg", upsert: false });
+      if (sent.error) return onState({ error: dbErrorMessage(sent.error, "Nie wgrano zdjęcia. Spróbuj jeszcze raz.") });
+      const result = await addOwnGuideImage(tripId, guideId, id, { title: caption, author }, replaceUrl);
+      onState(result);
+      if (result.ok) onDone();
+    });
+  };
+  return (
+    <form onSubmit={upload} className="flex flex-col gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+      <h3 className="text-xs font-semibold">{replaceUrl ? "Wymień na własne zdjęcie" : "Własne zdjęcie z dysku"}</h3>
+      <div className="flex flex-wrap items-center gap-2">
+        <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" disabled={pending} onChange={(event) => setFile(event.target.files?.[0] ?? null)} aria-label="Plik zdjęcia" className="text-xs" />
+        <input value={caption} onChange={(event) => setCaption(event.target.value)} disabled={pending} placeholder="Opis zdjęcia" aria-label="Opis zdjęcia" className="field min-w-40 flex-1 p-2 text-sm" />
+        <input value={author} onChange={(event) => setAuthor(event.target.value)} disabled={pending} placeholder="Autor (domyślnie Ty)" aria-label="Autor zdjęcia" className="field w-44 p-2 text-sm" />
+        <button disabled={pending || file === null} className="btn-secondary btn-sm">
+          {pending ? "Wgrywam…" : "Wgraj"}
+        </button>
+      </div>
+      <p className="text-xs text-zinc-500">Zdjęcie zmniejszamy do {OWN_PHOTO_PX} px i bez danych z aparatu (także położenia). Będzie widać je wszędzie, gdzie ten opis: w planie, w telefonie, w pokazie i pod publicznym linkiem wyjazdu. Wgrywaj tylko zdjęcia, do których masz prawa.</p>
+    </form>
   );
 }
 

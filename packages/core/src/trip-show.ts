@@ -125,7 +125,7 @@ export type ShowScene = {
 
 export type ShowCredits = {
   articles: { title: string; url: string; site: GuideContent['article']['site'] }[];
-  images: { title: string; author?: string; license?: string; sourceUrl: string }[];
+  images: { title: string; author?: string; license?: string; sourceUrl: string; own?: boolean }[];
 };
 
 export type ShowInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
@@ -455,7 +455,7 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     scenes,
     credits: {
       articles: [...usedArticles.values()].map((article) => ({ title: article.title, url: article.url, site: article.site })),
-      images: [...usedImages.values()].map((image) => ({ title: image.title, ...(image.author ? { author: image.author } : {}), ...(image.license ? { license: image.license } : {}), sourceUrl: image.sourceUrl })),
+      images: [...usedImages.values()].map((image) => ({ title: image.title, ...(image.author ? { author: image.author } : {}), ...(image.license ? { license: image.license } : {}), sourceUrl: image.sourceUrl, ...(image.own ? { own: true } : {}) })),
     },
   };
 }

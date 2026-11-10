@@ -1,6 +1,6 @@
 "use server";
 
-import { editGuideText, GuideContent, GuideDraft, GuideImage, GUIDE_LICENSE, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, moveGuideImage, putGuideImage, removeGuideImage, type TripDocument, undescribedSights } from "@expeditionplan/core";
+import { droppedGuidePhotos, editGuideText, GuideContent, GuideDraft, GuideImage, GUIDE_LICENSE, GUIDE_PHOTO_BUCKET, guidePhotoPath, type GuideRow, guideFor, guideText, isWikimediaImage, MAX_GUIDE_IMAGES, moveGuideImage, ownGuideImage, putGuideImage, removeGuideImage, type TripDocument, undescribedSights } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { articleImages, commonsImages, coreName, describeFromPage, describePlace, type GuideLibrary, wikiArticleOf } from "@expeditionplan/planner";
 import { dbErrorMessage, refIndex, stableUuid, stateFromPayload } from "@expeditionplan/sync";
@@ -298,6 +298,9 @@ async function changeGuide(tripId: string, guideId: string, change: (current: Gu
     .select("id");
   if (saved.error) return { error: dbErrorMessage(saved.error) };
   if (saved.data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
+  // Własne zdjęcia, które wypadły z opisu, nie są już nigdzie potrzebne (każde ma własny plik).
+  const dropped = droppedGuidePhotos(current.content, content);
+  if (dropped.length > 0) await supabase.storage.from(GUIDE_PHOTO_BUCKET).remove(dropped);
   refresh();
   return { ok };
 }
@@ -325,6 +328,33 @@ export async function pickGuideImage(tripId: string, guideId: string, image: Gui
   const parsed = GuideImage.safeParse(image);
   if (!parsed.success || !isWikimediaImage(parsed.data)) return { error: "To zdjęcie nie pochodzi z Wikimedia albo nie ma licencji." };
   return changeGuide(tripId, guideId, (current) => putGuideImage(current, parsed.data, replaceUrl), replaceUrl ? "Wymieniono zdjęcie." : `Dodano zdjęcie (najwyżej ${MAX_GUIDE_IMAGES}).`);
+}
+
+/**
+ * Własne zdjęcie: przeglądarka wgrała już plik do `guide_photos/<wyjazd>/<id>.jpg` (RLS: organizator i edytor),
+ * tu trafia do opisu na miejsce `replaceUrl` albo jako kolejne. Autor bez wpisu = osoba wgrywająca z listy uczestników.
+ */
+export async function addOwnGuideImage(tripId: string, guideId: string, fileId: string, fields: { title: string; author: string }, replaceUrl?: string): Promise<FormState> {
+  const { supabase, userId } = await requireUser(`/trips/${tripId}/guides`);
+  const path = guidePhotoPath(tripId, fileId);
+  if (!/^[0-9a-f-]{36}$/.test(fileId)) return { error: "Nieznany plik zdjęcia." };
+  const current = await readGuide(supabase, tripId, guideId);
+  const full = !("error" in current) && replaceUrl === undefined && current.content.images.length >= MAX_GUIDE_IMAGES;
+  if ("error" in current || full) {
+    await supabase.storage.from(GUIDE_PHOTO_BUCKET).remove([path]);
+    return "error" in current ? current : { error: `Opis ma już ${MAX_GUIDE_IMAGES} zdjęć: usuń albo wymień któreś.` };
+  }
+  let author = fields.author.trim();
+  if (author === "") {
+    const { data } = await supabase.from("travelers").select("name").eq("trip_id", tripId).eq("user_id", userId).is("deleted_at", null).limit(1).maybeSingle();
+    author = data?.name ?? "";
+  }
+  const url = supabase.storage.from(GUIDE_PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+  const image = ownGuideImage(url, fields.title, author);
+  const result = await changeGuide(tripId, guideId, (current) => putGuideImage(current, image, replaceUrl), replaceUrl ? "Wymieniono zdjęcie na własne." : `Dodano własne zdjęcie (najwyżej ${MAX_GUIDE_IMAGES}).`);
+  // Nie trafiło do opisu (błąd, brak praw albo limit zdjęć): plik nie zostaje bez opisu.
+  if (result.error) await supabase.storage.from(GUIDE_PHOTO_BUCKET).remove([path]);
+  return result;
 }
 
 export async function dropGuideImage(tripId: string, guideId: string, url: string): Promise<FormState> {

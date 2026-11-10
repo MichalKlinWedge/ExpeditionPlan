@@ -6,6 +6,7 @@ import {
   guideLinkTargets,
   type GuideRow,
   guideFor,
+  guideImageCredit,
   type GuideSegment,
   guideText,
   itemIcon,
@@ -302,8 +303,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
                   <Pressable key={image.url} onPress={() => open(image.sourceUrl)} style={styles.figure}>
                     <Image source={{ uri: image.thumbUrl }} style={styles.photo} contentFit="cover" cachePolicy="disk" />
                     <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.caption}>
-                      {image.author ? `${image.author}, ` : ''}
-                      {image.license}, Wikimedia Commons
+                      {guideImageCredit(image)}
                     </ThemedText>
                   </Pressable>
                 ))}
