@@ -13,7 +13,8 @@ import { useTheme } from '@/hooks/use-theme';
  * Edycja punktu na telefonie: nazwa, rodzaj, godzina i czas trwania, miejsce (`setItemPlace`, tylko ten punkt),
  * a przy przejeździe „Skąd” i „Dokąd” (`setLegRoute`). Nazwa z planu wskazuje to miejsce, nowa tworzy nowe; pinezka
  * pokazuje znane miejsce w Mapach Google, nic nie zapisując. Pełny edytor (precyzja godziny, przedziały, bufor, priorytet, przeliczenie trasy) jest na webie —
- * tu godzina inna niż „dokładnie” zostaje nietknięta, dopóki pole się nie zmieni.
+ * tu godzina inna niż „dokładnie” i „dokładnie do” zostaje nietknięta, dopóki pole się nie zmieni. „Dokładnie do” (np. przyjazd
+ * na lotnisko na 11:00) zapisuje samą godzinę końca, a start liczy silnik od czasu trwania.
  */
 
 const HHMM = /^([01]?\d|2[0-3]):([0-5]\d)$/;
@@ -35,8 +36,14 @@ type EditorProps = {
   doc?: TripDocument;
 };
 
+/** `start` = „dokładnie od”, `by` = „dokładnie do” (godzina końca). */
+type TimeMode = 'start' | 'by';
+
+const timeModeOf = (item: Item | null): TimeMode => (item?.time?.precision === 'by' ? 'by' : 'start');
+
 function timeText(item: Item | null): string {
   const time = item?.time;
+  if (time?.precision === 'by') return time.end;
   return time && 'start' in time && time.start ? time.start : '';
 }
 
@@ -67,6 +74,7 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
   const [kind, setKind] = useState<KindChoice>(item === null ? 'visit' : kindChoice(item));
   const [vehicle, setVehicle] = useState<PublicMode>((item === null ? undefined : publicMode(item)) ?? PUBLIC_MODES[0]![0]);
   const [time, setTime] = useState(timeText(item));
+  const [timeMode, setTimeMode] = useState<TimeMode>(timeModeOf(item));
   const [duration, setDuration] = useState(item?.durationMin?.toString() ?? (item === null ? '60' : ''));
   const [stops, setStops] = useState(item?.stopsMin?.toString() ?? '');
   const [selfCooked, setSelfCooked] = useState(item?.selfCooked === true);
@@ -88,10 +96,10 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
       selfCooked: kind === 'meal' && selfCooked ? true : undefined,
     };
     // Godzina zmienia się tylko, gdy zmieniło się pole — inaczej zostaje precyzja z planu (pora dnia, przedział…).
-    if (time.trim() !== timeText(item)) {
+    if (time.trim() !== timeText(item) || (time.trim() !== '' && timeMode !== timeModeOf(item))) {
       const tz = item?.time && 'tz' in item.time ? item.time.tz : undefined;
-      const start = time.trim().padStart(5, '0');
-      fields.time = time.trim() === '' ? undefined : { precision: 'exact', start, ...(tz ? { tz } : {}) };
+      const at = time.trim().padStart(5, '0');
+      fields.time = time.trim() === '' ? undefined : timeMode === 'by' ? { precision: 'by', end: at, ...(tz ? { tz } : {}) } : { precision: 'exact', start: at, ...(tz ? { tz } : {}) };
     }
     const travel = TRAVEL.includes(kind);
     const ends = travel && (from.trim() !== fromStart || to.trim() !== toStart) ? { from: from.trim(), to: to.trim() } : undefined;
@@ -169,7 +177,29 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
         <ThemedText type="small" themeColor="textSecondary">
           Godzina (puste = zaraz po poprzednim)
         </ThemedText>
+        <View style={styles.wrap}>
+          {(
+            [
+              ['start', 'dokładnie od'],
+              ['by', 'dokładnie do (np. przyjazd)'],
+            ] as const
+          ).map(([key, name]) => (
+            <Pressable
+              key={key}
+              onPress={() => setTimeMode(key)}
+              style={[styles.chip, { borderColor: timeMode === key ? theme.text : theme.backgroundSelected, backgroundColor: timeMode === key ? theme.backgroundSelected : 'transparent' }]}>
+              <ThemedText type="small" themeColor={timeMode === key ? 'text' : 'textSecondary'}>
+                {name}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
         <TextInput value={time} onChangeText={setTime} style={input} placeholder="GG:MM" placeholderTextColor={theme.textSecondary} keyboardType="numbers-and-punctuation" />
+        {timeMode === 'by' && (
+          <ThemedText type="small" themeColor="textSecondary">
+            Start liczy się od czasu trwania (z trasy albo niżej) i postojów, tak żeby skończyć o tej godzinie.
+          </ThemedText>
+        )}
         <ThemedText type="small" themeColor="textSecondary">
           Czas trwania (minuty)
         </ThemedText>
