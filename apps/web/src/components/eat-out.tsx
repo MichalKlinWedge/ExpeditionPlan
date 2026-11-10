@@ -59,6 +59,8 @@ const OPEN = {
   closed: { label: "zamknięte w porze posiłku", className: "text-red-600" },
   unknown: { label: "godziny nieznane", className: "text-zinc-500" },
 } as const;
+/** To samo krócej, w kolumnie „W porze posiłku” tabeli przypiętych knajp. */
+const OPEN_SHORT = { open: "otwarte", partly: "tylko część", closed: "zamknięte", unknown: "nie wiadomo" } as const;
 
 const input = "field min-w-0 px-2 py-1 text-sm";
 /** Tyle wyników naraz; resztę pokazuje „pokaż więcej”. */
@@ -460,68 +462,88 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
   return (
     <div className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
       <p className="font-semibold">{group === undefined ? "Knajpa" : "Gdzie jemy"}</p>
-      <ul className="flex flex-col gap-1">
-        {eateries.map((eatery) => {
-          const n = selection.numbers[eatery.placeRef];
-          return (
-            <li key={eatery.placeRef} className="flex flex-col gap-0.5">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              {selection.href ? (
-                <Link href={selection.href(eatery.placeRef)} title="Posiłek i knajpa na stronie Posiłki" className="btn-mini">
-                  {group !== undefined && eatery.active && "✓ "}
-                  {eatery.name}
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => selection.onSelect(eatery.placeRef)}
-                  aria-pressed={selection.selected === eatery.placeRef}
-                  title="Pokaż knajpę na mapie i jej dane"
-                  className={`flex items-baseline gap-x-1.5 text-left underline-offset-2 hover:text-sea hover:underline ${selection.selected === eatery.placeRef ? "font-semibold text-sea" : ""}`}>
-                  {n !== undefined && <span className="flex h-4 min-w-4 items-center justify-center self-center rounded-full bg-sea px-1 text-[10px] font-semibold text-white">{n}</span>}
-                  <span>
-                    {group !== undefined && eatery.active && "✓ "}
-                    {eatery.name}
-                  </span>
-                </button>
-              )}
-              <PlaceLink tripId={tripId} place={{ ref: eatery.placeRef, name: eatery.name }} />
-              {canEdit && eatery.variantRef !== undefined && !eatery.active && (
-                <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="btn-mini">
-                  wybierz
-                </button>
-              )}
-              {canEdit && <IconAction kind="remove" tip="odepnij knajpę od posiłku (miejsce zostaje w planie)" disabled={pending} onClick={() => unpin(eatery.placeRef, eatery.name)} />}
-              </div>
-              <PinnedFacts doc={doc} itemRef={itemRef} placeRef={eatery.placeRef} summary={eatery.summary} />
-            </li>
-          );
-        })}
-      </ul>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="text-zinc-500">
+            <tr>
+              <th className="py-1 pr-3 font-normal">Knajpa</th>
+              <th className="py-1 pr-3 font-normal">Co to</th>
+              <th className="py-1 pr-3 font-normal">W porze posiłku</th>
+              <th className="py-1 pr-3 font-normal">Adres</th>
+              <th className="py-1 pr-3 font-normal">Linki</th>
+              {canEdit && <th className="py-1 font-normal" />}
+            </tr>
+          </thead>
+          <tbody>
+            {eateries.map((eatery) => {
+              const n = selection.numbers[eatery.placeRef];
+              const facts = pinnedEateryFacts(doc, itemRef, eatery.placeRef, eatery.summary);
+              const chosen = group !== undefined && eatery.active;
+              return (
+                <tr key={eatery.placeRef} className={`border-t border-zinc-100 align-top dark:border-zinc-900 ${chosen ? "bg-green-50 dark:bg-green-950" : ""}`}>
+                  <td className="py-1 pr-3">
+                    <div className="flex items-center gap-1.5">
+                      {selection.href ? (
+                        <Link href={selection.href(eatery.placeRef)} title="Posiłek i knajpa na stronie Posiłki" className="btn-mini">
+                          {chosen && "✓ "}
+                          {eatery.name}
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => selection.onSelect(eatery.placeRef)}
+                          aria-pressed={selection.selected === eatery.placeRef}
+                          title="Pokaż knajpę na mapie i jej dane"
+                          className={`flex items-baseline gap-x-1.5 text-left underline-offset-2 hover:text-sea hover:underline ${selection.selected === eatery.placeRef ? "font-semibold text-sea" : ""}`}>
+                          {n !== undefined && <span className="flex h-4 min-w-4 items-center justify-center self-center rounded-full bg-sea px-1 text-[10px] font-semibold text-white">{n}</span>}
+                          <span className={chosen ? "font-medium" : ""}>
+                            {chosen && "✓ "}
+                            {eatery.name}
+                          </span>
+                        </button>
+                      )}
+                      <PlaceLink tripId={tripId} place={{ ref: eatery.placeRef, name: eatery.name }} />
+                    </div>
+                  </td>
+                  <td className="py-1 pr-3 text-zinc-500">{facts?.summary ?? "—"}</td>
+                  <td className="py-1 pr-3">{facts ? (
+                      <span className={OPEN[facts.open.state].className}>
+                        {OPEN_SHORT[facts.open.state]}
+                        {facts.open.hours && facts.open.state !== "closed" && <span className="block text-zinc-500">{facts.open.hours}</span>}
+                      </span>
+                    ) : (
+                      "—"
+                    )}</td>
+                  <td className="py-1 pr-3 text-zinc-500">{facts?.address ?? "—"}</td>
+                  <td className="py-1 pr-3">
+                    <span className="flex flex-wrap gap-x-2">
+                      {(facts?.links ?? []).length === 0 && "—"}
+                      {(facts?.links ?? []).map((link) => (
+                        <a key={link.url} href={link.url} target="_blank" rel="noreferrer" title={link.label === "opinie w Google" ? "Opinie i średnia ocena w Mapach Google (otwiera Google, nic nie pobieramy)" : undefined} className="whitespace-nowrap underline">
+                          {link.label}
+                        </a>
+                      ))}
+                    </span>
+                  </td>
+                  {canEdit && (
+                    <td className="py-1 text-right">
+                      <span className="inline-flex items-center gap-1">
+                        {eatery.variantRef !== undefined && !eatery.active && (
+                          <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="btn-mini">
+                            wybierz
+                          </button>
+                        )}
+                        <IconAction kind="remove" tip="odepnij knajpę od posiłku (miejsce zostaje w planie)" disabled={pending} onClick={() => unpin(eatery.placeRef, eatery.name)} />
+                      </span>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       {error && <span className="text-red-600"> {error}</span>}
-    </div>
-  );
-}
-
-/** Pod przypiętą knajpą to samo co w wynikach wyszukiwania: opis, otwarcie w porze posiłku, adres, linki. */
-function PinnedFacts({ doc, itemRef, placeRef, summary }: { doc: TripDocument; itemRef: string; placeRef: string; summary: string | undefined }) {
-  const facts = pinnedEateryFacts(doc, itemRef, placeRef, summary);
-  if (facts === null) return null;
-  return (
-    <div className="flex flex-col pl-1">
-      {facts.summary && <span className="text-zinc-500">{facts.summary}</span>}
-      <span>
-        <span className={OPEN[facts.open.state].className}>{OPEN[facts.open.state].label}</span>
-        {facts.address && <span className="text-zinc-500"> · {facts.address}</span>}
-        {facts.links.map((link) => (
-          <Fragment key={link.url}>
-            {" · "}
-            <a href={link.url} target="_blank" rel="noreferrer" title={link.label === "opinie w Google" ? "Opinie i średnia ocena w Mapach Google (otwiera Google, nic nie pobieramy)" : undefined} className="underline">
-              {link.label}
-            </a>
-          </Fragment>
-        ))}
-      </span>
     </div>
   );
 }
