@@ -21,8 +21,10 @@ type Scenes = ReturnType<typeof showScenes>;
 export const showPath = (tripId: string, kind: ShowKind) => `/trips/${tripId}/${kind === "film" ? "film" : "show"}`;
 
 /** Sceny z dokumentu wyjazdu, opisów miejsc i (w filmie) zdjęć dziennika podpisanych przez `sign`. */
-async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((paths: string[]) => Promise<Map<string, string>>) | null, kind: ShowKind) {
+async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((paths: string[]) => Promise<Map<string, string>>) | null, kind: ShowKind, chosen: Record<string, string> = {}) {
   const { doc, inputs } = stateFromPayload(payload);
+  // Wybór z widoku planu (jak na karcie punktu) przed wyborem w terenie; tylko warianty, które plan ma.
+  const picked = Object.fromEntries(Object.entries(chosen).filter(([group, ref]) => doc.variants.some((variant) => variant.ref === ref && variant.groupRef === group)));
   const ids = refIndex(payload.tables);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const dayRef = new Map(Object.entries(ids).map(([ref, id]) => [id, ref]));
@@ -33,6 +35,7 @@ async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((p
 
   const { scenes, credits } = showScenes(doc, {
     ...inputs,
+    activeVariants: { ...inputs.activeVariants, ...picked },
     kind,
     guideOf: (item) => {
       if (item.kind === "lodging") return null;
@@ -55,9 +58,10 @@ const signer = (supabase: Supabase, bucket: string) => async (paths: string[]) =
   return signed;
 };
 
-export async function loadShow(supabase: Supabase, tripId: string, payload: PullPayload, options: { photos?: boolean; kind: ShowKind }) {
+/** `variants` — warianty wybrane w widoku planu (`chosenVariantsFromCookie`); bez nich te wybrane w planie. */
+export async function loadShow(supabase: Supabase, tripId: string, payload: PullPayload, options: { photos?: boolean; kind: ShowKind; variants?: Record<string, string> }) {
   const journal = (payload.tables as unknown as { journal_entries?: JournalRow[] }).journal_entries ?? [];
-  const { doc, scenes, credits } = await scenesFrom(payload, journal, options.photos ? signer(supabase, "journal") : null, options.kind);
+  const { doc, scenes, credits } = await scenesFrom(payload, journal, options.photos ? signer(supabase, "journal") : null, options.kind, options.variants);
   const { data: stored, error } = await supabase.from("trip_shows").select("content").eq("trip_id", tripId).eq("kind", options.kind).maybeSingle();
   const parsed = ShowScript.safeParse(stored?.content ?? {});
   return { doc, scenes, credits, script: parsed.success ? parsed.data : ShowScript.parse({}), exists: stored !== null, loadError: error?.message };

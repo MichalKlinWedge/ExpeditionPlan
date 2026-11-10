@@ -9,6 +9,7 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/app/actions";
 import { aiAccessError, geminiClient, speechSetup } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+import { chosenVariantsFromCookie } from "@/lib/plan-variants-server";
 import { loadShow, showPath } from "@/lib/trip-show";
 import { pullTrip } from "@/lib/trip-snapshot";
 
@@ -26,7 +27,8 @@ async function load(tripId: string, kind: ShowKind) {
   const pulled = await pullTrip(supabase, tripId);
   if (pulled.error !== undefined) return { error: pulled.error } as const;
   try {
-    return { supabase, ...(await loadShow(supabase, tripId, pulled.payload, { kind })) } as const;
+    // Tekst lektora i nagrania z tymi samymi wariantami dnia, które pokazuje strona pokazu.
+    return { supabase, ...(await loadShow(supabase, tripId, pulled.payload, { kind, variants: await chosenVariantsFromCookie(tripId) })) } as const;
   } catch (e) {
     return { error: `Plan w bazie nie przechodzi walidacji: ${e instanceof Error ? e.message : String(e)}` } as const;
   }

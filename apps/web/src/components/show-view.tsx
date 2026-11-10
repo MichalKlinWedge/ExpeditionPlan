@@ -11,6 +11,7 @@ import { ShowPlayer } from "@/components/show-player";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
 import { tripDates } from "@/lib/labels";
+import { chosenVariantsFromCookie } from "@/lib/plan-variants-server";
 import { SHOW_PAGES } from "@/lib/show-pages";
 import { loadShow, playerMusic, playerScenes, showPath } from "@/lib/trip-show";
 
@@ -31,7 +32,7 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
   if (data === null) notFound();
   let loaded: Awaited<ReturnType<typeof loadShow>>;
   try {
-    loaded = await loadShow(supabase, id, data as PullPayload, { photos: true, kind });
+    loaded = await loadShow(supabase, id, data as PullPayload, { photos: true, kind, variants: await chosenVariantsFromCookie(id) });
   } catch (e) {
     return <p className="text-sm text-red-600">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }

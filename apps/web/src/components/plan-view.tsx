@@ -14,7 +14,7 @@ import { MealLink } from "@/components/meal-link";
 import { ItemPlaceEditor } from "@/components/item-place";
 import { highlightRoute, type LatLng, PlanMap } from "@/components/plan-map";
 import { IconAction } from "@/components/icon-action";
-import { readChosenVariants, saveChosenVariants } from "@/lib/plan-variants";
+import { readChosenVariants, saveChosenVariants, shareChosenVariants } from "@/lib/plan-variants";
 import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -99,6 +99,10 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
   // Wybrany wariant zostaje na czas tej karty przeglądarki: powrót z karty punktu i zapis odświeżają widok od nowa.
   const [chosen, setChosen] = useState<Record<string, string> | null>(null);
   const overrides = useMemo(() => chosen ?? (hydrated ? readChosenVariants(tripId, doc) : {}), [chosen, hydrated, tripId, doc]);
+  // Wybór zapamiętany w tej karcie trafia też do ciasteczka: film i zapowiedź pokażą ten sam wariant dnia.
+  useEffect(() => {
+    if (hydrated && chosen === null) shareChosenVariants(tripId, readChosenVariants(tripId, doc));
+  }, [hydrated, chosen, tripId, doc]);
   const chooseVariant = (groupRef: string, variantRef: string) => {
     const next = { ...overrides, [groupRef]: variantRef };
     setChosen(next);
