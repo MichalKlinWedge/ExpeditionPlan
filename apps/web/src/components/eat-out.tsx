@@ -456,7 +456,9 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
   const [pending, start] = useTransition();
   /** Knajpy z rozwiniętymi „szczegółami” (adres, godziny). */
   const [details, setDetails] = useState<Set<string>>(new Set());
-  const eateries = mealEateries(doc, itemRef);
+  // Kolejność jak numery na mapie (najpierw miejsce posiłku, potem reszta), żeby szły 1, 2, 3; bez numeru — na końcu.
+  const numberOf = (placeRef: string) => selection.numbers[placeRef] ?? Number.MAX_SAFE_INTEGER;
+  const eateries = mealEateries(doc, itemRef).sort((a, b) => numberOf(a.placeRef) - numberOf(b.placeRef));
   const group = eatOutGroup(doc, itemRef);
   if (eateries.length === 0) return null;
   const toggleDetails = (placeRef: string) =>
