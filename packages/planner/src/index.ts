@@ -23,4 +23,5 @@ export * from './venue-page.ts';
 export * from './wiki.ts';
 export * from './restaurants.ts';
 export * from './meal-eateries.ts';
+export * from './wikivoyage-eat.ts';
 export * from './show.ts';

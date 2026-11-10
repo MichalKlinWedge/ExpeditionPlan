@@ -40,7 +40,48 @@ export type Eatery = {
   /** `diet:vegetarian` / `diet:vegan` z OSM: „yes” albo „only”. */
   vegetarian?: boolean;
   vegan?: boolean;
+  /** Sieć (`brand` w OSM). */
+  chain?: boolean;
+  /** Polecenie z przewodnika (Wikivoyage, `planner/src/wikivoyage-eat.ts`). */
+  tip?: EateryTip;
 };
+
+export type EateryPriceTier = 'budget' | 'mid' | 'splurge';
+
+export const EATERY_PRICE_TIER: Record<EateryPriceTier, string> = { budget: 'tanio', mid: 'średnio', splurge: 'drogo' };
+
+/**
+ * Lokal opisany w sekcji „Eat” / „Drink” artykułu Wikivoyage (CC BY-SA): przedział cen z nagłówka sekcji,
+ * cena i krótki opis do pokazania w wynikach z atrybucją. Do planu trafia tylko link do artykułu.
+ */
+export type EateryTip = {
+  source: 'wikivoyage';
+  /** Tytuł artykułu („Barcelona/Ciutat Vella”). */
+  article: string;
+  url: string;
+  tier?: EateryPriceTier;
+  price?: string;
+  text?: string;
+  /** Rok ostatniej zmiany wpisu (`lastedit`). */
+  year?: number;
+};
+
+/** Oceny „warto / nie warto” tego lokalu z naszych wyjazdów (`place_memories`, ta sama nazwa i blisko). */
+export type EateryMemory = { worth: number; notWorth: number; notes: string[] };
+
+/** Knajpa w wynikach wyszukiwania: odległość od środka, a przy posiłku między punktami także od trasy. */
+export type EateryResult = Eatery & { distanceM: number; routeM?: number; open: OpenAtMeal; summary: string; memory?: EateryMemory };
+
+export type EateryAnswer =
+  | { error: string }
+  | {
+      center: SearchCenter;
+      /** Posiłek między dwoma punktami: szukamy wzdłuż drogi z `from` do `to`. */
+      route?: { from: string; to: string };
+      results: EateryResult[];
+      /** Artykuły Wikivoyage, z których są polecenia (atrybucja). */
+      tipSources: { title: string; url: string }[];
+    };
 
 export const EATERY_KINDS: Record<EateryKind, string> = { restaurant: 'restauracja', fast_food: 'szybkie jedzenie', cafe: 'kawiarnia', pub: 'pub / bar', hut: 'schronisko' };
 
@@ -51,7 +92,13 @@ const CUISINE: Record<string, string> = {
   balkan: 'bałkańska', mediterranean: 'śródziemnomorska', seafood: 'owoce morza', fish: 'ryby', steak_house: 'steki', grill: 'grill',
   barbecue: 'grill', vegetarian: 'wegetariańska', vegan: 'wegańska', sandwich: 'kanapki', coffee_shop: 'kawa', cake: 'ciasta', ice_cream: 'lody',
   chicken: 'kurczak', asian: 'azjatycka', arab: 'arabska', lebanese: 'libańska', african: 'afrykańska', pasta: 'makarony', noodle: 'makarony', international: 'międzynarodowa', breakfast: 'śniadania', crepe: 'naleśniki', bakery: 'piekarnia',
+  noodles: 'makarony', italian_pizza: 'pizza', catalan: 'katalońska', basque: 'baskijska', portuguese: 'portugalska', peruvian: 'peruwiańska',
+  argentinian: 'argentyńska', venezuelan: 'wenezuelska', brazilian: 'brazylijska', korean: 'koreańska', american: 'amerykańska', british: 'brytyjska',
+  german: 'niemiecka', austrian: 'austriacka', czech: 'czeska', hungarian: 'węgierska', russian: 'rosyjska', ukrainian: 'ukraińska', middle_eastern: 'bliskowschodnia',
+  falafel: 'falafel', hot_dog: 'hot dogi', donut: 'pączki', tea: 'herbata', bubble_tea: 'bubble tea', salad: 'sałatki', soup: 'zupy', dessert: 'desery', wine: 'wino', beer: 'piwo',
 };
+
+const cuisineName = (key: string) => CUISINE[key] ?? key.replaceAll('_', ' ');
 
 /** „pizza;italian” → „pizza, włoska”. */
 export const cuisineLabel = (cuisine: string | undefined) =>
@@ -61,7 +108,8 @@ export const cuisineLabel = (cuisine: string | undefined) =>
         .split(/[;,]/)
         .map((each) => each.trim().toLowerCase())
         .filter((each) => each !== '')
-        .map((each) => CUISINE[each] ?? each.replaceAll('_', ' '))
+        .map(cuisineName)
+        .filter((each, index, all) => all.indexOf(each) === index)
         .join(', ') || undefined;
 
 const located = (place: Place | undefined): place is Place & { lat: number; lng: number } => place?.lat !== undefined && place.lng !== undefined;
@@ -119,6 +167,46 @@ export function mealSlot(doc: Doc, itemRef: string): { date: string; start: numb
   return { date: day.date, start, end: start + duration };
 }
 
+/** Posiłek bez własnego miejsca między dwoma punktami dnia ze współrzędnymi: knajpy liczymy od drogi między nimi. */
+export type MealRoute = { from: SearchCenter; to: SearchCenter };
+
+/** Dłuższy odcinek to zwykle przejazd — wtedy szukamy przy poprzednim punkcie, jak dotąd. */
+export const MEAL_ROUTE_MAX_M = 6000;
+
+export function mealRoute(doc: Doc, itemRef: string): MealRoute | null {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  if (item === undefined || item.dayRef === undefined || located(placeOf(doc, item))) return null;
+  const day = dayItems(doc, item.dayRef);
+  const index = day.findIndex((each) => each.ref === itemRef);
+  const at = (each: Item): SearchCenter | null => {
+    const place = placeOf(doc, each);
+    return located(place) ? { lat: place.lat, lng: place.lng, near: place.name } : null;
+  };
+  const from = day.slice(0, index).reverse().filter((each) => each.kind !== 'meal').map(at).find((each) => each !== null);
+  const to = day.slice(index + 1).filter((each) => each.kind !== 'meal').map(at).find((each) => each !== null);
+  // Ten sam punkt przed i po posiłku (wyjście i powrót) to nie droga: szukamy wokół niego.
+  if (!from || !to || metersBetween(from, to) < 100 || metersBetween(from, to) > MEAL_ROUTE_MAX_M) return null;
+  return { from, to };
+}
+
+/** Odległość punktu od odcinka trasy (płaskie przybliżenie, wystarczy na kilka km). */
+export function distanceToRouteM(route: MealRoute, point: { lat: number; lng: number }): number {
+  const k = Math.cos((((route.from.lat + route.to.lat) / 2) * Math.PI) / 180);
+  const m = (6_371_000 * Math.PI) / 180;
+  const xy = (q: { lat: number; lng: number }) => [(q.lng - route.from.lng) * k * m, (q.lat - route.from.lat) * m] as const;
+  const [bx, by] = xy(route.to);
+  const [px, py] = xy(point);
+  const length2 = bx * bx + by * by;
+  const t = length2 === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / length2));
+  return Math.round(Math.hypot(px - t * bx, py - t * by));
+}
+
+/** Koło, które obejmuje drogę z zapasem `radiusM` z każdej strony (najwyżej 5 km). */
+export function routeSearchArea(route: MealRoute, radiusM: number): SearchCenter & { radiusM: number } {
+  const half = metersBetween(route.from, route.to) / 2;
+  return { lat: (route.from.lat + route.to.lat) / 2, lng: (route.from.lng + route.to.lng) / 2, near: `${route.from.near} → ${route.to.near}`, radiusM: Math.min(5000, Math.round(half + radiusM)) };
+}
+
 export type OpenAtMeal = { state: 'open' | 'closed' | 'partly' | 'unknown'; hours?: string };
 
 /** Czy knajpa jest otwarta w porze posiłku — z `opening_hours` OSM (bez godzin = nie wiadomo). */
@@ -136,13 +224,17 @@ export const metersBetween = (a: { lat: number; lng: number }, b: { lat: number;
 
 export const formatDistance = (meters: number) => (meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1).replace('.', ',')} km`);
 
-/** Opis knajpy do wariantu i listy: „pizza, włoska · 350 m · 12:00–23:00”. */
-export function eaterySummary(eatery: Eatery, center: { lat: number; lng: number } | null, open?: OpenAtMeal): string {
+/** „polecane w Wikivoyage (tanio)”. */
+export const tipLabel = (tip: EateryTip) => `polecane w Wikivoyage${tip.tier ? ` (${EATERY_PRICE_TIER[tip.tier]})` : ''}`;
+
+/** Opis knajpy do wariantu i listy: „pizza, włoska · 350 m · 12:00–23:00”; przy trasie „120 m od trasy”. */
+export function eaterySummary(eatery: Eatery, center: { lat: number; lng: number } | null, open?: OpenAtMeal, routeM?: number): string {
   return [
     // OSM zwykle nie mówi, czy schronisko wydaje posiłki.
     cuisineLabel(eatery.cuisine) ?? (eatery.kind === 'hut' ? 'schronisko (posiłki do sprawdzenia)' : EATERY_KINDS[eatery.kind]),
     eatery.vegan ? 'wegańskie' : eatery.vegetarian ? 'wege' : undefined,
-    center === null ? undefined : formatDistance(metersBetween(center, eatery)),
+    eatery.tip ? tipLabel(eatery.tip) : undefined,
+    routeM !== undefined ? `${formatDistance(routeM)} od trasy` : center === null ? undefined : formatDistance(metersBetween(center, eatery)),
     open?.hours,
   ]
     .filter((each) => each !== undefined && each !== '')
@@ -160,6 +252,64 @@ const validUrl = (url: string | undefined) => {
 };
 
 const osmUrl = (osm: NonNullable<Eatery['osm']>) => `https://www.openstreetmap.org/${osm.type}/${osm.id}`;
+
+/**
+ * Wyszukanie lokalu w Mapach Google (sam link, nic nie pobieramy ani nie zapisujemy — docs/USLUGI.md §3):
+ * tam są opinie i średnia ocena, której nie wolno nam przechowywać.
+ */
+export function googleMapsSearchUrl(eatery: Pick<Eatery, 'name' | 'lat' | 'lng' | 'address'>): string {
+  const query = eatery.address ? `${eatery.name}, ${eatery.address}` : `${eatery.name} ${eatery.lat.toFixed(5)},${eatery.lng.toFixed(5)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/** Kuchnie z OSM po polsku, bez powtórzeń („pasta;noodle” → [„makarony”]); po nich filtruje się listę. */
+const cuisineNames = (cuisine: string | undefined) => [
+  ...new Set(
+    (cuisine ?? '')
+      .split(/[;,]/)
+      .map((each) => each.trim().toLowerCase())
+      .filter((each) => each !== '')
+      .map(cuisineName),
+  ),
+];
+
+/** Polecana: z przewodnika albo z przewagą „warto” w naszych ocenach. */
+export const isRecommendedEatery = (result: Pick<EateryResult, 'tip' | 'memory'>) => result.tip !== undefined || (result.memory !== undefined && result.memory.worth > result.memory.notWorth);
+
+export type EateryFilter = { hideClosed: boolean; noChains: boolean; cuisine: string; onlyRecommended: boolean };
+
+export const DEFAULT_EATERY_FILTER: EateryFilter = { hideClosed: true, noChains: true, cuisine: '', onlyRecommended: false };
+
+/** Kuchnie obecne w wynikach (polskie nazwy, `key` = to, co dostaje `EateryFilter.cuisine`), najczęstsze najpierw. */
+export function cuisineOptions(results: readonly Pick<EateryResult, 'cuisine'>[]): { key: string; label: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const result of results) for (const name of cuisineNames(result.cuisine)) counts.set(name, (counts.get(name) ?? 0) + 1);
+  return [...counts].map(([name, count]) => ({ key: name, label: name, count })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'pl'));
+}
+
+/** Wyniki po filtrach: bez zamkniętych w porze posiłku, bez sieciówek, jedna kuchnia, tylko polecane. */
+export function filterEateries<T extends EateryResult>(results: readonly T[], filter: EateryFilter): T[] {
+  return results.filter(
+    (result) =>
+      (!filter.hideClosed || result.open.state !== 'closed') &&
+      (!filter.noChains || result.chain !== true) &&
+      (filter.cuisine === '' || cuisineNames(result.cuisine).includes(filter.cuisine)) &&
+      (!filter.onlyRecommended || isRecommendedEatery(result)),
+  );
+}
+
+const OPEN_FIRST = { open: 0, partly: 1, unknown: 2, closed: 3 } as const;
+const signal = (result: EateryResult) => (result.memory !== undefined && result.memory.notWorth > result.memory.worth ? 3 : isRecommendedEatery(result) ? 0 : result.chain ? 2 : 1);
+
+/**
+ * Kolejność wyników: zamknięte w porze posiłku na koniec; przed nimi polecane, zwykłe, sieciówki i nasze
+ * „nie warto”. W każdej grupie otwarte przed tymi bez godzin (polecenia z przewodnika zwykle ich nie mają),
+ * a potem najbliżej trasy albo środka.
+ */
+export function rankEateries<T extends EateryResult>(results: readonly T[]): T[] {
+  const closed = (result: EateryResult) => Number(result.open.state === 'closed');
+  return [...results].sort((a, b) => closed(a) - closed(b) || signal(a) - signal(b) || OPEN_FIRST[a.open.state] - OPEN_FIRST[b.open.state] || (a.routeM ?? a.distanceM) - (b.routeM ?? b.distanceM));
+}
 
 const eateryNotes = (eatery: Eatery) => {
   const cuisine = cuisineLabel(eatery.cuisine);
@@ -184,14 +334,14 @@ function sameEatery(place: Place, eatery: Eatery): boolean {
 /** Miejsce z planu jako knajpa: nazwa i to, co już w nim jest, zostają, a dochodzi tylko to, czego brakowało. */
 function pinnedPlace(place: Place, eatery: Eatery): Place {
   const fresh = eateryPlace(eatery, place.ref);
-  const link = fresh.links.find((each) => !place.links.some((own) => own.url === each.url));
+  const links = fresh.links.filter((each) => !place.links.some((own) => own.url === each.url));
   return {
     ...place,
     ...(located(place) ? {} : { lat: fresh.lat!, lng: fresh.lng! }),
     ...(place.address === undefined && fresh.address !== undefined ? { address: fresh.address } : {}),
     ...(place.openingHours === undefined && fresh.openingHours !== undefined ? { openingHours: fresh.openingHours } : {}),
     ...(place.website === undefined && fresh.website !== undefined ? { website: fresh.website } : {}),
-    ...(link === undefined ? {} : { links: [...place.links, link] }),
+    ...(links.length === 0 ? {} : { links: [...place.links, ...links] }),
     ...(place.notes === undefined && fresh.notes !== undefined ? { notes: fresh.notes } : {}),
     venue: place.venue ?? { prices: [] },
   };
@@ -212,7 +362,7 @@ export function eateryPlace(eatery: Eatery, ref: string): Place {
     ...(eatery.address ? { address: eatery.address } : {}),
     ...(eatery.openingHours ? { openingHours: eatery.openingHours } : {}),
     ...(website ? { website } : {}),
-    links: eatery.osm ? [{ label: 'OpenStreetMap', url: osmUrl(eatery.osm) }] : [],
+    links: [...(eatery.osm ? [{ label: 'OpenStreetMap', url: osmUrl(eatery.osm) }] : []), ...(eatery.tip ? [{ label: `Wikivoyage: ${eatery.tip.article}`, url: eatery.tip.url }] : [])],
     ...(notes ? { notes } : {}),
   };
 }

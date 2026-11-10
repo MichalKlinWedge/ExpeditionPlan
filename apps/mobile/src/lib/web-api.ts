@@ -1,3 +1,4 @@
+import type { EateryAnswer as CoreEateryAnswer } from '@expeditionplan/core';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -32,25 +33,8 @@ export async function readReceiptPhoto(tripId: string, currencies: string[], ima
 export type EateryKind = 'restaurant' | 'fast_food' | 'cafe' | 'pub' | 'hut';
 export type EateryDiet = 'vegetarian' | 'vegan' | 'gluten_free' | 'halal';
 
-/** Wynik `/api/eateries` — jak `EateryResult` w `packages/planner/src/meal-eateries.ts` (`Eatery` z core + odległość i godziny). */
-export type EateryResult = {
-  name: string;
-  lat: number;
-  lng: number;
-  kind: EateryKind;
-  address?: string;
-  cuisine?: string;
-  openingHours?: string;
-  website?: string;
-  phone?: string;
-  osm?: { type: string; id: number };
-  vegetarian?: boolean;
-  vegan?: boolean;
-  distanceM: number;
-  open: { state: 'open' | 'closed' | 'partly' | 'unknown'; hours?: string };
-  summary: string;
-};
-export type EateryAnswer = { center: { lat: number; lng: number; near: string }; results: EateryResult[] };
+/** Wynik `/api/eateries` (`eateriesForMeal` w planner): knajpy z odległością, godzinami, poleceniami Wikivoyage i naszymi ocenami. */
+export type EateryAnswer = Exclude<CoreEateryAnswer, { error: string }>;
 
 /**
  * Knajpy w pobliżu posiłku (Geoapify na serwerze). `position` — tylko po wyraźnym „Szukaj wokół
@@ -72,5 +56,5 @@ export async function findEateriesNearby(query: { tripId: string; itemRef: strin
   }
   const body = (await response.json().catch(() => ({}))) as Partial<EateryAnswer> & { error?: string };
   if (!response.ok || body.results === undefined || body.center === undefined) throw new Error(body.error ?? `Serwer odpowiedział ${response.status}.`);
-  return { center: body.center, results: body.results };
+  return { center: body.center, ...(body.route ? { route: body.route } : {}), results: body.results, tipSources: body.tipSources ?? [] };
 }

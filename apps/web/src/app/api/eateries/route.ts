@@ -1,9 +1,10 @@
 import type { Database } from "@expeditionplan/db";
-import { EateriesRequest, eateriesForMeal, findEateries, positionCenter } from "@expeditionplan/planner";
+import { EateriesRequest, eateriesForMeal, findEateries, positionCenter, wikivoyageListings } from "@expeditionplan/planner";
 import { type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 import { createClient } from "@supabase/supabase-js";
 
 import { aiAccessFor } from "@/lib/ai";
+import { memoriesFor } from "@/lib/eatery-memories";
 import { SUPABASE_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 
 /**
@@ -42,8 +43,10 @@ export async function POST(request: Request) {
   } catch (e) {
     return fail(e instanceof Error ? e.message : String(e), 500);
   }
-  const answer = await eateriesForMeal(doc, itemRef, { kinds, radiusM, ...(diet ? { diet } : {}), ...(position ? { center: positionCenter(position) } : {}) }, (search) =>
-    findEateries(key, search),
-  );
+  const answer = await eateriesForMeal(doc, itemRef, { kinds, radiusM, ...(diet ? { diet } : {}), ...(position ? { center: positionCenter(position) } : {}) }, {
+    search: (search) => findEateries(key, search),
+    tips: (area) => wikivoyageListings(area),
+    memories: (keys) => memoriesFor(supabase, keys),
+  });
   return "error" in answer ? fail(answer.error, 422) : Response.json(answer);
 }

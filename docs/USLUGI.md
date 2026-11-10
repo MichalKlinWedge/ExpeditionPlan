@@ -171,7 +171,7 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 ### Geoapify
 - Free: **3000 kredytów/dzień**, do **5 req/s**. Cennik (FAQ): Free można używać komercyjnie, także produkcyjnie, w ramach limitów. Regulamin jest ostrożniejszy: komercyjnie „w fazie rozwoju, a w produkcji z ograniczeniami — skontaktuj się” (rozbieżność; dla nas bez znaczenia, bo użycie niekomercyjne).
 - Najtańszy płatny: API 10 — 59 USD/mies., 10 000 kredytów/dzień.
-- Koszty: geokodowanie / reverse / autocomplete = 1 kredyt; Places API = 1 kredyt do 20 wyników (+1 za każde kolejne 20); Place Details = 1 kredyt + dodatki; kafel mapy = 0,25 kredytu.
+- Koszty: geokodowanie / reverse / autocomplete = 1 kredyt; Places API = 1 kredyt do 20 wyników (+1 za każde kolejne 20; „Knajpy w pobliżu” bierze 100 wyników = 5 kredytów); Place Details = 1 kredyt + dodatki; kafel mapy = 0,25 kredytu.
 - **Przechowywanie:** strona Places API (FAQ) — wyniki wolno cache'ować, przechowywać i redystrybuować („bez limitów”) przy zachowaniu atrybucji. Dla Place Details i geokodowania strona tego nie mówi wprost — **NIEPOTWIERDZONE** (regulamin milczy o cache).
 - **Godziny otwarcia:** Place Details zwraca `opening_hours` (string z OSM, tylko gdy jest w OSM; „może być nieaktualne”). Wyszukiwanie Places nie wymienia `opening_hours` w wynikach.
 - Atrybucja: zawsze OpenStreetMap; na Free także „Powered by Geoapify”. Zakaz rozpraszania zapytań na wiele kont.
@@ -335,6 +335,12 @@ Kontekst projektu przyjęty do werdyktów: D1 = „ja + znajomi”, APK spoza Go
 - Wikidane (`www.wikidata.org/w/api.php`, `wbsearchentities`, `wbgetentities`; dane CC0): tylko do znalezienia artykułu w innym języku po nazwie i współrzędnych. Tekst dalej pochodzi z artykułu Wikipedii albo Wikivoyage, więc obowiązuje ta sama atrybucja. Warunki znane z dokumentacji, nieodczytane ponownie 5.11.2026.
 - Tekst artykułów: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). Streszczenie AI to utwór zależny — pokazujemy link do artykułu, licencję i informację, że streszczenie zrobiło AI.
 - Zdjęcia: pliki z Commons mają różne licencje (CC BY, CC BY-SA, PD, CC0). Pokazujemy tylko pliki z licencją w metadanych (`LicenseShortName`), z autorem i linkiem do strony pliku. Miniatury z `upload.wikimedia.org` / `thumb.wikimedia.org` (hotlinking dozwolony), na telefonie w pamięci podręcznej do użytku offline. Ręczny wybór zdjęcia do opisu (wyszukiwanie w `commons.wikimedia.org`) podlega tym samym zasadom; serwer przyjmuje tylko pliki z Wikimedia z licencją.
+
+### Wikivoyage: polecenia knajp (10.11.2026)
+
+„Knajpy w pobliżu” (`packages/planner/src/wikivoyage-eat.ts`) czyta z angielskiej Wikivoyage artykuły miast i dzielnic w pobliżu (`list=geosearch`, do 8) i ich tekst (`prop=revisions`, jedno zapytanie na kilka artykułów, pół dnia w pamięci serwera), a z niego wpisy `{{eat}}` / `{{drink}}`. Te same zasady co wyżej: User-Agent, zapytania po kolei, CC BY-SA 4.0. Krótki opis i cenę wpisu pokazujemy tylko w wynikach wyszukiwania z linkiem do artykułu i licencją; do planu trafia sam link do artykułu (`eateryPlace`). To nie jest średnia ocen, tylko wybór autorów przewodnika, a wpisy bywają stare (pokazujemy rok `lastedit`).
+
+Średniej ocen z Google, TripAdvisora, TheFork i Yelpa nie pobieramy (§3, §11 i warunki tych serwisów, Foursquare: ocena to płatne pole Premium). Przy wyniku jest tylko link wyszukiwania w Mapach Google (Maps URLs, `googleMapsSearchUrl`), który otwiera opinie u Google.
 
 ## 13. Strony lokali (opis i menu knajpy, 5.11.2026)
 

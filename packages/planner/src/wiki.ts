@@ -23,7 +23,7 @@ export type WikiSite = 'wikipedia' | 'wikivoyage';
 export type WikiArticle = { title: string; url: string; lang: string; site: WikiSite; text: string };
 type Fetch = typeof fetch;
 
-async function queryHost(host: string, params: Record<string, string>, fetchImpl: Fetch): Promise<Record<string, unknown>> {
+export async function queryHost(host: string, params: Record<string, string>, fetchImpl: Fetch): Promise<Record<string, unknown>> {
   const url = new URL(`https://${host}/w/api.php`);
   for (const [key, value] of Object.entries({ action: 'query', format: 'json', formatversion: '2', ...params })) url.searchParams.set(key, value);
   const response = await fetchImpl(url, { headers: { 'User-Agent': UA, 'Api-User-Agent': UA }, signal: AbortSignal.timeout(15_000) });

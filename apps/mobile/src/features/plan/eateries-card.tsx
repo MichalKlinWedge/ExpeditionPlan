@@ -1,4 +1,16 @@
-import { addEatOutChoices, EATERY_KINDS, type EatOutEdit, formatDistance, type PlanItem as Item } from '@expeditionplan/core';
+import {
+  addEatOutChoices,
+  cuisineOptions,
+  DEFAULT_EATERY_FILTER,
+  EATERY_KINDS,
+  type EateryFilter,
+  type EateryResult,
+  type EatOutEdit,
+  filterEateries,
+  formatDistance,
+  googleMapsSearchUrl,
+  type PlanItem as Item,
+} from '@expeditionplan/core';
 import { type CachedTrip, uuidv7 } from '@expeditionplan/sync';
 import * as Location from 'expo-location';
 import { useState } from 'react';
@@ -17,6 +29,7 @@ import { type EateryAnswer, type EateryDiet, type EateryKind, findEateriesNearby
  * telefonu. Pozycja idzie na serwer tylko wtedy, zaokrąglona do ~100 m, i nie jest zapisywana
  * (SPECYFIKACJA §8). Wybrane knajpy zapisuje plan (`addEatOutChoices` → `saveElements`): jedna =
  * miejsce posiłku, kilka = „gdzie jemy?” do wyboru chipami nad dniem, także offline. Kolejna knajpa dołącza do wyboru.
+ * Filtry (zamknięte, sieciówki, kuchnia, tylko polecane) jak na webie (`filterEateries`); „Opinie” otwiera Mapy Google.
  */
 
 const RADII = [500, 1000, 2000, 5000];
@@ -33,6 +46,9 @@ const OPEN = {
   closed: { label: '✕ zamknięte w porze posiłku', color: 'textSecondary' },
   unknown: { label: 'godziny nieznane', color: 'textSecondary' },
 } as const;
+
+/** Tyle wyników naraz, reszta po „Pokaż więcej”. */
+const PAGE = 15;
 
 /** ≈ 100 m — wystarczy do knajp w promieniu, a nie mówi dokładnie, gdzie jesteś. */
 const round = (value: number) => Math.round(value * 1000) / 1000;
@@ -52,7 +68,9 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
   const [radiusM, setRadiusM] = useState(1000);
   const [diet, setDiet] = useState<EateryDiet | ''>('');
   const [answer, setAnswer] = useState<EateryAnswer | null>(null);
-  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [picked, setPicked] = useState<Set<EateryResult>>(new Set());
+  const [filter, setFilter] = useState<EateryFilter>(DEFAULT_EATERY_FILTER);
+  const [limit, setLimit] = useState(PAGE);
   const [busy, setBusy] = useState<'search' | 'locate' | 'save' | null>(null);
   const [problem, setProblem] = useState('');
   const [saved, setSaved] = useState('');
@@ -64,6 +82,8 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
     setProblem('');
     setSaved('');
     setPicked(new Set());
+    setLimit(PAGE);
+    setFilter((current) => ({ ...current, cuisine: '' }));
     try {
       let position: { lat: number; lng: number } | undefined;
       if (aroundMe) {
@@ -82,7 +102,7 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
 
   const save = async () => {
     if (answer === null || onSave === undefined) return;
-    const picks = [...picked].sort((a, b) => a - b).map((index) => answer.results[index]!);
+    const picks = answer.results.filter((result) => picked.has(result));
     const edit = addEatOutChoices(trip.state.doc, item.ref, picks.map((result) => ({ eatery: result, summary: result.summary })), () => `id-${uuidv7()}`);
     if (edit === null) return;
     setBusy('save');
@@ -99,13 +119,17 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
   };
 
   const toggleKind = (kind: EateryKind) => setKinds((current) => (current.includes(kind) ? current.filter((each) => each !== kind) : [...current, kind]));
-  const togglePick = (index: number) =>
+  const togglePick = (result: EateryResult) =>
     setPicked((current) => {
       const next = new Set(current);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
+      if (next.has(result)) next.delete(result);
+      else next.add(result);
       return next;
     });
+  const results = answer?.results ?? [];
+  const shown = filterEateries(results, filter);
+  const cuisines = cuisineOptions(results).slice(0, 8);
+  const flip = (key: 'hideClosed' | 'noChains' | 'onlyRecommended') => setFilter((current) => ({ ...current, [key]: !current[key] }));
 
   return (
     <View style={[styles.box, { borderColor: theme.backgroundSelected }]}>
@@ -155,16 +179,32 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
       {answer !== null && (
         <View style={styles.list}>
           <ThemedText type="small" themeColor="textSecondary">
-            {answer.results.length === 0 ? `Nic w promieniu ${formatDistance(radiusM)} od: ${answer.center.near}.` : `Wokół: ${answer.center.near}`}
+            {results.length === 0
+              ? `Nic w promieniu ${formatDistance(radiusM)} od: ${answer.center.near}.`
+              : `${answer.route ? `Po drodze: ${answer.route.from} → ${answer.route.to}` : `Wokół: ${answer.center.near}`} · ${shown.length} z ${results.length} po filtrach`}
           </ThemedText>
-          {answer.results.map((result, index) => {
-            const chosen = picked.has(index);
+          {results.length > 0 && (
+            <View style={styles.wrap}>
+              <Chip compact active={filter.hideClosed} label="bez zamkniętych" onPress={() => flip('hideClosed')} />
+              <Chip compact active={filter.noChains} label="bez sieciówek" onPress={() => flip('noChains')} />
+              <Chip compact active={filter.onlyRecommended} label="tylko polecane" onPress={() => flip('onlyRecommended')} />
+            </View>
+          )}
+          {cuisines.length > 1 && (
+            <View style={styles.wrap}>
+              {cuisines.map((each) => (
+                <Chip key={each.key} compact active={filter.cuisine === each.key} label={`${each.label} (${each.count})`} onPress={() => setFilter((current) => ({ ...current, cuisine: current.cuisine === each.key ? '' : each.key }))} />
+              ))}
+            </View>
+          )}
+          {shown.slice(0, limit).map((result) => {
+            const chosen = picked.has(result);
             const status = OPEN[result.open.state];
             return (
               <Pressable
                 key={`${result.name}-${result.lat}-${result.lng}`}
                 disabled={onSave === undefined}
-                onPress={() => togglePick(index)}
+                onPress={() => togglePick(result)}
                 style={[styles.result, { borderColor: chosen ? theme.accent : theme.backgroundSelected }]}>
                 <View style={styles.row}>
                   <ThemedText type="smallBold" style={styles.grow}>
@@ -177,7 +217,18 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
                 </View>
                 <ThemedText type="small" themeColor="textSecondary">
                   {result.summary}
+                  {result.chain ? ' · sieć' : ''}
                 </ThemedText>
+                {result.memory && (
+                  <ThemedText type="small" themeColor="accent">
+                    {[result.memory.worth > 0 ? `👍 ${result.memory.worth}` : '', result.memory.notWorth > 0 ? `👎 ${result.memory.notWorth}` : '', ...result.memory.notes].filter(Boolean).join(' · ')}
+                  </ThemedText>
+                )}
+                {result.tip && (result.tip.text || result.tip.price) && (
+                  <ThemedText type="small" themeColor="accent">
+                    {[result.tip.text ? `„${result.tip.text}”` : '', result.tip.price ? `cena: ${result.tip.price}` : '', result.tip.year ? `wpis z ${result.tip.year}` : ''].filter(Boolean).join(' · ')}
+                  </ThemedText>
+                )}
                 {result.address && (
                   <ThemedText type="small" themeColor="textSecondary">
                     {result.address}
@@ -187,13 +238,19 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
                   <ThemedText type="small" themeColor={status.color} style={[styles.grow, result.open.state === 'closed' && styles.problem]}>
                     {status.label}
                   </ThemedText>
-                  <Pressable onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${result.lat},${result.lng}`)} hitSlop={8}>
-                    <ThemedText type="linkPrimary">Mapa</ThemedText>
+                  <Pressable onPress={() => void Linking.openURL(googleMapsSearchUrl(result))} hitSlop={8}>
+                    <ThemedText type="linkPrimary">Mapa i opinie</ThemedText>
                   </Pressable>
                 </View>
               </Pressable>
             );
           })}
+          {shown.length > limit && <Button small label={`Pokaż więcej (${shown.length - limit})`} onPress={() => setLimit((current) => current + PAGE)} />}
+          {results.length > 0 && shown.length === 0 && (
+            <ThemedText type="small" themeColor="textSecondary">
+              Filtry odsiały wszystko — odznacz któryś.
+            </ThemedText>
+          )}
           {onSave !== undefined && picked.size > 0 && (
             <Button
               variant="primary"
@@ -204,6 +261,7 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
           )}
           <ThemedText type="small" themeColor="textSecondary" style={styles.credit}>
             © OpenStreetMap · Powered by Geoapify
+            {answer.tipSources.length > 0 ? ` · Polecenia: ${answer.tipSources.map((source) => `Wikivoyage: ${source.title}`).join(', ')} (CC BY-SA 4.0)` : ''}
           </ThemedText>
         </View>
       )}

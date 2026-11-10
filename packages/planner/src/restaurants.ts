@@ -8,6 +8,9 @@ import type { Eatery, EateryKind } from '@expeditionplan/core';
 
 const ENDPOINT = 'https://api.geoapify.com/v2/places';
 
+/** W centrum miasta 20 najbliższych to przypadkowa garść: bierzemy więcej (5 kredytów) i odsiewamy filtrami. */
+export const MAX_RESULTS = 100;
+
 const CATEGORIES: Record<EateryKind, string[]> = {
   restaurant: ['catering.restaurant'],
   fast_food: ['catering.fast_food', 'catering.food_court'],
@@ -22,7 +25,7 @@ export type EateryDiet = 'vegetarian' | 'vegan' | 'gluten_free' | 'halal';
 
 export type EaterySearch = { lat: number; lng: number; radiusM: number; kinds: EateryKind[]; diet?: EateryDiet; limit?: number };
 
-type Raw = Record<string, unknown> & { osm_id?: number; osm_type?: string; cuisine?: string; opening_hours?: string; website?: string; phone?: string; 'contact:phone'?: string; 'contact:website'?: string };
+type Raw = Record<string, unknown> & { osm_id?: number; osm_type?: string; cuisine?: string; brand?: string; 'brand:wikidata'?: string; opening_hours?: string; website?: string; phone?: string; 'contact:phone'?: string; 'contact:website'?: string };
 type Feature = {
   properties?: {
     name?: string;
@@ -72,17 +75,18 @@ export function eateryFrom(feature: Feature): Eatery | null {
     ...(osmType && typeof raw.osm_id === 'number' ? { osm: { type: osmType, id: Math.abs(raw.osm_id) } } : {}),
     ...(yes(raw['diet:vegetarian']) || yes(raw['diet:vegan']) ? { vegetarian: true } : {}),
     ...(yes(raw['diet:vegan']) ? { vegan: true } : {}),
+    ...(raw.brand || raw['brand:wikidata'] ? { chain: true } : {}),
   };
 }
 
-/** Do 20 knajp w promieniu, najbliższe pierwsze (jedno zapytanie = 1 kredyt). */
+/** Do `limit` (domyślnie 20, najwyżej 100) knajp w promieniu, najbliższe pierwsze: 1 kredyt za każde rozpoczęte 20 wyników. */
 export async function findEateries(apiKey: string, search: EaterySearch, fetchImpl: typeof fetch = fetch): Promise<Eatery[]> {
   const kinds = search.kinds.length > 0 ? search.kinds : (Object.keys(CATEGORIES) as EateryKind[]);
   const params = new URLSearchParams({
     categories: kinds.flatMap((kind) => CATEGORIES[kind]).join(','),
     filter: `circle:${search.lng},${search.lat},${Math.round(search.radiusM)}`,
     bias: `proximity:${search.lng},${search.lat}`,
-    limit: String(Math.min(search.limit ?? 20, 20)),
+    limit: String(Math.min(search.limit ?? 20, MAX_RESULTS)),
     lang: 'pl',
     apiKey,
   });
