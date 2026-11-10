@@ -6,6 +6,7 @@ import {
   mealList,
   mealTime,
   pluralForm,
+  ratingStarsText,
   selfCookedTotals,
 } from "@expeditionplan/core";
 import type { CachedTrip } from "@expeditionplan/sync";
@@ -141,6 +142,11 @@ export function MealsView({
                       >
                         {eateries.length > 1 && eatery.active ? "✓ " : "· "}
                         {eatery.name}
+                        {place?.venue?.rating ? (
+                          <ThemedText type="small" style={styles.rating}>
+                            {` ${ratingStarsText(place.venue.rating)}`}
+                          </ThemedText>
+                        ) : null}
                         {eatery.summary ? ` · ${eatery.summary}` : ""}
                       </ThemedText>
                       {place && <PlacePin place={place} />}
@@ -170,4 +176,5 @@ const styles = StyleSheet.create({
   card: { borderRadius: 12, padding: Spacing.three, gap: Spacing.half },
   place: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
   grow: { flex: 1 },
+  rating: { color: "#D97706" },
 });
