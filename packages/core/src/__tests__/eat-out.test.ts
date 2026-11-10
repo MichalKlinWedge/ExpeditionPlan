@@ -94,7 +94,7 @@ describe('knajpy w pobliżu posiłku', () => {
     expect(place.notes).toBe('Kuchnia: marokańska. Wege. Polecane w Wikivoyage (tanio). Tel. +212 1');
     const facts = pinnedEateryFacts(edit.doc, 'd2-lunch', placeRef)!;
     expect(facts).toMatchObject({ summary: 'restauracja · Kuchnia: marokańska. Wege. Polecane w Wikivoyage (tanio). Tel. +212 1', address: 'Souk 32', open: { state: 'open' } });
-    expect(facts.links.map((link) => link.label)).toEqual(['opinie w Google', 'mapa', 'strona', 'OpenStreetMap', 'Wikivoyage']);
+    expect(facts.links.map((link) => link.label)).toEqual(['Opinie Google', 'mapa', 'strona', 'OpenStreetMap', 'Wikivoyage']);
     expect(pinnedEateryFacts(edit.doc, 'd2-lunch', placeRef, 'marokańska · 40 m')!.summary).toBe('marokańska · 40 m');
   });
 

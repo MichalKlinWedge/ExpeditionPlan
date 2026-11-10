@@ -443,7 +443,7 @@ export type PinnedEateryFacts = { summary?: string; rating?: VenueRating; open: 
 
 /**
  * Dane przypiętej knajpy z jej miejsca w planie. `summary` — opis zapisany w wariancie przy przypięciu
- * (z odległością); bez niego rodzaj lokalu i notatka miejsca. Linki: opinie w Google i mapa liczone
+ * (z odległością); bez niego rodzaj lokalu i notatka miejsca. Linki: „Opinie Google” i mapa liczone
  * z nazwy i współrzędnych (nic nie pobieramy), strona lokalu i linki miejsca (Wikivoyage, OSM).
  */
 export function pinnedEateryFacts(doc: Doc, itemRef: string, placeRef: string, summary?: string): PinnedEateryFacts | null {
@@ -453,7 +453,7 @@ export function pinnedEateryFacts(doc: Doc, itemRef: string, placeRef: string, s
   const links = [
     ...(located(place)
       ? [
-          { label: 'opinie w Google', url: googleMapsSearchUrl({ name: place.name, lat: place.lat, lng: place.lng, ...(place.address ? { address: place.address } : {}) }) },
+          { label: 'Opinie Google', url: googleMapsSearchUrl({ name: place.name, lat: place.lat, lng: place.lng, ...(place.address ? { address: place.address } : {}) }) },
           { label: 'mapa', url: osmPointUrl(place) },
         ]
       : []),

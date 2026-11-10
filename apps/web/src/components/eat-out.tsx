@@ -357,7 +357,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
                       <span className={OPEN[result.open.state].className}>{OPEN[result.open.state].label}</span>
                       {result.address && <span className="text-zinc-500"> · {result.address}</span>}{" "}
                       <a href={googleMapsSearchUrl(result)} target="_blank" rel="noreferrer" title="Opinie i średnia ocena w Mapach Google (otwiera Google, nic nie pobieramy)" className="underline">
-                        opinie w Google
+                        Opinie Google
                       </a>
                       {" · "}
                       <a href={`https://www.openstreetmap.org/?mlat=${result.lat}&mlon=${result.lng}#map=18/${result.lat}/${result.lng}`} target="_blank" rel="noreferrer" className="underline">
@@ -527,6 +527,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                 <Fragment key={eatery.placeRef}>
                 <tr className={`border-t border-zinc-100 align-top dark:border-zinc-900 ${tint}`}>
                   <td className="py-1 pr-3">
+                    <div className="flex flex-col items-start gap-1">
                     <div className="flex items-center gap-1.5">
                       {selection.href ? (
                         <Link href={selection.href(eatery.placeRef)} title="Posiłek i knajpa na stronie Posiłki" className="btn-mini">
@@ -548,10 +549,20 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                         </button>
                       )}
                       <PlaceLink tripId={tripId} place={{ ref: eatery.placeRef, name: eatery.name }} />
-                      {hasDetails && (
-                        <button type="button" onClick={() => toggleDetails(eatery.placeRef)} aria-expanded={expanded} title="Adres i godziny otwarcia" className="btn-mini">
-                          szczegóły {expanded ? "▴" : "▾"}
-                        </button>
+                    </div>
+                      {(hasDetails || (canEdit && eatery.variantRef !== undefined && !eatery.active)) && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {hasDetails && (
+                            <button type="button" onClick={() => toggleDetails(eatery.placeRef)} aria-expanded={expanded} title="Adres i godziny otwarcia" className="btn-mini">
+                              szczegóły {expanded ? "▴" : "▾"}
+                            </button>
+                          )}
+                          {canEdit && eatery.variantRef !== undefined && !eatery.active && (
+                            <button type="button" disabled={pending} onClick={() => choose(eatery.variantRef!)} title="Ta knajpa w planie zamiast obecnej" className="btn-mini">
+                              wybierz
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </td>
@@ -571,7 +582,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                     <span className="flex flex-wrap gap-x-2">
                       {(facts?.links ?? []).length === 0 && "—"}
                       {(facts?.links ?? []).map((link) => (
-                        <a key={link.url} href={link.url} target="_blank" rel="noreferrer" title={link.label === "opinie w Google" ? "Opinie i średnia ocena w Mapach Google (otwiera Google, nic nie pobieramy)" : undefined} className="whitespace-nowrap underline">
+                        <a key={link.url} href={link.url} target="_blank" rel="noreferrer" title={link.label === "Opinie Google" ? "Opinie i średnia ocena w Mapach Google (otwiera Google, nic nie pobieramy)" : undefined} className="whitespace-nowrap underline">
                           {link.label}
                         </a>
                       ))}
@@ -580,11 +591,6 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                   {canEdit && (
                     <td className="py-1 text-right">
                       <span className="inline-flex items-center gap-1">
-                        {eatery.variantRef !== undefined && !eatery.active && (
-                          <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="btn-mini">
-                            wybierz
-                          </button>
-                        )}
                         <IconAction kind="remove" tip="odepnij knajpę od posiłku (miejsce zostaje w planie)" disabled={pending} onClick={() => unpin(eatery.placeRef, eatery.name)} />
                       </span>
                     </td>
@@ -686,25 +692,22 @@ function RatingCell({ tripId, doc, ids, placeRef, rating, canEdit }: { tripId: s
     setError(null);
     setOpen(true);
   };
+  if (rating === undefined)
+    return canEdit ? (
+      <button type="button" onClick={start_} className="btn-mini">
+        + ocena
+      </button>
+    ) : (
+      <>—</>
+    );
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      {rating ? (
-        <span title={venueRatingLabel(rating)} className="inline-flex items-center gap-1">
-          <Stars value={rating.value} scale={rating.scale} />
-          <span className="font-semibold text-zinc-700 dark:text-zinc-300">{rating.value.toLocaleString("pl-PL", { maximumFractionDigits: 2 })}</span>
-          {rating.count !== undefined && <span className="text-zinc-500">({rating.count.toLocaleString("pl-PL")})</span>}
-        </span>
-      ) : (
-        !canEdit && "—"
-      )}
-      {canEdit &&
-        (rating ? (
-          <IconAction kind="edit" tip="zmień ocenę (pusta = usuń)" onClick={start_} />
-        ) : (
-          <button type="button" onClick={start_} className="btn-mini">
-            + ocena
-          </button>
-        ))}
+    <span title={venueRatingLabel(rating)} className="flex flex-col items-start gap-0.5 whitespace-nowrap">
+      <Stars value={rating.value} scale={rating.scale} />
+      <span className="inline-flex items-center gap-1">
+        <span className="font-semibold text-zinc-700 dark:text-zinc-300">{rating.value.toLocaleString("pl-PL", { maximumFractionDigits: 2 })}</span>
+        {rating.count !== undefined && <span className="text-zinc-500">({rating.count.toLocaleString("pl-PL")})</span>}
+        {canEdit && <IconAction kind="edit" tip="zmień ocenę (pusta = usuń)" onClick={start_} />}
+      </span>
     </span>
   );
 }
