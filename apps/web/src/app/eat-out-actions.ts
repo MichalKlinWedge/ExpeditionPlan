@@ -1,6 +1,6 @@
 "use server";
 
-import { type EateryAnswer, type EateryKind, type SearchCenter, TripBrief, type TripDocument } from "@expeditionplan/core";
+import { type EateryAnswer, type EateryKind, parseCoordinates, type SearchCenter, TripBrief, type TripDocument } from "@expeditionplan/core";
 import { type EateryDiet, eateriesForMeal, findEateries, geoapifyLookup, wikivoyageListings } from "@expeditionplan/planner";
 import { type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 
@@ -11,14 +11,15 @@ import { memoriesFor } from "@/lib/eatery-memories";
 
 /**
  * „Knajpy w pobliżu” posiłku (strona Posiłki): Geoapify Places wokół miejsca posiłku, drogi między
- * punktami dnia albo wpisanej okolicy, z poleceniami Wikivoyage i naszymi ocenami (`eateriesForMeal`).
+ * punktami dnia, wybranego miejsca wyjazdu, wklejonych współrzędnych albo wpisanej okolicy, z poleceniami Wikivoyage i naszymi ocenami (`eateriesForMeal`).
  * Tylko wyszukiwanie — wybrane knajpy zapisuje przeglądarka (`saveElements`, o prawie decyduje RLS).
  */
 
 export async function findRestaurants(
   tripId: string,
   itemRef: string,
-  options: { kinds: EateryKind[]; radiusM: number; diet?: EateryDiet; near?: string },
+  /** `placeRef` — miejsce z wyjazdu jako środek; `near` — okolica do geokodowania albo współrzędne / link do mapy (`parseCoordinates`). */
+  options: { kinds: EateryKind[]; radiusM: number; diet?: EateryDiet; near?: string; placeRef?: string },
 ): Promise<EateryAnswer> {
   const key = process.env.GEOAPIFY_API_KEY ?? "";
   if (key === "") return { error: "Serwer nie ma klucza GEOAPIFY_API_KEY." };
@@ -39,8 +40,15 @@ export async function findRestaurants(
   }
 
   let center: SearchCenter | undefined;
-  const near = options.near?.trim().slice(0, 200) ?? "";
-  if (near !== "") {
+  const near = options.near?.trim().slice(0, 500) ?? "";
+  const coords = near === "" ? null : parseCoordinates(near);
+  if (options.placeRef) {
+    const place = doc.places.find((each) => each.ref === options.placeRef);
+    if (place?.lat === undefined || place.lng === undefined) return { error: "To miejsce nie ma współrzędnych — przypnij je na mapie w „Miejscach”." };
+    center = { lat: place.lat, lng: place.lng, near: place.name };
+  } else if (coords !== null) {
+    center = { ...coords, near: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` };
+  } else if (near !== "") {
     const brief = TripBrief.safeParse(briefRow.data?.brief);
     const countries = countriesFor(brief.success ? brief.data : null, trip.data?.primary_tz ?? "");
     if (countries.length === 0) return { error: "Nie wiem, w jakim kraju szukać — podaj kraj w briefie wyjazdu." };

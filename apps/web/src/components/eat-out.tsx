@@ -61,6 +61,8 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
   const [radiusM, setRadiusM] = useState(1000);
   const [diet, setDiet] = useState("");
   const [near, setNear] = useState("");
+  const [placeRef, setPlaceRef] = useState("");
+  const places = doc.places.filter((place) => place.lat !== undefined && place.lng !== undefined).sort((a, b) => a.name.localeCompare(b.name, "pl"));
   const [answer, setAnswer] = useState<EateryAnswer | null>(null);
   const [picked, setPicked] = useState<Set<EateryResult>>(new Set());
   const [filter, setFilter] = useState<EateryFilter>(DEFAULT_EATERY_FILTER);
@@ -74,7 +76,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
       setPicked(new Set());
       setLimit(PAGE);
       setFilter((current) => ({ ...current, cuisine: "" }));
-      setAnswer(await findRestaurants(tripId, itemRef, { kinds, radiusM, ...(diet ? { diet: diet as "vegetarian" } : {}), ...(near.trim() ? { near } : {}) }));
+      setAnswer(await findRestaurants(tripId, itemRef, { kinds, radiusM, ...(diet ? { diet: diet as "vegetarian" } : {}), ...(placeRef ? { placeRef } : near.trim() ? { near } : {}) }));
     });
 
   const save = () => {
@@ -149,9 +151,35 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
             ))}
           </select>
         </label>
+        <label className="flex min-w-40 flex-col gap-1 text-xs text-zinc-500">
+          Wokół miejsca z wyjazdu
+          <select
+            value={placeRef}
+            onChange={(event) => {
+              setPlaceRef(event.target.value);
+              if (event.target.value !== "") setNear("");
+            }}
+            className={input}>
+            <option value="">miejsce posiłku lub punkt dnia</option>
+            {places.map((place) => (
+              <option key={place.ref} value={place.ref}>
+                {place.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="flex min-w-40 flex-1 flex-col gap-1 text-xs text-zinc-500">
-          W pobliżu (opcjonalnie)
-          <input value={near} onChange={(event) => setNear(event.target.value)} placeholder="domyślnie miejsce posiłku lub punkt dnia" className={input} />
+          albo okolica lub współrzędne
+          <input
+            value={near}
+            onChange={(event) => {
+              setNear(event.target.value);
+              if (event.target.value.trim() !== "") setPlaceRef("");
+            }}
+            placeholder="ulica, zabytek, 41.4036, 2.1744 albo link z mapy"
+            title="Nazwa okolicy (szukana w kraju wyjazdu), współrzędne albo link z Google Maps / OpenStreetMap"
+            className={input}
+          />
         </label>
         <button disabled={pending} className="btn-secondary btn-sm">
           Szukaj
