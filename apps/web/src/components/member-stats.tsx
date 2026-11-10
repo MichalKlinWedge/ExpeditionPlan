@@ -143,7 +143,8 @@ export function MemberStats({
               <thead className="text-xs text-zinc-500">
                 <tr>
                   <th className="py-1 pr-3 font-normal">Uczestnik</th>
-                  <th className="py-1 pr-3 font-normal">Zaproszenie</th>
+                  <th className="py-1 pr-3 font-normal whitespace-nowrap">Zaproszenie z</th>
+                  <th className="py-1 pr-3 font-normal whitespace-nowrap">Ważne do</th>
                   <th className="py-1 font-normal">Zaproś</th>
                 </tr>
               </thead>
@@ -154,16 +155,8 @@ export function MemberStats({
                   return (
                     <tr key={each.id} className="border-t border-zinc-200 align-top dark:border-zinc-800">
                       <td className="py-1.5 pr-3 font-medium whitespace-nowrap">{each.name}</td>
-                      <td className="py-1.5 pr-3">
-                        {pending ? (
-                          <>
-                            czeka od {date(pending.created_at)}
-                            <span className="block text-xs text-zinc-500">ważne do {date(pending.expires_at)}</span>
-                          </>
-                        ) : (
-                          <span className="text-zinc-500">—</span>
-                        )}
-                      </td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap">{pending ? date(pending.created_at) : <span className="text-zinc-500">—</span>}</td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap">{pending ? date(pending.expires_at) : <span className="text-zinc-500">—</span>}</td>
                       <td className="w-full py-1.5">
                         <TravelerInvite tripId={tripId} travelerId={each.id} name={each.name} tripTitle={trip.title} dates={trip.dates} />
                       </td>

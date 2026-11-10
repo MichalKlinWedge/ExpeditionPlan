@@ -257,7 +257,7 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
   // Kolumna tylko wtedy, gdy ktoś ma w niej dane — tabela nie rośnie o puste kolumny.
   const show = {
     age: people.some((person) => person.age !== null),
-    family: people.some((person) => person.household || person.guardian_id),
+    family: people.some((person) => person.household),
     when: people.some((person) => travelerPresence(person.from_date, person.to_date) !== null),
     route: people.some((person) => person.start_place_id || person.end_place_id),
     documents: people.some((person) => person.passport_until !== null || person.id_card_until !== null),
@@ -301,15 +301,13 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
                         </span>
                         {person.tentative && <span className="rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">waha się</span>}
                       </span>
+                      {person.guardian_id && <span className="block text-xs text-zinc-500">pod opieką: {nameOf.get(person.guardian_id) ?? "?"}</span>}
                       {person.is_driver && <span className="block text-xs text-zinc-500">kierowca</span>}
                       {person.notes && <span className="block whitespace-pre-line text-xs text-zinc-600 dark:text-zinc-400">{person.notes}</span>}
                     </td>
                     {show.age && <td className="py-1.5 pr-3 whitespace-nowrap">{person.age !== null ? `${person.age} l.` : <span className="text-zinc-500">—</span>}</td>}
                     {show.family && (
-                      <td className="py-1.5 pr-3">
-                        {person.household ?? (person.guardian_id ? null : <span className="text-zinc-500">—</span>)}
-                        {person.guardian_id && <span className="block text-xs text-zinc-500">pod opieką: {nameOf.get(person.guardian_id) ?? "?"}</span>}
-                      </td>
+                      <td className="py-1.5 pr-3">{person.household ?? <span className="text-zinc-500">—</span>}</td>
                     )}
                     {show.when && <td className="py-1.5 pr-3">{travelerPresence(person.from_date, person.to_date) ?? <span className="text-zinc-500">cały wyjazd</span>}</td>}
                     {show.route && (
