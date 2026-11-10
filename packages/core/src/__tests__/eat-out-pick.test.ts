@@ -8,13 +8,16 @@ import {
   cuisineOptions,
   DEFAULT_EATERY_FILTER,
   distanceToRouteM,
+  eateryFilterFrom,
   eateryResultsMap,
   type EateryResult,
   eaterySummary,
   filterEateries,
   googleMapsSearchUrl,
   mealRoute,
+  presentCuisines,
   rankEateries,
+  readEaterySearchPrefs,
   routeSearchArea,
 } from '../eat-out.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
@@ -93,6 +96,18 @@ describe('wybór knajpy: trasa, filtry, polecenia', () => {
       ['B|31.7|-7.9891', 2, ''],
     ]);
     expect(map.numbers).toEqual({ 'A|31.6262|-7.9891': 1, 'B|31.7|-7.9891': 2 });
+  });
+
+  it('zapamiętane wybory: zepsute = domyślne, brakujące pola domyślne, nieobecna kuchnia nie odsiewa wszystkiego', () => {
+    expect(readEaterySearchPrefs(null)).toEqual({});
+    expect(readEaterySearchPrefs({ radiusM: 99_999 })).toEqual({});
+    const prefs = readEaterySearchPrefs({ kinds: ['cafe'], radiusM: 2000, diet: null, noChains: false, cuisines: ['włoska', 'gruzińska'] });
+    expect(prefs).toMatchObject({ kinds: ['cafe'], radiusM: 2000, diet: null });
+    const filter = eateryFilterFrom(prefs);
+    expect(filter).toEqual({ hideClosed: true, noChains: false, onlyRecommended: false, cuisines: ['włoska', 'gruzińska'] });
+    const all = [result('Pizzeria', { cuisine: 'italian' }), result('Kebab', { cuisine: 'kebab' })];
+    expect(presentCuisines(filter, cuisineOptions(all)).cuisines).toEqual(['włoska']);
+    expect(presentCuisines({ ...filter, cuisines: ['gruzińska'] }, cuisineOptions(all)).cuisines).toEqual([]);
   });
 
   it('opinie w Google: sam link wyszukiwania po nazwie i adresie (albo współrzędnych)', () => {

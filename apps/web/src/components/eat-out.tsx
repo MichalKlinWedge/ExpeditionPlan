@@ -9,14 +9,17 @@ import {
   type EateryAnswer,
   type EateryFilter,
   type EateryKind,
+  eateryFilterFrom,
   type EateryResult,
   eateryResultsMap,
+  type EaterySearchPrefs,
   eatOutGroup,
   filterEateries,
   formatDistance,
   googleMapsSearchUrl,
   isPinnedEatery,
   mealEateries,
+  presentCuisines,
   removeEatOutChoice,
   type TripDocument,
 } from "@expeditionplan/core";
@@ -30,6 +33,7 @@ import { IconAction } from "@/components/icon-action";
 import type { MealSelection } from "@/components/meal-row";
 import { PlanMap } from "@/components/plan-map";
 import { PlaceLink } from "@/components/place-pin";
+import { useEaterySearchPrefs } from "@/lib/eatery-prefs";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -74,15 +78,31 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
   const [selected, setSelected] = useState<string | null>(null);
   const [searchNo, setSearchNo] = useState(0);
   const mapBox = useRef<HTMLDivElement>(null);
-  const cuisineBox = useRef<HTMLDetailsElement>(null);
+  // Rozwijana lista kuchni: zwykły stan, nie `<details>` (te strona pamięta otwarte, `RememberDetails`).
+  const cuisineBox = useRef<HTMLDivElement>(null);
+  const [cuisineOpen, setCuisineOpen] = useState(false);
+  // Wybory zapamiętane dla konta: wczytane raz, potem każda zmiana zapisuje całość.
+  const [prefs, savePrefs] = useEaterySearchPrefs();
+  const [prefsApplied, setPrefsApplied] = useState(false);
+  if (prefs !== null && !prefsApplied) {
+    setPrefsApplied(true);
+    if (prefs.kinds) setKinds(prefs.kinds);
+    if (prefs.radiusM !== undefined) setRadiusM(RADII.includes(prefs.radiusM) ? prefs.radiusM : 1000);
+    if (prefs.diet !== undefined) setDiet(prefs.diet ?? "");
+    setFilter(eateryFilterFrom(prefs));
+  }
+  const remember = (change: Partial<EaterySearchPrefs>) => savePrefs({ kinds, radiusM, diet: diet === "" ? null : (diet as EaterySearchPrefs["diet"]), ...filter, ...change });
+  const changeFilter = (next: EateryFilter) => {
+    setFilter(next);
+    remember(next);
+  };
   // Lista kuchni zwija się po kliknięciu obok, po wyjściu z niej klawiszem Tab i po Esc.
   useEffect(() => {
     const close = (event: Event) => {
-      const box = cuisineBox.current;
-      if (box?.open && !box.contains(event.target as Node)) box.open = false;
+      if (!cuisineBox.current?.contains(event.target as Node)) setCuisineOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && cuisineBox.current?.open) cuisineBox.current.open = false;
+      if (event.key === "Escape") setCuisineOpen(false);
     };
     document.addEventListener("pointerdown", close);
     document.addEventListener("focusin", close);
@@ -101,7 +121,6 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
       setError(null);
       setPicked(new Set());
       setLimit(PAGE);
-      setFilter((current) => ({ ...current, cuisines: [] }));
       setSelected(null);
       setSearchNo((n) => n + 1);
       setAnswer(await findRestaurants(tripId, itemRef, { kinds, radiusM, ...(diet ? { diet: diet as "vegetarian" } : {}), ...(placeRef ? { placeRef } : near.trim() ? { near } : {}) }));
@@ -134,8 +153,10 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
       return next;
     });
   const results = answer !== null && "results" in answer ? answer.results : [];
-  const shown = filterEateries(results, filter);
   const cuisines = cuisineOptions(results);
+  // Zapamiętana kuchnia, której w tych wynikach nie ma, nie odsiewa wszystkiego.
+  const active = presentCuisines(filter, cuisines);
+  const shown = filterEateries(results, active);
   // Numer = pozycja na liście po filtrach; ten sam na mapie pod listą.
   const resultMap = eateryResultsMap(shown);
   const rowId = (key: string) => `knajpa-${itemRef}-${key}`;
@@ -150,10 +171,10 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
     // Wiersz spoza strony pojawia się dopiero po odświeżeniu listy.
     requestAnimationFrame(() => document.getElementById(rowId(key))?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   };
-  const toggleCuisine = (key: string) => setFilter((current) => ({ ...current, cuisines: current.cuisines.includes(key) ? current.cuisines.filter((each) => each !== key) : [...current.cuisines, key] }));
+  const toggleCuisine = (key: string) => changeFilter({ ...filter, cuisines: filter.cuisines.includes(key) ? filter.cuisines.filter((each) => each !== key) : [...filter.cuisines, key] });
   const flag = (key: "hideClosed" | "noChains" | "onlyRecommended", label: string) => (
     <label className="flex items-center gap-1">
-      <input type="checkbox" checked={filter[key]} onChange={(event) => setFilter((current) => ({ ...current, [key]: event.target.checked }))} />
+      <input type="checkbox" checked={filter[key]} onChange={(event) => changeFilter({ ...filter, [key]: event.target.checked })} />
       {label}
     </label>
   );
@@ -169,14 +190,25 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
         <fieldset className="flex flex-wrap gap-2 text-xs">
           {(Object.keys(EATERY_KINDS) as EateryKind[]).map((kind) => (
             <label key={kind} className="flex items-center gap-1">
-              <input type="checkbox" checked={kinds.includes(kind)} onChange={(event) => setKinds((current) => (event.target.checked ? [...current, kind] : current.filter((each) => each !== kind)))} />
+              <input type="checkbox" checked={kinds.includes(kind)} onChange={(event) => {
+                  const next = event.target.checked ? [...kinds, kind] : kinds.filter((each) => each !== kind);
+                  setKinds(next);
+                  remember({ kinds: next });
+                }}
+              />
               {EATERY_KINDS[kind]}
             </label>
           ))}
         </fieldset>
         <label className="flex flex-col gap-1 text-xs text-zinc-500">
           Promień
-          <select value={radiusM} onChange={(event) => setRadiusM(Number(event.target.value))} className={input}>
+          <select
+            value={radiusM}
+            onChange={(event) => {
+              setRadiusM(Number(event.target.value));
+              remember({ radiusM: Number(event.target.value) });
+            }}
+            className={input}>
             {RADII.map((each) => (
               <option key={each} value={each}>
                 {formatDistance(each)}
@@ -186,7 +218,13 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
         </label>
         <label className="flex flex-col gap-1 text-xs text-zinc-500">
           Dieta
-          <select value={diet} onChange={(event) => setDiet(event.target.value)} className={input}>
+          <select
+            value={diet}
+            onChange={(event) => {
+              setDiet(event.target.value);
+              remember({ diet: event.target.value === "" ? null : (event.target.value as EaterySearchPrefs["diet"]) });
+            }}
+            className={input}>
             {DIETS.map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -246,24 +284,26 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
               {flag("noChains", "bez sieciówek")}
               {flag("onlyRecommended", "tylko polecane (Wikivoyage, nasze 👍)")}
               {cuisines.length > 0 && (
-                <details ref={cuisineBox} className="relative">
-                  <summary className="field cursor-pointer list-none px-2 py-1 text-xs">
-                    Kuchnia: {filter.cuisines.length === 0 ? "każda" : filter.cuisines.join(", ")} ▾
-                  </summary>
-                  <div className="absolute z-20 mt-1 flex max-h-72 w-64 flex-col gap-1 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                    {filter.cuisines.length > 0 && (
-                      <button type="button" onClick={() => setFilter((current) => ({ ...current, cuisines: [] }))} className="btn-mini self-start">
-                        każda (wyczyść)
-                      </button>
-                    )}
-                    {cuisines.map((each) => (
-                      <label key={each.key} className="flex items-center gap-1.5">
-                        <input type="checkbox" checked={filter.cuisines.includes(each.key)} onChange={() => toggleCuisine(each.key)} />
-                        {each.label} <span className="text-zinc-500">({each.count})</span>
-                      </label>
-                    ))}
-                  </div>
-                </details>
+                <div ref={cuisineBox} className="relative">
+                  <button type="button" onClick={() => setCuisineOpen((open) => !open)} aria-expanded={cuisineOpen} className="field cursor-pointer px-2 py-1 text-left text-xs">
+                    Kuchnia: {active.cuisines.length === 0 ? "każda" : active.cuisines.join(", ")} ▾
+                  </button>
+                  {cuisineOpen && (
+                    <div className="absolute z-20 mt-1 flex max-h-72 w-64 flex-col gap-1 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                      {filter.cuisines.length > 0 && (
+                        <button type="button" onClick={() => changeFilter({ ...filter, cuisines: [] })} className="btn-mini self-start">
+                          każda (wyczyść)
+                        </button>
+                      )}
+                      {cuisines.map((each) => (
+                        <label key={each.key} className="flex items-center gap-1.5">
+                          <input type="checkbox" checked={filter.cuisines.includes(each.key)} onChange={() => toggleCuisine(each.key)} />
+                          {each.label} <span className="text-zinc-500">({each.count})</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

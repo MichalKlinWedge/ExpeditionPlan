@@ -5,6 +5,8 @@ import { distanceKm } from './offline-areas.ts';
 import { plainName } from './place-list.ts';
 import type { DayMap } from './plan-info.ts';
 import { dayItems } from './plan-edits.ts';
+import { z } from 'zod';
+
 import type { TripDocument } from './schemas/trip-document.ts';
 import { keyBetween } from './sort-key.ts';
 
@@ -281,6 +283,44 @@ export const isRecommendedEatery = (result: Pick<EateryResult, 'tip' | 'memory'>
 export type EateryFilter = { hideClosed: boolean; noChains: boolean; cuisines: string[]; onlyRecommended: boolean };
 
 export const DEFAULT_EATERY_FILTER: EateryFilter = { hideClosed: true, noChains: true, cuisines: [], onlyRecommended: false };
+
+/**
+ * Ostatnie wybory w „Knajpy w pobliżu”, zapamiętane dla konta (`user_settings.eatery_search`, web i telefon).
+ * Wszystko opcjonalne: czego brak, zostaje domyślne. Kuchnie zapisują się po polsku, jak w `cuisineOptions`.
+ */
+export const EaterySearchPrefs = z.object({
+  kinds: z.array(z.enum(['restaurant', 'fast_food', 'cafe', 'pub', 'hut'])).max(5).optional(),
+  radiusM: z.number().int().min(200).max(5000).optional(),
+  diet: z.enum(['vegetarian', 'vegan', 'gluten_free', 'halal']).nullable().optional(),
+  hideClosed: z.boolean().optional(),
+  noChains: z.boolean().optional(),
+  onlyRecommended: z.boolean().optional(),
+  cuisines: z.array(z.string().min(1).max(60)).max(40).optional(),
+});
+export type EaterySearchPrefs = z.infer<typeof EaterySearchPrefs>;
+
+/** Zapisane wybory z bazy; zepsute albo z innej wersji = brak (domyślne). */
+export function readEaterySearchPrefs(raw: unknown): EaterySearchPrefs {
+  const parsed = EaterySearchPrefs.safeParse(raw);
+  return parsed.success ? parsed.data : {};
+}
+
+/** Filtr listy z zapisanych wyborów. */
+export const eateryFilterFrom = (prefs: EaterySearchPrefs): EateryFilter => ({
+  hideClosed: prefs.hideClosed ?? DEFAULT_EATERY_FILTER.hideClosed,
+  noChains: prefs.noChains ?? DEFAULT_EATERY_FILTER.noChains,
+  onlyRecommended: prefs.onlyRecommended ?? DEFAULT_EATERY_FILTER.onlyRecommended,
+  cuisines: prefs.cuisines ?? [],
+});
+
+/**
+ * Zapamiętane kuchnie, które są w tych wynikach. Kuchnia, której tu nie ma, nie odsiewa wszystkiego:
+ * zostaje zapisana na inne wyszukiwanie, a tu działa „każda” albo pozostałe wybrane.
+ */
+export const presentCuisines = (filter: EateryFilter, options: readonly { key: string }[]): EateryFilter => ({
+  ...filter,
+  cuisines: filter.cuisines.filter((cuisine) => options.some((option) => option.key === cuisine)),
+});
 
 /** Kuchnie obecne w wynikach (polskie nazwy, `key` = to, co trafia do `EateryFilter.cuisines`), najczęstsze najpierw. */
 export function cuisineOptions(results: readonly Pick<EateryResult, 'cuisine'>[]): { key: string; label: string; count: number }[] {

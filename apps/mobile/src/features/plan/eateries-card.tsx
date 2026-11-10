@@ -4,11 +4,14 @@ import {
   DEFAULT_EATERY_FILTER,
   EATERY_KINDS,
   type EateryFilter,
+  eateryFilterFrom,
   type EateryResult,
+  type EaterySearchPrefs,
   type EatOutEdit,
   filterEateries,
   formatDistance,
   googleMapsSearchUrl,
+  presentCuisines,
   type PlanItem as Item,
 } from '@expeditionplan/core';
 import { type CachedTrip, uuidv7 } from '@expeditionplan/sync';
@@ -21,6 +24,7 @@ import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useEaterySearchPrefs } from '@/lib/eatery-prefs';
 import { type EateryAnswer, type EateryDiet, type EateryKind, findEateriesNearby } from '@/lib/web-api';
 
 /**
@@ -74,6 +78,21 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
   const [busy, setBusy] = useState<'search' | 'locate' | 'save' | null>(null);
   const [problem, setProblem] = useState('');
   const [saved, setSaved] = useState('');
+  // Wybory zapamiętane dla konta (te same co na webie): wczytane po otwarciu karty, potem każda zmiana zapisuje całość.
+  const [prefs, savePrefs] = useEaterySearchPrefs(open);
+  const [prefsApplied, setPrefsApplied] = useState(false);
+  if (prefs !== null && !prefsApplied) {
+    setPrefsApplied(true);
+    if (prefs.kinds) setKinds(prefs.kinds);
+    if (prefs.radiusM !== undefined) setRadiusM(RADII.includes(prefs.radiusM) ? prefs.radiusM : 1000);
+    if (prefs.diet !== undefined) setDiet(prefs.diet ?? '');
+    setFilter(eateryFilterFrom(prefs));
+  }
+  const remember = (change: Partial<EaterySearchPrefs>) => savePrefs({ kinds, radiusM, diet: diet === '' ? null : diet, ...filter, ...change });
+  const changeFilter = (next: EateryFilter) => {
+    setFilter(next);
+    remember(next);
+  };
 
   if (!open) return <Button small label="🍽 Knajpy w pobliżu" onPress={() => setOpen(true)} />;
 
@@ -83,7 +102,6 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
     setSaved('');
     setPicked(new Set());
     setLimit(PAGE);
-    setFilter((current) => ({ ...current, cuisines: [] }));
     try {
       let position: { lat: number; lng: number } | undefined;
       if (aroundMe) {
@@ -118,7 +136,11 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
     }
   };
 
-  const toggleKind = (kind: EateryKind) => setKinds((current) => (current.includes(kind) ? current.filter((each) => each !== kind) : [...current, kind]));
+  const toggleKind = (kind: EateryKind) => {
+    const next = kinds.includes(kind) ? kinds.filter((each) => each !== kind) : [...kinds, kind];
+    setKinds(next);
+    remember({ kinds: next });
+  };
   const togglePick = (result: EateryResult) =>
     setPicked((current) => {
       const next = new Set(current);
@@ -127,9 +149,10 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
       return next;
     });
   const results = answer?.results ?? [];
-  const shown = filterEateries(results, filter);
   const cuisines = cuisineOptions(results).slice(0, 8);
-  const flip = (key: 'hideClosed' | 'noChains' | 'onlyRecommended') => setFilter((current) => ({ ...current, [key]: !current[key] }));
+  // Zapamiętana kuchnia, której w tych wynikach nie ma, nie odsiewa wszystkiego.
+  const shown = filterEateries(results, presentCuisines(filter, cuisines));
+  const flip = (key: 'hideClosed' | 'noChains' | 'onlyRecommended') => changeFilter({ ...filter, [key]: !filter[key] });
 
   return (
     <View style={[styles.box, { borderColor: theme.backgroundSelected }]}>
@@ -150,12 +173,20 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
       </View>
       <View style={styles.wrap}>
         {RADII.map((radius) => (
-          <Chip key={radius} compact active={radiusM === radius} label={formatDistance(radius)} onPress={() => setRadiusM(radius)} />
+          <Chip key={radius} compact active={radiusM === radius} label={formatDistance(radius)} onPress={() => {
+              setRadiusM(radius);
+              remember({ radiusM: radius });
+            }}
+          />
         ))}
       </View>
       <View style={styles.wrap}>
         {DIETS.map(([value, label]) => (
-          <Chip key={label} compact active={diet === value} label={label} onPress={() => setDiet(value)} />
+          <Chip key={label} compact active={diet === value} label={label} onPress={() => {
+              setDiet(value);
+              remember({ diet: value === '' ? null : value });
+            }}
+          />
         ))}
       </View>
       <View style={styles.row}>
@@ -193,7 +224,7 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
           {cuisines.length > 1 && (
             <View style={styles.wrap}>
               {cuisines.map((each) => (
-                <Chip key={each.key} compact active={filter.cuisines.includes(each.key)} label={`${each.label} (${each.count})`} onPress={() => setFilter((current) => ({ ...current, cuisines: current.cuisines.includes(each.key) ? current.cuisines.filter((key) => key !== each.key) : [...current.cuisines, each.key] }))} />
+                <Chip key={each.key} compact active={filter.cuisines.includes(each.key)} label={`${each.label} (${each.count})`} onPress={() => changeFilter({ ...filter, cuisines: filter.cuisines.includes(each.key) ? filter.cuisines.filter((key) => key !== each.key) : [...filter.cuisines, each.key] })} />
               ))}
             </View>
           )}
