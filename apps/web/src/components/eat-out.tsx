@@ -663,8 +663,7 @@ function RatingCell({ tripId, doc, ids, placeRef, rating, canEdit }: { tripId: s
 
   if (open)
     return (
-      <span className="flex flex-col gap-1">
-        <span className="flex items-center gap-1">
+      <span className="flex flex-col items-start gap-1">
           <input
             value={text}
             onChange={(event) => setText(event.target.value)}
@@ -678,6 +677,7 @@ function RatingCell({ tripId, doc, ids, placeRef, rating, canEdit }: { tripId: s
             aria-label="Ocena (przepisz z Google)"
             className="field w-24 px-2 py-0.5 text-xs"
           />
+        <span className="flex items-center gap-1">
           <button type="button" disabled={pending} onClick={save} className="btn-mini">
             {pending ? "zapisuję…" : "zapisz"}
           </button>
