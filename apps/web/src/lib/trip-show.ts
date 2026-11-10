@@ -119,6 +119,7 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
         facts: walk.facts,
         lines: map.refs.flatMap((refs, at) => (refs.some((ref) => walk.refs.includes(ref)) ? [at] : [])),
         ...(walk.at ? { at: walk.at } : {}),
+        ...(walk.profile ? { profile: walk.profile } : {}),
       })),
       ...(scene.approach && (scene.kind === "intro" ? script.showApproach : script.showReturn) ? { approach: { map: approachMap(dayMap(doc, scene.approach.refs)), label: scene.approach.label, title: scene.approach.title, facts: scene.approach.facts } } : {}),
       ...(url !== undefined && told?.audio ? { audio: { url, durationMs: told.audio.durationMs } } : {}),

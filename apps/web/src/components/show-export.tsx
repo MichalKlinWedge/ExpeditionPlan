@@ -16,6 +16,7 @@ import {
   musicStart,
   phaseAt,
   phaseCard,
+  walkProfile,
   type PlayerMusic,
   type PlayerScene,
   scenePhases,
@@ -440,6 +441,41 @@ export function ShowExport({
         }
         drawPhoto(scene.images[phase.index]!, since, perPhoto, fade);
       }
+      // Profil wysokości trasy pieszej, jak w odtwarzaczu (lewy górny róg, pod podpisem map).
+      const profile = walkProfile(scene, phase);
+      if (profile) {
+        const [x, y, w, h] = [28, 56, W * 0.36, 220];
+        const [gx, gy, gw, gh] = [x + 20, y + 44, w - 40, h - 100];
+        context.save();
+        context.fillStyle = "rgba(0,0,0,0.6)";
+        context.beginPath();
+        context.roundRect(x, y, w, h, 10);
+        context.fill();
+        context.textBaseline = "top";
+        context.font = `20px ${font}`;
+        context.fillStyle = "rgba(255,255,255,0.7)";
+        context.fillText("PROFIL TRASY", x + 20, y + 14);
+        const at = ([px, py]: [number, number]): [number, number] => [gx + px * gw, gy + gh - py * gh];
+        context.beginPath();
+        context.moveTo(gx, gy + gh);
+        for (const point of profile.points) context.lineTo(...at(point));
+        context.lineTo(gx + gw, gy + gh);
+        context.closePath();
+        context.fillStyle = "rgba(255,255,255,0.25)";
+        context.fill();
+        context.beginPath();
+        for (const [index, point] of profile.points.entries()) (index === 0 ? context.moveTo : context.lineTo).call(context, ...at(point));
+        context.strokeStyle = "#f97316";
+        context.lineWidth = 3;
+        context.stroke();
+        context.font = `22px ${font}`;
+        context.fillStyle = "rgba(255,255,255,0.85)";
+        context.fillText(`${profile.low}–${profile.high} m n.p.m.`, x + 20, gy + gh + 14);
+        context.textAlign = "right";
+        context.fillText(`${profile.km.toLocaleString("pl-PL", { maximumFractionDigits: 1 })} km`, x + w - 20, gy + gh + 14);
+        context.restore();
+      }
+
       // Karta etapu, jak w odtwarzaczu (prawy górny róg, `phaseCard`).
       const card = phaseCard(scene, phase);
       if (card) {

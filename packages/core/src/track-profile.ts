@@ -44,6 +44,21 @@ export function trackProfile(line: TrackLine): TrackProfile {
   };
 }
 
+/** Zarys profilu do pokazu: najwyżej `points` punktów równo po kilometrach, tylko z wysokością; `null` — ślad bez wysokości. */
+export function profileSketch(profile: TrackProfile, points = 80): { km: number; ele: number }[] | null {
+  if (!profile.hasElevation || profile.totalKm <= 0) return null;
+  const known = profile.points.filter((point): point is { km: number; ele: number } => point.ele !== null);
+  const sketch: { km: number; ele: number }[] = [];
+  let at = 0;
+  for (let step = 0; step < points; step++) {
+    const km = (profile.totalKm * step) / (points - 1);
+    while (at < known.length - 1 && known[at + 1]!.km <= km) at++;
+    const point = known[at]!;
+    sketch.push({ km: Math.round(km * 100) / 100, ele: Math.round(point.ele) });
+  }
+  return sketch;
+}
+
 /** Czas przejścia (min, bez zaokrąglenia) wg DIN 33466: 4 km/h, 300 m/h w górę, 500 m/h w dół. */
 export function dinMinutes(distanceKm: number, ascentM: number, descentM: number): number {
   const horizontal = distanceKm / 4;

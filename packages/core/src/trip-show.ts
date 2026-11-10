@@ -6,6 +6,8 @@ import type { GuideContent, GuideImage } from './guide.ts';
 import { LEG_MODE } from './labels.ts';
 import { dayLodging, formatMinutes, isTransit, transitPlaceRefs } from './plan-info.ts';
 import { isRouteStop } from './route-stops.ts';
+import type { TrackLine } from './gpx.ts';
+import { profileSketch, trackProfile } from './track-profile.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { tripMemories } from './trip-memories.ts';
 
@@ -92,7 +94,8 @@ export type ShowImage = { url: string; caption: string; credit?: string; key?: s
  * Trasa piesza albo rowerowa dnia: odtwarzacz przybliża ją osobno, z kartą liczb. Bez linii na mapie (aktywność bez
  * śladu GPX) przybliża jej miejsce (`at`, [lng, lat]).
  */
-export type ShowWalk = { refs: string[]; title: string; label: string; facts: string; at?: [number, number] };
+/** `profile` — zarys profilu wysokości ze śladu GPX (km, m n.p.m.), gdy ślad ma wysokości. */
+export type ShowWalk = { refs: string[]; title: string; label: string; facts: string; at?: [number, number]; profile?: { km: number; ele: number }[] };
 
 /** Dojazd (wstęp) albo powrót (zakończenie): osobna mapa na początku i na końcu; mapy dni go nie pokazują. */
 export type ShowApproach = { refs: string[]; label: 'Dojazd' | 'Powrót'; title: string; facts: string };
@@ -338,7 +341,16 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       .map((item) => {
         const place = doc.places.find((each) => each.ref === (item.leg?.toPlaceRef ?? item.placeRef));
         const label = item.leg?.mode === 'bike' ? 'Rowerem' : item.kind === 'transport' ? 'Trasa piesza' : 'Trasa';
-        return { refs: [item.ref], title: item.title, label, facts: walkFacts(item), ...(place?.lat !== undefined && place.lng !== undefined ? { at: [place.lng, place.lat] as [number, number] } : {}) };
+        const line = doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.geojson as TrackLine | undefined;
+        const profile = line === undefined ? null : profileSketch(trackProfile(line));
+        return {
+          refs: [item.ref],
+          title: item.title,
+          label,
+          facts: walkFacts(item),
+          ...(place?.lat !== undefined && place.lng !== undefined ? { at: [place.lng, place.lat] as [number, number] } : {}),
+          ...(profile ? { profile } : {}),
+        };
       });
     const points = [...sights.filter((item) => item.priority === 'must'), ...sights.filter((item) => item.priority !== 'must')]
       .filter((item) => !isShowWalk(item))

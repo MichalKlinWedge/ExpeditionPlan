@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { zonedToInstant } from '../engine/time.ts';
 import type { TrackLine, TrackPoint } from '../gpx.ts';
 import { classifyOsm, placeOnTrack, trackPoisFromOsm } from '../track-pois.ts';
-import { dinMinutes, planPace, trackDaylight, trackProfile, trackSections } from '../track-profile.ts';
+import { dinMinutes, planPace, profileSketch, trackDaylight, trackProfile, trackSections } from '../track-profile.ts';
 
 /** Ślad na południe od Zakopanego: 4 km w górę o 600 m, potem 4 km w dół (punkt co ~100 m). */
 const ridge = (): TrackLine => {
@@ -108,5 +108,19 @@ describe('woda, schroniska i zejścia przy śladzie', () => {
     expect(pois.map((poi) => poi.osmId)).toEqual(['node/1', 'node/3', 'node/6']);
     expect(pois[0]!.name).toBe('Źródło');
     expect(pois[1]!.km).toBeCloseTo(4, 0);
+  });
+});
+
+describe('zarys profilu do pokazu', () => {
+  it('równo po kilometrach, najwyżej tyle punktów, z wysokością; ślad bez wysokości — brak', () => {
+    const climb: TrackLine = { type: 'LineString', coordinates: Array.from({ length: 300 }, (_, i): TrackPoint => [19.95, 49.25 - i * 0.0009, 1000 + i * 2]) };
+    const sketch = profileSketch(trackProfile(climb), 50)!;
+    expect(sketch).toHaveLength(50);
+    expect(sketch[0]!.km).toBe(0);
+    expect(sketch[0]!.ele).toBe(1000);
+    expect(sketch.at(-1)!.ele).toBeGreaterThan(1500);
+    expect(sketch.every((point, at) => at === 0 || point.km > sketch[at - 1]!.km)).toBe(true);
+    const flatLine: TrackLine = { type: 'LineString', coordinates: Array.from({ length: 20 }, (_, i): TrackPoint => [19.95, 49.25 - i * 0.0009]) };
+    expect(profileSketch(trackProfile(flatLine))).toBeNull();
   });
 });

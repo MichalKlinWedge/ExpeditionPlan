@@ -66,7 +66,19 @@ export const musicStart = (music: PlayerMusic, durationS: number) => (Number.isF
 export type ShowMapData = { lines: { coordinates: [number, number][]; routed: boolean; foot?: boolean }[]; pins: { lng: number; lat: number; name: string }[] };
 
 /** Trasa piesza sceny: linie mapy sceny (`lines`, indeksy), a bez nich miejsce do przybliżenia (`at`). */
-export type PlayerWalk = { title: string; label: string; facts: string; lines: number[]; at?: [number, number] };
+export type PlayerWalk = { title: string; label: string; facts: string; lines: number[]; at?: [number, number]; profile?: { km: number; ele: number }[] };
+
+/** Profil trasy pieszej w ujęciu tej trasy (wspólny dla odtwarzacza i eksportu): punkty w ułamkach 0–1 i podpisy. */
+export function walkProfile(scene: PlayerScene, phase: ScenePhase): { points: [number, number][]; low: number; high: number; km: number } | null {
+  if (phase.kind !== "walk") return null;
+  const profile = scene.walks[phase.index]?.profile;
+  if (profile === undefined || profile.length < 2) return null;
+  const heights = profile.map((point) => point.ele);
+  const [low, high] = [Math.min(...heights), Math.max(...heights)];
+  const km = profile.at(-1)!.km;
+  const range = Math.max(high - low, 1);
+  return { points: profile.map((point) => [km === 0 ? 0 : point.km / km, (point.ele - low) / range]), low, high, km };
+}
 
 /** Co mapa pokazuje: cały dzień (`null`) albo przybliżoną trasę pieszą lub miejsce (`at`). */
 export type MapFocus = { key: string; lines: number[]; at?: [number, number] } | null;
@@ -168,7 +180,9 @@ export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
   const total = () => shots.reduce((sum, shot) => sum + shot.ms, 0);
   const limit = photos > 0 ? Math.max(span * MAP_SHARE, MAP_MIN_MS) : span;
   const dropped: typeof shots = [];
-  while (total() > limit && shots.at(-1)!.kind === "walk") dropped.unshift(shots.pop()!);
+  // Najpierw odpadają trasy bez profilu wysokości; trasa z profilem zostaje (najwyżej się skraca).
+  const droppable = () => shots.findLastIndex((shot) => shot.kind === "walk" && scene.walks[shot.index]?.profile === undefined);
+  while (total() > limit && droppable() !== -1) dropped.unshift(...shots.splice(droppable(), 1));
   if (total() > limit) {
     const scale = limit / total();
     for (const shot of shots) shot.ms = photos > 0 ? Math.max(shot.ms * scale, MAP_MIN_MS) : shot.ms * scale;
@@ -596,6 +610,7 @@ export function ShowPlayer({
   const focus = useMemo(() => mapFocus(scene, mapPhase), [focusKey]);
   const mapData = mapDataFor(scene, mapPhase);
   const card = phaseCard(scene, phase);
+  const profile = walkProfile(scene, phase);
   const share = span === 0 ? 0 : elapsed / span;
   // Napisy idą za głosem; w ciszy przed lektorem ich nie ma.
   const line = elapsed < lead ? undefined : (lines.find((each) => (duration === 0 ? 0 : narrated / duration) <= each.until) ?? lines.at(-1));
@@ -604,6 +619,23 @@ export function ShowPlayer({
     <div className="flex flex-col gap-3">
       <div ref={stage} className="relative aspect-[4/5] w-full sm:aspect-video overflow-hidden rounded-xl bg-black text-white [&:fullscreen]:rounded-none">
         <ShowMap data={mapData} sceneKey={scene.key} focus={focus} />
+
+        {profile && (
+          // Profil wysokości trasy pieszej (ślad GPX z wysokościami), w lewym górnym rogu w ujęciu tej trasy.
+          <div className="pointer-events-none absolute top-3 left-3 z-[15] flex w-[45%] flex-col gap-1 rounded-lg bg-black/60 px-3 py-2 text-[10px] backdrop-blur-sm sm:w-[36%] sm:text-xs">
+            <p className="tracking-wider text-white/70 uppercase">Profil trasy</p>
+            <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="h-14 w-full sm:h-20" aria-hidden="true">
+              <path d={`M0,40 ${profile.points.map(([x, y]) => `L${(x * 100).toFixed(1)},${(38 - y * 34).toFixed(1)}`).join(" ")} L100,40 Z`} fill="rgba(255,255,255,0.25)" />
+              <path d={profile.points.map(([x, y], at) => `${at === 0 ? "M" : "L"}${(x * 100).toFixed(1)},${(38 - y * 34).toFixed(1)}`).join(" ")} fill="none" stroke="#f97316" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+            </svg>
+            <p className="flex justify-between text-white/85">
+              <span>
+                {profile.low}–{profile.high} m n.p.m.
+              </span>
+              <span>{profile.km.toLocaleString("pl-PL", { maximumFractionDigits: 1 })} km</span>
+            </p>
+          </div>
+        )}
 
         {card && (
           <div className="pointer-events-none absolute top-3 right-3 z-[15] flex max-w-[55%] flex-col gap-1 rounded-lg bg-black/60 px-3 py-2 text-xs backdrop-blur-sm sm:max-w-[40%] sm:text-sm">
