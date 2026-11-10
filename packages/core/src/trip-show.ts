@@ -160,14 +160,14 @@ export const isShowWalk = (item: Item): boolean =>
 const walkKm = (item: Item) => item.activity?.distanceKm ?? item.leg?.distanceKm;
 
 /** „12,4 km · ↑ 650 m · 4 h 30 min” z liczb planu (czego nie ma, tego nie ma). */
-function walkFacts(item: Item): string {
+export function walkFacts(item: Item): string {
   const km = walkKm(item);
   const minutes = item.durationMin ?? item.leg?.durationMin;
   return [km !== undefined ? formatKm(km) : '', item.activity?.ascentM ? `↑ ${item.activity.ascentM} m` : '', minutes ? formatMinutes(minutes) : ''].filter((part) => part !== '').join(' · ');
 }
 
 /** Liczby dnia na kartę: autem (bez dojazdu i powrotu), pieszo z podejściami, rowerem. */
-function dayStats(doc: Doc, items: readonly Item[]): string[] {
+export function dayStats(doc: Doc, items: readonly Item[]): string[] {
   let car = 0;
   let foot = 0;
   let bike = 0;
