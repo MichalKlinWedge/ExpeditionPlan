@@ -106,6 +106,15 @@ describe('mapa dnia', () => {
     expect(d5.pins.find((pin) => pin.placeRef === 'p-sixt-aga')?.transit).toBeUndefined();
   });
 
+  it('dojazd i powrót zaznaczony ręcznie przy punkcie innym niż przejazd (zbiórka, odprawa)', () => {
+    const odprawa = maroko.items.find((each) => each.ref === 'd1-lotnisko-wro')!;
+    expect(odprawa.kind).not.toBe('transport');
+    expect(isTransit(maroko, { ...odprawa, transit: false })).toBe(false);
+    const zbiorka = { ...odprawa, bookingRef: undefined };
+    expect(isTransit(maroko, zbiorka)).toBe(false);
+    expect(isTransit(maroko, { ...zbiorka, transit: true })).toBe(true);
+  });
+
   it('baza dnia i punkty z puli w miejscach ze współrzędnymi', () => {
     const map = dayMap(maroko, ['d2-medersa'], { baseRef: 'p-riad', pool: true });
     expect(map.pins.find((pin) => pin.placeRef === 'p-riad')!.base).toBe(true);

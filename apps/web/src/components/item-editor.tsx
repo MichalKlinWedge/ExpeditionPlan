@@ -41,12 +41,13 @@ type Draft = {
   stopsMin: string;
   bufferAfterMin: string;
   isFixed: boolean;
+  transit: boolean;
   priority: string;
   cutRank: string;
   vehicle: PublicMode;
 };
 
-function toDraft(item: Item): Draft {
+function toDraft(item: Item, transitNow: boolean): Draft {
   const time = item.time;
   const offset = time?.precision === "relative" ? time.offsetMin : undefined;
   return {
@@ -63,6 +64,7 @@ function toDraft(item: Item): Draft {
     stopsMin: item.stopsMin?.toString() ?? "",
     bufferAfterMin: item.bufferAfterMin?.toString() ?? "",
     isFixed: item.isFixed ?? false,
+    transit: transitNow,
     priority: item.priority ?? "",
     cutRank: item.cutRank?.toString() ?? "",
     vehicle: publicMode(item) ?? PUBLIC_MODES[0]![0],
@@ -75,7 +77,7 @@ function offsetMinutes(text: string): number {
   return match ? Number(match[1]) * 60 + Number(match[2]) : Number(text) || 0;
 }
 
-function toPatch(draft: Draft, item: Item): Partial<Item> {
+function toPatch(draft: Draft, item: Item, transitNow: boolean): Partial<Item> {
   const tz = item.time && "tz" in item.time ? item.time.tz : undefined;
   let time: Item["time"];
   switch (draft.precision) {
@@ -117,13 +119,15 @@ function toPatch(draft: Draft, item: Item): Partial<Item> {
     stopsMin: num(draft.stopsMin) || undefined,
     bufferAfterMin: num(draft.bufferAfterMin),
     isFixed: draft.isFixed || undefined,
+    // Bez zmiany zostaje samo rozpoznanie (np. punkt z rezerwacją lotu); przejazd ma znacznik w „skąd i dokąd”.
+    ...(chosen.kind === "transport" ? {} : { transit: draft.transit === transitNow ? item.transit : draft.transit }),
     priority: (draft.priority || undefined) as Item["priority"],
     cutRank: cutRank === 0 ? undefined : cutRank,
   };
 }
 
-export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (patch: Partial<Item>) => void; onCancel: () => void }) {
-  const [draft, setDraft] = useState<Draft>(() => toDraft(item));
+export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, onCancel }: { item: Item; transitNow?: boolean; onSave: (patch: Partial<Item>) => void; onCancel: () => void }) {
+  const [draft, setDraft] = useState<Draft>(() => toDraft(item, transitNow));
   const set = (patch: Partial<Draft>) => setDraft((current) => ({ ...current, ...patch }));
   const needsStart = ["exact", "approx", "range"].includes(draft.precision);
   // Przy „dokładnie” wystarczy samo „Do” (wtedy to „dokładnie do”).
@@ -134,7 +138,7 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
       className="my-2 grid grid-cols-2 gap-2 rounded-md border border-zinc-200 p-3 sm:grid-cols-4 dark:border-zinc-800"
       onSubmit={(event) => {
         event.preventDefault();
-        onSave(toPatch(draft, item));
+        onSave(toPatch(draft, item, transitNow));
       }}>
       <label className={`${label} col-span-2`}>
         Nazwa
@@ -245,6 +249,12 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
         <input type="checkbox" checked={draft.isFixed} onChange={(event) => set({ isFixed: event.target.checked })} />
         stała godzina
       </label>
+      {kindPatch(item, draft.kind, draft.vehicle).kind !== "transport" && (
+        <label className="col-span-2 flex items-center gap-2 text-xs text-zinc-500 sm:col-span-3" title="Mapa dnia skupia się wtedy na miejscach wyjazdu. Punkt przy locie jest zaznaczony sam; można to zmienić.">
+          <input type="checkbox" checked={draft.transit} onChange={(event) => set({ transit: event.target.checked })} />
+          dojazd lub powrót: na mapie chowa go przycisk „✈ Dojazd i powrót”
+        </label>
+      )}
       <div className="col-span-2 flex gap-2 sm:col-span-4">
         <button className="btn-primary btn-sm">Zapisz</button>
         <button type="button" onClick={onCancel} className="btn-secondary btn-sm">

@@ -337,6 +337,8 @@ export const DocItem = z.object({
   bufferAfterMin: z.number().int().nonnegative().optional(),
   /** Stała godzina, której przesunięcia nie ruszają (mecz, lot, start pakietu). */
   isFixed: z.boolean().optional(),
+  /** Ręcznie: punkt dojazdu lub powrotu (zbiórka na lotnisku, odprawa) albo nie. Przy przejeździe liczy się `leg.transit`. */
+  transit: z.boolean().optional(),
   priority: z.enum(['must', 'should', 'optional']).optional(),
   /** Kolejność cięcia przy braku czasu: 1 = wylatuje pierwsze. */
   cutRank: z.number().int().positive().optional(),
