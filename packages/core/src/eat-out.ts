@@ -7,7 +7,7 @@ import type { DayMap } from './plan-info.ts';
 import { dayItems } from './plan-edits.ts';
 import { z } from 'zod';
 
-import type { TripDocument } from './schemas/trip-document.ts';
+import type { TripDocument, VenueRating } from './schemas/trip-document.ts';
 import { keyBetween } from './sort-key.ts';
 
 /**
@@ -439,7 +439,7 @@ export function eateryPlace(eatery: Eatery, ref: string): Place {
 export const osmPointUrl = (point: { lat: number; lng: number }) => `https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}#map=18/${point.lat}/${point.lng}`;
 
 /** Przypięta knajpa tak jak w wynikach wyszukiwania: opis, otwarcie w porze posiłku, adres i linki. */
-export type PinnedEateryFacts = { summary?: string; open: OpenAtMeal; address?: string; links: { label: string; url: string }[] };
+export type PinnedEateryFacts = { summary?: string; rating?: VenueRating; open: OpenAtMeal; address?: string; links: { label: string; url: string }[] };
 
 /**
  * Dane przypiętej knajpy z jej miejsca w planie. `summary` — opis zapisany w wariancie przy przypięciu
@@ -460,7 +460,8 @@ export function pinnedEateryFacts(doc: Doc, itemRef: string, placeRef: string, s
     ...(place.website ? [{ label: 'strona', url: place.website }] : []),
     ...place.links.map((link) => ({ label: link.label.startsWith('Wikivoyage') ? 'Wikivoyage' : link.label, url: link.url })),
   ];
-  return { ...(text ? { summary: text } : {}), open: openAtMeal(place.openingHours, mealSlot(doc, itemRef)), ...(place.address ? { address: place.address } : {}), links };
+  const rating = place.venue?.rating;
+  return { ...(text ? { summary: text } : {}), ...(rating ? { rating } : {}), open: openAtMeal(place.openingHours, mealSlot(doc, itemRef)), ...(place.address ? { address: place.address } : {}), links };
 }
 
 /** Grupa „gdzie jemy” posiłku (jeśli już jest): wariant, w którym posiłek występuje. */
@@ -526,7 +527,7 @@ export type EatOutEdit = { doc: Doc; writes: EatOutWrite[]; pinned: string[] };
  * Knajpa przypięta wcześniej nie znika: z następną tworzy taką grupę, a gdy grupa już jest, nowe
  * knajpy do niej dochodzą. Knajpa już przypięta nie dubluje się. `newRef` daje klucze `id-<uuid>`.
  */
-export function addEatOutChoices(doc: Doc, itemRef: string, picks: { eatery: Eatery; summary?: string }[], newRef: () => string): EatOutEdit | null {
+export function addEatOutChoices(doc: Doc, itemRef: string, picks: { eatery: Eatery; summary?: string; rating?: VenueRating }[], newRef: () => string): EatOutEdit | null {
   const meal = doc.items.find((each) => each.ref === itemRef);
   if (meal === undefined || meal.dayRef === undefined || picks.length === 0) return null;
   const before = mealEateries(doc, itemRef);
@@ -535,15 +536,17 @@ export function addEatOutChoices(doc: Doc, itemRef: string, picks: { eatery: Eat
   const added: Place[] = [];
   const updated = new Map<string, Place>();
   const chosen: { place: Place; summary: string | undefined }[] = [];
-  for (const { eatery, summary } of picks) {
+  // Ocena wpisana przy wyniku (przepisana przez użytkownika) zastępuje zapisaną.
+  const rated = (place: Place, rating: VenueRating | undefined): Place => (rating === undefined ? place : { ...place, venue: { ...(place.venue ?? { prices: [] }), rating } });
+  for (const { eatery, summary, rating } of picks) {
     const existing = [...doc.places, ...added].find((place) => sameEatery(place, eatery));
     if (existing === undefined) {
-      const place = eateryPlace(eatery, newRef());
+      const place = rated(eateryPlace(eatery, newRef()), rating);
       added.push(place);
       writes.push({ collection: 'places', element: place, op: 'insert' });
       chosen.push({ place, summary });
     } else if (!chosen.some((each) => each.place.ref === existing.ref)) {
-      const place = pinnedPlace(existing, eatery);
+      const place = rated(pinnedPlace(existing, eatery), rating);
       if (JSON.stringify(place) !== JSON.stringify(existing)) {
         updated.set(place.ref, place);
         writes.push({ collection: 'places', element: place, op: 'update' });

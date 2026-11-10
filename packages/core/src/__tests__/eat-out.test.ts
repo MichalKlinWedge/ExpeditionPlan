@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { addEatOutChoices, cuisineLabel, type Eatery, eaterySummary, eatOutOptions, mealSearchCenter, mealSlot, openAtMeal, pinnedEateryFacts } from '../eat-out.ts';
+import { parseRatingInput, ratingInputText, setVenueRating } from '../venue-info.ts';
 import { itemsForDay } from '../engine/schedule.ts';
 import { mealList } from '../meals.ts';
 import { dayItems } from '../plan-edits.ts';
@@ -95,5 +96,27 @@ describe('knajpy w pobliżu posiłku', () => {
     expect(facts).toMatchObject({ summary: 'restauracja · Kuchnia: marokańska. Wege. Polecane w Wikivoyage (tanio). Tel. +212 1', address: 'Souk 32', open: { state: 'open' } });
     expect(facts.links.map((link) => link.label)).toEqual(['opinie w Google', 'mapa', 'strona', 'OpenStreetMap', 'Wikivoyage']);
     expect(pinnedEateryFacts(edit.doc, 'd2-lunch', placeRef, 'marokańska · 40 m')!.summary).toBe('marokańska · 40 m');
+  });
+
+  it('ocena przepisana z Google: przy przypięciu i zmiana pod posiłkiem', () => {
+    expect(parseRatingInput('')).toBeNull();
+    expect(parseRatingInput('4,5')).toEqual({ value: 4.5, scale: 5, source: 'Google' });
+    expect(parseRatingInput('4.6 (1 234)')).toEqual({ value: 4.6, scale: 5, count: 1234, source: 'Google' });
+    expect(parseRatingInput('4,3 1234 opinii')).toMatchObject({ value: 4.3, count: 1234 });
+    expect(parseRatingInput('6')).toBe('invalid');
+    expect(parseRatingInput('dobra')).toBe('invalid');
+    expect(ratingInputText({ value: 4.5, count: 120 })).toBe('4,5 (120)');
+
+    const maroko = load('maroko');
+    const rating = parseRatingInput('4,4 (88)') as Exclude<ReturnType<typeof parseRatingInput>, null | 'invalid'>;
+    const edit = addEatOutChoices(maroko, 'd2-lunch', [{ eatery: eatery('Le Jardin'), rating }], newRef)!;
+    const placeRef = edit.doc.items.find((item) => item.ref === 'd2-lunch')!.placeRef!;
+    expect(pinnedEateryFacts(edit.doc, 'd2-lunch', placeRef)!.rating).toEqual({ value: 4.4, scale: 5, count: 88, source: 'Google' });
+    const changed = setVenueRating(edit.doc, placeRef, { value: 4.7, scale: 5, source: 'Google' })!;
+    expect(TripDocument.safeParse(changed.doc).success).toBe(true);
+    expect(changed.writes).toHaveLength(1);
+    expect(pinnedEateryFacts(changed.doc, 'd2-lunch', placeRef)!.rating).toMatchObject({ value: 4.7 });
+    const removed = setVenueRating(changed.doc, placeRef, null)!;
+    expect(pinnedEateryFacts(removed.doc, 'd2-lunch', placeRef)!.rating).toBeUndefined();
   });
 });

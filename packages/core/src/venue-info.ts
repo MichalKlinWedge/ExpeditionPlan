@@ -162,6 +162,37 @@ export function editVenuePrice(doc: Doc, placeRef: string, oldName: string | nul
   return withVenue(doc, place, { prices: next === null ? prices.filter((each) => each.name !== oldName) : prices.map((each) => (each.name === oldName ? next : each)) });
 }
 
+/**
+ * Ocena przepisana ręcznie przez użytkownika (np. z Map Google): „4,5”, „4.5 (1 234)”, „4,5 1234 opinii”, w skali 5.
+ * Sami jej nie pobieramy (docs/USLUGI.md §3). `null` = puste pole, `'invalid'` = nie da się odczytać.
+ */
+export function parseRatingInput(text: string, source = 'Google'): VenueRating | null | 'invalid' {
+  const trimmed = text.trim();
+  if (trimmed === '') return null;
+  const match = /^(\d+(?:[.,]\d+)?)(.*)$/su.exec(trimmed);
+  if (match === null) return 'invalid';
+  const value = Number(match[1]!.replace(',', '.'));
+  if (!(value > 0 && value <= 5)) return 'invalid';
+  const rest = match[2]!;
+  if (/[^\d\s().\u00a0\u202fa-ząćęłńóśźż]/iu.test(rest)) return 'invalid';
+  const digits = rest.replace(/\D/gu, '');
+  const count = digits === '' ? undefined : Number(digits);
+  if (count !== undefined && !(count >= 1 && count <= 100_000_000)) return 'invalid';
+  return { value: Math.round(value * 10) / 10, scale: 5, ...(count !== undefined ? { count } : {}), source };
+}
+
+/** Ocena z powrotem do pola: „4,5 (1234)”. */
+export const ratingInputText = (rating: Pick<VenueRating, 'value' | 'count'>) =>
+  `${rating.value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })}${rating.count ? ` (${rating.count})` : ''}`;
+
+/** Ustawia albo (`null`) usuwa ocenę knajpy. `null` = nie ma miejsca albo nie ma czego usunąć. */
+export function setVenueRating(doc: Doc, placeRef: string, rating: VenueRating | null): VenueEdit | null {
+  if (rating === null) return removeVenueRating(doc, placeRef);
+  const place = doc.places.find((each) => each.ref === placeRef);
+  if (place === undefined) return null;
+  return withVenue(doc, place, { rating });
+}
+
 /** Usuwa samą ocenę. */
 export function removeVenueRating(doc: Doc, placeRef: string): VenueEdit | null {
   const place = doc.places.find((each) => each.ref === placeRef);

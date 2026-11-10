@@ -19,10 +19,15 @@ import {
   googleMapsSearchUrl,
   isPinnedEatery,
   mealEateries,
+  parseRatingInput,
   pinnedEateryFacts,
+  ratingInputText,
   presentCuisines,
   removeEatOutChoice,
+  setVenueRating,
   type TripDocument,
+  venueRatingLabel,
+  type VenueRating,
 } from "@expeditionplan/core";
 import { saveElements, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
@@ -76,6 +81,8 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
   const places = doc.places.filter((place) => place.lat !== undefined && place.lng !== undefined).sort((a, b) => a.name.localeCompare(b.name, "pl"));
   const [answer, setAnswer] = useState<EateryAnswer | null>(null);
   const [picked, setPicked] = useState<Set<EateryResult>>(new Set());
+  /** Ocena wpisana przy wyniku (przepisana z Google), zapisywana przy przypięciu. */
+  const [ratings, setRatings] = useState<Map<EateryResult, string>>(new Map());
   const [filter, setFilter] = useState<EateryFilter>(DEFAULT_EATERY_FILTER);
   const [limit, setLimit] = useState(PAGE);
   const [selected, setSelected] = useState<string | null>(null);
@@ -123,6 +130,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
     start(async () => {
       setError(null);
       setPicked(new Set());
+      setRatings(new Map());
       setLimit(PAGE);
       setSelected(null);
       setSearchNo((n) => n + 1);
@@ -131,7 +139,12 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
 
   const save = () => {
     if (answer === null || "error" in answer) return;
-    const picks = answer.results.filter((result) => picked.has(result)).map((result) => ({ eatery: result, summary: result.summary }));
+    const picks: { eatery: EateryResult; summary: string; rating?: VenueRating }[] = [];
+    for (const result of answer.results.filter((each) => picked.has(each))) {
+      const rating = parseRatingInput(ratings.get(result) ?? "");
+      if (rating === "invalid") return setError(`Ocena przy „${result.name}”: wpisz np. 4,5 albo 4,5 (120) — skala 5 jak w Google.`);
+      picks.push({ eatery: result, summary: result.summary, ...(rating ? { rating } : {}) });
+    }
     const edit = addEatOutChoices(doc, itemRef, picks, () => `id-${uuidv7()}`);
     if (edit === null) return;
     const invalid = documentProblem(edit.doc);
@@ -367,6 +380,24 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
                         </>
                       )}
                     </span>
+                    {!isPinnedEatery(doc, itemRef, result) && (
+                      <label className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500">
+                        ocena (przepisz z Google)
+                        <input
+                          value={ratings.get(result) ?? ""}
+                          onChange={(event) => {
+                            const text = event.target.value;
+                            setRatings((current) => new Map(current).set(result, text));
+                            // Wpisana ocena = ta knajpa idzie do przypięcia.
+                            if (text.trim() !== "" && !picked.has(result)) toggle(result);
+                          }}
+                          maxLength={30}
+                          placeholder="4,5 (120)"
+                          aria-label={`Ocena ${result.name}`}
+                          className="field w-28 px-2 py-0.5 text-xs"
+                        />
+                      </label>
+                    )}
                   </div>
                 </li>
               );
@@ -468,6 +499,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
             <tr>
               <th className="py-1 pr-3 font-normal">Knajpa</th>
               <th className="py-1 pr-3 font-normal">Co to</th>
+              <th className="py-1 pr-3 font-normal">Ocena</th>
               <th className="py-1 pr-3 font-normal">W porze posiłku</th>
               <th className="py-1 pr-3 font-normal">Adres</th>
               <th className="py-1 pr-3 font-normal">Linki</th>
@@ -506,6 +538,9 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                     </div>
                   </td>
                   <td className="py-1 pr-3 text-zinc-500">{facts?.summary ?? "—"}</td>
+                  <td className="py-1 pr-3">
+                    <RatingCell tripId={tripId} doc={doc} ids={ids} placeRef={eatery.placeRef} rating={facts?.rating} canEdit={canEdit} />
+                  </td>
                   <td className="py-1 pr-3">{facts ? (
                       <span className={OPEN[facts.open.state].className}>
                         {OPEN_SHORT[facts.open.state]}
@@ -545,5 +580,97 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
       </div>
       {error && <span className="text-red-600"> {error}</span>}
     </div>
+  );
+}
+
+/** Gwiazdki wypełnione do oceny (połówki i dziesiąte też), w skali oceny. */
+function Stars({ value, scale }: { value: number; scale: number }) {
+  const filled = Math.max(0, Math.min(100, (value / scale) * 100));
+  return (
+    <span className="relative inline-block whitespace-nowrap leading-none" aria-hidden="true">
+      <span className="text-zinc-300 dark:text-zinc-600">★★★★★</span>
+      <span className="absolute inset-y-0 left-0 overflow-hidden text-amber-500" style={{ width: `${filled}%` }}>
+        ★★★★★
+      </span>
+    </span>
+  );
+}
+
+/** Ocena przypiętej knajpy: gwiazdki i liczba; w edycji zmiana (puste pole = usunięcie). Ocenę przepisuje użytkownik, sami jej nie pobieramy. */
+function RatingCell({ tripId, doc, ids, placeRef, rating, canEdit }: { tripId: string; doc: TripDocument; ids: Record<string, string>; placeRef: string; rating: VenueRating | undefined; canEdit: boolean }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const save = () => {
+    const next = parseRatingInput(text);
+    if (next === "invalid") return setError("Wpisz np. 4,5 albo 4,5 (120).");
+    const edit = setVenueRating(doc, placeRef, next);
+    if (edit === null) return setOpen(false);
+    start(async () => {
+      try {
+        await saveElements(createClient(), tripId, edit.doc, edit.writes, ids);
+        setError(null);
+        setOpen(false);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+  };
+
+  if (open)
+    return (
+      <span className="flex flex-col gap-1">
+        <span className="flex items-center gap-1">
+          <input
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") save();
+              if (event.key === "Escape") setOpen(false);
+            }}
+            autoFocus
+            maxLength={30}
+            placeholder="4,5 (120)"
+            aria-label="Ocena (przepisz z Google)"
+            className="field w-24 px-2 py-0.5 text-xs"
+          />
+          <button type="button" disabled={pending} onClick={save} className="btn-mini">
+            {pending ? "zapisuję…" : "zapisz"}
+          </button>
+          <IconAction kind="close" tip="anuluj" disabled={pending} onClick={() => setOpen(false)} />
+        </span>
+        {error && <span className="text-red-600">{error}</span>}
+      </span>
+    );
+
+  const start_ = () => {
+    setText(rating ? ratingInputText(rating) : "");
+    setError(null);
+    setOpen(true);
+  };
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      {rating ? (
+        <span title={venueRatingLabel(rating)} className="inline-flex items-center gap-1">
+          <Stars value={rating.value} scale={rating.scale} />
+          <span className="font-semibold text-zinc-700 dark:text-zinc-300">{rating.value.toLocaleString("pl-PL", { maximumFractionDigits: 2 })}</span>
+          {rating.count !== undefined && <span className="text-zinc-500">({rating.count.toLocaleString("pl-PL")})</span>}
+        </span>
+      ) : (
+        !canEdit && "—"
+      )}
+      {canEdit &&
+        (rating ? (
+          <IconAction kind="edit" tip="zmień ocenę (pusta = usuń)" onClick={start_} />
+        ) : (
+          <button type="button" onClick={start_} className="btn-mini">
+            + ocena
+          </button>
+        ))}
+    </span>
   );
 }
