@@ -528,7 +528,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                     <div className="flex flex-col items-start gap-1">
                     <div className="flex items-center gap-1.5">
                       {selection.href ? (
-                        <Link href={selection.href(eatery.placeRef)} title="Posiłek i knajpa na stronie Posiłki" className="btn-mini">
+                        <Link href={selection.href(eatery.placeRef)} title="Posiłek i knajpa na stronie Posiłki" className="btn-mini max-w-[12rem] whitespace-normal rounded-xl py-0.5 text-left">
                           {chosen && "✓ "}
                           {eatery.name}
                         </Link>
@@ -538,7 +538,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                           onClick={() => selection.onSelect(eatery.placeRef)}
                           aria-pressed={selection.selected === eatery.placeRef}
                           title="Pokaż knajpę na mapie i jej dane"
-                          className={`flex items-baseline gap-x-1.5 text-left underline-offset-2 hover:text-sea hover:underline ${selection.selected === eatery.placeRef ? "font-semibold text-sea" : ""}`}>
+                          className={`flex max-w-[12rem] items-baseline gap-x-1.5 text-left underline-offset-2 hover:text-sea hover:underline ${selection.selected === eatery.placeRef ? "font-semibold text-sea" : ""}`}>
                           {n !== undefined && <span className="flex h-4 min-w-4 items-center justify-center self-center rounded-full bg-sea px-1 text-[10px] font-semibold text-white">{n}</span>}
                           <span className={chosen ? "font-medium" : ""}>
                             {chosen && "✓ "}
