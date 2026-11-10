@@ -456,9 +456,18 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /** Knajpy z rozwiniętymi „szczegółami” (adres, godziny). */
+  const [details, setDetails] = useState<Set<string>>(new Set());
   const eateries = mealEateries(doc, itemRef);
   const group = eatOutGroup(doc, itemRef);
   if (eateries.length === 0) return null;
+  const toggleDetails = (placeRef: string) =>
+    setDetails((current) => {
+      const next = new Set(current);
+      if (next.has(placeRef)) next.delete(placeRef);
+      else next.add(placeRef);
+      return next;
+    });
 
   const choose = (variantRef: string) => {
     if (group === undefined) return;
@@ -501,7 +510,6 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
               <th className="py-1 pr-3 font-normal">Co to</th>
               <th className="py-1 pr-3 font-normal">Ocena</th>
               <th className="py-1 pr-3 font-normal">W porze posiłku</th>
-              <th className="py-1 pr-3 font-normal">Adres</th>
               <th className="py-1 pr-3 font-normal">Linki</th>
               {canEdit && <th className="py-1 font-normal" />}
             </tr>
@@ -511,8 +519,13 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
               const n = selection.numbers[eatery.placeRef];
               const facts = pinnedEateryFacts(doc, itemRef, eatery.placeRef, eatery.summary);
               const chosen = group !== undefined && eatery.active;
+              const hours = doc.places.find((each) => each.ref === eatery.placeRef)?.openingHours;
+              const hasDetails = facts?.address !== undefined || hours !== undefined;
+              const expanded = hasDetails && details.has(eatery.placeRef);
+              const tint = chosen ? "bg-green-50 dark:bg-green-950" : "";
               return (
-                <tr key={eatery.placeRef} className={`border-t border-zinc-100 align-top dark:border-zinc-900 ${chosen ? "bg-green-50 dark:bg-green-950" : ""}`}>
+                <Fragment key={eatery.placeRef}>
+                <tr className={`border-t border-zinc-100 align-top dark:border-zinc-900 ${tint}`}>
                   <td className="py-1 pr-3">
                     <div className="flex items-center gap-1.5">
                       {selection.href ? (
@@ -535,6 +548,11 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                         </button>
                       )}
                       <PlaceLink tripId={tripId} place={{ ref: eatery.placeRef, name: eatery.name }} />
+                      {hasDetails && (
+                        <button type="button" onClick={() => toggleDetails(eatery.placeRef)} aria-expanded={expanded} title="Adres i godziny otwarcia" className="btn-mini">
+                          szczegóły {expanded ? "▴" : "▾"}
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td className="py-1 pr-3 text-zinc-500">{facts?.summary ?? "—"}</td>
@@ -549,7 +567,6 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                     ) : (
                       "—"
                     )}</td>
-                  <td className="py-1 pr-3 text-zinc-500">{facts?.address ?? "—"}</td>
                   <td className="py-1 pr-3">
                     <span className="flex flex-wrap gap-x-2">
                       {(facts?.links ?? []).length === 0 && "—"}
@@ -573,6 +590,23 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                     </td>
                   )}
                 </tr>
+                {expanded && (
+                  <tr className={tint}>
+                    <td colSpan={canEdit ? 6 : 5} className="pb-1.5 pl-1 pr-3 text-zinc-500">
+                      {facts?.address && (
+                        <span className="block">
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">Adres:</span> {facts.address}
+                        </span>
+                      )}
+                      {hours && (
+                        <span className="block">
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">Godziny (OSM):</span> {hours}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>
