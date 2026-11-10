@@ -1,20 +1,41 @@
 import { flushOutbox, pendingCount, refreshTrip, type RejectedWrite } from '@expeditionplan/sync';
+import * as BackgroundTask from 'expo-background-task';
+import * as Network from 'expo-network';
+import * as TaskManager from 'expo-task-manager';
 import { AppState } from 'react-native';
 
 import { uploadPhotos, waitingPhotos } from '@/features/trip/journal-photos';
-import { scheduleTripReminders } from '@/features/trip/reminders';
+import { refreshCurrentReminders, scheduleTripReminders } from '@/features/trip/reminders';
 import { localDb, remote } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
 
 /**
  * Wysyłka zapisów z terenu niezależnie od otwartego ekranu: outbox (wydatki, odhaczenia, zdarzenia
  * dnia, dziennik) i zdjęcia dziennika i paragonów. Rusza przy starcie aplikacji, przy powrocie na
- * pierwszy plan i co `EVERY_MS`, ale tylko wtedy, gdy coś czeka — bez zapisów nie pyta sieci.
+ * pierwszy plan, po powrocie sieci (`expo-network`) i co `EVERY_MS`, ale tylko wtedy, gdy coś czeka —
+ * bez zapisów nie pyta sieci. Przy zamkniętej aplikacji to samo robi zadanie w tle (`SYNC_TASK`,
+ * `expo-background-task`, Android decyduje o porze, najczęściej co ok. `BACKGROUND_MIN` minut), które
+ * przy okazji przesuwa okno przypomnień „Za 15 min” (`refreshCurrentReminders` — 25 do przodu), żeby
+ * telefon nieotwierany przez dzień nadal przypominał.
  * Po udanej wysyłce wyjazdy z tymi zapisami doczytują się (`refreshTrip`), a otwarty plan dostaje
  * znać przez `onBackgroundSync` (też o zapisach, których serwer nie przyjął).
  */
 
 const EVERY_MS = 2 * 60_000;
+const SYNC_TASK = 'sync-pending';
+/** Najkrótszy odstęp zadania w tle, o jaki prosimy Androida (minimum WorkManagera to 15 min). */
+const BACKGROUND_MIN = 30;
+
+// `defineTask` przy ładowaniu modułu (import z `_layout.tsx`) — zadanie w tle startuje bez ekranu.
+TaskManager.defineTask(SYNC_TASK, async () => {
+  try {
+    await syncPending();
+    await refreshCurrentReminders();
+    return BackgroundTask.BackgroundTaskResult.Success;
+  } catch {
+    return BackgroundTask.BackgroundTaskResult.Failed;
+  }
+});
 
 export type BackgroundSync = { tripId: string; rejected: RejectedWrite[] };
 
@@ -63,4 +84,21 @@ export function startSyncLoop(): void {
     if (AppState.currentState === 'active') void syncPending();
   }, EVERY_MS);
   AppState.addEventListener('change', (state) => state === 'active' && void syncPending());
+  // Sieć wróciła (koniec trybu samolotowego, zasięg po zejściu z gór) — od razu, bez czekania na zegar.
+  let online: boolean | null = null;
+  Network.addNetworkStateListener(({ isConnected, isInternetReachable }) => {
+    const now = isConnected === true && isInternetReachable !== false;
+    if (now && online === false) void syncPending();
+    online = now;
+  });
+  void registerBackground();
+}
+
+async function registerBackground(): Promise<void> {
+  try {
+    if ((await BackgroundTask.getStatusAsync()) !== BackgroundTask.BackgroundTaskStatus.Available) return;
+    if (!(await TaskManager.isTaskRegisteredAsync(SYNC_TASK))) await BackgroundTask.registerTaskAsync(SYNC_TASK, { minimumInterval: BACKGROUND_MIN });
+  } catch {
+    // Bez zadania w tle zostaje wysyłka przy otwartej aplikacji.
+  }
 }

@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/session';
 import { openHelp } from '@/features/home/intro';
-import { disableReminders, enableReminders, remindersEnabled } from '@/features/trip/reminders';
+import { disableReminders, enableReminders, exactAlarms, remindersEnabled, requestExactAlarms } from '@/features/trip/reminders';
 import { UpdateCard } from '@/features/updates/update-notice';
 import { navApp, type NavApp, setNavApp } from '@/lib/navigate';
 import { supabase } from '@/lib/supabase';
@@ -22,6 +22,11 @@ export function SettingsScreen({ visible, onClose, onIntro }: { visible: boolean
   const [reminders, setReminders] = useState(remindersEnabled);
   const [reminderInfo, setReminderInfo] = useState('');
   const [nav, setNav] = useState<NavApp>(navApp);
+  /** Dokładne godziny powiadomień (Android 12+); `null` — jeszcze nie sprawdzone. */
+  const [exact, setExact] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (visible) void exactAlarms().then(setExact);
+  }, [visible]);
   const userId = session?.user.id;
 
   // Imię z profilu; bez sieci zostaje sam e-mail.
@@ -84,12 +89,26 @@ export function SettingsScreen({ visible, onClose, onIntro }: { visible: boolean
                           setReminders(false);
                           setReminderInfo('Przypomnienia wyłączone.');
                         })
-                      : enableReminders().then(({ ok, count }) => {
+                      : enableReminders().then(({ ok, count, exact: precise }) => {
                           setReminders(ok);
+                          setExact(precise);
                           setReminderInfo(ok ? `Zaplanowano: ${count}. Nowe zadania dojdą po otwarciu planu.` : 'Brak zgody na powiadomienia — włącz je w ustawieniach Androida.');
                         }))
                   }
                 />
+                {reminders && exact === false && (
+                  <>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Android nie pozwala jeszcze na dokładne godziny — „Za 15 min” może przyjść kilkanaście minut później. Na następnym ekranie włącz „Zezwalaj na ustawianie alarmów i przypomnień”.
+                    </ThemedText>
+                    <Button label="Zezwól na dokładne godziny" variant="primary" onPress={() => void requestExactAlarms().then(setExact)} />
+                  </>
+                )}
+                {reminders && exact === true && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Dokładne godziny: włączone.
+                  </ThemedText>
+                )}
                 {reminderInfo !== '' && (
                   <ThemedText type="small" themeColor="textSecondary">
                     {reminderInfo}

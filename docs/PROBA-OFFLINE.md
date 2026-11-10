@@ -12,6 +12,8 @@ którą zabierasz (po ostatnim OTA). Zajmuje ok. 20 minut.
       Na końcu komunikat „Wyjazd jest na telefonie”, a linijka nad przyciskiem zaczyna się od „✓ Offline:”.
       Przy „Pobrano częściowo” kliknij ponownie. Potem „Plan dzień po dniu →”: przejdź raz przez wszystkie
       dni i zakładki Plan · Wydatki · Sprzęt · Zadania · Dziennik · Info.
+- [ ] Start → ⚙︎ → Przypomnienia: włączone i „Dokładne godziny: włączone” (inaczej „Zezwól na dokładne godziny” —
+      bez tego „Za 15 min” może przyjść z opóźnieniem).
 - [ ] Start → blok „Na telefonie (offline)” pokazuje „N z M planów pobranych”, a zapisów czekających na wysłanie nie ma.
 - [ ] Na webie w „Informacje praktyczne” są numery alarmowe i kontakty (gospodarze, wypożyczalnia) —
       bez nich zakładka Info na telefonie będzie pusta.

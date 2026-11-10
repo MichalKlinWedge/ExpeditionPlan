@@ -149,7 +149,11 @@ mówić to od razu (wyszarzone z „wymaga internetu”), a nie dopiero błędem
 - P2.2–P2.4 — karta „Teraz”: +15/+30/+60/„Inne…”, w przerwie „Ruszamy później”, „Nawiguj” do następnego punktu z przejściem, duże przyciski (`Button big`, ≥ 48 dp).
 - P2.5 — diagnostyka PoC-3 w „Spacer” zwinięta. P2.6 — data telefonu zamiast UTC (`pickTrip`, przypomnienia). P2.7 — 112 zawsze w Info. P2.9 — sprawdzenie polskiego głosu.
 
-**Zostaje:** APK 0.4.0 (dokładne alarmy, `expo-network`, `expo-background-task`), P2.1 (decyzja), P2.8, P2.10, P3, test w terenie.
+**APK 0.4.0 (10.11.2026):** P1.2 i P1.3 do końca — `expo-network` (wysyłka zaraz po powrocie sieci), `expo-background-task` (zadanie `sync-pending` co ok. 30 min przy zamkniętej aplikacji: wysyłka i przesunięcie okna przypomnień), uprawnienie `SCHEDULE_EXACT_ALARM` z prośbą w Ustawieniach i po „Pobierz offline” → „Włącz przypomnienia”.
+
+**P2.1 — decyzja (10.11.2026): bez zmian.** „+15 min”, „Pomiń” i „Zrobione” zapisują tylko organizator i edytor; zwykły uczestnik widzi kartę „Teraz” z „Nawiguj”, ale bez tych przycisków. Kto ma prowadzić plan w terenie, dostaje na webie rolę edytora.
+
+**Zostaje:** P2.8, P2.10, P3, test w terenie.
 
 ## 7. Proponowana kolejność
 

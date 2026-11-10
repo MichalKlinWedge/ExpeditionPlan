@@ -2,7 +2,7 @@
   "expo": {
     "name": "Expedition Planner",
     "slug": "expeditionplan",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "expeditionplan",
@@ -18,7 +18,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "pl.expeditionplan.app"
+      "package": "pl.expeditionplan.app",
+      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"]
     },
     "web": {
       "output": "single",
@@ -53,7 +54,8 @@
           "photosPermission": "Zdjęcia z galerii można dodać do dziennika wyjazdu.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -5,7 +5,7 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { downloadTripOffline, offlineEstimate, onOfflineChange, type OfflineState, offlineState, polishVoice } from '@/features/trip/offline-download';
-import { enableReminders, remindersEnabled } from '@/features/trip/reminders';
+import { enableReminders, remindersEnabled, requestExactAlarms } from '@/features/trip/reminders';
 
 /**
  * „Pobierz offline” na karcie wyjazdu: jeden przycisk, który dociąga braki z postępem, a przy
@@ -17,6 +17,13 @@ import { enableReminders, remindersEnabled } from '@/features/trip/reminders';
 const ASK_BYTES = 20 * 1024 * 1024;
 
 const mb = (bytes: number) => (bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`);
+
+/** Android 14+ domyślnie nie daje dokładnych alarmów — bez nich „Za 15 min” przychodzi z opóźnieniem. */
+const askExactAlarms = () =>
+  Alert.alert('Dokładne godziny przypomnień', 'Bez tej zgody Android przesuwa „Za 15 min” nawet o kilkanaście minut. Na następnym ekranie włącz „Zezwalaj na ustawianie alarmów i przypomnień”.', [
+    { text: 'Nie teraz', style: 'cancel' },
+    { text: 'Dalej', onPress: () => void requestExactAlarms() },
+  ]);
 
 /** Uwagi po pobraniu: dokumenty tylko z internetem, zdjęcia bez kopii, brak polskiego głosu offline. */
 async function afterDownload(state: OfflineState): Promise<string[]> {
@@ -110,7 +117,10 @@ export function OfflineButton({ tripId }: { tripId: string }) {
               {
                 text: 'Włącz przypomnienia',
                 onPress: () =>
-                  void enableReminders().then(({ ok }) => !ok && Alert.alert('Brak zgody na powiadomienia', 'Włącz je w ustawieniach Androida dla tej aplikacji.')),
+                  void enableReminders().then(({ ok, exact }) => {
+                    if (!ok) return Alert.alert('Brak zgody na powiadomienia', 'Włącz je w ustawieniach Androida dla tej aplikacji.');
+                    if (!exact) askExactAlarms();
+                  }),
               },
             ],
       );

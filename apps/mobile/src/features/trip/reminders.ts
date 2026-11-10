@@ -116,19 +116,50 @@ export async function refreshCurrentReminders(): Promise<void> {
   }
 }
 
-/** Włączenie w Ustawieniach: zgoda na powiadomienia i przeliczenie wszystkich wyjazdów z telefonu. */
-export async function enableReminders(): Promise<{ ok: boolean; count: number }> {
-  const permission = await Notifications.requestPermissionsAsync();
-  if (!permission.granted) return { ok: false, count: 0 };
-  localStorage.setItem(KEY, '1');
-  await ensureChannel();
+/** Przelicza przypomnienia wszystkich wyjazdów z telefonu (bez odłożonych); zwraca ich liczbę. */
+async function scheduleAll(): Promise<number> {
   let count = 0;
   for (const trip of cachedTrips() ?? []) {
     if (isPostponed(trip)) continue;
     const cached = trip.id ? cachedTrip(localDb, trip.id) : null;
     if (cached) count += await scheduleTripReminders(trip.id!, cached.state.doc);
   }
-  return { ok: true, count };
+  return count;
+}
+
+/**
+ * Włączenie w Ustawieniach: zgoda na powiadomienia i przeliczenie wszystkich wyjazdów z telefonu.
+ * `exact` — czy Android pozwala na dokładne godziny (bez tego „Za 15 min” może przyjść kilkanaście minut później).
+ */
+export async function enableReminders(): Promise<{ ok: boolean; count: number; exact: boolean }> {
+  const permission = await Notifications.requestPermissionsAsync();
+  if (!permission.granted) return { ok: false, count: 0, exact: false };
+  localStorage.setItem(KEY, '1');
+  await ensureChannel();
+  return { ok: true, count: await scheduleAll(), exact: await exactAlarms() };
+}
+
+/**
+ * Dokładne alarmy (APK 0.4.0, `SCHEDULE_EXACT_ALARM`). Android 14+ domyślnie ich nie daje: bez nich
+ * system przesuwa powiadomienia, w trybie uśpienia nawet o kilkanaście minut.
+ */
+export async function exactAlarms(): Promise<boolean> {
+  try {
+    return (await Notifications.getExactAlarmPermissionsAsync()).granted;
+  } catch {
+    return true;
+  }
+}
+
+/** Ekran systemowy „Alarmy i przypomnienia”; po zgodzie zaplanowane powiadomienia idą od nowa — już dokładnie. */
+export async function requestExactAlarms(): Promise<boolean> {
+  try {
+    const granted = (await Notifications.requestExactAlarmPermissionsAsync()).granted;
+    if (granted && remindersEnabled()) await scheduleAll();
+    return granted;
+  } catch {
+    return false;
+  }
 }
 
 export async function disableReminders(): Promise<void> {
