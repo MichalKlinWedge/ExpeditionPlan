@@ -46,6 +46,9 @@ export type PlaceRowData = {
 
 type Filter = "all" | "missing" | "unused";
 
+/** Punkt ze współrzędnych w Mapach Google (sam link, nic nie pobieramy). */
+const googleMapsPointUrl = (lat: number, lng: number) => `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(6)},${lng.toFixed(6)}`;
+
 const PROVIDER: Record<PlaceRowData["provider"], string> = { osm: "z OpenStreetMap", geoapify: "z Geoapify", user: "wpisane ręcznie", unknown: "źródło nieustalone" };
 const input = "field min-w-0 flex-1 px-2 py-1 text-sm";
 const button = "btn-secondary btn-sm";
@@ -355,6 +358,10 @@ function PlaceRow({
               {place.lat!.toFixed(5)}, {place.lng!.toFixed(5)}
             </a>
             {" · "}
+            <a href={googleMapsPointUrl(place.lat!, place.lng!)} target="_blank" rel="noreferrer" className="underline">
+              Google Maps
+            </a>
+            {" · "}
           </>
         )}
         {PROVIDER[place.provider]} · {usage.total > 0 ? usageLabel(usage) : "nieużywane"}
@@ -467,9 +474,16 @@ function PlaceRow({
               </button>
             </form>
             {/* Na końcu sekcji, pod oboma polami; należy do formularza współrzędnych. */}
-            <button form={coordsForm} disabled={pending || coords.trim() === ""} className={`${button} self-start`}>
-              Zapisz
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button form={coordsForm} disabled={pending || coords.trim() === ""} className={button}>
+                Zapisz
+              </button>
+              {located && (
+                <a href={googleMapsPointUrl(place.lat!, place.lng!)} target="_blank" rel="noreferrer" className="text-xs underline">
+                  Otwórz zapisany punkt w Google Maps ↗
+                </a>
+              )}
+            </div>
           </div>
 
           {others.length > 0 && (
