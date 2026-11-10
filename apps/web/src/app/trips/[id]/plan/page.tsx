@@ -13,6 +13,7 @@ import { PlacePinner } from "@/components/place-pinner";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { CoverageInfo, PlanPageGrid, PlanView } from "@/components/plan-view";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Plan dzień po dniu — Expedition Planner" };
@@ -67,15 +68,15 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
     <PlanPageGrid
       header={
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <Link href={`/trips/${id}`} className="back-link self-start">
-              ← {state.doc.trip.title}
-            </Link>
-            <h1 className="flex items-center gap-2 text-2xl font-semibold">
-              Plan dzień po dniu
-              <CoverageInfo doc={state.doc} />
-            </h1>
-          </div>
+          <PageHeader
+            back={{ href: `/trips/${id}`, label: state.doc.trip.title }}
+            title={
+              <>
+                Plan dzień po dniu
+                <CoverageInfo doc={state.doc} />
+              </>
+            }
+          />
           {editing && <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />}
         </div>
       }

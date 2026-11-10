@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { PeakIcon, PinIcon, PlusIcon } from "@/components/icons";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
 
@@ -33,23 +34,25 @@ async function TripList() {
   const { ahead, postponed, archive, drafts } = tripSections(data, today);
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Wyjazdy</h1>
-        <span className="flex flex-wrap items-center gap-2">
-          {data.length > 0 && (
-            <Link href="/places" className="btn-secondary">
-              <PinIcon className="size-4" />
-              Wszystkie miejsca
-            </Link>
-          )}
-          {canCreateTrips && (
-            <Link href="/trips/new" className="btn-primary">
-              <PlusIcon className="size-4" />
-              Nowy wyjazd
-            </Link>
-          )}
-        </span>
-      </div>
+      <PageHeader
+        title="Wyjazdy"
+        actions={
+          <>
+            {data.length > 0 && (
+              <Link href="/places" className="btn-secondary">
+                <PinIcon className="size-4" />
+                Wszystkie miejsca
+              </Link>
+            )}
+            {canCreateTrips && (
+              <Link href="/trips/new" className="btn-primary">
+                <PlusIcon className="size-4" />
+                Nowy wyjazd
+              </Link>
+            )}
+          </>
+        }
+      />
       {data.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center">
           <PeakIcon className="size-10 text-sea" />

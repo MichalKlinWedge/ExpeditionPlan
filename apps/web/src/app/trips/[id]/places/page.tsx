@@ -9,6 +9,7 @@ import { Suspense } from "react";
 
 import { PlacesView } from "@/components/places-view";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { loadVisited } from "@/lib/places-across";
 
@@ -70,21 +71,16 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={back?.href ?? `/trips/${id}`} className="back-link">
-          ← {back?.label ?? doc.trip.title}
-        </Link>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <h1 className="text-2xl font-semibold">Miejsca</h1>
-          {mayEdit && <EditToggle editing={canEdit} />}
-        </div>
+      <PageHeader
+        back={{ href: back?.href ?? `/trips/${id}`, label: back?.label ?? doc.trip.title }}
+        title="Miejsca"
+        actions={mayEdit && <EditToggle editing={canEdit} />}
+        intro={<>{mayEdit ? "Miejsce jest wspólne dla punktów, które z niego korzystają: zmiana nazwy lub współrzędnych obowiązuje wszędzie." : "Miejsca, z których korzysta ten plan."}</>}
+      >
         <Link href="/places" className="btn-secondary btn-sm self-start">
           Miejsca ze wszystkich wyjazdów
         </Link>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {mayEdit ? "Miejsce jest wspólne dla punktów, które z niego korzystają: zmiana nazwy lub współrzędnych obowiązuje wszędzie." : "Miejsca, z których korzysta ten plan."}
-        </p>
-      </div>
+      </PageHeader>
       {places.length === 0 ? <p className="text-sm text-zinc-500">Ten plan nie ma jeszcze miejsc.</p> : <PlacesView tripId={id} places={places} canEdit={canEdit} hasRouted={doc.items.some((item) => item.leg?.routed === true)} initial={typeof miejsce === "string" ? miejsce : null} />}
     </>
   );

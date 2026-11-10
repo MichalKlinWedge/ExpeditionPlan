@@ -25,6 +25,7 @@ import { TrackProfile } from "@/components/track-profile";
 import { TrackUpload } from "@/components/track-upload";
 import { TransitDetails, TransitEditor } from "@/components/transit-editor";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Punkt planu — Expedition Planner" };
@@ -110,25 +111,25 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {/* Powrót na ten sam dzień i w tym samym trybie (podgląd / edycja). */}
-          <Link href={`/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}`} className="back-link">
-            ← Plan: {doc.trip.title}
-          </Link>
-          {canEdit && <EditToggle editing={editing} />}
-        </div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <span aria-hidden="true">{itemIcon(doc, item)}</span>
-          {item.title}
-        </h1>
-        <p className="text-sm text-zinc-500">
-          {itemKindLabel(item, ITEM_KIND)}
-          {day ? ` · Dzień ${dayIndex + 1}, ${dayLabel(day.date)}` : " · w puli (poza dniami)"}
-          {time ? ` · ${time}` : ""}
-        </p>
+      {/* Powrót na ten sam dzień i w tym samym trybie (podgląd / edycja). */}
+      <PageHeader
+        back={{ href: `/trips/${id}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}`, label: `Plan: ${doc.trip.title}` }}
+        title={
+          <>
+            <span aria-hidden="true">{itemIcon(doc, item)}</span>
+            {item.title}
+          </>
+        }
+        actions={canEdit && <EditToggle editing={editing} />}
+        intro={
+          <>
+            {itemKindLabel(item, ITEM_KIND)}
+            {day ? ` · Dzień ${dayIndex + 1}, ${dayLabel(day.date)}` : " · w puli (poza dniami)"}
+            {time ? ` · ${time}` : ""}
+          </>
+        }>
         {editing && <ItemHeaderEditor tripId={id} doc={doc} ids={ids} itemRef={item.ref} />}
-      </div>
+      </PageHeader>
 
       <ItemPlanNav tripId={id} doc={doc} inputs={inputs} itemRef={item.ref} />
 

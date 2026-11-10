@@ -1,12 +1,12 @@
 import { dayLabel, guideFor, guideLinkTargets, type GuideRow, ITEM_KIND, itemIcon, itemKindLabel } from "@expeditionplan/core";
 import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { GuideArticle } from "@/components/guide-article";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -48,20 +48,22 @@ async function PublicItem({ params }: { params: Promise<{ token: string; ref: st
   const day = doc.days[dayIndex];
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/p/${encodeURIComponent(token)}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}`} className="back-link self-start">
-          ← Plan: {doc.trip.title}
-        </Link>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <span aria-hidden="true">{itemIcon(doc, item)}</span>
-          {item.title}
-        </h1>
-        <p className="text-sm text-zinc-500">
-          {itemKindLabel(item, ITEM_KIND)}
-          {day ? ` · Dzień ${dayIndex + 1}, ${dayLabel(day.date)}` : " · w puli (poza dniami)"}
-          {place ? ` · ${place.name}` : ""}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/p/${encodeURIComponent(token)}/plan?day=${encodeURIComponent(item.dayRef ?? "pool")}`, label: `Plan: ${doc.trip.title}` }}
+        title={
+          <>
+            <span aria-hidden="true">{itemIcon(doc, item)}</span>
+            {item.title}
+          </>
+        }
+        intro={
+          <>
+            {itemKindLabel(item, ITEM_KIND)}
+            {day ? ` · Dzień ${dayIndex + 1}, ${dayLabel(day.date)}` : " · w puli (poza dniami)"}
+            {place ? ` · ${place.name}` : ""}
+          </>
+        }
+      />
       {guide === null ? (
         <p className="text-sm text-zinc-500">Ten punkt nie ma opisu.</p>
       ) : (

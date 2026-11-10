@@ -3,7 +3,6 @@ import { editMode } from "@/lib/edit-mode";
 import { type GuideRow, tripGuides, undescribedSights, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -11,6 +10,7 @@ import { describeTrip } from "@/app/guide-actions";
 import { GuideList } from "@/components/guide-list";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 
 /**
@@ -55,18 +55,12 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {doc.trip.title}
-        </Link>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <h1 className="text-2xl font-semibold">Opisy miejsc</h1>
-          {mayEdit && <EditToggle editing={canEdit} />}
-        </div>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Opisy z Wikipedii, Wikivoyage i wskazanych stron przy punktach planu: {guides.length}.{canEdit ? " Każdy możesz przygotować od nowa, poprawić ręcznie albo usunąć." : ""}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/trips/${id}`, label: doc.trip.title }}
+        title="Opisy miejsc"
+        actions={mayEdit && <EditToggle editing={canEdit} />}
+        intro={<>Opisy z Wikipedii, Wikivoyage i wskazanych stron przy punktach planu: {guides.length}.{canEdit ? " Każdy możesz przygotować od nowa, poprawić ręcznie albo usunąć." : ""}</>}
+      />
       {canEdit && missing.length > 0 && <PlanActionButton ai run={describeTrip.bind(null, id)} label={`Przygotuj brakujące opisy (${missing.length})`} note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />}
       <GuideList tripId={id} guides={guides} missing={missing} canEdit={canEdit} openId={openId} />
     </>

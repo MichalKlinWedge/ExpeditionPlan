@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { bestTerms, DatePoll, type DayAnswer, dayLabelShort, daysBetween, decideByText, groupTally, pollDays, type TripDocument, votesFromRows, votingGroups } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EditToggle } from "@/components/edit-toggle";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { type BoardGroup, VoteBoard } from "@/components/vote-board";
 import { requireUser } from "@/lib/auth";
 import { climateSource } from "@/lib/climate-place";
@@ -103,16 +103,12 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <Link href={`/trips/${id}`} className="back-link">
-            ← {doc.trip.title}
-          </Link>
-          <h1 className="text-2xl font-semibold">Głosowanie</h1>
-        </div>
-        {mayEdit && <EditToggle editing={mayEdit && wantsEdit} />}
-      </div>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">Głos to podpowiedź dla organizatora: wybór wariantu i termin ustala on (albo edytor). Głosować można nad wyborami, które otworzył; wyniki widzą wszyscy uczestnicy.</p>
+      <PageHeader
+        back={{ href: `/trips/${id}`, label: doc.trip.title }}
+        title="Głosowanie"
+        actions={mayEdit && <EditToggle editing={mayEdit && wantsEdit} />}
+        intro={<>Głos to podpowiedź dla organizatora: wybór wariantu i termin ustala on (albo edytor). Głosować można nad wyborami, które otworzył; wyniki widzą wszyscy uczestnicy.</>}
+      />
       <VoteBoard
         tripId={id}
         people={people}

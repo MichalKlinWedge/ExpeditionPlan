@@ -16,6 +16,7 @@ import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
 import { PlanActionButton } from "@/components/plan-action-button";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { contactHref, isListedBooking } from "@/lib/booking-link";
 import { planChoices } from "@/lib/tasks";
@@ -171,15 +172,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <Link href={`/trips/${id}`} className="back-link">
-            ← {doc.trip.title}
-          </Link>
-          <h1 className="text-2xl font-semibold">Rezerwacje i budżet</h1>
-        </div>
-        {mayEdit && <EditToggle editing={canEdit} />}
-      </div>
+      <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Rezerwacje i budżet" actions={mayEdit && <EditToggle editing={canEdit} />} />
 
       <section className={card}>
         <h2 className={heading}>Budżet</h2>

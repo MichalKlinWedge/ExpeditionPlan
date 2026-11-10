@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { dayLabelShort, type TripDocument, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { Vault } from "@/components/vault";
 import { requireUser } from "@/lib/auth";
 import { bookingHref } from "@/lib/booking-link";
@@ -74,18 +74,12 @@ async function Documents({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <Link href={`/trips/${id}`} className="back-link">
-            ← {doc.trip.title}
-          </Link>
-          <h1 className="text-2xl font-semibold">Sejf dokumentów</h1>
-        </div>
-        {mayEdit && <EditToggle editing={editing} />}
-      </div>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Bilety, vouchery i potwierdzenia. Kod (QR, Aztec, PDF417) odczytany z pliku pokażesz przy bramce — także na telefonie bez internetu, jeśli dokument jest oznaczony „offline”.
-      </p>
+      <PageHeader
+        back={{ href: `/trips/${id}`, label: doc.trip.title }}
+        title="Sejf dokumentów"
+        actions={mayEdit && <EditToggle editing={editing} />}
+        intro={<>Bilety, vouchery i potwierdzenia. Kod (QR, Aztec, PDF417) odczytany z pliku pokażesz przy bramce — także na telefonie bez internetu, jeśli dokument jest oznaczony „offline”.</>}
+      />
       <Vault tripId={id} documents={documents} bookings={bookings} items={items} people={people} userId={userId} owner={role === "owner"} editing={editing} />
     </>
   );

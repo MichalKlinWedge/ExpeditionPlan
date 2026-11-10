@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { CompareView } from "@/components/compare-view";
 import { ReviewBoard } from "@/components/review-board";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { reviewView } from "@/lib/review-view";
 
@@ -67,15 +68,11 @@ async function Compare({ params, searchParams }: { params: Promise<{ id: string 
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {plan.doc.trip.title}
-        </Link>
-        <h1 className="text-2xl font-semibold">Porównanie ze szkicem</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Z prawej „{draft.doc.trip.title}”. Przenoś punkty pojedynczo, brakujące z całego dnia albo zastąp dzień — punkty zmienione ręcznie (✎) zostają.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/trips/${id}`, label: plan.doc.trip.title }}
+        title="Porównanie ze szkicem"
+        intro={<>Z prawej „{draft.doc.trip.title}”. Przenoś punkty pojedynczo, brakujące z całego dnia albo zastąp dzień — punkty zmienione ręcznie (✎) zostają.</>}
+      />
       <CompareView
         // Nowa wersja planu albo szkicu z serwera = nowy stan widoku (patrz `useRefreshOnReturn`).
         key={`${(planRes.data as { version: number }).version}-${(draftRes.data as { version: number }).version}`}
@@ -117,15 +114,11 @@ async function Review({ id, supabase }: { id: string; supabase: Supabase }) {
   };
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {doc.trip.title}
-        </Link>
-        <h1 className="text-2xl font-semibold">Propozycje AI</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Z lewej plan, z prawej ten sam plan po propozycjach: harmonogram, trasy i przejazdy, mapa, opisy, posiłki, plan B. Punkty zmienione ręcznie zostają nietknięte.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/trips/${id}`, label: doc.trip.title }}
+        title="Propozycje AI"
+        intro={<>Z lewej plan, z prawej ten sam plan po propozycjach: harmonogram, trasy i przejazdy, mapa, opisy, posiłki, plan B. Punkty zmienione ręcznie zostają nietknięte.</>}
+      />
       <ReviewBoard tripId={id} runId={view ? runRow.data!.id : null} view={view} checks={checks} />
     </>
   );
@@ -142,13 +135,7 @@ async function ChooseDraft({ id, supabase }: { id: string; supabase: Supabase })
   const others = [...(mine.data ?? [])].sort((a, b) => rank(a) - rank(b));
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {title}
-        </Link>
-        <h1 className="text-2xl font-semibold">Porównanie ze szkicem</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Wybierz szkic (np. z „Zaplanuj z AI”) — zobaczysz go obok planu i przeniesiesz punkty.</p>
-      </div>
+      <PageHeader back={{ href: `/trips/${id}`, label: title }} title="Porównanie ze szkicem" intro={<>Wybierz szkic (np. z „Zaplanuj z AI”) — zobaczysz go obok planu i przeniesiesz punkty.</>} />
       <Link href={`/trips/${id}/compare?review=1`} className="card flex flex-col gap-1 border-dashed p-4 transition hover:-translate-y-0.5 hover:border-sea">
         <span className="font-semibold">Propozycje AI do tego planu</span>
         <span className="text-xs text-zinc-500">przegląd planu: harmonogram, trasy, mapa, opisy — każda zmiana obok planu, do zastosowania osobno</span>

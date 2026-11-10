@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { JoinButton } from "@/components/forms";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
 
@@ -13,7 +14,7 @@ import { tripDates } from "@/lib/labels";
 export default function JoinPage(props: PageProps<"/join/[token]">) {
   return (
     <Shell>
-      <h1 className="text-2xl font-semibold">Zaproszenie do wyjazdu</h1>
+      <PageHeader title="Zaproszenie do wyjazdu" />
       <Suspense fallback={<Loading />}>
         <Join params={props.params} />
       </Suspense>

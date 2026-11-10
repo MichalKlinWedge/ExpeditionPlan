@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { carFromRow, FORMALITIES, instantToZoned, MEMBER_ROLE } from "@expeditionplan/core";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -13,6 +12,7 @@ import { KnownAccounts } from "@/components/known-accounts";
 import { type InviteStat, type MemberStat, MemberStats } from "@/components/member-stats";
 import { PublicShare } from "@/components/public-share";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
 import { mailConfigured } from "@/lib/mail";
@@ -75,15 +75,7 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {title}
-        </Link>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <h1 className="text-2xl font-semibold">Uczestnicy i dostęp</h1>
-          {canEdit && <EditToggle editing={editing} />}
-        </div>
-      </div>
+      <PageHeader back={{ href: `/trips/${id}`, label: title }} title="Uczestnicy i dostęp" actions={canEdit && <EditToggle editing={editing} />} />
 
       <section className={section}>
         <h2 className={heading}>Uczestnicy</h2>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { itemsOfBooking, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -9,6 +8,7 @@ import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
 import { Contacts, HashFocus } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { bookingHref } from "@/lib/booking-link";
 import { planChoices } from "@/lib/tasks";
@@ -60,15 +60,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <Link href={`/trips/${id}`} className="back-link">
-            ← {doc.trip.title}
-          </Link>
-          <h1 className="text-2xl font-semibold">Kontakty</h1>
-        </div>
-        {mayEdit && <EditToggle editing={canEdit} />}
-      </div>
+      <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Kontakty" actions={mayEdit && <EditToggle editing={canEdit} />} />
 
       {(emergency.length > 0 || canEdit) && (
         <section className="flex flex-col gap-2 card p-4">

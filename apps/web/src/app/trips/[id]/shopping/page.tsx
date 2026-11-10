@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -9,6 +8,7 @@ import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
 import { Shopping } from "@/components/meals";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Lista zakupów — Expedition Planner" };
@@ -47,15 +47,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <Link href={`/trips/${id}`} className="back-link">
-            ← {doc.trip.title}
-          </Link>
-          <h1 className="text-2xl font-semibold">Lista zakupów</h1>
-        </div>
-        {mayEdit && <EditToggle editing={canEdit} />}
-      </div>
+      <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Lista zakupów" actions={mayEdit && <EditToggle editing={canEdit} />} />
       <section className="flex flex-col gap-3 card p-4">
         <h2 className="card-title">Do kupienia</h2>
         <Shopping tripId={id} doc={doc} tables={payload.tables as unknown as Parameters<typeof Shopping>[0]["tables"]} ids={refIndex(payload.tables)} canEdit={canEdit} />

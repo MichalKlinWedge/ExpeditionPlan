@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 
 import { ImportTripForm, NewTripForm } from "@/components/forms";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { NO_CREATE, requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Nowy wyjazd — Expedition Planner" };
@@ -11,12 +11,7 @@ export const metadata: Metadata = { title: "Nowy wyjazd — Expedition Planner" 
 export default function NewTripPage() {
   return (
     <Shell>
-      <div className="flex flex-col gap-1">
-        <Link href="/" className="back-link">
-          ← Wyjazdy
-        </Link>
-        <h1 className="text-2xl font-semibold">Nowy wyjazd</h1>
-      </div>
+      <PageHeader back={{ href: "/", label: "Wyjazdy" }} title="Nowy wyjazd" />
       <Suspense fallback={<Loading />}>
         <NewTrip />
       </Suspense>

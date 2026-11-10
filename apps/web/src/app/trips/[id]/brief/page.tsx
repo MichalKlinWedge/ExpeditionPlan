@@ -1,12 +1,12 @@
 import { instantToZoned } from "@expeditionplan/core";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
 import { BriefForm, type BriefDraft } from "@/components/brief-form";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { aiAccessError } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { climateSource } from "@/lib/climate-place";
@@ -65,15 +65,11 @@ async function Brief({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {trip.data.title}
-        </Link>
-        <h1 className="text-2xl font-semibold">Brief wyjazdu</h1>
-        <p className="text-sm text-zinc-500">
-          Założenia dla AI. Daty ({trip.data.start_date} – {trip.data.end_date}) i uczestnicy pochodzą z wyjazdu.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/trips/${id}`, label: trip.data.title }}
+        title="Brief wyjazdu"
+        intro={<>Założenia dla AI. Daty ({trip.data.start_date} – {trip.data.end_date}) i uczestnicy pochodzą z wyjazdu.</>}
+      />
       {canEdit && brief.data !== null && (
         <AiPlanButton tripId={id}>
           {aiDenied === null && (

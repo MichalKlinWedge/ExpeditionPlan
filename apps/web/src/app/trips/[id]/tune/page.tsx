@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { type Preview, TuneChat } from "@/components/tune-chat";
 import { requireUser } from "@/lib/auth";
 
@@ -82,15 +83,11 @@ async function Tune({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {doc.trip.title}
-        </Link>
-        <h1 className="text-2xl font-semibold">Dostrajanie z AI</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Napisz, co zmienić. AI proponuje łatkę — konkretne operacje na punktach — a do planu trafia dopiero po „Zastosuj”. Punkty zmienione ręcznie zostają nietknięte.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/trips/${id}`, label: doc.trip.title }}
+        title="Dostrajanie z AI"
+        intro={<>Napisz, co zmienić. AI proponuje łatkę — konkretne operacje na punktach — a do planu trafia dopiero po „Zastosuj”. Punkty zmienione ręcznie zostają nietknięte.</>}
+      />
       <TuneChat tripId={id} turns={(messages.data ?? []).reverse()} preview={preview} />
       <p>
         <Link href={`/trips/${id}/plan`} className="btn-secondary btn-sm">

@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { PracticalDraftButton } from "@/components/practical-draft";
 import { PracticalReview } from "@/components/practical-review";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Informacje praktyczne — Expedition Planner" };
@@ -62,12 +63,7 @@ async function Practical({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href={`/trips/${id}`} className="back-link">
-          ← {doc.trip.title}
-        </Link>
-        <h1 className="text-2xl font-semibold">Informacje praktyczne</h1>
-      </div>
+      <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Informacje praktyczne" />
 
       {canEdit && (
         <PracticalDraftButton

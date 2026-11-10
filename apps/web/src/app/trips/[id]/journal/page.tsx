@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { dayLabel, journalMovedTime, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -9,6 +8,7 @@ import { EditToggle } from "@/components/edit-toggle";
 import { JournalNew } from "@/components/journal-editor";
 import { JournalEntry } from "@/components/journal-entry";
 import { Loading, Shell } from "@/components/shell";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
 import { journalCards } from "@/lib/journal";
@@ -63,16 +63,12 @@ async function Journal({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Link href={`/trips/${id}`} className="back-link">
-            ← {doc.trip.title}
-          </Link>
-          {canEdit && rows.some((row) => !row.mine) && <EditToggle editing={editing} />}
-        </div>
-        <h1 className="text-2xl font-semibold">Dziennik</h1>
-        <p className="text-sm text-zinc-500">W trasie wpisy i zdjęcia dodaje się na telefonie (zakładka Plan → Dziennik), także bez internetu. Tu możesz dodać je z komputera, a zdjęcia konkretnego punktu na jego karcie w planie.</p>
-      </div>
+      <PageHeader
+        back={{ href: `/trips/${id}`, label: doc.trip.title }}
+        title="Dziennik"
+        actions={canEdit && rows.some((row) => !row.mine) && <EditToggle editing={editing} />}
+        intro="W trasie wpisy i zdjęcia dodaje się na telefonie (zakładka Plan → Dziennik), także bez internetu. Tu możesz dodać je z komputera, a zdjęcia konkretnego punktu na jego karcie w planie."
+      />
       <JournalNew tripId={id} days={days} tz={doc.trip.primaryTz} />
       {groups.length === 0 && <p className="text-sm text-zinc-500">Dziennik jest jeszcze pusty.</p>}
       {groups.map((group) => (
