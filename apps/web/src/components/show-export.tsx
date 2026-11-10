@@ -5,6 +5,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  collageAt,
   collageGrid,
   isCard,
   mapDataFor,
@@ -173,7 +174,7 @@ export function ShowExport({
 
     setMapView({ scene: 0, data: scenes[0]!.map, focus: null });
     setStatus({ phase: "prepare", note: "Wczytuję zdjęcia i nagrania…" });
-    const urls = [...new Set(scenes.flatMap((scene) => [...scene.images, ...(scene.collage ?? [])].map((image) => image.url)))];
+    const urls = [...new Set(scenes.flatMap((scene) => [...scene.images, ...(scene.collage ?? []), ...(scene.guideCollage ?? [])].map((image) => image.url)))];
     const [images, voices, backing] = await Promise.all([
       Promise.all(urls.map(async (each) => [each, await loadImage(each)] as const)).then((pairs) => new Map(pairs)),
       Promise.all(scenes.flatMap((scene) => (scene.audio ? [scene.audio.url] : [])).map(async (each) => [each, await loadAudio(audio, each)] as const)).then((pairs) => new Map(pairs)),
@@ -312,6 +313,36 @@ export function ShowExport({
       context.restore();
     };
 
+    // Plansza wstępu filmu bez mapy, jak w odtwarzaczu: tytuł, termin i liczby na ciemnym tle.
+    const drawText = (scene: PlayerScene) => {
+      context.save();
+      context.fillStyle = "#1b2a3a";
+      context.fillRect(0, 0, W, H);
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      const rows: [string, string, string][] = [
+        [scene.heading, `bold 96px ${font}`, "#ffffff"],
+        ...(scene.subheading ? [[scene.subheading, `44px ${font}`, "rgba(255,255,255,0.85)"] as [string, string, string]] : []),
+        ...(scene.stats.length > 0 ? [[scene.stats.join(" · "), `36px ${font}`, "rgba(255,255,255,0.75)"] as [string, string, string]] : []),
+      ];
+      const laid = rows.map(([text, style, color]) => {
+        context.font = style;
+        return { lines: wrap(context, text, W - 240), style, color, size: Number(/(\d+)px/.exec(style)![1]) };
+      });
+      const height = laid.reduce((sum, row) => sum + row.lines.length * row.size * 1.25, 0) + (laid.length - 1) * 20;
+      let y = (H - height) / 2;
+      for (const row of laid) {
+        context.font = row.style;
+        context.fillStyle = row.color;
+        for (const line of row.lines) {
+          context.fillText(line, W / 2, y + (row.size * 1.25) / 2);
+          y += row.size * 1.25;
+        }
+        y += 20;
+      }
+      context.restore();
+    };
+
     const drawCard = (scene: PlayerScene, alpha: number) => {
       if (alpha <= 0) return;
       context.save();
@@ -383,15 +414,30 @@ export function ShowExport({
       context.fillText(credit, 20, 18);
       context.restore();
 
-      if (phase.kind === "collage" && scene.collage) {
-        drawCollage(scene.collage, elapsed - phase.start, phase.end - phase.start, Math.min((elapsed - phase.start) / PHOTO_FADE_MS, 1));
+      if (phase.kind === "text") drawText(scene);
+      const collage = phase.kind === "collage" ? collageAt(scene, phase.index) : undefined;
+      if (collage) {
+        // Kolaż wyłania się z planszy albo z poprzedniego kolażu (wstęp filmu bez mapy).
+        const since = elapsed - phase.start;
+        const fade = Math.min(since / PHOTO_FADE_MS, 1);
+        if (fade < 1 && scene.mapless) {
+          const before = phases[phases.indexOf(phase) - 1];
+          const previous = before?.kind === "collage" ? collageAt(scene, before.index) : undefined;
+          if (previous) drawCollage(previous, since + (before!.end - before!.start), before!.end - before!.start, 1);
+          else if (before?.kind === "text") drawText(scene);
+        }
+        drawCollage(collage, since, phase.end - phase.start, fade);
       }
       if (phase.kind === "photo") {
         const perPhoto = phase.end - phase.start;
         const since = elapsed - phase.start;
         const fade = Math.min(since / PHOTO_FADE_MS, 1);
         if (phase.index > 0 && fade < 1) drawPhoto(scene.images[phase.index - 1]!, since + perPhoto, perPhoto, 1);
-        else if (phase.index === 0 && fade < 1 && scene.collage) drawCollage(scene.collage, since + perPhoto, perPhoto, 1);
+        else if (phase.index === 0 && fade < 1) {
+          const before = phases[phases.indexOf(phase) - 1];
+          const previous = before?.kind === "collage" ? collageAt(scene, before.index) : undefined;
+          if (previous) drawCollage(previous, since + perPhoto, perPhoto, 1);
+        }
         drawPhoto(scene.images[phase.index]!, since, perPhoto, fade);
       }
       // Karta etapu, jak w odtwarzaczu (prawy górny róg, `phaseCard`).

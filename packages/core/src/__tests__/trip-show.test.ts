@@ -162,6 +162,22 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(single.collage).toBeUndefined();
   });
 
+  it('film: wstęp bez mapy i bez mapy dojazdu, z kolażem ze zdjęć opisów miejsc; zapowiedź zostaje z mapą', () => {
+    const doc = fixture('maroko');
+    const guideOf = (item: { ref: string; title: string }) => guide(item.title, `foto-${item.ref}`);
+    const film = showScenes(doc, { ...base, kind: 'film', guideOf }).scenes[0]!;
+    expect(film.mapless).toBe(true);
+    expect(film.approach).toBeUndefined();
+    expect(film.guideCollage?.length).toBeGreaterThanOrEqual(2);
+    expect(film.guideCollage!.length).toBeLessThanOrEqual(6);
+    expect(new Set(film.guideCollage!.map((image) => image.key)).size).toBe(film.guideCollage!.length);
+    expect(film.facts.some((fact) => fact.startsWith('Dojazd:'))).toBe(true);
+    const preview = showScenes(doc, { ...base, guideOf }).scenes[0]!;
+    expect(preview.mapless).toBeUndefined();
+    expect(preview.guideCollage).toBeUndefined();
+    expect(preview.approach?.label).toBe('Dojazd');
+  });
+
   it('zdjęcie na koniec: domyślnie ostatnie, wybrane po kluczu, pusty wybór = bez zdjęcia', () => {
     const doc = fixture('maroko');
     const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));

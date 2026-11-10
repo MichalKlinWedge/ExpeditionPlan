@@ -104,6 +104,8 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
       text: told?.text ?? "",
       images: scene.images,
       ...(scene.collage ? { collage: scene.collage } : {}),
+      ...(scene.guideCollage ? { guideCollage: scene.guideCollage } : {}),
+      ...(scene.mapless ? { mapless: true } : {}),
       map: map.data,
       stats: scene.stats,
       points: scene.points,

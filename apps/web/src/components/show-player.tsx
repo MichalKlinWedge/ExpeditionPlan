@@ -90,7 +90,14 @@ export type PlayerScene = {
   approach?: PlayerApproach;
   /** Kolaż zdjęć (wstęp): jeden etap ze wszystkimi naraz. */
   collage?: ShowImage[];
+  /** Kolaż ze zdjęć opisów miejsc (wstęp filmu), etap `collage` z `index` 1. */
+  guideCollage?: ShowImage[];
+  /** Scena bez mapy (wstęp filmu): plansza z tekstem (`text`), potem kolaże i zdjęcia. */
+  mapless?: boolean;
 };
+
+/** Kolaż etapu `collage`: `index` 0 — z dziennika (`collage`), 1 — z opisów miejsc (`guideCollage`). */
+export const collageAt = (scene: PlayerScene, index: number): ShowImage[] | undefined => (index === 1 ? scene.guideCollage : scene.collage);
 
 const sceneMs = (scene: PlayerScene) =>
   scene.kind === "title" ? TITLE_MS : scene.kind === "end" ? END_MS : (scene.audio?.durationMs ?? (scene.text.trim() === "" ? 5_000 : readingMs(scene.text)));
@@ -114,10 +121,28 @@ export function sceneTiming(scenes: PlayerScene[], index: number): { lead: numbe
  * Etap sceny: mapa dojazdu/powrotu, widok dnia (albo całej trasy), przybliżenie trasy pieszej (`index` w `walks`),
  * przybliżenie miejsca (`index` w `map.pins`) albo zdjęcie (`index` w `images`).
  */
-export type ScenePhase = { kind: "approach" | "map" | "walk" | "pin" | "collage" | "photo"; index: number; start: number; end: number };
+export type ScenePhase = { kind: "approach" | "map" | "walk" | "pin" | "collage" | "photo" | "text"; index: number; start: number; end: number };
 
-/** Etap ze zdjęciami (kolaż albo zdjęcie): zasłania mapę i nie ma karty. */
-export const isPhotoPhase = (phase: ScenePhase) => phase.kind === "photo" || phase.kind === "collage";
+/** Etap ze zdjęciami (kolaż albo zdjęcie) albo plansza z tekstem: zasłania mapę i nie ma karty. */
+export const isPhotoPhase = (phase: ScenePhase) => phase.kind === "photo" || phase.kind === "collage" || phase.kind === "text";
+
+/**
+ * Scena bez mapy (wstęp filmu): plansza z tytułem i liczbami (`MAP_MS`, a bez zdjęć cała scena), potem kolaż
+ * z opisów miejsc, kolaż z dziennika i zdjęcia, po równo w reszcie czasu.
+ */
+function maplessPhases(scene: PlayerScene, span: number): ScenePhase[] {
+  const slides: { kind: "collage" | "photo"; index: number }[] = [
+    ...(scene.guideCollage && scene.guideCollage.length > 0 ? [{ kind: "collage" as const, index: 1 }] : []),
+    ...(scene.collage && scene.collage.length > 0 ? [{ kind: "collage" as const, index: 0 }] : []),
+    ...scene.images.map((_, index) => ({ kind: "photo" as const, index })),
+  ];
+  const textMs = slides.length === 0 ? span : Math.min(MAP_MS, span / (slides.length + 1));
+  const phases: ScenePhase[] = [{ kind: "text", index: 0, start: 0, end: textMs }];
+  const per = slides.length === 0 ? 0 : (span - textMs) / slides.length;
+  slides.forEach((slide, at) => phases.push({ ...slide, start: textMs + at * per, end: textMs + (at + 1) * per }));
+  phases.at(-1)!.end = Math.max(phases.at(-1)!.end, span);
+  return phases;
+}
 
 /**
  * Etapy sceny w czasie `span`. Mapy po kolei, każda najwyżej `MAP_MS`: dojazd/powrót, widok, do `MAX_WALKS` tras pieszych.
@@ -129,6 +154,7 @@ export const isPhotoPhase = (phase: ScenePhase) => phase.kind === "photo" || pha
  */
 export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
   if (isCard(scene)) return [{ kind: "map", index: 0, start: 0, end: span }];
+  if (scene.mapless) return maplessPhases(scene, span);
   // Kolaż liczy się jak jedno zdjęcie i idzie przed zdjęciami.
   const slides: { kind: "collage" | "photo"; index: number }[] = [
     ...(scene.collage && scene.collage.length > 0 ? [{ kind: "collage" as const, index: 0 }] : []),
@@ -618,20 +644,32 @@ export function ShowPlayer({
           )}
         </div>
 
-        {scene.collage && scene.collage.length > 0 && (
-          // Kolaż: wszystkie zdjęcia naraz, siatka 2–3 kolumny, całość powoli się przybliża.
-          <div className={`pointer-events-none absolute inset-0 z-10 bg-black p-1 transition-opacity duration-1000 ${phase.kind === "collage" ? "opacity-100" : "opacity-0"}`}>
-            <div
-              className={`grid size-full gap-1 ${phase.kind === "collage" ? "show-kenburns" : ""} ${collageColumns(scene.collage.length)}`}
-              style={{ gridAutoRows: "1fr", animationDuration: `${perPhoto + 1_000}ms` }}
-            >
-              {scene.collage.map((image) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={image.url} src={image.url} alt={image.caption} className="size-full min-h-0 object-cover" />
-              ))}
-            </div>
+        {scene.mapless && (
+          // Wstęp filmu bez mapy: plansza z tytułem, terminem i liczbami wyjazdu.
+          <div className={`pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#1b2a3a] px-8 text-center transition-opacity duration-1000 ${phase.kind === "text" ? "opacity-100" : "opacity-0"}`}>
+            <div className="topo absolute inset-0 opacity-60" />
+            <p className="relative text-3xl font-bold sm:text-5xl">{scene.heading}</p>
+            {scene.subheading && <p className="relative text-base text-white/85 sm:text-xl">{scene.subheading}</p>}
+            {scene.stats.length > 0 && <p className="relative text-sm text-white/75 sm:text-lg">{scene.stats.join(" · ")}</p>}
           </div>
         )}
+
+        {[0, 1].map((which) => {
+          const collage = collageAt(scene, which);
+          if (!collage || collage.length === 0) return null;
+          const on = phase.kind === "collage" && phase.index === which;
+          return (
+            // Kolaż: wszystkie zdjęcia naraz, siatka 2–3 kolumny, całość powoli się przybliża.
+            <div key={which} className={`pointer-events-none absolute inset-0 z-10 bg-black p-1 transition-opacity duration-1000 ${on ? "opacity-100" : "opacity-0"}`}>
+              <div className={`grid size-full gap-1 ${on ? "show-kenburns" : ""} ${collageColumns(collage.length)}`} style={{ gridAutoRows: "1fr", animationDuration: `${perPhoto + 1_000}ms` }}>
+                {collage.map((image) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={image.url} src={image.url} alt={image.caption} className="size-full min-h-0 object-cover" />
+                ))}
+              </div>
+            </div>
+          );
+        })}
 
         {scene.images.map((image, at) => (
           <figure key={`${scene.key}-${image.url}`} className={`absolute inset-0 z-10 transition-opacity duration-1000 ${photo === at ? "opacity-100" : "opacity-0"}`}>

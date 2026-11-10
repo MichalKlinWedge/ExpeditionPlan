@@ -112,6 +112,10 @@ export type ShowScene = {
   approach?: ShowApproach;
   /** Kolaż we wstępie: po jednym zdjęciu z kolejnych dni (do 6), zapowiedź tego, co będzie w filmie. */
   collage?: ShowImage[];
+  /** Film: wstęp bez mapy — plansza z tekstem, kolaż ze zdjęć opisów miejsc (`guideCollage`) i kolaż z dziennika. */
+  mapless?: true;
+  /** Kolaż ze zdjęć opisów miejsc (wstęp filmu): pierwsze zdjęcia kolejnych miejsc, najpierw te, których dni nie pokazują. */
+  guideCollage?: ShowImage[];
   /** Fakty sceny dla AI piszącego tekst lektora. */
   facts: string[];
 };
@@ -380,6 +384,23 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   // Każde zdjęcie gra raz: wstęp ich nie powtarza, zakończenie ma tylko zdjęcia z wpisów bez dnia.
   const outroImages = journalImages(loose);
   const collage = collageOf(dayScenes);
+  // Film zaczyna się bez mapy: zamiast niej kolaż ze zdjęć opisów miejsc (najpierw tych, których dni nie pokazują).
+  const guideCollage: ShowImage[] = [];
+  if (after) {
+    const sights = dayItems.flat().filter((item) => isSight(item) && !approachRefs.has(item.ref) && !skipped.has(item.ref));
+    const candidates = sights.flatMap((item) => {
+      const image = input.guideOf(item)?.images[0];
+      return image === undefined ? [] : [{ item, image }];
+    });
+    const unseen = candidates.filter(({ image }) => !seenUrls.has(image.url));
+    for (const { item, image } of [...unseen, ...candidates.filter((each) => !unseen.includes(each))]) {
+      if (guideCollage.length >= COLLAGE_MAX) break;
+      if (guideCollage.some((each) => each.key === image.url)) continue;
+      usedImages.set(image.url, image);
+      guideCollage.push({ url: image.thumbUrl, caption: item.title, key: image.url, ...(image.author ? { credit: image.author } : {}) });
+    }
+    if (guideCollage.length < 2) guideCollage.length = 0;
+  }
   const outboundCard = approachCard(doc, outbound, 'Dojazd');
   const backCard = approachCard(doc, back, 'Powrót');
   const localRoute = stats.routeRefs.filter((ref) => !approachRefs.has(ref));
@@ -394,10 +415,13 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       routeRefs: localRoute,
       images: [],
       ...(collage.length > 0 ? { collage } : {}),
+      ...(after ? { mapless: true as const } : {}),
+      ...(guideCollage.length > 0 ? { guideCollage } : {}),
       stats: [plural(stats.days, ['dzień', 'dni', 'dni']), ...numbers],
       points: [],
       walks: [],
-      ...(outboundCard ? { approach: outboundCard } : {}),
+      // Wstęp filmu nie ma mapy, więc i mapy dojazdu (opis dojazdu zostaje w faktach dla lektora).
+      ...(outboundCard && !after ? { approach: outboundCard } : {}),
       facts: intro,
     },
     ...dayScenes,
