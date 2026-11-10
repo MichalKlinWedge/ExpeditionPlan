@@ -31,6 +31,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayMap, useDayStops } from '@/features/plan/day-map';
+import { DayTrackProfiles } from '@/features/plan/track-profile';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ContactList } from '@/features/plan/item-facts';
 import { PlacePin } from '@/features/plan/place-pin';
@@ -854,6 +855,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
           <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} />
         </View>
       )}
+      {/* Profil wysokości tras dnia ze śladem GPX (offline z planu); stuknięcie — szczegóły punktu. */}
+      {schedule && <DayTrackProfiles doc={doc} refs={schedule.items.map((item) => item.ref)} onOpen={onOpen} />}
 
       {schedule?.items.map((item) => {
         const source = byRef.get(item.ref);
