@@ -83,7 +83,7 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
     setSaved('');
     setPicked(new Set());
     setLimit(PAGE);
-    setFilter((current) => ({ ...current, cuisine: '' }));
+    setFilter((current) => ({ ...current, cuisines: [] }));
     try {
       let position: { lat: number; lng: number } | undefined;
       if (aroundMe) {
@@ -193,7 +193,7 @@ export function EateriesCard({ trip, tripId, item, onSave }: Props) {
           {cuisines.length > 1 && (
             <View style={styles.wrap}>
               {cuisines.map((each) => (
-                <Chip key={each.key} compact active={filter.cuisine === each.key} label={`${each.label} (${each.count})`} onPress={() => setFilter((current) => ({ ...current, cuisine: current.cuisine === each.key ? '' : each.key }))} />
+                <Chip key={each.key} compact active={filter.cuisines.includes(each.key)} label={`${each.label} (${each.count})`} onPress={() => setFilter((current) => ({ ...current, cuisines: current.cuisines.includes(each.key) ? current.cuisines.filter((key) => key !== each.key) : [...current.cuisines, each.key] }))} />
               ))}
             </View>
           )}

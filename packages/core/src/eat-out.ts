@@ -3,6 +3,7 @@ import { activeVariants, scheduleDay } from './engine/schedule.ts';
 import { minutesOfDay } from './engine/time.ts';
 import { distanceKm } from './offline-areas.ts';
 import { plainName } from './place-list.ts';
+import type { DayMap } from './plan-info.ts';
 import { dayItems } from './plan-edits.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { keyBetween } from './sort-key.ts';
@@ -276,30 +277,47 @@ const cuisineNames = (cuisine: string | undefined) => [
 /** Polecana: z przewodnika albo z przewagą „warto” w naszych ocenach. */
 export const isRecommendedEatery = (result: Pick<EateryResult, 'tip' | 'memory'>) => result.tip !== undefined || (result.memory !== undefined && result.memory.worth > result.memory.notWorth);
 
-export type EateryFilter = { hideClosed: boolean; noChains: boolean; cuisine: string; onlyRecommended: boolean };
+/** `cuisines` — wybrane kuchnie (dowolna z nich); pusta lista = każda. */
+export type EateryFilter = { hideClosed: boolean; noChains: boolean; cuisines: string[]; onlyRecommended: boolean };
 
-export const DEFAULT_EATERY_FILTER: EateryFilter = { hideClosed: true, noChains: true, cuisine: '', onlyRecommended: false };
+export const DEFAULT_EATERY_FILTER: EateryFilter = { hideClosed: true, noChains: true, cuisines: [], onlyRecommended: false };
 
-/** Kuchnie obecne w wynikach (polskie nazwy, `key` = to, co dostaje `EateryFilter.cuisine`), najczęstsze najpierw. */
+/** Kuchnie obecne w wynikach (polskie nazwy, `key` = to, co trafia do `EateryFilter.cuisines`), najczęstsze najpierw. */
 export function cuisineOptions(results: readonly Pick<EateryResult, 'cuisine'>[]): { key: string; label: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const result of results) for (const name of cuisineNames(result.cuisine)) counts.set(name, (counts.get(name) ?? 0) + 1);
   return [...counts].map(([name, count]) => ({ key: name, label: name, count })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'pl'));
 }
 
-/** Wyniki po filtrach: bez zamkniętych w porze posiłku, bez sieciówek, jedna kuchnia, tylko polecane. */
+/** Wyniki po filtrach: bez zamkniętych w porze posiłku, bez sieciówek, wybrane kuchnie, tylko polecane. */
 export function filterEateries<T extends EateryResult>(results: readonly T[], filter: EateryFilter): T[] {
   return results.filter(
     (result) =>
       (!filter.hideClosed || result.open.state !== 'closed') &&
       (!filter.noChains || result.chain !== true) &&
-      (filter.cuisine === '' || cuisineNames(result.cuisine).includes(filter.cuisine)) &&
+      (filter.cuisines.length === 0 || cuisineNames(result.cuisine).some((name) => filter.cuisines.includes(name))) &&
       (!filter.onlyRecommended || isRecommendedEatery(result)),
   );
 }
 
 const OPEN_FIRST = { open: 0, partly: 1, unknown: 2, closed: 3 } as const;
 const signal = (result: EateryResult) => (result.memory !== undefined && result.memory.notWorth > result.memory.worth ? 3 : isRecommendedEatery(result) ? 0 : result.chain ? 2 : 1);
+
+/**
+ * Mapa wyników wyszukiwania: pinezka z numerem na liście (1, 2, …) dla każdej knajpy. `keys` to stałe klucze
+ * wyników (nazwa + współrzędne) w kolejności listy — po nich lista i mapa wskazują sobie nawzajem tę samą knajpę.
+ */
+export function eateryResultsMap(results: readonly Pick<EateryResult, 'name' | 'lat' | 'lng' | 'summary'>[]): { keys: string[]; map: DayMap } {
+  const keys = results.map((result) => `${result.name}|${result.lat}|${result.lng}`);
+  const pins: DayMap['pins'] = results.map((result, index) => ({
+    placeRef: keys[index]!,
+    name: result.name,
+    lat: result.lat,
+    lng: result.lng,
+    stops: [{ ref: keys[index]!, n: index + 1, title: result.summary }],
+  }));
+  return { keys, map: { pins, lines: [], numbers: Object.fromEntries(keys.map((key, index) => [key, index + 1])) } };
+}
 
 /**
  * Kolejność wyników: zamknięte w porze posiłku na koniec; przed nimi polecane, zwykłe, sieciówki i nasze

@@ -8,6 +8,7 @@ import {
   cuisineOptions,
   DEFAULT_EATERY_FILTER,
   distanceToRouteM,
+  eateryResultsMap,
   type EateryResult,
   eaterySummary,
   filterEateries,
@@ -59,7 +60,8 @@ describe('wybór knajpy: trasa, filtry, polecenia', () => {
       result('Nie warto', { memory: { worth: 0, notWorth: 1, notes: [] } }),
     ];
     expect(filterEateries(all, DEFAULT_EATERY_FILTER).map((each) => each.name)).toEqual(['Pizzeria', 'Z przewodnika', 'Nasza', 'Nie warto']);
-    expect(filterEateries(all, { ...DEFAULT_EATERY_FILTER, cuisine: 'włoska' }).map((each) => each.name)).toEqual(['Pizzeria', 'Z przewodnika']);
+    expect(filterEateries(all, { ...DEFAULT_EATERY_FILTER, cuisines: ['włoska'] }).map((each) => each.name)).toEqual(['Pizzeria', 'Z przewodnika']);
+    expect(filterEateries(all, { ...DEFAULT_EATERY_FILTER, cuisines: ['pizza', 'burgery'], noChains: false }).map((each) => each.name)).toEqual(['Sieć', 'Pizzeria']);
     expect(filterEateries(all, { ...DEFAULT_EATERY_FILTER, onlyRecommended: true }).map((each) => each.name)).toEqual(['Z przewodnika', 'Nasza']);
     expect(cuisineOptions([result('A', { cuisine: 'pasta;noodle' }), result('B', { cuisine: 'noodles' })])).toEqual([{ key: 'makarony', label: 'makarony', count: 2 }]);
     expect(cuisineOptions(all)).toEqual([
@@ -81,6 +83,16 @@ describe('wybór knajpy: trasa, filtry, polecenia', () => {
       result('Zamknięta polecana', { open: { state: 'closed' }, tip: { source: 'wikivoyage', article: 'A', url: 'https://x.org' } }),
     ]);
     expect(ranked.map((each) => each.name)).toEqual(['Polecana', 'Polecana bez godzin', 'Blisko trasy', 'Daleko zwykła', 'Sieć', 'Nie warto', 'Zamknięta polecana']);
+  });
+
+  it('mapa wyników: numer = pozycja na liście, stały klucz wyniku do wskazania w obie strony', () => {
+    const { keys, map } = eateryResultsMap([result('A', { summary: 'pizza' }), result('B', { lat: 31.7 })]);
+    expect(keys).toEqual(['A|31.6262|-7.9891', 'B|31.7|-7.9891']);
+    expect(map.pins.map((pin) => [pin.placeRef, pin.stops[0]!.n, pin.stops[0]!.title])).toEqual([
+      ['A|31.6262|-7.9891', 1, 'pizza'],
+      ['B|31.7|-7.9891', 2, ''],
+    ]);
+    expect(map.numbers).toEqual({ 'A|31.6262|-7.9891': 1, 'B|31.7|-7.9891': 2 });
   });
 
   it('opinie w Google: sam link wyszukiwania po nazwie i adresie (albo współrzędnych)', () => {

@@ -10,6 +10,7 @@ import {
   type EateryFilter,
   type EateryKind,
   type EateryResult,
+  eateryResultsMap,
   eatOutGroup,
   filterEateries,
   formatDistance,
@@ -22,11 +23,12 @@ import {
 import { saveElements, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { findRestaurants } from "@/app/eat-out-actions";
 import { IconAction } from "@/components/icon-action";
 import type { MealSelection } from "@/components/meal-row";
+import { PlanMap } from "@/components/plan-map";
 import { PlaceLink } from "@/components/place-pin";
 import { createClient } from "@/lib/supabase/client";
 
@@ -69,6 +71,9 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
   const [picked, setPicked] = useState<Set<EateryResult>>(new Set());
   const [filter, setFilter] = useState<EateryFilter>(DEFAULT_EATERY_FILTER);
   const [limit, setLimit] = useState(PAGE);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [searchNo, setSearchNo] = useState(0);
+  const mapBox = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -77,7 +82,9 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
       setError(null);
       setPicked(new Set());
       setLimit(PAGE);
-      setFilter((current) => ({ ...current, cuisine: "" }));
+      setFilter((current) => ({ ...current, cuisines: [] }));
+      setSelected(null);
+      setSearchNo((n) => n + 1);
       setAnswer(await findRestaurants(tripId, itemRef, { kinds, radiusM, ...(diet ? { diet: diet as "vegetarian" } : {}), ...(placeRef ? { placeRef } : near.trim() ? { near } : {}) }));
     });
 
@@ -110,6 +117,21 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
   const results = answer !== null && "results" in answer ? answer.results : [];
   const shown = filterEateries(results, filter);
   const cuisines = cuisineOptions(results);
+  // Numer = pozycja na liście po filtrach; ten sam na mapie pod listą.
+  const resultMap = eateryResultsMap(shown);
+  const rowId = (key: string) => `knajpa-${itemRef}-${key}`;
+  const fromList = (key: string) => {
+    setSelected(key);
+    mapBox.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+  const fromMap = (key: string) => {
+    setSelected(key);
+    const index = resultMap.keys.indexOf(key);
+    if (index >= limit) setLimit(index + 1);
+    // Wiersz spoza strony pojawia się dopiero po odświeżeniu listy.
+    requestAnimationFrame(() => document.getElementById(rowId(key))?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  };
+  const toggleCuisine = (key: string) => setFilter((current) => ({ ...current, cuisines: current.cuisines.includes(key) ? current.cuisines.filter((each) => each !== key) : [...current.cuisines, key] }));
   const flag = (key: "hideClosed" | "noChains" | "onlyRecommended", label: string) => (
     <label className="flex items-center gap-1">
       <input type="checkbox" checked={filter[key]} onChange={(event) => setFilter((current) => ({ ...current, [key]: event.target.checked }))} />
@@ -205,75 +227,88 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
               {flag("noChains", "bez sieciówek")}
               {flag("onlyRecommended", "tylko polecane (Wikivoyage, nasze 👍)")}
               {cuisines.length > 0 && (
-                <label className="flex items-center gap-1 text-zinc-500">
-                  Kuchnia
-                  <select value={filter.cuisine} onChange={(event) => setFilter((current) => ({ ...current, cuisine: event.target.value }))} className={input}>
-                    <option value="">każda</option>
+                <details className="relative">
+                  <summary className="field cursor-pointer list-none px-2 py-1 text-xs">
+                    Kuchnia: {filter.cuisines.length === 0 ? "każda" : filter.cuisines.join(", ")} ▾
+                  </summary>
+                  <div className="absolute z-20 mt-1 flex max-h-72 w-64 flex-col gap-1 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                    {filter.cuisines.length > 0 && (
+                      <button type="button" onClick={() => setFilter((current) => ({ ...current, cuisines: [] }))} className="btn-mini self-start">
+                        każda (wyczyść)
+                      </button>
+                    )}
                     {cuisines.map((each) => (
-                      <option key={each.key} value={each.key}>
-                        {each.label} ({each.count})
-                      </option>
+                      <label key={each.key} className="flex items-center gap-1.5">
+                        <input type="checkbox" checked={filter.cuisines.includes(each.key)} onChange={() => toggleCuisine(each.key)} />
+                        {each.label} <span className="text-zinc-500">({each.count})</span>
+                      </label>
                     ))}
-                  </select>
-                </label>
+                  </div>
+                </details>
               )}
             </div>
           )}
           <ul className="flex flex-col gap-1.5">
-            {shown.slice(0, limit).map((result) => (
-              <li key={`${result.name}-${result.lat}-${result.lng}`} className="flex items-start gap-2">
-                {isPinnedEatery(doc, itemRef, result) ? (
-                  <span className="mt-0.5 text-xs font-semibold text-sea">przypięta</span>
-                ) : (
-                  <input type="checkbox" checked={picked.has(result)} onChange={() => toggle(result)} className="mt-1" aria-label={`Wybierz ${result.name}`} />
-                )}
-                <div className="flex min-w-0 flex-col">
-                  <span>
-                    <strong>{result.name}</strong> <span className="text-zinc-500">· {result.summary}</span>
-                    {result.chain && <span className="text-zinc-500"> · sieć</span>}
-                    {result.memory && (
-                      <span title={result.memory.notes.join("\n") || "nasze oceny z innych wyjazdów"} className="ml-1 text-xs font-semibold text-sea">
-                        {[result.memory.worth > 0 ? `👍 ${result.memory.worth}` : "", result.memory.notWorth > 0 ? `👎 ${result.memory.notWorth}` : "", result.memory.notes.length > 0 ? "📝" : ""].filter(Boolean).join(" ")}
+            {shown.slice(0, limit).map((result, index) => {
+              const key = resultMap.keys[index]!;
+              return (
+                <li key={key} id={rowId(key)} className={`flex scroll-mt-4 items-start gap-2 rounded ${selected === key ? "bg-sea/10" : ""}`}>
+                  <button type="button" onClick={() => fromList(key)} aria-pressed={selected === key} title="Pokaż na mapie pod listą" className={`mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-semibold text-white ${selected === key ? "bg-signal" : "bg-sea"}`}>
+                    {index + 1}
+                  </button>
+                  {isPinnedEatery(doc, itemRef, result) ? (
+                    <span className="mt-0.5 text-xs font-semibold text-sea">przypięta</span>
+                  ) : (
+                    <input type="checkbox" checked={picked.has(result)} onChange={() => toggle(result)} className="mt-1" aria-label={`Wybierz ${result.name}`} />
+                  )}
+                  <div className="flex min-w-0 flex-col">
+                    <span>
+                      <strong>{result.name}</strong> <span className="text-zinc-500">· {result.summary}</span>
+                      {result.chain && <span className="text-zinc-500"> · sieć</span>}
+                      {result.memory && (
+                        <span title={result.memory.notes.join("\n") || "nasze oceny z innych wyjazdów"} className="ml-1 text-xs font-semibold text-sea">
+                          {[result.memory.worth > 0 ? `👍 ${result.memory.worth}` : "", result.memory.notWorth > 0 ? `👎 ${result.memory.notWorth}` : "", result.memory.notes.length > 0 ? "📝" : ""].filter(Boolean).join(" ")}
+                        </span>
+                      )}
+                    </span>
+                    {result.tip && (result.tip.text || result.tip.price) && (
+                      <span className="text-xs text-emerald-800 dark:text-emerald-300">
+                        {result.tip.text && <>„{result.tip.text}”</>}
+                        {result.tip.price && <> · cena: {result.tip.price}</>}
+                        {result.tip.year && <span className="text-zinc-500"> · wpis z {result.tip.year}</span>}
                       </span>
                     )}
-                  </span>
-                  {result.tip && (result.tip.text || result.tip.price) && (
-                    <span className="text-xs text-emerald-800 dark:text-emerald-300">
-                      {result.tip.text && <>„{result.tip.text}”</>}
-                      {result.tip.price && <> · cena: {result.tip.price}</>}
-                      {result.tip.year && <span className="text-zinc-500"> · wpis z {result.tip.year}</span>}
+                    <span className="text-xs">
+                      <span className={OPEN[result.open.state].className}>{OPEN[result.open.state].label}</span>
+                      {result.address && <span className="text-zinc-500"> · {result.address}</span>}{" "}
+                      <a href={googleMapsSearchUrl(result)} target="_blank" rel="noreferrer" title="Opinie i średnia ocena w Mapach Google (otwiera Google, nic nie pobieramy)" className="underline">
+                        opinie w Google
+                      </a>
+                      {" · "}
+                      <a href={`https://www.openstreetmap.org/?mlat=${result.lat}&mlon=${result.lng}#map=18/${result.lat}/${result.lng}`} target="_blank" rel="noreferrer" className="underline">
+                        mapa
+                      </a>
+                      {result.website && (
+                        <>
+                          {" · "}
+                          <a href={/^https?:\/\//i.test(result.website) ? result.website : `https://${result.website}`} target="_blank" rel="noreferrer" className="underline">
+                            strona
+                          </a>
+                        </>
+                      )}
+                      {result.tip && (
+                        <>
+                          {" · "}
+                          <a href={result.tip.url} target="_blank" rel="noreferrer" className="underline">
+                            Wikivoyage
+                          </a>
+                        </>
+                      )}
                     </span>
-                  )}
-                  <span className="text-xs">
-                    <span className={OPEN[result.open.state].className}>{OPEN[result.open.state].label}</span>
-                    {result.address && <span className="text-zinc-500"> · {result.address}</span>}{" "}
-                    <a href={googleMapsSearchUrl(result)} target="_blank" rel="noreferrer" title="Opinie i średnia ocena w Mapach Google (otwiera Google, nic nie pobieramy)" className="underline">
-                      opinie w Google
-                    </a>
-                    {" · "}
-                    <a href={`https://www.openstreetmap.org/?mlat=${result.lat}&mlon=${result.lng}#map=18/${result.lat}/${result.lng}`} target="_blank" rel="noreferrer" className="underline">
-                      mapa
-                    </a>
-                    {result.website && (
-                      <>
-                        {" · "}
-                        <a href={/^https?:\/\//i.test(result.website) ? result.website : `https://${result.website}`} target="_blank" rel="noreferrer" className="underline">
-                          strona
-                        </a>
-                      </>
-                    )}
-                    {result.tip && (
-                      <>
-                        {" · "}
-                        <a href={result.tip.url} target="_blank" rel="noreferrer" className="underline">
-                          Wikivoyage
-                        </a>
-                      </>
-                    )}
-                  </span>
-                </div>
-              </li>
-            ))}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
           {shown.length > limit && (
             <button type="button" onClick={() => setLimit((current) => current + PAGE)} className="btn-mini self-start">
@@ -281,6 +316,12 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
             </button>
           )}
           {results.length > 0 && shown.length === 0 && <p className="text-xs text-zinc-500">Filtry odsiały wszystko — odznacz któryś.</p>}
+          {shown.length > 0 && (
+            <div ref={mapBox} className="flex scroll-mt-4 flex-col gap-1">
+              <PlanMap map={resultMap.map} fitKey={`knajpy-${searchNo}-${shown.length}`} square selected={selected} onSelect={fromMap} emptyText="Żaden wynik nie ma współrzędnych." />
+              <p className="text-xs text-zinc-500">Numery na mapie to numery na liście: kliknięcie pinezki przewija do knajpy, a numeru na liście — do mapy.</p>
+            </div>
+          )}
           {results.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <button disabled={pending || picked.size === 0} onClick={save} className="btn-primary btn-sm">
