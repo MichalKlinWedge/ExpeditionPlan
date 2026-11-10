@@ -19,6 +19,7 @@ import {
   googleMapsSearchUrl,
   isPinnedEatery,
   mealEateries,
+  pinnedEateryFacts,
   presentCuisines,
   removeEatOutChoice,
   type TripDocument,
@@ -26,7 +27,7 @@ import {
 import { saveElements, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 
 import { findRestaurants } from "@/app/eat-out-actions";
 import { IconAction } from "@/components/icon-action";
@@ -463,7 +464,8 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
         {eateries.map((eatery) => {
           const n = selection.numbers[eatery.placeRef];
           return (
-            <li key={eatery.placeRef} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <li key={eatery.placeRef} className="flex flex-col gap-0.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               {selection.href ? (
                 <Link href={selection.href(eatery.placeRef)} title="Posiłek i knajpa na stronie Posiłki" className="btn-mini">
                   {group !== undefined && eatery.active && "✓ "}
@@ -484,18 +486,42 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                 </button>
               )}
               <PlaceLink tripId={tripId} place={{ ref: eatery.placeRef, name: eatery.name }} />
-              {eatery.summary && <span className="text-zinc-500">{eatery.summary}</span>}
               {canEdit && eatery.variantRef !== undefined && !eatery.active && (
                 <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="btn-mini">
                   wybierz
                 </button>
               )}
               {canEdit && <IconAction kind="remove" tip="odepnij knajpę od posiłku (miejsce zostaje w planie)" disabled={pending} onClick={() => unpin(eatery.placeRef, eatery.name)} />}
+              </div>
+              <PinnedFacts doc={doc} itemRef={itemRef} placeRef={eatery.placeRef} summary={eatery.summary} />
             </li>
           );
         })}
       </ul>
       {error && <span className="text-red-600"> {error}</span>}
+    </div>
+  );
+}
+
+/** Pod przypiętą knajpą to samo co w wynikach wyszukiwania: opis, otwarcie w porze posiłku, adres, linki. */
+function PinnedFacts({ doc, itemRef, placeRef, summary }: { doc: TripDocument; itemRef: string; placeRef: string; summary: string | undefined }) {
+  const facts = pinnedEateryFacts(doc, itemRef, placeRef, summary);
+  if (facts === null) return null;
+  return (
+    <div className="flex flex-col pl-1">
+      {facts.summary && <span className="text-zinc-500">{facts.summary}</span>}
+      <span>
+        <span className={OPEN[facts.open.state].className}>{OPEN[facts.open.state].label}</span>
+        {facts.address && <span className="text-zinc-500"> · {facts.address}</span>}
+        {facts.links.map((link) => (
+          <Fragment key={link.url}>
+            {" · "}
+            <a href={link.url} target="_blank" rel="noreferrer" title={link.label === "opinie w Google" ? "Opinie i średnia ocena w Mapach Google (otwiera Google, nic nie pobieramy)" : undefined} className="underline">
+              {link.label}
+            </a>
+          </Fragment>
+        ))}
+      </span>
     </div>
   );
 }

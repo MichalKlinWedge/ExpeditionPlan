@@ -369,9 +369,19 @@ export function rankEateries<T extends EateryResult>(results: readonly T[]): T[]
   return [...results].sort((a, b) => closed(a) - closed(b) || signal(a) - signal(b) || OPEN_FIRST[a.open.state] - OPEN_FIRST[b.open.state] || (a.routeM ?? a.distanceM) - (b.routeM ?? b.distanceM));
 }
 
+/** Fakty z wyszukiwania zapisane w notatce miejsca: kuchnia, dieta, sieć, polecenie (sama etykieta, tekst przewodnika nie), telefon. */
 const eateryNotes = (eatery: Eatery) => {
   const cuisine = cuisineLabel(eatery.cuisine);
-  return [cuisine ? `Kuchnia: ${cuisine}` : '', eatery.phone ? `Tel. ${eatery.phone}` : ''].filter(Boolean).join('. ');
+  const tip = eatery.tip ? tipLabel(eatery.tip) : '';
+  return [
+    cuisine ? `Kuchnia: ${cuisine}` : '',
+    eatery.vegan ? 'Wegańskie' : eatery.vegetarian ? 'Wege' : '',
+    eatery.chain ? 'Sieć' : '',
+    tip ? tip.charAt(0).toUpperCase() + tip.slice(1) : '',
+    eatery.phone ? `Tel. ${eatery.phone}` : '',
+  ]
+    .filter(Boolean)
+    .join('. ');
 };
 
 const EATERY_CATEGORIES = new Set<string>(Object.keys(EATERY_KINDS));
@@ -423,6 +433,34 @@ export function eateryPlace(eatery: Eatery, ref: string): Place {
     links: [...(eatery.osm ? [{ label: 'OpenStreetMap', url: osmUrl(eatery.osm) }] : []), ...(eatery.tip ? [{ label: `Wikivoyage: ${eatery.tip.article}`, url: eatery.tip.url }] : [])],
     ...(notes ? { notes } : {}),
   };
+}
+
+/** Punkt na mapie OpenStreetMap (link „mapa”, jak w wynikach wyszukiwania). */
+export const osmPointUrl = (point: { lat: number; lng: number }) => `https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}#map=18/${point.lat}/${point.lng}`;
+
+/** Przypięta knajpa tak jak w wynikach wyszukiwania: opis, otwarcie w porze posiłku, adres i linki. */
+export type PinnedEateryFacts = { summary?: string; open: OpenAtMeal; address?: string; links: { label: string; url: string }[] };
+
+/**
+ * Dane przypiętej knajpy z jej miejsca w planie. `summary` — opis zapisany w wariancie przy przypięciu
+ * (z odległością); bez niego rodzaj lokalu i notatka miejsca. Linki: opinie w Google i mapa liczone
+ * z nazwy i współrzędnych (nic nie pobieramy), strona lokalu i linki miejsca (Wikivoyage, OSM).
+ */
+export function pinnedEateryFacts(doc: Doc, itemRef: string, placeRef: string, summary?: string): PinnedEateryFacts | null {
+  const place = doc.places.find((each) => each.ref === placeRef);
+  if (place === undefined) return null;
+  const text = summary ?? ([eateryKindLabel(place), place.notes].filter(Boolean).join(' · ') || undefined);
+  const links = [
+    ...(located(place)
+      ? [
+          { label: 'opinie w Google', url: googleMapsSearchUrl({ name: place.name, lat: place.lat, lng: place.lng, ...(place.address ? { address: place.address } : {}) }) },
+          { label: 'mapa', url: osmPointUrl(place) },
+        ]
+      : []),
+    ...(place.website ? [{ label: 'strona', url: place.website }] : []),
+    ...place.links.map((link) => ({ label: link.label.startsWith('Wikivoyage') ? 'Wikivoyage' : link.label, url: link.url })),
+  ];
+  return { ...(text ? { summary: text } : {}), open: openAtMeal(place.openingHours, mealSlot(doc, itemRef)), ...(place.address ? { address: place.address } : {}), links };
 }
 
 /** Grupa „gdzie jemy” posiłku (jeśli już jest): wariant, w którym posiłek występuje. */

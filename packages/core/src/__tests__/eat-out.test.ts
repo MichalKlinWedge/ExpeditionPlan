@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { addEatOutChoices, cuisineLabel, type Eatery, eaterySummary, eatOutOptions, mealSearchCenter, mealSlot, openAtMeal } from '../eat-out.ts';
+import { addEatOutChoices, cuisineLabel, type Eatery, eaterySummary, eatOutOptions, mealSearchCenter, mealSlot, openAtMeal, pinnedEateryFacts } from '../eat-out.ts';
 import { itemsForDay } from '../engine/schedule.ts';
 import { mealList } from '../meals.ts';
 import { dayItems } from '../plan-edits.ts';
@@ -80,5 +80,20 @@ describe('knajpy w pobliżu posiłku', () => {
     expect(eatOutOptions(more.doc, 'd2-lunch').map((option) => option.label)).toEqual(['A', 'B', 'C']);
     const keys = dayItems(more.doc, 'd2').map((item) => item.sortKey);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('przypięta knajpa ma te same dane i linki co w wynikach wyszukiwania', () => {
+    const maroko = load('maroko');
+    const tip = { source: 'wikivoyage' as const, article: 'Marrakesh', url: 'https://en.wikivoyage.org/wiki/Marrakesh', tier: 'budget' as const, text: 'tekst przewodnika' };
+    const found = eatery('Le Jardin', { cuisine: 'moroccan', vegetarian: true, phone: '+212 1', address: 'Souk 32', openingHours: 'Mo-Su 12:00-23:00', website: 'lejardin.ma', osm: { type: 'node', id: 7 }, tip });
+    const edit = addEatOutChoices(maroko, 'd2-lunch', [{ eatery: found }], newRef)!;
+    const placeRef = edit.doc.items.find((item) => item.ref === 'd2-lunch')!.placeRef!;
+    const place = edit.doc.places.find((each) => each.ref === placeRef)!;
+    // Etykieta polecenia tak, tekst przewodnika (CC BY-SA) nie.
+    expect(place.notes).toBe('Kuchnia: marokańska. Wege. Polecane w Wikivoyage (tanio). Tel. +212 1');
+    const facts = pinnedEateryFacts(edit.doc, 'd2-lunch', placeRef)!;
+    expect(facts).toMatchObject({ summary: 'restauracja · Kuchnia: marokańska. Wege. Polecane w Wikivoyage (tanio). Tel. +212 1', address: 'Souk 32', open: { state: 'open' } });
+    expect(facts.links.map((link) => link.label)).toEqual(['opinie w Google', 'mapa', 'strona', 'OpenStreetMap', 'Wikivoyage']);
+    expect(pinnedEateryFacts(edit.doc, 'd2-lunch', placeRef, 'marokańska · 40 m')!.summary).toBe('marokańska · 40 m');
   });
 });
