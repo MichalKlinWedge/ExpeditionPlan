@@ -169,7 +169,7 @@ export function editVenuePrice(doc: Doc, placeRef: string, oldName: string | nul
 export function parseRatingInput(text: string, source = 'Google'): VenueRating | null | 'invalid' {
   const trimmed = text.trim();
   if (trimmed === '') return null;
-  const match = /^(\d+(?:[.,]\d+)?)(.*)$/su.exec(trimmed);
+  const match = /^(\d+(?:[.,]\d+)?)([\s\S]*)$/u.exec(trimmed);
   if (match === null) return 'invalid';
   const value = Number(match[1]!.replace(',', '.'));
   if (!(value > 0 && value <= 5)) return 'invalid';
