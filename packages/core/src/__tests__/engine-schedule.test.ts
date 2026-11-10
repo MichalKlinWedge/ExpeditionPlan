@@ -258,3 +258,30 @@ describe('proposeCuts', () => {
     expect(proposeCuts(fixture('chatka'), 'd1')).toEqual([]);
   });
 });
+
+describe('scheduleDay — „dokładnie do”', () => {
+  it('przejazd na lotnisko na 11:00 rusza wstecz o czas jazdy z postojami, a punkt przed nim liczy się od niego', () => {
+    const schedule = scheduleDay(
+      doc([
+        { ref: 'pakowanie', dayRef: 'd1', sortKey: '0010', kind: 'free', title: 'Pakowanie', durationMin: 30 },
+        { ref: 'lotnisko', dayRef: 'd1', sortKey: '0020', kind: 'transport', title: 'Przejazd na lotnisko', time: { precision: 'by', end: '11:00' }, leg: { mode: 'car', durationMin: 60 }, stopsMin: 15 },
+      ]),
+      'd1',
+    );
+    expect(times(schedule)).toEqual({ pakowanie: '09:15–09:45', lotnisko: '09:45–11:00' });
+    expect(schedule.warnings).toEqual([]);
+  });
+
+  it('gdy wcześniejsze punkty się przeciągną, ostrzega, że dojazd będzie po czasie', () => {
+    const schedule = scheduleDay(
+      doc([
+        { ref: 'zwiedzanie', dayRef: 'd1', sortKey: '0010', kind: 'visit', title: 'Zwiedzanie', time: { precision: 'exact', start: '09:00' }, durationMin: 120 },
+        { ref: 'lotnisko', dayRef: 'd1', sortKey: '0020', kind: 'transport', title: 'Przejazd na lotnisko', time: { precision: 'by', end: '11:00' }, leg: { mode: 'car', durationMin: 60 } },
+      ]),
+      'd1',
+    );
+    expect(times(schedule).lotnisko).toBe('11:00–12:00');
+    expect(schedule.warnings).toEqual([expect.objectContaining({ kind: 'late', itemRef: 'lotnisko', minutes: 60 })]);
+    expect(schedule.warnings[0]!.message).toContain('do 11:00 → 12:00');
+  });
+});

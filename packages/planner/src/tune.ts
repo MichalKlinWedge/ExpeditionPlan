@@ -37,6 +37,7 @@ const schemaOf = (schema: z.ZodType) => JSON.stringify(z.toJSONSchema(schema, { 
 const timeLabel = (item: Item) => {
   const time = item.time;
   if (time === undefined) return undefined;
+  if (time.precision === 'by') return `do ${time.end}`;
   if (time.precision === 'exact' || time.precision === 'approx' || time.precision === 'range') return `${time.precision === 'exact' ? '' : 'ok. '}${time.start}`;
   if (time.precision === 'part_of_day') return time.partOfDay;
   if (time.precision === 'relative') return `+${time.offsetMin} min`;

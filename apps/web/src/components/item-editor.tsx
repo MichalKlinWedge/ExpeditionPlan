@@ -12,6 +12,7 @@ import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type Pl
 const PRECISION: Record<string, string> = {
   none: "bez godziny (po poprzednim)",
   exact: "dokładnie",
+  by: "dokładnie do (np. przyjazd)",
   approx: "około",
   range: "przedział",
   part_of_day: "pora dnia",
@@ -80,7 +81,14 @@ function toPatch(draft: Draft, item: Item): Partial<Item> {
   switch (draft.precision) {
     case "exact":
     case "approx":
-      time = { precision: draft.precision, start: draft.start, ...(draft.end ? { end: draft.end } : {}), ...(tz ? { tz } : {}) };
+      // „Dokładnie” z samym „Do” = „dokładnie do”: początek policzy silnik od czasu trwania.
+      time =
+        draft.precision === "exact" && draft.start === "" && draft.end !== ""
+          ? { precision: "by", end: draft.end, ...(tz ? { tz } : {}) }
+          : { precision: draft.precision, start: draft.start, ...(draft.end ? { end: draft.end } : {}), ...(tz ? { tz } : {}) };
+      break;
+    case "by":
+      time = { precision: "by", end: draft.end, ...(tz ? { tz } : {}) };
       break;
     case "range":
       time = { precision: "range", start: draft.start, end: draft.end, ...(tz ? { tz } : {}) };
@@ -118,6 +126,8 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
   const [draft, setDraft] = useState<Draft>(() => toDraft(item));
   const set = (patch: Partial<Draft>) => setDraft((current) => ({ ...current, ...patch }));
   const needsStart = ["exact", "approx", "range"].includes(draft.precision);
+  // Przy „dokładnie” wystarczy samo „Do” (wtedy to „dokładnie do”).
+  const startRequired = needsStart && !(draft.precision === "exact" && draft.end !== "");
 
   return (
     <form
@@ -164,16 +174,17 @@ export function ItemEditor({ item, onSave, onCancel }: { item: Item; onSave: (pa
       </label>
       {needsStart && (
         <label className={label}>
-          Od
-          <input type="time" required className={input} value={draft.start} onChange={(event) => set({ start: event.target.value })} />
+          Od{startRequired ? "" : " (opcjonalnie)"}
+          <input type="time" required={startRequired} className={input} value={draft.start} onChange={(event) => set({ start: event.target.value })} />
         </label>
       )}
-      {needsStart && (
+      {(needsStart || draft.precision === "by") && (
         <label className={label}>
-          Do{draft.precision === "range" ? "" : " (opcjonalnie)"}
-          <input type="time" required={draft.precision === "range"} className={input} value={draft.end} onChange={(event) => set({ end: event.target.value })} />
+          {draft.precision === "by" ? "Do (koniec, np. przyjazd)" : `Do${draft.precision === "range" ? "" : " (opcjonalnie)"}`}
+          <input type="time" required={draft.precision === "range" || draft.precision === "by"} className={input} value={draft.end} onChange={(event) => set({ end: event.target.value })} />
         </label>
       )}
+      {draft.precision === "by" && <p className="col-span-2 self-end text-xs text-zinc-500">Początek liczy się od czasu trwania (z trasy albo „Trwa”), tak żeby skończyć o tej godzinie.</p>}
       {draft.precision === "part_of_day" && (
         <label className={label}>
           Pora

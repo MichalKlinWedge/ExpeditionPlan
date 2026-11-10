@@ -180,6 +180,8 @@ export const ItemTime = z.discriminatedUnion('precision', [
   z.object({ precision: z.literal('exact'), start: LocalTime, end: LocalTime.optional(), ...timeTz }),
   z.object({ precision: z.literal('approx'), start: LocalTime, end: LocalTime.optional(), ...timeTz }),
   z.object({ precision: z.literal('range'), start: LocalTime, end: LocalTime, ...timeTz }),
+  /** „Dokładnie do”: punkt ma się skończyć o tej godzinie (dojazd na lotnisko na 11:00); początek liczy silnik wstecz od czasu trwania. */
+  z.object({ precision: z.literal('by'), end: LocalTime, ...timeTz }),
   z.object({ precision: z.literal('part_of_day'), partOfDay: PartOfDay, ...timeTz }),
   z.object({ precision: z.literal('day') }),
   /**

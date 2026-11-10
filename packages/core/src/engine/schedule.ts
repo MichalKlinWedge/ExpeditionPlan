@@ -247,6 +247,9 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   };
   const items = dayList.filter((item) => !isStop(item));
   const stopsOf = (item: Item) => dayList.filter((each) => isStop(each) && each.parentRef === item.ref);
+  /** „Dokładnie do”: początek wstecz od godziny końca o cały czas punktu, z postojami w trasie. */
+  const byStart = (item: Item, time: { end: string; tz?: string | undefined }) =>
+    zonedToInstant(day.date, time.end, time.tz ?? tz) - (durationOf(item, scenario) + stopsOf(item).reduce((sum, stop) => sum + durationOf(stop, scenario), 0)) * MINUTE;
   const warnings: ScheduleWarning[] = [];
   const at = (time: string, zone = tz) => zonedToInstant(day.date, time, zone);
   const local = (instant: number) => instantToZoned(instant, tz);
@@ -280,10 +283,16 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
   // Początek dnia: z planu, z pierwszej podanej godziny, a gdy nie ma żadnej — 08:00. Inaczej dzień
   // bez godzin (Gruzja: „Uszguli, cały dzień”) zaczynałby się o północy.
   // Punkty przed pierwszą godziną liczymy wstecz od niej („dojazd 3 h”, potem „w Mestii ok. 13:00”).
-  const firstIndex = items.findIndex((item) => item.time?.precision === 'exact' || item.time?.precision === 'approx' || item.time?.precision === 'range');
+  const firstIndex = items.findIndex((item) => item.time?.precision === 'exact' || item.time?.precision === 'approx' || item.time?.precision === 'range' || item.time?.precision === 'by');
   const firstTimed = firstIndex === -1 ? undefined : items[firstIndex];
   const firstStart =
-    firstTimed?.time !== undefined && 'start' in firstTimed.time ? at(firstTimed.time.start, firstTimed.time.tz ?? tz) : undefined;
+    firstTimed?.time === undefined
+      ? undefined
+      : firstTimed.time.precision === 'by'
+        ? byStart(firstTimed, firstTimed.time)
+        : 'start' in firstTimed.time
+          ? at(firstTimed.time.start, firstTimed.time.tz ?? tz)
+          : undefined;
   const leadMin = items
     .slice(0, Math.max(firstIndex, 0))
     .filter((item) => parentOf(item) === undefined && (item.participantRefs ?? []).length === 0)
@@ -348,6 +357,8 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
         const [from] = PART_OF_DAY[time.partOfDay]!;
         const windowStart = zonedToInstant(day.date, '00:00', time.tz ?? tz) + from * MINUTE;
         start = Math.max(laneCursor, windowStart);
+      } else if (time.precision === 'by') {
+        stated = byStart(item, time);
       } else {
         stated = at(time.start, time.tz ?? tz);
       }
@@ -405,14 +416,17 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
 
     // Spóźnienie względem planu: przy stałej godzinie zawsze twarde, przy przybliżonej — ponad tolerancję.
     if (scheduled.driftMin > 0 && time !== undefined) {
-      const fixed = item.isFixed === true || time.precision === 'exact';
+      const fixed = item.isFixed === true || time.precision === 'exact' || time.precision === 'by';
       if (fixed || scheduled.driftMin > TOLERANCE_MIN) {
         warnings.push({
           kind: 'late',
           itemRef: item.ref,
           severity: item.isFixed ? 'hard' : 'soft',
           minutes: scheduled.driftMin,
-          message: `„${item.title}” zaczyna się ${scheduled.driftMin} min później, niż mówi plan (${scheduled.statedLocal} → ${scheduled.startLocal}).`,
+          message:
+            time.precision === 'by'
+              ? `„${item.title}” kończy się ${scheduled.driftMin} min później, niż mówi plan (do ${time.end} → ${scheduled.endLocal}): trzeba ruszyć o ${scheduled.statedLocal}.`
+              : `„${item.title}” zaczyna się ${scheduled.driftMin} min później, niż mówi plan (${scheduled.statedLocal} → ${scheduled.startLocal}).`,
         });
       }
     }

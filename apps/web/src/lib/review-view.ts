@@ -37,7 +37,7 @@ function times(doc: Doc, dayRef: string): { at: Map<string, string>; summary: st
 /** Co się zmieniło w punkcie, po ludzku: „godzina 10:00 → 9:30”, „przejazd: samochód, 45 min”. */
 function itemChanges(before: Item, after: Item, placesBefore: Doc["places"], placesAfter: Doc["places"]): string[] {
   const placeName = (places: Doc["places"], ref: string | undefined) => places.find((place) => place.ref === ref)?.name ?? "—";
-  const timeOf = (item: Item) => (item.time && "start" in item.time ? item.time.start : item.time ? item.time.precision : "—");
+  const timeOf = (item: Item) => (item.time?.precision === "by" ? `do ${item.time.end}` : item.time && "start" in item.time ? item.time.start : item.time ? item.time.precision : "—");
   const legOf = (item: Item) =>
     item.leg ? [LEG_MODE[item.leg.mode] ?? item.leg.mode, item.leg.durationMin !== undefined ? `${item.leg.durationMin} min` : null, item.leg.distanceKm !== undefined ? `${item.leg.distanceKm} km` : null].filter(Boolean).join(", ") : "—";
   const out: string[] = [];

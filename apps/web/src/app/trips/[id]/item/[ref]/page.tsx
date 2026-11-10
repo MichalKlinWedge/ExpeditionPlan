@@ -85,7 +85,12 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const guide = guideFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
   const guideRow = guide === null ? undefined : guideRowFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);
-  const time = item.time && "start" in item.time ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}` : null;
+  const time =
+    item.time?.precision === "by"
+      ? `do ${item.time.end}`
+      : item.time && "start" in item.time
+        ? `${item.time.precision === "approx" ? "ok. " : ""}${item.time.start}${"end" in item.time && item.time.end ? `–${item.time.end}` : ""}`
+        : null;
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
   const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
   const transit = isTransitItem(item) ? transitDetailRows(item) : null;
