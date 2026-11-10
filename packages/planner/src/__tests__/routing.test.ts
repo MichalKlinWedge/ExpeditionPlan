@@ -56,6 +56,19 @@ describe('trasy przejazdów (ORS)', () => {
     expect(again.items.find((item) => item.ref === 'jazda')!.leg!.geometry).toBeUndefined();
   });
 
+  it('„Jedź przez” z przejazdu prowadzi trasę; punkty podane wprost mają pierwszeństwo', async () => {
+    const withVia = TripDocument.parse({ ...doc, items: doc.items.map((item) => (item.ref === 'jazda' ? { ...item, leg: { ...item.leg, via: [{ lat: 43.8, lng: 16.1 }] } } : item)) });
+    const seen: Record<string, unknown> = {};
+    const lookup: RouteLookup = async (_from, _to, _profile, via) => {
+      seen.via = via;
+      return { distanceKm: 70, durationMin: 76 };
+    };
+    await routeLegs(withVia, lookup, new Set(['jazda']));
+    expect(seen.via).toEqual([{ lat: 43.8, lng: 16.1 }]);
+    await routeLegs(withVia, lookup, new Set(['jazda']), { jazda: [{ lat: 43.9, lng: 16.2 }] });
+    expect(seen.via).toEqual([{ lat: 43.9, lng: 16.2 }]);
+  });
+
   it('„Wyjazd z parkingu”: cel to miejsce następnego punktu, nie miejsce przejazdu', () => {
     const wyjazd = TripDocument.parse({
       ...doc,

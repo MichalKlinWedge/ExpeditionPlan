@@ -56,3 +56,25 @@ export function placesOffMap(doc: TripDocument): { ref: string; name: string; se
     .filter((place) => usedBy.has(place.ref) && (place.lat === undefined || place.lng === undefined))
     .map((place) => ({ ref: place.ref, name: place.name, ...(place.searchName ? { searchName: place.searchName } : {}), usedBy: [...new Set(usedBy.get(place.ref))] }));
 }
+
+/** Najwięcej punktów „Jedź przez” (Maps URLs przyjmują 9 punktów pośrednich). */
+export const MAX_VIA_POINTS = 9;
+
+/**
+ * „Jedź przez” z pola tekstowego: jeden punkt w wierszu — współrzędne albo pełny link z mapy
+ * (`parseCoordinates`). Wiersze, których nie da się odczytać, wracają w `bad`.
+ */
+export function parseViaPoints(text: string): { points: LatLng[]; bad: string[] } {
+  const points: LatLng[] = [];
+  const bad: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim() === '') continue;
+    const point = parseCoordinates(line);
+    if (point === null) bad.push(line.trim());
+    else points.push({ lat: Math.round(point.lat * 1e6) / 1e6, lng: Math.round(point.lng * 1e6) / 1e6 });
+  }
+  return { points, bad };
+}
+
+/** Punkty „Jedź przez” do pola tekstowego, jeden w wierszu. */
+export const viaPointsText = (points: readonly LatLng[] | undefined) => (points ?? []).map((point) => `${point.lat}, ${point.lng}`).join('\n');

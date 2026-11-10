@@ -46,7 +46,9 @@ export function drivingRouteUrl(doc: Doc, item: Item): string | null {
   const destination = point(leg.toPlaceRef ?? item.placeRef);
   if (destination === undefined) return null;
   const origin = point(leg.fromPlaceRef);
-  return `https://www.google.com/maps/dir/?api=1${origin === undefined ? '' : `&origin=${encodeURIComponent(origin)}`}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  // „Jedź przez” z edytora przejazdu: udokumentowany parametr Maps URLs, punkty rozdzielone „|”.
+  const waypoints = (leg.via ?? []).length === 0 ? '' : `&waypoints=${encodeURIComponent(leg.via!.map((point) => `${point.lat},${point.lng}`).join('|'))}`;
+  return `https://www.google.com/maps/dir/?api=1${origin === undefined ? '' : `&origin=${encodeURIComponent(origin)}`}&destination=${encodeURIComponent(destination)}${waypoints}&travelmode=driving`;
 }
 
 /**

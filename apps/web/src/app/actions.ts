@@ -571,8 +571,10 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
     places: doc.places.map((place) => placed.get(place.ref) ?? place),
     items: doc.items.map((item) => (item.ref === itemRef && item.leg !== undefined ? { ...item, leg: { ...item.leg, distanceKm: undefined } } : item)),
   };
-  // Własny link Google do trasy: jego punkty pośrednie (przeciągnięta trasa, przystanki) prowadzą trasę z openrouteservice.
-  const link = await googleLinkVias(target?.leg?.routeUrl);
+  // „Jedź przez” z edytora przejazdu, a bez niego punkty pośrednie własnego linku Google (przeciągnięta trasa,
+  // przystanki) prowadzą trasę z openrouteservice.
+  const own = target?.leg?.via ?? [];
+  const link = own.length > 0 ? { vias: own, status: "own" as const } : await googleLinkVias(target?.leg?.routeUrl);
   const { doc: routed, results } = await routeLegs(open, route, new Set([itemRef]), link.vias.length > 0 ? { [itemRef]: link.vias } : {});
   const result = results[0];
   if (result?.status !== "routed") {
@@ -600,8 +602,9 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
   const minutes = result.after!.durationMin;
   const foundAs = located.map((each) => `„${each.place.name}” to ${each.foundAs}`).join(", ");
   const viaNote = {
+    own: ` Trasa idzie przez ${link.vias.length} ${pluralForm(link.vias.length, ["punkt", "punkty", "punktów"])} z „Jedź przez”.`,
     vias: ` Trasa idzie przez ${link.vias.length} ${pluralForm(link.vias.length, ["punkt pośredni", "punkty pośrednie", "punktów pośrednich"])} z Twojego linku Google.`,
-    none: " Twój link Google ma tylko start i cel, bez punktów pośrednich, więc drogę wybrał openrouteservice. Żeby trasa szła Twoją drogą, przeciągnij ją w Mapach Google i wklej nowy link.",
+    none: " Twój link Google ma tylko start i cel, bez punktów pośrednich, więc drogę wybrał openrouteservice i może iść inaczej niż Google. Żeby trasa szła Twoją drogą, wpisz w „Jedź przez” współrzędne miejsca na tej drodze (np. miejscowości po drodze).",
     unresolved: " Nie udało się rozwinąć Twojego linku Google, więc trasa idzie od „skąd” do „dokąd”.",
     not_google: "",
   }[link.status];

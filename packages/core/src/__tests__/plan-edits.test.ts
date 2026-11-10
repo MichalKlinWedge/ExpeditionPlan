@@ -191,6 +191,19 @@ describe('skąd i dokąd przejazdu', () => {
     expect(leg(setLegRoute(edit.doc, ref, ids, { from: start, to: end, routeUrl: '' })!.doc).routeUrl).toBeUndefined();
   });
 
+  it('„Jedź przez”: punkty zapisują się w przejeździe, zmiana unieważnia trasę, pusta lista je usuwa', () => {
+    const via = [{ lat: 42.6, lng: 42.9 }];
+    const edit = setLegRoute(routedDoc, ref, ids, { from: start, to: end, routeUrl: '', via })!;
+    expect(edit).toMatchObject({ placesChanged: false, viaChanged: true });
+    expect(leg(edit.doc).via).toEqual(via);
+    expect(leg(edit.doc).geometry).toBeUndefined();
+    expect(documentProblem(edit.doc)).toBeNull();
+    expect(setLegRoute(edit.doc, ref, ids, { from: start, to: end, routeUrl: '', via })).toBeNull();
+    // Bez pola `via` punkty zostają (inny zapis przejazdu ich nie gubi).
+    expect(leg(setLegRoute(edit.doc, ref, ids, { from: start, to: end, routeUrl: 'https://maps.app.goo.gl/AbC' })!.doc).via).toEqual(via);
+    expect(leg(setLegRoute(edit.doc, ref, ids, { from: start, to: end, routeUrl: '', via: [] })!.doc).via).toBeUndefined();
+  });
+
   it('przejazd bez szczegółów dostaje je przy zapisie, domyślnie autem; zwykły punkt nie', () => {
     const bare = TripDocument.parse({ ...routedDoc, items: routedDoc.items.map((item) => (item.ref === ref ? (({ leg: _leg, ...rest }) => ({ ...rest, durationMin: 60, placeRef: 'lotnisko-kutaisi' }))(item) : item)) });
     const proposal = setLegRoute(bare, ref, ids, { from: '', to: 'Lotnisko Kutaisi', routeUrl: '' })!;

@@ -358,7 +358,7 @@ export function setItemPlace(doc: Doc, itemRef: string, placeId: string, name: s
   return edit === null ? null : { ...edit, places: [{ place, created: true }] };
 }
 
-export type LegRouteEdit = PlanEdit & { placesChanged: boolean };
+export type LegRouteEdit = PlanEdit & { placesChanged: boolean; viaChanged: boolean };
 
 /**
  * Skąd, dokąd i własny link przejazdu. Nazwa znana w planie wskazuje to samo miejsce, nowa tworzy nowe.
@@ -366,7 +366,7 @@ export type LegRouteEdit = PlanEdit & { placesChanged: boolean };
  * nie zawalił, zanim trasa się przeliczy. Przejazd bez szczegółów (`leg`) dostaje je przy pierwszym
  * zapisie, domyślnie autem. `null` = bez zmian albo punkt nie jest przejazdem.
  */
-export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; toId: string }, fields: { from: string; to: string; routeUrl: string; roundTrip?: boolean; transit?: boolean }): LegRouteEdit | null {
+export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; toId: string }, fields: { from: string; to: string; routeUrl: string; roundTrip?: boolean; transit?: boolean; via?: { lat: number; lng: number }[] }): LegRouteEdit | null {
   const item = doc.items.find((each) => each.ref === itemRef);
   if (item?.kind !== 'transport') return null;
   const fresh = item.leg === undefined;
@@ -393,18 +393,20 @@ export function setLegRoute(doc: Doc, itemRef: string, ids: { fromId: string; to
   const { transit: _transit, ...withoutChoice } = current;
   const automatic = isTransit(doc, { ...item, leg: withoutChoice });
   const transit = fields.transit === undefined ? current.transit : fields.transit === automatic ? undefined : fields.transit;
-  if (!fresh && !placesChanged && url === (current.routeUrl ?? '') && roundTrip === (current.roundTrip === true) && transit === current.transit) return null;
+  const via = fields.via === undefined ? current.via : fields.via.length > 0 ? fields.via : undefined;
+  const viaChanged = JSON.stringify(via ?? []) !== JSON.stringify(current.via ?? []);
+  if (!fresh && !placesChanged && !viaChanged && url === (current.routeUrl ?? '') && roundTrip === (current.roundTrip === true) && transit === current.transit) return null;
 
-  const { fromPlaceRef: _from, toPlaceRef: _to, routeUrl: _url, roundTrip: _roundTrip, transit: _chosen, ...rest } = current;
+  const { fromPlaceRef: _from, toPlaceRef: _to, routeUrl: _url, roundTrip: _roundTrip, transit: _chosen, via: _via, ...rest } = current;
   let kept = rest;
-  if (placesChanged) {
+  if (placesChanged || viaChanged) {
     const { routed: _routed, geometry: _geometry, distanceKm: _km, durationMaxMin: _max, ...still } = rest;
     kept = still;
   }
-  const leg = { ...kept, ...(from !== undefined ? { fromPlaceRef: from } : {}), ...(to !== undefined ? { toPlaceRef: to } : {}), ...(url !== '' ? { routeUrl: url } : {}), ...(transit !== undefined ? { transit } : {}), ...(roundTrip ? { roundTrip } : {}) };
+  const leg = { ...kept, ...(from !== undefined ? { fromPlaceRef: from } : {}), ...(to !== undefined ? { toPlaceRef: to } : {}), ...(url !== '' ? { routeUrl: url } : {}), ...(via !== undefined ? { via } : {}), ...(transit !== undefined ? { transit } : {}), ...(roundTrip ? { roundTrip } : {}) };
   const edit = updateItem({ ...doc, places: [...doc.places, ...created] }, itemRef, { leg, ...(to !== undefined ? { placeRef: to } : {}) });
   if (edit === null) return null;
-  return { ...edit, ...(created.length > 0 ? { places: created.map((place) => ({ place, created: true })) } : {}), placesChanged };
+  return { ...edit, ...(created.length > 0 ? { places: created.map((place) => ({ place, created: true })) } : {}), placesChanged, viaChanged };
 }
 
 /** 6 miejsc po przecinku ≈ 10 cm — więcej z kliknięcia na mapie i tak nie wynika. */

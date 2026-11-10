@@ -285,6 +285,11 @@ export const ItemLeg = z.object({
   /** Własny link do trasy, np. z punktami pośrednimi. Tylko http(s): trafia do `href` i przeglądarki telefonu. */
   routeUrl: HttpUrl.optional(),
   /**
+   * „Jedź przez”: punkty pośrednie wpisane w edytorze przejazdu (współrzędne, bez nowych miejsc).
+   * Prowadzą trasę z OpenRouteService i link do Map Google; mają pierwszeństwo przed punktami z `routeUrl`.
+   */
+  via: z.array(z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })).max(9).optional(),
+  /**
    * Linia trasy z OpenRouteService do mapy: zakodowana polilinia (format Google, precyzja 5,
    * uproszczona — `polyline.ts`). Bez niej mapa łączy miejsca prosto. Nie wypełnia jej AI.
    */

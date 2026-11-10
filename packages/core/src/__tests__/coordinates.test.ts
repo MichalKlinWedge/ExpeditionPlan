@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { parseCoordinates, placesOffMap } from '../coordinates.ts';
+import { parseCoordinates, parseViaPoints, placesOffMap, viaPointsText } from '../coordinates.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 describe('przypinanie miejsca: współrzędne z wklejonego tekstu', () => {
@@ -37,5 +37,17 @@ describe('miejsca planu bez współrzędnych', () => {
     expect(off.length).toBeGreaterThan(0);
     expect(off.every((place) => place.usedBy.length > 0)).toBe(true);
     expect(off.map((place) => place.name)).toContain('Obóz na pustyni Agafay');
+  });
+});
+
+describe('„Jedź przez”: punkty po drodze z pola tekstowego', () => {
+  it('współrzędne i linki, po jednym w wierszu; nieczytelne wiersze osobno', () => {
+    const { points, bad } = parseViaPoints('43.8716, 16.4362\n\nhttps://www.google.com/maps/@43.82,16.2,13z\nVrlika');
+    expect(points).toEqual([
+      { lat: 43.8716, lng: 16.4362 },
+      { lat: 43.82, lng: 16.2 },
+    ]);
+    expect(bad).toEqual(['Vrlika']);
+    expect(parseViaPoints(viaPointsText(points)).points).toEqual(points);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { isFootRouteItem, isTransit, isTransitItem, type PlanEdit, type PlanItem as Item, setLegRoute, type TripDocument } from "@expeditionplan/core";
+import { isFootRouteItem, isTransit, isTransitItem, MAX_VIA_POINTS, parseViaPoints, type PlanEdit, type PlanItem as Item, setLegRoute, type TripDocument, viaPointsText } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import { useId, useState, useTransition } from "react";
 
@@ -18,6 +18,7 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
   const [from, setFrom] = useState(name(item.leg?.fromPlaceRef));
   const [to, setTo] = useState(name(item.leg?.toPlaceRef ?? item.placeRef));
   const [url, setUrl] = useState(item.leg?.routeUrl ?? "");
+  const [viaText, setViaText] = useState(viaPointsText(item.leg?.via));
   const [both, setBoth] = useState(item.leg?.roundTrip === true);
   const [transit, setTransit] = useState(isTransit(doc, item));
   const [state, setState] = useState<FormState>({});
@@ -32,12 +33,15 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
   const save = () => {
     const link = url.trim();
     if (link !== "" && !/^https?:\/\/\S+$/i.test(link)) return setState({ error: "Link musi zaczynać się od https://." });
-    const edit = setLegRoute(doc, item.ref, { fromId: uuidv7(), toId: uuidv7() }, { from, to, routeUrl: link, roundTrip: both, transit });
+    const via = parseViaPoints(routable ? viaText : "");
+    if (via.bad.length > 0) return setState({ error: `„Jedź przez”: nie odczytałem współrzędnych z „${via.bad[0]}”. Wpisz np. 43.8716, 16.4362 albo wklej pełny link z mapy.` });
+    if (via.points.length > MAX_VIA_POINTS) return setState({ error: `„Jedź przez”: najwyżej ${MAX_VIA_POINTS} punktów.` });
+    const edit = setLegRoute(doc, item.ref, { fromId: uuidv7(), toId: uuidv7() }, { from, to, routeUrl: link, roundTrip: both, transit, ...(routable ? { via: via.points } : {}) });
     if (edit === null) return setState({ ok: "Bez zmian." });
     setState({});
     onEdit(edit, () => {
       // Nowy link Google może mieć punkty pośrednie — trasa liczy się od nowa.
-      if ((edit.placesChanged || link !== (item.leg?.routeUrl ?? "")) && routable) recalculate();
+      if ((edit.placesChanged || edit.viaChanged || link !== (item.leg?.routeUrl ?? "")) && routable) recalculate();
       else setState({ ok: "Zapisano." });
     });
   };
@@ -74,6 +78,12 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
           <input value={url} onChange={(event) => setUrl(event.target.value)} inputMode="url" placeholder="https://maps.app.goo.gl/…" disabled={busy} className={field} />
         </label>
       )}
+      {routable && (
+        <label className="flex flex-col gap-1 text-xs text-zinc-500">
+          Jedź przez (opcjonalnie): punkty po drodze, po jednym w wierszu — współrzędne albo pełny link z mapy, bez dodawania miejsc
+          <textarea value={viaText} onChange={(event) => setViaText(event.target.value)} rows={Math.min(4, Math.max(2, viaText.split("\n").length + 1))} placeholder={"43.8716, 16.4362\n43.8232, 16.2001"} disabled={busy} className={`${field} font-mono`} />
+        </label>
+      )}
       <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400" title="Czas drogi liczy się dwa razy. Czas wpisany ręcznie w „Trwa” jest już całością.">
         <input type="checkbox" checked={both} onChange={(event) => setBoth(event.target.checked)} disabled={busy} />
         Tam i z powrotem: bez osobnego punktu na powrót, czas drogi liczy się dwa razy
@@ -96,7 +106,7 @@ export function ItemLegEditor({ tripId, doc, item, onEdit, disabled = false }: {
           : wklej tam połączenie z Map Google, Jakdojade albo ze strony przewoźnika.
         </p>
       ) : (
-        <p className="text-xs text-zinc-500">Długość, czas i linię na mapie liczymy ze „skąd” i „dokąd”. Link do Map Google z punktami pośrednimi (przeciągnięta trasa, przystanki) prowadzi trasę przez nie po „Przelicz trasę”.</p>
+        <p className="text-xs text-zinc-500">Długość, czas i linię na mapie liczymy ze „skąd” i „dokąd”. Trasa idzie przez punkty z „Jedź przez”, a bez nich przez punkty pośrednie z linku Google (przeciągnięta trasa, przystanki). Link z samym startem i celem drogi nie wyznacza: Google i openrouteservice mogą wybrać inną.</p>
       )}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={save} disabled={busy} className="btn-primary btn-sm">

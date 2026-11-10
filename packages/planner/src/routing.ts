@@ -86,7 +86,7 @@ export async function locateLegEnds(doc: Doc, item: Item, lookup: Lookup, countr
 const sameSpot = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lng - b.lng) < 1e-4;
 
 /** Przejazdy dokumentu przeliczone trasami ORS; `refs` = tylko te punkty (domyślnie wszystkie). */
-/** `vias` — punkty pośrednie przejazdu (ref → punkty po kolei), np. z jego linku Google (`googleRouteVias`). */
+/** `vias` — punkty pośrednie przejazdu (ref → punkty po kolei), np. z jego linku Google (`googleRouteVias`); bez nich „Jedź przez” z `leg.via`. */
 export async function routeLegs(doc: Doc, lookup: RouteLookup, refs?: ReadonlySet<string>, vias: Readonly<Record<string, readonly LatLng[]>> = {}): Promise<{ doc: Doc; results: RouteResult[] }> {
   const results: RouteResult[] = [];
   const changed = new Map<string, Item>();
@@ -109,7 +109,7 @@ export async function routeLegs(doc: Doc, lookup: RouteLookup, refs?: ReadonlySe
     used += 1;
     let route: Route | null;
     try {
-      const via = vias[item.ref] ?? [];
+      const via = vias[item.ref] ?? item.leg?.via ?? [];
       route = await (via.length > 0 ? lookup(from, to, profile, via) : lookup(from, to, profile));
     } catch (error) {
       results.push({ ...base, status: 'failed', error: error instanceof Error ? error.message : String(error) });

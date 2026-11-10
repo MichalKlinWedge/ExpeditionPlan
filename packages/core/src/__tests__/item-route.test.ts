@@ -95,6 +95,11 @@ describe('link do trasy autem', () => {
     expect(drivingRouteUrl(doc, item('rental_car'))).toBe('https://www.google.com/maps/dir/?api=1&origin=42.5%2C41.87&destination=Mestia%2C%20plac&travelmode=driving');
   });
 
+  it('„Jedź przez” trafia do linku jako punkty pośrednie (waypoints)', () => {
+    const via = { kind: 'transport', leg: { mode: 'car', fromPlaceRef: 'a', toPlaceRef: 'b', via: [{ lat: 43.86, lng: 16.39 }, { lat: 43.8, lng: 16.2 }], links: [] } } as unknown as TripDocument['items'][number];
+    expect(drivingRouteUrl(doc, via)).toBe('https://www.google.com/maps/dir/?api=1&origin=42.5%2C41.87&destination=Mestia%2C%20plac&waypoints=43.86%2C16.39%7C43.8%2C16.2&travelmode=driving');
+  });
+
   it('bez miejsca startu sam cel, a cel może być miejscem punktu', () => {
     const noOrigin = { kind: 'transport', placeRef: 'a', leg: { mode: 'car', links: [] } } as unknown as TripDocument['items'][number];
     expect(drivingRouteUrl(doc, noOrigin)).toBe('https://www.google.com/maps/dir/?api=1&destination=42.5%2C41.87&travelmode=driving');
