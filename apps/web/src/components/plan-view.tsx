@@ -1,9 +1,9 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
 import { InfoIcon, SparkIcon } from "@/components/icons";
@@ -600,6 +600,21 @@ function DayTabs({
   );
 }
 
+/** Symboliczna linia wschodu / zachodu słońca między punktami planu (`daySunMarks`). */
+function SunLine({ kind, time }: { kind: "sunrise" | "sunset"; time: string }) {
+  const label = kind === "sunrise" ? "wschód słońca" : "zachód słońca";
+  return (
+    <li aria-label={`${time} ${label}`} className="relative flex items-center gap-3 border-l-2 border-zinc-200 py-0.5 pl-4 text-xs text-amber-700 dark:border-zinc-800 dark:text-amber-300">
+      <span aria-hidden="true" className="absolute top-1/2 -left-px h-px w-4 bg-amber-400/70 dark:bg-amber-600/70" />
+      <span aria-hidden="true" className="w-28 shrink-0 tabular-nums">
+        {kind === "sunrise" ? "☀" : "🌇"} {time}
+      </span>
+      <span aria-hidden="true" className="shrink-0">{label}</span>
+      <span aria-hidden="true" className="h-px flex-1 border-t border-dashed border-amber-400/70 dark:border-amber-600/70" />
+    </li>
+  );
+}
+
 function DragHandle({ onStart, onEnd }: { onStart: (event: React.DragEvent<HTMLElement>) => void; onEnd: () => void }) {
   return (
     <span
@@ -919,6 +934,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
   const base = day.baseRef === undefined ? undefined : places.get(day.baseRef)?.name;
   const lodging = dayLodging(doc, dayRef);
   const sun = schedule?.facts.sun;
+  // Wschód i zachód w godzinach planu: linia między punktami w miejscu tej godziny.
+  const sunMarks = schedule ? daySunMarks(schedule) : [];
 
   return (
     <section className="flex flex-col gap-3 card p-4">
@@ -995,8 +1012,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
             const booking = bookingRef === undefined ? undefined : doc.bookings.find((each) => each.ref === bookingRef);
             const openBooking = booking === undefined || onBooking === null ? null : () => onBooking(booking.ref);
             return (
+              <Fragment key={item.ref}>
               <li
-                key={item.ref}
                 id={`item-${item.ref}`}
                 onDragOver={dnd && source ? (event) => dnd.hover(target(event), event) : undefined}
                 onDrop={dnd && source ? (event) => dnd.drop(target(event), event) : undefined}
@@ -1153,6 +1170,12 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                   </>
                 )}
               </li>
+              {sunMarks
+                .filter((mark) => mark.afterItemRef === item.ref)
+                .map((mark) => (
+                  <SunLine key={mark.kind} kind={mark.kind} time={mark.time} />
+                ))}
+              </Fragment>
             );
           })}
           {/* Nocleg na koniec dnia (baza dnia / rezerwacja tej nocy) — na mapie fioletowa pinezka. */}

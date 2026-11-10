@@ -55,6 +55,7 @@ export * from './meals.ts';
 export * from './guide.ts';
 export * from './gpx.ts';
 export * from './track-profile.ts';
+export * from './day-sun.ts';
 export * from './track-pois.ts';
 export * from './guide-links.ts';
 export * from './settle.ts';

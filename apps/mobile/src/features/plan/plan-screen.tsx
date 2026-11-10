@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, daySunMarks, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -20,7 +20,7 @@ import {
   watchTrip,
 } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, Modal, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -768,6 +768,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
   const lodging = dayLodging(doc, dayRef);
   const lodgingPlace = lodging?.placeRef === undefined ? undefined : doc.places.find((each) => each.ref === lodging.placeRef);
   const sun = schedule?.facts.sun;
+  // Wschód i zachód w godzinach planu: linia między kartami w miejscu tej godziny.
+  const sunMarks = schedule ? daySunMarks(schedule) : [];
   const slack = schedule?.slack ? SLACK[schedule.slack] : undefined;
   const { map, pinOf } = useDayStops(doc, schedule?.items.map((item) => item.ref).join(',') ?? '', lodging?.placeRef);
   const [mapPlace, setMapPlace] = useState<string | null>(null);
@@ -868,8 +870,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
         const bookingRef = source === undefined ? undefined : itemBookingRef(doc, source);
         const hasBooking = bookingRef !== undefined && doc.bookings.some((each) => each.ref === bookingRef);
         return (
+          <Fragment key={item.ref}>
           <ThemedView
-            key={item.ref}
             onLayout={(event) => cardTops.current.set(item.ref, event.nativeEvent.layout.y)}
             type="backgroundElement"
             style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: KIND_COLOR[item.kind] ?? theme.textSecondary }, item.child && styles.child]}>
@@ -940,6 +942,12 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
               </View>
             )}
           </ThemedView>
+          {sunMarks
+            .filter((mark) => mark.afterItemRef === item.ref)
+            .map((mark) => (
+              <SunLine key={mark.kind} kind={mark.kind} time={mark.time} />
+            ))}
+          </Fragment>
         );
       })}
 
@@ -1057,6 +1065,19 @@ function Warnings({ list }: { list: ScheduleWarning[] }) {
   ));
 }
 
+/** Symboliczna linia wschodu / zachodu słońca między kartami planu (`daySunMarks`). */
+function SunLine({ kind, time }: { kind: 'sunrise' | 'sunset'; time: string }) {
+  const label = kind === 'sunrise' ? 'wschód słońca' : 'zachód słońca';
+  return (
+    <View accessible accessibilityLabel={`${time} ${label}`} style={styles.sunLine}>
+      <ThemedText type="small" style={styles.sunText}>
+        {kind === 'sunrise' ? '☀' : '🌇'} {time} {label}
+      </ThemedText>
+      <View style={styles.sunRule} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   start: { alignSelf: 'flex-start' },
@@ -1089,4 +1110,7 @@ const styles = StyleSheet.create({
   nav: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.three },
   hidden: { opacity: 0 },
   edit: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingTop: Spacing.two },
+  sunLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.two },
+  sunText: { color: SOFT, fontVariant: ['tabular-nums'] },
+  sunRule: { flex: 1, height: 1, backgroundColor: SOFT, opacity: 0.5 },
 });
