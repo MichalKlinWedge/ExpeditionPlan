@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
-import { InfoIcon, SparkIcon } from "@/components/icons";
+import { ArticleIcon, InfoIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { PlaceLink } from "@/components/place-pin";
 import { DayConstraints, DayEndField, DayNotes, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
@@ -474,8 +474,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
                           <span className="text-zinc-500">· {STATUS[item.planStatus]}</span>
                           <RouteLink doc={doc} item={item} />
                           {itemBase && item.kind !== "lodging" && guided?.includes(item.ref) && (
-                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis miejsca gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
-                              📖 opis
+                            <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis miejsca gotowy — otwórz" aria-label="Opis miejsca" className="btn-mini btn-icon ml-1.5">
+                              <ArticleIcon className="size-3.5" />
                             </Link>
                           )}
                           {itemBase && canEdit && item.kind !== "lodging" && !guided?.includes(item.ref) && (
@@ -911,8 +911,8 @@ const DOT: Record<string, string> = {
 
 function BookingButton({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} title="Szczegóły rezerwacji i dokumenty z sejfu" className="btn-mini ml-1.5 font-normal">
-      rezerwacja
+    <button type="button" onClick={onClick} title="Rezerwacja: szczegóły i dokumenty z sejfu" aria-label="Rezerwacja" className="btn-mini btn-icon ml-1.5">
+      <TicketIcon className="size-3.5" />
     </button>
   );
 }
@@ -1062,12 +1062,12 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     {source && <RouteLink doc={doc} item={source} />}
                     {item.kind !== "lodging" && guided?.includes(item.ref) &&
                       (itemBase ? (
-                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis miejsca gotowy — otwórz" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-sea/20">
-                          📖 opis
+                        <Link href={`${itemBase}${encodeURIComponent(item.ref)}`} title="Opis miejsca gotowy — otwórz" aria-label="Opis miejsca" className="btn-mini btn-icon ml-1.5">
+                          <ArticleIcon className="size-3.5" />
                         </Link>
                       ) : (
-                        <span title="Opis miejsca gotowy" className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea">
-                          📖 opis
+                        <span title="Opis miejsca gotowy" aria-label="Opis miejsca gotowy" className="ml-1.5 inline-flex align-middle text-sea dark:text-teal-300">
+                          <ArticleIcon className="size-3.5" />
                         </span>
                       ))}
                     <span className="text-zinc-500">
