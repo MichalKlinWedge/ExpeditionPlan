@@ -7,6 +7,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { NewPlace } from "@/components/new-place";
 import { PlacesView } from "@/components/places-view";
 import { Loading, Shell } from "@/components/shell";
 import { PageHeader } from "@/components/page-header";
@@ -81,6 +82,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
           Miejsca ze wszystkich wyjazdów
         </Link>
       </PageHeader>
+      {canEdit && <NewPlace tripId={id} />}
       {places.length === 0 ? <p className="text-sm text-zinc-500">Ten plan nie ma jeszcze miejsc.</p> : <PlacesView tripId={id} places={places} canEdit={canEdit} hasRouted={doc.items.some((item) => item.leg?.routed === true)} initial={typeof miejsce === "string" ? miejsce : null} />}
     </>
   );

@@ -1,8 +1,9 @@
 "use server";
 
-import { type GuideRow, mergePlaces, removeUnusedPlace, TripDocument } from "@expeditionplan/core";
-import { dbErrorMessage, refIndex, saveElements, stableUuid, stateFromPayload } from "@expeditionplan/sync";
+import { type GuideRow, mergePlaces, parseCoordinates, plainName, removeUnusedPlace, TripDocument } from "@expeditionplan/core";
+import { dbErrorMessage, refIndex, saveElements, stableUuid, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/app/actions";
@@ -33,6 +34,35 @@ export async function savePlaceDetails(tripId: string, placeId: string, fields: 
   if (data.length === 0) return { error: "Brak uprawnień do tej zmiany." };
   refresh();
   return { ok: "Zapisano nazwę i adres." };
+}
+
+/**
+ * Nowe miejsce bez punktu planu (np. do zapamiętania albo na później): nazwa i opcjonalnie współrzędne lub link z mapy.
+ * Ta sama nazwa w wyjeździe nie tworzy drugiego miejsca. Po zapisie strona pokazuje je wybrane.
+ */
+export async function addPlace(tripId: string, fields: { name: string; coords: string }): Promise<FormState> {
+  const name = fields.name.trim();
+  if (name === "") return { error: "Wpisz nazwę miejsca." };
+  if (name.length > 200) return { error: "Nazwa jest za długa." };
+  const text = fields.coords.trim();
+  const point = text === "" ? null : parseCoordinates(text);
+  if (text !== "" && point === null) return { error: "Nie widzę tu współrzędnych. Wklej np. „43.8716, 16.4362” albo pełny link z Google Maps lub OpenStreetMap, albo zostaw pole puste." };
+  const { supabase } = await requireUser(`/trips/${tripId}/places`);
+  const { data: places, error: listed } = await supabase.from("places").select("id, ref, name").eq("trip_id", tripId).is("deleted_at", null);
+  if (listed) return { error: dbErrorMessage(listed) };
+  const same = places.find((place) => plainName(place.name) === plainName(name));
+  if (same) return { error: `„${same.name}” już jest na liście miejsc tego wyjazdu.` };
+  const id = uuidv7();
+  const { error } = await supabase.from("places").insert({
+    id,
+    trip_id: tripId,
+    name,
+    provider: point ? "user" : "unknown",
+    sort_key: `z${Date.now().toString(36)}`,
+    ...(point ? { lat: Math.round(point.lat * 1e5) / 1e5, lng: Math.round(point.lng * 1e5) / 1e5 } : {}),
+  });
+  if (error) return { error: dbErrorMessage(error) };
+  redirect(`/trips/${tripId}/places?miejsce=${encodeURIComponent(`id-${id}`)}`);
 }
 
 export async function removePlace(tripId: string, ref: string): Promise<FormState> {
