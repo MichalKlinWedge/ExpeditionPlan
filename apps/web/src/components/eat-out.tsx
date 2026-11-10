@@ -16,6 +16,7 @@ import {
   googleMapsSearchUrl,
   isPinnedEatery,
   mealEateries,
+  removeEatOutChoice,
   type TripDocument,
 } from "@expeditionplan/core";
 import { saveElements, uuidv7 } from "@expeditionplan/sync";
@@ -24,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { findRestaurants } from "@/app/eat-out-actions";
+import { IconAction } from "@/components/icon-action";
 import type { MealSelection } from "@/components/meal-row";
 import { PlaceLink } from "@/components/place-pin";
 import { createClient } from "@/lib/supabase/client";
@@ -315,7 +317,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
   );
 }
 
-/** Knajpy przypięte do posiłku: kliknięcie pokazuje knajpę na mapie i jej dane; w edycji „wybierz” ustawia wybór grupy (`chosenRef`). */
+/** Knajpy przypięte do posiłku: kliknięcie pokazuje knajpę na mapie i jej dane; w edycji „wybierz” ustawia wybór grupy (`chosenRef`), a kosz odpina knajpę (`removeEatOutChoice`). */
 export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string; canEdit: boolean; selection: MealSelection }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -330,6 +332,22 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
     start(async () => {
       try {
         await saveElements(createClient(), tripId, { ...doc, variantGroups: doc.variantGroups.map((each) => (each.ref === group.ref ? element : each)) }, [{ collection: "variantGroups", element, op: "update" }], ids);
+        setError(null);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+  };
+
+  const unpin = (placeRef: string, name: string) => {
+    const edit = removeEatOutChoice(doc, itemRef, placeRef);
+    if (edit === null || !window.confirm(`Odpiąć „${name}” od posiłku? Miejsce zostaje w planie (usuniesz je w „Miejscach”).`)) return;
+    const invalid = documentProblem(edit.doc);
+    if (invalid !== null) return setError(`Nie zapisano: ${invalid}`);
+    start(async () => {
+      try {
+        await saveElements(createClient(), tripId, edit.doc, edit.writes, ids);
         setError(null);
         router.refresh();
       } catch (e) {
@@ -372,6 +390,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                   wybierz
                 </button>
               )}
+              {canEdit && <IconAction kind="remove" tip="odepnij knajpę od posiłku (miejsce zostaje w planie)" disabled={pending} onClick={() => unpin(eatery.placeRef, eatery.name)} className="self-center" />}
             </li>
           );
         })}

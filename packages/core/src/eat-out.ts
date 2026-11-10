@@ -513,3 +513,87 @@ export function addEatOutChoices(doc: Doc, itemRef: string, picks: { eatery: Eat
     pinned,
   };
 }
+
+/** Zapis odpięcia knajpy: zmienione albo usunięte punkty, warianty i grupa (w tej kolejności). */
+export type EatOutRemoveWrite =
+  | { collection: 'items'; element: Item; op: 'update' | 'remove' }
+  | { collection: 'variants'; element: Variant; op: 'update' | 'remove' }
+  | { collection: 'variantGroups'; element: Group; op: 'update' | 'remove' };
+
+export type EatOutRemoveEdit = { doc: Doc; writes: EatOutRemoveWrite[] };
+
+/**
+ * Odpięcie knajpy od posiłku (miejsce zostaje w planie, usuwa się je na stronie Miejsca). Jedyna knajpa
+ * → posiłek traci miejsce. Z grupy „gdzie jemy” znika wariant tej knajpy i jego kopia posiłku; posiłek
+ * `itemRef` zostaje zawsze (przy odpinaniu jego własnej knajpy przejmuje następną opcję). Gdy zostaje
+ * jedna knajpa, grupa znika, a posiłek jest zwykłym punktem z jej miejscem. `null` = nie ma czego odpiąć.
+ */
+export function removeEatOutChoice(doc: Doc, itemRef: string, placeRef: string): EatOutRemoveEdit | null {
+  const meal = doc.items.find((each) => each.ref === itemRef);
+  if (meal === undefined) return null;
+  const group = eatOutGroup(doc, itemRef);
+  if (group === undefined) {
+    if (meal.placeRef !== placeRef) return null;
+    const { placeRef: _place, ...rest } = meal;
+    const changed: Item = rest;
+    return { doc: { ...doc, items: doc.items.map((each) => (each.ref === itemRef ? changed : each)) }, writes: [{ collection: 'items', element: changed, op: 'update' }] };
+  }
+  const options = eatOutOptions(doc, itemRef);
+  const removed = options.find((option) => option.placeRef === placeRef);
+  if (removed === undefined) return null;
+  const rest = options.filter((option) => option !== removed);
+  const groupVariantRefs = new Set(doc.variants.filter((each) => each.groupRef === group.ref).map((each) => each.ref));
+  const itemWrites: EatOutRemoveWrite[] = [];
+  const removedItems = new Set<string>();
+  let main: Item;
+
+  if (rest.length <= 1) {
+    // Jedna knajpa to już nie wybór: posiłek z jej miejscem, kopie, warianty i grupa znikają.
+    const keep = rest[0];
+    const { placeRef: _place, ...plain } = meal;
+    main = { ...plain, ...(keep?.placeRef ? { placeRef: keep.placeRef } : {}), variantRefs: meal.variantRefs.filter((ref) => !groupVariantRefs.has(ref)) };
+    for (const option of options) if (option.itemRef !== itemRef && option.itemRef !== '') removedItems.add(option.itemRef);
+    const variantWrites: EatOutRemoveWrite[] = doc.variants.filter((each) => groupVariantRefs.has(each.ref)).map((element) => ({ collection: 'variants', element, op: 'remove' }));
+    const items = doc.items.filter((each) => !removedItems.has(each.ref)).map((each) => (each.ref === itemRef ? main : each));
+    for (const ref of removedItems) itemWrites.push({ collection: 'items', element: doc.items.find((each) => each.ref === ref)!, op: 'remove' });
+    return {
+      doc: { ...doc, items, variants: doc.variants.filter((each) => !groupVariantRefs.has(each.ref)), variantGroups: doc.variantGroups.filter((each) => each.ref !== group.ref) },
+      writes: [{ collection: 'items', element: main, op: 'update' }, ...itemWrites, ...variantWrites, { collection: 'variantGroups', element: group, op: 'remove' }],
+    };
+  }
+
+  // Posiłek zostaje: odpinając jego własną knajpę, bierze miejsce i wariant pierwszej z pozostałych (jej kopia znika).
+  const donor = removed.itemRef === itemRef ? rest[0]! : undefined;
+  if (donor !== undefined) {
+    main = { ...meal, ...(donor.placeRef ? { placeRef: donor.placeRef } : {}), variantRefs: [...meal.variantRefs.filter((ref) => ref !== removed.variantRef), donor.variantRef] };
+    if (donor.itemRef !== '') removedItems.add(donor.itemRef);
+    itemWrites.push({ collection: 'items', element: main, op: 'update' });
+  } else {
+    main = meal;
+    if (removed.itemRef !== '') removedItems.add(removed.itemRef);
+  }
+  for (const ref of removedItems) itemWrites.push({ collection: 'items', element: doc.items.find((each) => each.ref === ref)!, op: 'remove' });
+  const gone = doc.variants.find((each) => each.ref === removed.variantRef)!;
+  const variants = doc.variants.filter((each) => each.ref !== gone.ref);
+  const writes: EatOutRemoveWrite[] = [...itemWrites];
+  // Polecany wariant znika → polecana jest pierwsza z pozostałych knajp.
+  let nextVariants = variants;
+  if (gone.recommended) {
+    const heir = variants.find((each) => each.ref === rest[0]!.variantRef)!;
+    const promoted: Variant = { ...heir, recommended: true };
+    nextVariants = variants.map((each) => (each.ref === heir.ref ? promoted : each));
+    writes.push({ collection: 'variants', element: promoted, op: 'update' });
+  }
+  writes.push({ collection: 'variants', element: gone, op: 'remove' });
+  let groups = doc.variantGroups;
+  if (group.chosenRef === gone.ref) {
+    const { chosenRef: _chosen, ...unchosen } = group;
+    const nextGroup: Group = unchosen;
+    groups = doc.variantGroups.map((each) => (each.ref === group.ref ? nextGroup : each));
+    writes.push({ collection: 'variantGroups', element: nextGroup, op: 'update' });
+  }
+  return {
+    doc: { ...doc, items: doc.items.filter((each) => !removedItems.has(each.ref)).map((each) => (each.ref === itemRef ? main : each)), variants: nextVariants, variantGroups: groups },
+    writes,
+  };
+}
