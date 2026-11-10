@@ -23,7 +23,7 @@ import {
 import { saveElements, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { findRestaurants } from "@/app/eat-out-actions";
 import { IconAction } from "@/components/icon-action";
@@ -74,6 +74,25 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
   const [selected, setSelected] = useState<string | null>(null);
   const [searchNo, setSearchNo] = useState(0);
   const mapBox = useRef<HTMLDivElement>(null);
+  const cuisineBox = useRef<HTMLDetailsElement>(null);
+  // Lista kuchni zwija się po kliknięciu obok, po wyjściu z niej klawiszem Tab i po Esc.
+  useEffect(() => {
+    const close = (event: Event) => {
+      const box = cuisineBox.current;
+      if (box?.open && !box.contains(event.target as Node)) box.open = false;
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && cuisineBox.current?.open) cuisineBox.current.open = false;
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("focusin", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("focusin", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -227,7 +246,7 @@ export function EatOutSearch({ tripId, doc, ids, itemRef, onClose, onPinned }: {
               {flag("noChains", "bez sieciówek")}
               {flag("onlyRecommended", "tylko polecane (Wikivoyage, nasze 👍)")}
               {cuisines.length > 0 && (
-                <details className="relative">
+                <details ref={cuisineBox} className="relative">
                   <summary className="field cursor-pointer list-none px-2 py-1 text-xs">
                     Kuchnia: {filter.cuisines.length === 0 ? "każda" : filter.cuisines.join(", ")} ▾
                   </summary>
