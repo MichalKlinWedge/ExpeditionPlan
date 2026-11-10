@@ -5,6 +5,7 @@ import { useId, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { removeTrackLine, saveTrack } from "@/app/track-actions";
+import { IconAction } from "@/components/icon-action";
 
 /**
  * Wgranie śladu GPX do punktu: plik czyta przeglądarka (odczyt, statystyki, uproszczenie), a linia
@@ -50,13 +51,7 @@ export function TrackUpload({ tripId, itemRef, hasLine }: { tripId: string; item
             className="text-sm"
           />
           {hasLine && (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => window.confirm("Usunąć ślad z tego punktu?") && start(async () => setState(await removeTrackLine(tripId, itemRef)))}
-              className="btn-mini btn-mini-danger">
-              usuń ślad
-            </button>
+            <IconAction kind="remove" tip="Usuń ślad" disabled={pending} onClick={() => window.confirm("Usunąć ślad z tego punktu?") && start(async () => setState(await removeTrackLine(tripId, itemRef)))} />
           )}
         </div>
       </div>

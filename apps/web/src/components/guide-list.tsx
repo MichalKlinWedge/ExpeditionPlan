@@ -112,9 +112,7 @@ function OrphanGuide({ tripId, guideId }: { tripId: string; guideId: string }) {
   return (
     <p className="flex flex-wrap items-baseline gap-2 text-xs text-zinc-500">
       Tego punktu ani miejsca już nie ma w planie.
-      <button type="button" disabled={pending} onClick={() => window.confirm("Usunąć ten opis?") && start(async () => setState(await removeGuide(tripId, guideId)))} className="btn-mini btn-mini-danger">
-        usuń opis
-      </button>
+      <IconAction kind="remove" tip="Usuń opis" disabled={pending} onClick={() => window.confirm("Usunąć ten opis?") && start(async () => setState(await removeGuide(tripId, guideId)))} />
       {state.error && <span className="text-red-600">{state.error}</span>}
     </p>
   );

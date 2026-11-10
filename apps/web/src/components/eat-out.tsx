@@ -423,7 +423,7 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
         {eateries.map((eatery) => {
           const n = selection.numbers[eatery.placeRef];
           return (
-            <li key={eatery.placeRef} className="flex flex-wrap items-baseline gap-x-2">
+            <li key={eatery.placeRef} className="flex flex-wrap items-center gap-x-2 gap-y-1">
               {selection.href ? (
                 <Link href={selection.href(eatery.placeRef)} title="Posiłek i knajpa na stronie Posiłki" className="btn-mini">
                   {group !== undefined && eatery.active && "✓ "}
@@ -443,14 +443,14 @@ export function MealEateries({ tripId, doc, ids, itemRef, canEdit, selection }: 
                   </span>
                 </button>
               )}
-              <PlaceLink tripId={tripId} place={{ ref: eatery.placeRef, name: eatery.name }} className="btn-mini shrink-0 self-center px-1.5" />
+              <PlaceLink tripId={tripId} place={{ ref: eatery.placeRef, name: eatery.name }} />
               {eatery.summary && <span className="text-zinc-500">{eatery.summary}</span>}
               {canEdit && eatery.variantRef !== undefined && !eatery.active && (
                 <button disabled={pending} onClick={() => choose(eatery.variantRef!)} className="btn-mini">
                   wybierz
                 </button>
               )}
-              {canEdit && <IconAction kind="remove" tip="odepnij knajpę od posiłku (miejsce zostaje w planie)" disabled={pending} onClick={() => unpin(eatery.placeRef, eatery.name)} className="self-center" />}
+              {canEdit && <IconAction kind="remove" tip="odepnij knajpę od posiłku (miejsce zostaje w planie)" disabled={pending} onClick={() => unpin(eatery.placeRef, eatery.name)} />}
             </li>
           );
         })}

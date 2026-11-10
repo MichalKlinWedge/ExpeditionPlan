@@ -194,9 +194,7 @@ function EntryForm({ entry, tz, startTime, days, busy, error, onCancel, onSave }
               </button>
             </span>
           ) : (
-            <button type="button" onClick={() => setDropPhoto(true)} className="btn-mini btn-mini-danger">
-              usuń zdjęcie
-            </button>
+            <IconAction kind="remove" tip="Usuń zdjęcie z wpisu (plik zostaje)" onClick={() => setDropPhoto(true)} />
           ))}
       </div>
       {(invalid ?? error) && <p className="text-sm text-red-600">{invalid ?? error}</p>}

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { describeFromSource, describeItem, describePlaceGuide, removeGuide } from "@/app/guide-actions";
+import { IconAction } from "@/components/icon-action";
 import { SparkIcon } from "@/components/icons";
 
 /** Własne źródło opisu, gdy automat nic nie znalazł albo trafił w inne miejsce: link albo tekst wklejony ze strony. */
@@ -59,12 +60,7 @@ export function PlaceGuideButtons({ tripId, placeRef, guideId, label, which: sav
           {pending ? "Szukam artykułu i piszę… (ok. 10–30 s)" : label}
         </button>
         {guideId && (
-          <button
-            disabled={pending}
-            onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))}
-            className="btn-mini btn-mini-danger">
-            usuń opis
-          </button>
+          <IconAction kind="remove" tip="Usuń opis" disabled={pending} onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))} />
         )}
       </div>
       {state.error && <p className="text-xs text-red-600">{state.error}</p>}
@@ -102,12 +98,7 @@ export function GuideButtons({ tripId, itemRef, guideId, hint: saved = "", label
           {pending ? "Szukam artykułu i piszę… (ok. 10–30 s)" : (label ?? (guideId ? "Odśwież opis" : "Przygotuj opis (AI)"))}
         </button>
         {guideId && (
-          <button
-            disabled={pending}
-            onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))}
-            className="btn-mini btn-mini-danger">
-            usuń opis
-          </button>
+          <IconAction kind="remove" tip="Usuń opis" disabled={pending} onClick={() => window.confirm("Usunąć opis tego miejsca?") && start(async () => setState(await removeGuide(tripId, guideId)))} />
         )}
       </div>
       {state.error && <p className="text-xs text-red-600">{state.error}</p>}

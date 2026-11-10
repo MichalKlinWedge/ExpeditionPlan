@@ -13,14 +13,14 @@ export function PlacePin({ tripId, places, name }: { tripId: string; places: rea
   const typed = name.trim().toLowerCase();
   const place = typed === "" ? undefined : places.find((each) => each.name.trim().toLowerCase() === typed);
   if (place === undefined) return null;
-  return <PlaceLink tripId={tripId} place={place} className="btn-mini my-0 shrink-0 justify-center self-stretch px-2" size="size-5" />;
+  return <PlaceLink tripId={tripId} place={place} className="btn-mini btn-icon my-0 shrink-0 self-stretch px-2" size="size-4" />;
 }
 
 /**
  * Sama pinezka do znanego miejsca (np. w tekście karty punktu). Kliknięcie dopisuje `wroc` = bieżąca strona,
  * żeby „←” na stronie Miejsca wracał tam, skąd przyszliśmy (link otwierany w nowej karcie go nie ma).
  */
-export function PlaceLink({ tripId, place, className = "btn-mini shrink-0 px-1.5", size = "size-4" }: { tripId: string; place: { ref: string; name: string }; className?: string; size?: string }) {
+export function PlaceLink({ tripId, place, className = "btn-mini btn-icon shrink-0", size = "size-3.5" }: { tripId: string; place: { ref: string; name: string }; className?: string; size?: string }) {
   const router = useRouter();
   const href = `/trips/${tripId}/places?miejsce=${encodeURIComponent(place.ref)}`;
   return (

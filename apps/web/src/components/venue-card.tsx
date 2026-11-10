@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { clearVenue, readVenue, readVenueSite, saveVenue, type VenueReadState } from "@/app/venue-actions";
+import { IconAction } from "@/components/icon-action";
 import { SparkIcon } from "@/components/icons";
 import { VenueEntries } from "@/components/venue-entries";
 
@@ -117,13 +118,7 @@ function VenueEditor({ tripId, place, canClear }: { tripId: string; place: Place
           {reading === "text" ? "Czytam…" : "Odczytaj dane knajpy (AI)"}
         </button>
         {canClear && (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => window.confirm("Usunąć wszystkie punkty, ceny i ocenę tej knajpy?") && start(async () => setState(await clearVenue(tripId, place.ref)))}
-            className="btn-mini btn-mini-danger">
-            usuń wszystko
-          </button>
+          <IconAction kind="remove" tip="Usuń wszystkie punkty, ceny i ocenę" disabled={pending} onClick={() => window.confirm("Usunąć wszystkie punkty, ceny i ocenę tej knajpy?") && start(async () => setState(await clearVenue(tripId, place.ref)))} />
         )}
       </div>
 

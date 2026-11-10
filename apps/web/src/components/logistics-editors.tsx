@@ -624,9 +624,8 @@ export function RemoveCancelledBooking({ tripId, bookingRef, title, note }: { tr
   const question = [`Usunąć anulowaną rezerwację „${title}” z listy? W aplikacji nie da się tego cofnąć.`, note, "Jej dokumenty z sejfu (jeśli są) zostaną w „Inne dokumenty”."].filter(Boolean).join("\n\n");
   return (
     <span className="inline-flex items-center gap-1">
-      <button type="button" disabled={action.pending} onClick={() => action.run(() => removeCancelledBooking(tripId, bookingRef), question)} className="btn-mini btn-mini-danger">
-        {action.pending ? "usuwam…" : "usuń z listy"}
-      </button>
+      <IconAction kind="remove" tip="Usuń anulowaną rezerwację z listy" disabled={action.pending} onClick={() => action.run(() => removeCancelledBooking(tripId, bookingRef), question)} />
+      {action.pending && <span className="text-xs text-zinc-500">usuwam…</span>}
       {action.state.error && <span className="text-xs text-red-600">{action.state.error}</span>}
     </span>
   );

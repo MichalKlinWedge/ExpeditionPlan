@@ -383,8 +383,9 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
               </option>
             ))}
           </select>
-          <button
-            type="button"
+          <IconAction
+            kind="remove"
+            tip="Usuń grupę (zostaje wybrany wariant)"
             onClick={() => {
               const kept = variants.find((variant) => variant.ref === keep);
               if (kept && window.confirm(`Usunąć wybór „${group.title}”? W planie zostaje „${kept.label}”, punkty innych wariantów wrócą do puli.`)) {
@@ -392,9 +393,7 @@ function GroupEditor({ doc, group, onRules, onDone }: { doc: Doc; group: Variant
                 onDone();
               }
             }}
-            className="btn-mini btn-mini-danger">
-            usuń grupę
-          </button>
+          />
         </span>
       </div>
     </form>
