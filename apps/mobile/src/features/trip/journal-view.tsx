@@ -510,46 +510,69 @@ function todayRef(trip: CachedTrip): string | undefined {
   return (days.find((day) => instantToZoned(now, day.tz).date === day.date) ?? days[0])?.ref;
 }
 
+type PickedPhoto = { uri: string; mimeType: string; extension: string; taken: { date: string; time: string } | null };
+/** Najwięcej zdjęć w jednym dodaniu (każde to osobny wpis i plik do wysłania). */
+const MAX_PHOTOS = 30;
+const MAX_BYTES = 15 * 1024 * 1024;
+
 /** `itemRef` — wpis przy punkcie planu, w jego dniu (bez wyboru dnia). */
 function NewEntry({ trip, tripId, itemRef, onDone, onSaved }: { trip: CachedTrip; tripId: string; itemRef?: string; onDone: () => void; onSaved: () => void }) {
   const theme = useTheme();
   const [body, setBody] = useState('');
   const itemDay = itemRef === undefined ? undefined : trip.state.doc.items.find((each) => each.ref === itemRef)?.dayRef;
   const [dayRef, setDayRef] = useState(() => itemDay ?? todayRef(trip));
-  const [photo, setPhoto] = useState<{ uri: string; mimeType: string; extension: string; taken: { date: string; time: string } | null } | null>(null);
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const days = trip.state.doc.days;
 
-  // Aparat albo galeria; kompresja JPEG (0.7) — kilkaset KB zamiast kilku MB do wysłania.
+  // Aparat albo galeria (wiele naraz); kompresja JPEG (0.7) — kilkaset KB zamiast kilku MB do wysłania.
   const pick = async (source: 'camera' | 'library') => {
+    const room = MAX_PHOTOS - photos.length;
+    if (room <= 0) return Alert.alert('Dużo zdjęć', `Naraz można dodać najwyżej ${MAX_PHOTOS} zdjęć — zapisz te i dodaj kolejne.`);
     if (source === 'camera' && !(await requestCameraPermissionsAsync()).granted) return Alert.alert('Brak dostępu do aparatu', 'Zezwól aplikacji na aparat w ustawieniach telefonu.');
     // EXIF tylko z galerii: zdjęcie dodane później dostaje czas zrobienia, nie zapisu.
     const options = { mediaTypes: ['images' as const], quality: 0.7, exif: source === 'library' };
-    const result = source === 'camera' ? await launchCameraAsync(options) : await launchImageLibraryAsync(options);
-    const asset = result.canceled ? undefined : result.assets[0];
-    if (asset === undefined) return;
-    const mimeType = asset.mimeType ?? 'image/jpeg';
-    const extension = (asset.fileName?.split('.').pop() ?? mimeType.split('/')[1] ?? 'jpg').toLowerCase().replace('jpeg', 'jpg');
-    if ((asset.fileSize ?? 0) > 15 * 1024 * 1024) return Alert.alert('Za duże zdjęcie', 'Zdjęcie może mieć najwyżej 15 MB.');
-    setPhoto({ uri: asset.uri, mimeType, extension, taken: exifMoment(asset.exif) });
+    const result = source === 'camera' ? await launchCameraAsync(options) : await launchImageLibraryAsync({ ...options, allowsMultipleSelection: true, selectionLimit: room, orderedSelection: true });
+    if (result.canceled) return;
+    const tooBig = result.assets.filter((asset) => (asset.fileSize ?? 0) > MAX_BYTES).length;
+    const picked = result.assets
+      .filter((asset) => (asset.fileSize ?? 0) <= MAX_BYTES)
+      .slice(0, room)
+      .map((asset): PickedPhoto => {
+        const mimeType = asset.mimeType ?? 'image/jpeg';
+        const extension = (asset.fileName?.split('.').pop() ?? mimeType.split('/')[1] ?? 'jpg').toLowerCase().replace('jpeg', 'jpg');
+        return { uri: asset.uri, mimeType, extension, taken: exifMoment(asset.exif) };
+      });
+    // To samo zdjęcie wybrane drugi raz nie dubluje się.
+    setPhotos((current) => [...current, ...picked.filter((each) => !current.some((other) => other.uri === each.uri))]);
+    if (tooBig > 0) Alert.alert('Za duże zdjęcie', tooBig === 1 ? 'Jedno zdjęcie ma ponad 15 MB i zostało pominięte.' : `Pominięte zdjęcia ponad 15 MB: ${tooBig}.`);
   };
 
+  /**
+   * Każde zdjęcie to osobny wpis (wpis ma jedno zdjęcie), tekst trafia do pierwszego. Czas z EXIF,
+   * gdy zdjęcie jest z dnia wyjazdu (przy punkcie — tylko z jego dnia); wtedy też ten dzień. Bez
+   * EXIF wpisy stają po kolei, w kolejności wyboru.
+   */
   const save = () => {
-    if (body.trim() === '' && photo === null) return;
-    const id = uuidv7();
-    const photoPath = photo === null ? null : `${tripId}/${id}/zdjecie.${photo.extension}`;
+    if (body.trim() === '' && photos.length === 0) return;
+    const now = Date.now();
+    const entries = (photos.length === 0 ? [null] : photos).map((photo, index) => {
+      const id = uuidv7();
+      return { id, photo, photoPath: photo === null ? null : `${tripId}/${id}/zdjecie.${photo.extension}`, body: index === 0 ? body.trim() : '', fallbackAt: new Date(now + index).toISOString() };
+    });
     try {
-      if (photo !== null && photoPath !== null) keepPhoto(photo.uri, photoPath, photo.mimeType);
+      for (const entry of entries) if (entry.photo !== null && entry.photoPath !== null) keepPhoto(entry.photo.uri, entry.photoPath, entry.photo.mimeType);
     } catch (e) {
       return Alert.alert('Nie zapisano zdjęcia', e instanceof Error ? e.message : String(e));
     }
-    // Czas z EXIF, gdy zdjęcie jest z dnia wyjazdu (przy punkcie — tylko z jego dnia); wtedy też ten dzień.
-    const taken = photo?.taken ?? null;
-    const exifDay = taken === null ? undefined : days.find((day) => day.date === taken.date && (itemRef === undefined || day.ref === dayRef));
-    const entryDay = exifDay?.ref ?? dayRef;
-    const takenAt = exifDay !== undefined && taken !== null ? new Date(zonedToInstant(exifDay.date, taken.time, exifDay.tz)).toISOString() : undefined;
-    saveJournalEntry(localDb, { id, tripId, dayId: entryDay === undefined ? null : (trip.ids[entryDay] ?? null), itemId: itemRef === undefined ? null : (trip.ids[itemRef] ?? null), body: body.trim(), photoPath, ...(takenAt ? { takenAt } : {}) });
+    for (const entry of entries) {
+      const taken = entry.photo?.taken ?? null;
+      const exifDay = taken === null ? undefined : days.find((day) => day.date === taken.date && (itemRef === undefined || day.ref === dayRef));
+      const entryDay = exifDay?.ref ?? dayRef;
+      const takenAt = exifDay !== undefined && taken !== null ? new Date(zonedToInstant(exifDay.date, taken.time, exifDay.tz)).toISOString() : entry.fallbackAt;
+      saveJournalEntry(localDb, { id: entry.id, tripId, dayId: entryDay === undefined ? null : (trip.ids[entryDay] ?? null), itemId: itemRef === undefined ? null : (trip.ids[itemRef] ?? null), body: entry.body, photoPath: entry.photoPath, takenAt });
+    }
     setBody('');
-    setPhoto(null);
+    setPhotos([]);
     onSaved();
     onDone();
   };
@@ -573,17 +596,34 @@ function NewEntry({ trip, tripId, itemRef, onDone, onSaved }: { trip: CachedTrip
           ))}
         </View>
       )}
-      {photo !== null && <Image source={{ uri: photo.uri }} style={styles.photo} contentFit="cover" />}
+      {photos.length === 1 && <Image source={{ uri: photos[0]!.uri }} style={styles.photo} contentFit="cover" />}
+      {photos.length > 1 && (
+        <>
+          <View style={styles.thumbs}>
+            {photos.map((photo) => (
+              <Pressable key={photo.uri} onPress={() => setPhotos((current) => current.filter((each) => each.uri !== photo.uri))} accessibilityLabel="Usuń to zdjęcie" style={styles.thumb}>
+                <Image source={{ uri: photo.uri }} style={styles.thumbImage} contentFit="cover" />
+                <ThemedText type="smallBold" style={styles.thumbDrop}>
+                  ✕
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+          <ThemedText type="small" themeColor="textSecondary">
+            Każde zdjęcie będzie osobnym wpisem z dniem i godziną zrobienia, tekst trafi do pierwszego. Dotknij zdjęcia, żeby je usunąć.
+          </ThemedText>
+        </>
+      )}
       <View style={styles.wrap}>
         <Button small label="📷 Zrób zdjęcie" onPress={() => void pick('camera')} />
-        <Button small label="🖼 Z galerii" onPress={() => void pick('library')} />
-        {photo !== null && <Button small label="Bez zdjęcia" onPress={() => setPhoto(null)} />}
+        <Button small label={photos.length > 0 ? '🖼 Dodaj z galerii' : '🖼 Z galerii'} onPress={() => void pick('library')} />
+        {photos.length > 0 && <Button small label={photos.length > 1 ? 'Bez zdjęć' : 'Bez zdjęcia'} onPress={() => setPhotos([])} />}
       </View>
       <View style={styles.meta}>
         <Pressable onPress={onDone} hitSlop={8}>
           <ThemedText type="linkPrimary">Anuluj</ThemedText>
         </Pressable>
-        <Button small variant="primary" label="Zapisz wpis" onPress={save} disabled={body.trim() === '' && photo === null} />
+        <Button small variant="primary" label={photos.length > 1 ? `Zapisz wpisy (${photos.length})` : 'Zapisz wpis'} onPress={save} disabled={body.trim() === '' && photos.length === 0} />
       </View>
     </ThemedView>
   );
@@ -596,6 +636,10 @@ const styles = StyleSheet.create({
   meta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: Spacing.two },
+  thumbs: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  thumb: { width: '32%', aspectRatio: 1 },
+  thumbImage: { width: '100%', height: '100%', borderRadius: Spacing.one },
+  thumbDrop: { position: 'absolute', top: 2, right: 6, color: '#fff', textShadowColor: '#000', textShadowRadius: 3 },
   label: { alignSelf: 'center' },
   handle: { borderWidth: 1, borderRadius: Spacing.two, paddingHorizontal: Spacing.three, justifyContent: 'center', alignItems: 'center' },
   dragged: { zIndex: 10, elevation: 8, opacity: 0.92 },
