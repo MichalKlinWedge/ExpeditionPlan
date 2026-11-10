@@ -3,7 +3,7 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button as AppButton } from '@/components/button';
@@ -17,10 +17,12 @@ import { distanceM, GEOFENCE_RADIUS_M, GEOFENCE_TASK, WALK_RADIUS_M, WALK_TASK }
 
 /**
  * Zakładka Spacer: na górze „Spacer z przewodnikiem” (powiadomienie przy opisanym miejscu, czytanie
- * opisu), niżej diagnostyka PoC-3 — geofencing i bateria (PLAN_ETAPOWY.md). Dwa tryby na osobne spacery: geofence w tle
+ * opisu), niżej zwinięta diagnostyka PoC-3 (rozwija się sama, gdy jej tryb działa w tle) — geofencing i bateria (PLAN_ETAPOWY.md). Dwa tryby na osobne spacery: geofence w tle
  * (100 m, ekran wygaszony) i „Tryb spaceru” (usługa pierwszoplanowa, dokładny GPS, 40 m).
  * „Jestem przy punkcie” zapisuje rzeczywistą chwilę dojścia — z niej liczy się opóźnienie wykrycia.
  */
+
+const DIAGNOSTICS_KEY = 'walk_diagnostics';
 
 export default function WalkScreen() {
   const [points, setPoints] = useState<Point[]>([]);
@@ -28,6 +30,22 @@ export default function WalkScreen() {
   const [geofencing, setGeofencing] = useState(false);
   const [walking, setWalking] = useState(false);
   const [battery, setBattery] = useState<number | null>(null);
+  const [diagnostics, setDiagnostics] = useState(() => {
+    try {
+      return localStorage.getItem(DIAGNOSTICS_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleDiagnostics = (value: boolean) => {
+    setDiagnostics(value);
+    try {
+      if (value) localStorage.setItem(DIAGNOSTICS_KEY, '1');
+      else localStorage.removeItem(DIAGNOSTICS_KEY);
+    } catch {
+      // Bez zapisu panel wróci zwinięty przy następnym otwarciu.
+    }
+  };
 
   const refresh = useCallback(async () => {
     setPoints(await walkPoints());
@@ -128,6 +146,14 @@ export default function WalkScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView contentContainerStyle={styles.panel}>
           <GuideWalkCard blocked={geofencing || walking} />
+          {/* Diagnostyka PoC-3 to narzędzie do testów — zwinięta, chyba że coś z niej działa w tle. */}
+          <Pressable onPress={() => toggleDiagnostics(!diagnostics)} hitSlop={12} style={styles.toggle}>
+            <ThemedText type="small" themeColor="textSecondary">
+              {diagnostics || geofencing || walking ? '▾' : '▸'} Diagnostyka geofencingu (do testów)
+            </ThemedText>
+          </Pressable>
+          {(diagnostics || geofencing || walking) && (
+          <>
           <ThemedText type="subtitle">Diagnostyka: geofencing (PoC-3)</ThemedText>
           <ThemedText type="small">
             {geofencing ? `Geofencing: aktywny (${GEOFENCE_RADIUS_M} m)` : walking ? `Tryb spaceru: aktywny (${WALK_RADIUS_M} m)` : 'Nic nie działa w tle.'}
@@ -162,6 +188,8 @@ export default function WalkScreen() {
               {typeof entry.battery === 'number' ? ` ${entry.battery}%` : ''}
             </ThemedText>
           ))}
+          </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -184,4 +212,5 @@ const styles = StyleSheet.create({
   panel: { padding: Spacing.three, gap: Spacing.two, paddingBottom: BottomTabInset + Spacing.three },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   mono: { fontFamily: 'monospace' },
+  toggle: { paddingVertical: Spacing.two },
 });

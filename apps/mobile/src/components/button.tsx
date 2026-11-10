@@ -7,7 +7,8 @@ import { useTheme } from '@/hooks/use-theme';
 /**
  * Wyraźny przycisk (motyw „Kompas i mapa”): `primary` — pomarańczowy, główna akcja ekranu;
  * `secondary` — biała karta z obrysem; `accent` — zaznaczony przełącznik (morska zieleń).
- * `danger` — czerwony napis przy usuwaniu.
+ * `danger` — czerwony napis przy usuwaniu. `big` — cel dotyku co najmniej 48 dp (SPECYFIKACJA §9),
+ * do akcji w terenie (karta „Teraz”), obsługiwanych jedną ręką.
  */
 export function Button({
   label,
@@ -15,6 +16,7 @@ export function Button({
   variant = 'secondary',
   disabled = false,
   small = false,
+  big = false,
   danger = false,
   style,
 }: {
@@ -23,6 +25,7 @@ export function Button({
   variant?: 'primary' | 'secondary' | 'accent';
   disabled?: boolean;
   small?: boolean;
+  big?: boolean;
   danger?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -37,6 +40,7 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         small && styles.small,
+        big && styles.big,
         { backgroundColor: background, borderColor: filled ? background : theme.backgroundSelected },
         filled && styles.raised,
         pressed && styles.pressed,
@@ -55,6 +59,7 @@ const DANGER = '#D92D20';
 const styles = StyleSheet.create({
   button: { alignSelf: 'flex-start', borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, paddingHorizontal: Spacing.three },
   small: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10 },
+  big: { minHeight: 48, minWidth: 64, justifyContent: 'center', alignItems: 'center', paddingVertical: 12 },
   raised: { elevation: 3, shadowColor: '#1B2A41', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
   pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   disabled: { opacity: 0.45, elevation: 0 },

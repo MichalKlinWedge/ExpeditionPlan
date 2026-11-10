@@ -41,6 +41,7 @@ import { PoolView } from '@/features/plan/pool-view';
 import { VariantChoice, type Voting } from '@/features/plan/variant-choice';
 import { TripNewsBanner } from '@/features/plan/trip-news';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
+import { onBackgroundSync } from '@/features/sync/sync-loop';
 import { InfoView } from '@/features/trip/info-view';
 import { MealsView } from '@/features/trip/meals-view';
 import { TasksView } from '@/features/trip/tasks-view';
@@ -234,6 +235,20 @@ ${fresh.rejected[0]!.error}`);
     const stop = watchTrip(supabase as unknown as SupabaseClient, tripId, () => void pull());
     return () => void stop();
   }, [tripId, signedIn]);
+
+  // Wysyłka w tle (`sync-loop`) skończyła się dla tego wyjazdu: stan z bazy telefonu na ekran.
+  useEffect(
+    () =>
+      onBackgroundSync((event) => {
+        if (event.tripId !== tripId) return;
+        const updated = cachedTrip(localDb, tripId);
+        if (updated !== null) setTrip(updated);
+        if (event.rejected.length > 0) {
+          Alert.alert('Serwer nie przyjął zmiany', `${plural(event.rejected.length, ['zapis', 'zapisy', 'zapisów'])} z telefonu wycofano — brak uprawnień albo dane już się zmieniły.\n\n${event.rejected[0]!.error}`);
+        }
+      }),
+    [tripId],
+  );
 
   /**
    * Edycja planu (online): zmiana od razu w dokumencie na ekranie, zapis w bazie przez
@@ -590,7 +605,8 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                             schedule={schedule}
                             now={now}
                             lastEvent={lastEvent}
-                        pool={{ doc: state.doc, pulled: state.inputs.pulled.filter((each) => each.dayRef === day.ref).map((each) => each.itemRef) }}
+                            doc={state.doc}
+                            pulled={state.inputs.pulled.filter((each) => each.dayRef === day.ref).map((each) => each.itemRef)}
                             onEvent={signedIn && canAct ? (itemRef, event) => record(day.ref, itemRef, event) : null}
                           />
                         )

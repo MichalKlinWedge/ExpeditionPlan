@@ -1,9 +1,10 @@
-import { dayAlerts, goNoGoReminders, isPostponed, tripReminders, type TripDocument } from '@expeditionplan/core';
+import { dayAlerts, goNoGoReminders, isPostponed, localToday, type Reminder, tripReminders, type TripDocument } from '@expeditionplan/core';
 import { cachedTrip } from '@expeditionplan/sync';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { offlineDoneVersion } from '@/features/trip/offline-flag';
 import { cachedTrips } from '@/features/trips/my-trips';
 import { localDb } from '@/lib/local-db';
 
@@ -64,6 +65,7 @@ async function reschedule(tripId: string, doc: TripDocument): Promise<number> {
       .slice(0, 10)
       .map((reminder) => ({ ...reminder, channelId: CHANNEL })),
     ...dayAlerts(doc, inputs, now).map((reminder) => ({ ...reminder, channelId: DAY_CHANNEL })),
+    ...offlineReminders(tripId, doc, now).map((reminder) => ({ ...reminder, channelId: CHANNEL })),
   ];
   for (const reminder of list) {
     await Notifications.scheduleNotificationAsync({
@@ -74,11 +76,34 @@ async function reschedule(tripId: string, doc: TripDocument): Promise<number> {
   return list.length;
 }
 
+/**
+ * „Pobierz wyjazd offline” 2 dni i dzień przed startem o 19:00 (czas telefonu), dopóki pakiet nie był
+ * ani razu kompletny. Po kompletnym pobraniu `offline-download.ts` przelicza przypomnienia i to znika.
+ */
+function offlineReminders(tripId: string, doc: TripDocument, now: number): Reminder[] {
+  const start = doc.days[0]?.date;
+  if (start === undefined || offlineDoneVersion(tripId) !== null) return [];
+  const [year, month, day] = start.split('-').map(Number) as [number, number, number];
+  return [2, 1].flatMap((before) => {
+    const at = new Date(year, month - 1, day - before, 19, 0).getTime();
+    if (at <= now) return [];
+    return [
+      {
+        at,
+        title: 'Pobierz wyjazd offline',
+        body: `„${doc.trip.title}” zaczyna się ${before === 1 ? 'jutro' : 'pojutrze'}, a na telefonie nie ma jeszcze mapy i dokumentów. Wyjazdy → wyjazd → „Pobierz offline”, najlepiej przez Wi-Fi.`,
+        key: `offline-download-${before}`,
+      },
+    ];
+  });
+}
+
 /** Start aplikacji i powrót na pierwszy plan: wyjazdy trwające albo zaczynające się jutro — oś dnia sięga 25 powiadomień do przodu. */
 export async function refreshCurrentReminders(): Promise<void> {
   if (!remindersEnabled()) return;
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  // Daty telefonu, nie UTC (strefa UTC+4 po północy to w UTC jeszcze wczoraj).
+  const today = localToday();
+  const tomorrow = localToday(new Date(Date.now() + 86_400_000));
   for (const trip of cachedTrips() ?? []) {
     // Odłożony na webie: przypomnienia zaplanowane wcześniej znikają też bez otwierania planu.
     if (trip.id != null && isPostponed(trip)) {

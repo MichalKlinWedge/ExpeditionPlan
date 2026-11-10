@@ -10,7 +10,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { OnTrip } from '@/features/home/on-trip';
 import { NextTripWeather } from '@/features/home/weather-alerts';
-import { loadMyTrips, setCurrentTrip } from '@/features/trips/my-trips';
+import { loadMyTrips, type MyTrips, setCurrentTrip } from '@/features/trips/my-trips';
 import { localDb } from '@/lib/local-db';
 
 /**
@@ -38,14 +38,15 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
 
   useFocusEffect(
     useCallback(() => {
-      void loadMyTrips(signedIn).then((result) => {
+      const apply = (result: MyTrips) => {
         // Szkice AI to nie wyjazdy: nie liczą się nigdzie w statystykach (jak w sekcjach zakładki Wyjazdy).
         const real = result.trips.filter((trip) => !isDraft(trip));
         const summary = (trip: (typeof real)[number]) => ({ id: trip.id!, title: trip.title!, startDate: trip.start_date!, endDate: trip.end_date! });
         // Odłożone nie odliczają dni ani nie wchodzą do statystyk podróży; pobrane dane liczą się dalej (szkice też leżą na telefonie).
         const planned = real.filter((trip) => !isPostponed(trip)).map(summary);
         setData({ stats: tripStats(planned, localToday()), local: localCounts(result.trips.map((trip) => trip.id!)), offline: result.offline, postponed: real.length - planned.length });
-      });
+      };
+      void loadMyTrips(signedIn, apply).then(apply);
     }, [signedIn]),
   );
 

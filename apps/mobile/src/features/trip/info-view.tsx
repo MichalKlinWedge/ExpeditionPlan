@@ -10,7 +10,7 @@ import { DocumentsView } from '@/features/trip/documents-view';
 
 /**
  * Informacje praktyczne na telefonie — offline, z planu zapisanego w SQLite: numery alarmowe
- * (jedno dotknięcie = połączenie), kontakty (gospodarz, wypożyczalnia), ważne ostrzeżenia, notatki
+ * (jedno dotknięcie = połączenie; 112 zawsze, nawet gdy plan go nie ma), kontakty (gospodarz, wypożyczalnia), ważne ostrzeżenia, notatki
  * według tematów i źródła. Na webie: „Informacje praktyczne” (etap 5 AI). Zadania — osobna zakładka.
  */
 
@@ -41,7 +41,11 @@ export function InfoView({
   onOpenItem?: (itemRef: string) => void;
 }) {
   const doc = trip.state.doc;
-  const emergency = doc.contacts.filter((contact) => contact.role === 'emergency');
+  // 112 zawsze pod ręką — działa w całej UE i w większości sieci komórkowych na świecie, także bez karty SIM.
+  const planned = doc.contacts.filter((contact) => contact.role === 'emergency');
+  const emergency = planned.some((contact) => contact.phone?.replace(/\D/g, '') === '112')
+    ? planned
+    : [{ ref: 'numer-112', name: 'Numer alarmowy (UE i większość krajów)', phone: '112' }, ...planned];
   const others = doc.contacts.filter((contact) => contact.role !== 'emergency');
   const notes = doc.notes.filter((note) => note.scope === 'trip' && note.kind !== 'slack_audit' && note.kind !== 'rationale');
   const important = notes.filter((note) => note.kind === 'warning' || note.kind === 'safety');
@@ -59,16 +63,13 @@ export function InfoView({
   const vault = tripId ? <DocumentsView trip={trip} tripId={tripId} online={signedIn} /> : null;
   const hasVault = trip.live.documents.length > 0 || doc.bookings.some((booking) => booking.confirmationCode);
 
-  if (doc.contacts.length === 0 && notes.length === 0 && !hasVault) {
-    return (
-      <ThemedText themeColor="textSecondary" style={styles.pad}>
-        Plan nie ma jeszcze informacji praktycznych. Na webie: „Informacje praktyczne” → „Przygotuj z AI”.
-      </ThemedText>
-    );
-  }
-
   return (
     <View style={styles.list}>
+      {doc.contacts.length === 0 && notes.length === 0 && !hasVault && (
+        <ThemedText themeColor="textSecondary" style={styles.pad}>
+          Plan nie ma jeszcze informacji praktycznych. Na webie: „Informacje praktyczne” → „Przygotuj z AI”.
+        </ThemedText>
+      )}
       {vault}
       {(emergency.length > 0 || others.length > 0) && (
         <View style={styles.list} onLayout={(event) => onContactsAt?.(event.nativeEvent.layout.y)}>

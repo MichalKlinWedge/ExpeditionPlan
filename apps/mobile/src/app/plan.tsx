@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/session';
 import { Plan } from '@/features/plan/plan-screen';
-import { currentTrip, loadMyTrips, type Trip } from '@/features/trips/my-trips';
+import { currentTrip, loadMyTrips, type MyTrips, type Trip } from '@/features/trips/my-trips';
 import { TripSwitcher } from '@/features/trips/trip-switcher';
 import { isConfigured } from '@/lib/supabase';
 
@@ -24,10 +24,12 @@ export default function PlanTab() {
   const [selected, setSelected] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const result = await loadMyTrips(session !== null);
-    setError(result.error);
-    setTrips(result.trips);
-    setSelected(currentTrip(result.trips));
+    const apply = (result: MyTrips) => {
+      setError(result.error);
+      setTrips(result.trips);
+      setSelected(currentTrip(result.trips));
+    };
+    apply(await loadMyTrips(session !== null, apply));
   }, [session]);
 
   useFocusEffect(

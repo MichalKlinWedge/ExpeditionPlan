@@ -16,8 +16,29 @@ const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.EXPO
 
 export const isConfigured = url !== '' && key !== '';
 
+/**
+ * Limit czasu zapytania. Przy jednej kresce zasięgu (góry, roaming) `fetch` potrafi wisieć minutami,
+ * a kolejne zapisy i synchronizacja czekają za nim. Pliki (Storage) dostają więcej czasu — zdjęcie
+ * na słabym łączu idzie dłużej niż wiersz bazy.
+ */
+const TIMEOUT_MS = 30_000;
+const STORAGE_TIMEOUT_MS = 120_000;
+
+const timedFetch: typeof fetch = (input, init) => {
+  const address = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), address.includes('/storage/v1/') ? STORAGE_TIMEOUT_MS : TIMEOUT_MS);
+  const outer = init?.signal;
+  if (outer) {
+    if (outer.aborted) controller.abort();
+    else outer.addEventListener('abort', () => controller.abort());
+  }
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+};
+
 export const supabase = createClient<Database>(isConfigured ? url : 'http://localhost', isConfigured ? key : 'brak', {
   auth: { storage: localStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: 'pkce' },
+  global: { fetch: timedFetch },
 });
 
 // Odświeżanie tokenu tylko na pierwszym planie (zalecenie Supabase dla React Native).

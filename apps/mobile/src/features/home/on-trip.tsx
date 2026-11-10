@@ -1,8 +1,8 @@
-import { dayLodging, formatMinutes, instantToZoned, nowAndNext, type PlanItem, scheduleDay, type TripDocument, weatherIcon, weatherLine } from '@expeditionplan/core';
+import { dayLodging, formatMinutes, instantToZoned, nowAndNext, type PlanItem, scheduleDay, weatherIcon, weatherLine } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip } from '@expeditionplan/sync';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -11,6 +11,7 @@ import { ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/ite
 import { WeatherAlertList } from '@/features/home/weather-alerts';
 import { useTripWeather } from '@/features/trip/trip-weather';
 import { localDb } from '@/lib/local-db';
+import { itemTarget, navigate } from '@/lib/navigate';
 
 /**
  * Tryb „w trasie” na Starcie: dla trwającego wyjazdu — teraz i następny punkt dnia, pogoda,
@@ -18,16 +19,6 @@ import { localDb } from '@/lib/local-db';
  * Z bazy telefonu (działa offline), zegar co 30 s.
  * Godziny jak w planie: scenariusz optymistyczny, warianty i zdarzenia dnia z bazy.
  */
-
-const navigate = (at: { lat: number; lng: number }) => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${at.lat},${at.lng}`);
-
-/** Miejsce, do którego się jedzie: cel przejazdu albo miejsce punktu (ze współrzędnymi). */
-function placeOf(doc: TripDocument, itemRef: string) {
-  const item = doc.items.find((each) => each.ref === itemRef);
-  const ref = item?.leg?.toPlaceRef ?? item?.placeRef;
-  const place = ref === undefined ? undefined : doc.places.find((each) => each.ref === ref);
-  return place?.lat === undefined || place.lng === undefined ? null : { name: place.name, lat: place.lat, lng: place.lng };
-}
 
 export function OnTrip({ tripId }: { tripId: string }) {
   const [now, setNow] = useState(() => Date.now());
@@ -64,10 +55,10 @@ export function OnTrip({ tripId }: { tripId: string }) {
   }
   const sky = weather?.days[day.ref];
   const target = view?.next ?? view?.current ?? null;
-  const goTo = target === null ? null : placeOf(doc, target.ref);
+  const goTo = target === null ? null : itemTarget(doc, target.ref);
   const lodgingRef = dayLodging(doc, day.ref)?.placeRef;
   const base = lodgingRef === undefined ? undefined : doc.places.find((place) => place.ref === lodgingRef);
-  const lodging = base?.lat !== undefined && base.lng !== undefined ? { lat: base.lat, lng: base.lng } : null;
+  const lodging = base?.lat !== undefined && base.lng !== undefined ? { lat: base.lat, lng: base.lng, name: base.name } : null;
   // Przewodnik: najpierw następny punkt (tam idziecie), potem bieżący.
   const readable = [view?.next, view?.current].flatMap((each) => {
     const item = each ? doc.items.find((other) => other.ref === each.ref) : undefined;
@@ -110,7 +101,7 @@ export function OnTrip({ tripId }: { tripId: string }) {
       )}
       {(goTo !== null || lodging !== null) && (
         <View style={styles.buttons}>
-          {goTo !== null && <Button small label={`Nawiguj: ${goTo.name}`} onPress={() => navigate(goTo)} style={styles.grow} />}
+          {goTo !== null && <Button small label={`Nawiguj: ${goTo.name}`} onPress={() => navigate(goTo, goTo.mode)} style={styles.grow} />}
           {lodging !== null && <Button small label="Do noclegu" onPress={() => navigate(lodging)} />}
         </View>
       )}

@@ -19,8 +19,8 @@ export type Voting = { votes: Votes; voterRef: string | null; onVote: (groupRef:
  * wariancie są głosy i „Głosuję” — głos to podpowiedź dla organizatora, wyboru nie zmienia. Tylko w grupach,
  * nad którymi organizator otworzył głosowanie (`votingOpen`).
  */
-export function VariantChoice({ doc, group, active, onChoose, voting }: { doc: TripDocument; group: Group; active: ReadonlySet<string>; onChoose: (groupRef: string, variantRef: string) => void; voting?: Voting | null }) {
-  if (group.votingOpen !== true) voting = null;
+export function VariantChoice({ doc, group, active, onChoose, voting: votes }: { doc: TripDocument; group: Group; active: ReadonlySet<string>; onChoose: (groupRef: string, variantRef: string) => void; voting?: Voting | null }) {
+  const voting = group.votingOpen === true ? votes : null;
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const variants = doc.variants.filter((variant) => variant.groupRef === group.ref);

@@ -10,7 +10,7 @@ import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
 import { OfflineBadge, OfflineButton, OfflineStamp } from '@/features/trips/offline-button';
 import { useTheme } from '@/hooks/use-theme';
-import { archivedTrips, loadMyTrips, setCurrentTrip, setTripArchived, type Trip } from '@/features/trips/my-trips';
+import { archivedTrips, loadMyTrips, type MyTrips, setCurrentTrip, setTripArchived, type Trip } from '@/features/trips/my-trips';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -44,10 +44,12 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const [archived, setArchived] = useState(archivedTrips);
 
   const load = useCallback(async () => {
-    const result = await loadMyTrips(signedIn);
-    setError(result.error);
-    setOffline(result.offline);
-    setTrips(result.trips);
+    const apply = (result: MyTrips) => {
+      setError(result.error);
+      setOffline(result.offline);
+      setTrips(result.trips);
+    };
+    apply(await loadMyTrips(signedIn, apply));
   }, [signedIn]);
 
   // Pierwsze wczytanie z timera, nie wprost w efekcie (reguła react-hooks/set-state-in-effect).

@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 /**
  * Zdjęcia dziennika: kopia zostaje w katalogu aplikacji (widać ją offline od razu), a do bucketu
  * `journal` idzie, gdy jest sieć — kolejka w `localStorage` przeżywa restart. Plik już wgrany
- * (ponowna próba po zerwanym połączeniu) liczy się jako sukces. Cudze zdjęcia: podpisany URL.
+ * (ponowna próba po zerwanym połączeniu) liczy się jako sukces. Cudze zdjęcia: plik z „Pobierz
+ * offline” (`savePhotos`), a bez niego podpisany URL (z siecią).
  */
 
 const BUCKET = 'journal';
@@ -59,6 +60,31 @@ export function uploadPhotos(): Promise<number> {
 }
 
 export const waitingPhotos = () => queue().length;
+
+/** Ile z tych zdjęć (ścieżki w buckecie) jest już na telefonie. */
+export const savedPhotos = (paths: string[]) => paths.filter((path) => localPhoto(path).exists).length;
+
+/**
+ * Cudze zdjęcia dziennika i paragonów na telefon („Pobierz offline”) — bez nich w trasie widać tylko
+ * własne. Zwraca, ilu nie udało się pobrać (np. plik jeszcze niewysłany z telefonu autora).
+ */
+export async function savePhotos(paths: string[], onProgress?: (done: number, total: number) => void): Promise<number> {
+  const folder = new Directory(Paths.document, 'journal');
+  if (!folder.exists) folder.create({ intermediates: true });
+  const missing = [...new Set(paths)].filter((path) => !localPhoto(path).exists);
+  let failed = 0;
+  for (const [index, path] of missing.entries()) {
+    try {
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 300);
+      if (error || !data) throw error ?? new Error('brak adresu');
+      await File.downloadFileAsync(data.signedUrl, localPhoto(path));
+    } catch {
+      failed++;
+    }
+    onProgress?.(index + 1, missing.length);
+  }
+  return failed;
+}
 
 /** Adres do wyświetlenia: plik z telefonu albo krótki podpisany URL (z siecią). */
 export async function photoUri(path: string): Promise<string | null> {

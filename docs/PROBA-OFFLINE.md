@@ -56,6 +56,8 @@ W trybie samolotowym:
 - [ ] ◎ pokazuje Twoją pozycję (GPS działa bez internetu).
 - [ ] „Nawiguj” otwiera Google Maps — bez internetu nawigacja działa tylko, jeśli ten obszar
       pobrałeś też w Google Maps (mapy offline) — warto to zrobić dla tras samochodowych.
+      Albo: Start → ⚙︎ → „Nawiguj w: inna aplikacja” i mapa tego obszaru pobrana w OsmAnd,
+      Organic Maps lub Mapy.com — wtedy „Nawiguj” otwiera cel w tej aplikacji, także offline.
 
 ## Co zapisać
 

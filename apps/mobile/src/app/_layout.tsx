@@ -14,6 +14,7 @@ import { AppState, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
+import { startSyncLoop } from '@/features/sync/sync-loop';
 import { refreshCurrentReminders } from '@/features/trip/reminders';
 import { UpdateWatcher } from '@/features/updates/update-notice';
 import { GuideFromNotification } from '@/features/walk/guide-from-notification';
@@ -28,6 +29,8 @@ Notifications.setNotificationHandler({
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   useEffect(showLastCrash, []);
+  // Zapisy z terenu wysyłają się same po powrocie sieci, bez wchodzenia w plan, Wydatki czy Dziennik.
+  useEffect(startSyncLoop, []);
   // Oś dnia trwającego wyjazdu: powiadomienia na najbliższe godziny, także gdy nikt nie otworzy planu.
   useEffect(() => {
     void refreshCurrentReminders().catch(() => undefined);

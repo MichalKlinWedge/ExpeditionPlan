@@ -4,13 +4,34 @@ import { Alert } from 'react-native';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { downloadTripOffline, onOfflineChange, type OfflineState, offlineState } from '@/features/trip/offline-download';
+import { downloadTripOffline, offlineEstimate, onOfflineChange, type OfflineState, offlineState, polishVoice } from '@/features/trip/offline-download';
+import { enableReminders, remindersEnabled } from '@/features/trip/reminders';
 
 /**
  * „Pobierz offline” na karcie wyjazdu: jeden przycisk, który dociąga braki z postępem, a przy
  * dacie wyjazdu — kiedy plan był ostatnio doczytany (`OfflineStamp`). Ekran nie musi być otwarty do końca kroku mapy — MapLibre pobiera
  * paczkę dalej, a następne kliknięcie wznawia od miejsca przerwania.
  */
+
+/** Od tylu bajtów „Pobierz offline” najpierw pokazuje rozmiar i pyta. */
+const ASK_BYTES = 20 * 1024 * 1024;
+
+const mb = (bytes: number) => (bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`);
+
+/** Uwagi po pobraniu: dokumenty tylko z internetem, zdjęcia bez kopii, brak polskiego głosu offline. */
+async function afterDownload(state: OfflineState): Promise<string[]> {
+  const notes: string[] = [];
+  if (state.onlineOnly > 0) {
+    notes.push(`${state.onlineOnly === 1 ? '1 dokument nie jest oznaczony' : `${state.onlineOnly} dokumentów nie jest oznaczonych`} „offline” — w trasie otworzy się tylko z internetem. Oznacza się to na webie, w Sejfie.`);
+  }
+  if (state.photos.done < state.photos.total) notes.push(`Nie pobrano ${state.photos.total - state.photos.done} zdjęć — dociągną się przy następnym „Odśwież offline”.`);
+  if (state.guides > 0) {
+    const voice = await polishVoice();
+    if (voice === 'missing') notes.push('Telefon nie ma polskiego głosu do „Posłuchaj”: Ustawienia Androida → Zamiana tekstu na mowę → pobierz język polski.');
+    if (voice === 'network') notes.push('Polski głos do „Posłuchaj” działa tylko z internetem: w ustawieniach zamiany tekstu na mowę pobierz polski głos offline.');
+  }
+  return notes;
+}
 
 const stamp = (iso: string) => new Date(iso).toLocaleString('pl-PL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -21,6 +42,7 @@ function summary(state: OfflineState): string {
     state.map.total > 0 ? `mapa ${state.map.done}/${state.map.total} obszarów` : 'mapa: brak miejsc ze współrzędnymi',
     state.documents.total > 0 ? `dokumenty ${state.documents.done}/${state.documents.total}` : null,
     state.guides > 0 ? `przewodnik: ${state.guides} opisów` : null,
+    state.photos.total > 0 ? `zdjęcia ${state.photos.done}/${state.photos.total}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -71,18 +93,47 @@ export function OfflineButton({ tripId }: { tripId: string }) {
   const [state, refresh, setState] = useOfflineState(tripId);
   const [progress, setProgress] = useState('');
 
-  const download = async () => {
+  const run = async () => {
     setProgress('Przygotowuję…');
     try {
       const done = await downloadTripOffline(tripId, setProgress);
       setState(done);
-      Alert.alert(done.complete ? 'Wyjazd jest na telefonie' : 'Pobrano częściowo', done.complete ? 'Plan, mapa i dokumenty działają bez internetu.' : summary(done));
+      const notes = await afterDownload(done);
+      const text = [done.complete ? 'Plan, mapa i dokumenty działają bez internetu.' : summary(done), ...notes].join('\n\n');
+      Alert.alert(
+        done.complete ? 'Wyjazd jest na telefonie' : 'Pobrano częściowo',
+        text,
+        remindersEnabled()
+          ? undefined
+          : [
+              { text: 'Nie teraz', style: 'cancel' },
+              {
+                text: 'Włącz przypomnienia',
+                onPress: () =>
+                  void enableReminders().then(({ ok }) => !ok && Alert.alert('Brak zgody na powiadomienia', 'Włącz je w ustawieniach Androida dla tej aplikacji.')),
+              },
+            ],
+      );
     } catch (e) {
       Alert.alert('Nie pobrano wszystkiego', `${e instanceof Error ? e.message : String(e)}\n\nTo, co już jest, zostaje — kliknij ponownie, żeby dociągnąć resztę.`);
       refresh();
     } finally {
       setProgress('');
     }
+  };
+
+  /** Przed pobraniem: szacunek rozmiaru braków i wolne miejsce (małe pobranie — bez pytania). */
+  const download = async () => {
+    const estimate = await offlineEstimate(tripId).catch(() => null);
+    if (estimate === null || (estimate.enough && estimate.bytes < ASK_BYTES)) return void run();
+    const size = `Do pobrania ok. ${mb(estimate.bytes)}${estimate.free === null ? '' : ` (wolne na telefonie: ${mb(estimate.free)})`}.`;
+    if (!estimate.enough) {
+      return Alert.alert('Za mało miejsca', `${size}\n\nZwolnij miejsce na telefonie i spróbuj ponownie — plan i tak zostaje na telefonie.`);
+    }
+    Alert.alert('Pobrać wyjazd offline?', `${size} Najlepiej przez Wi-Fi.`, [
+      { text: 'Anuluj', style: 'cancel' },
+      { text: 'Pobierz', onPress: () => void run() },
+    ]);
   };
 
   const busy = progress !== '';

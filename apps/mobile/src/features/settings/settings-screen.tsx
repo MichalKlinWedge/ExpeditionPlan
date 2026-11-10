@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
+import { Segmented } from '@/components/segmented';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -11,6 +12,7 @@ import { useSession } from '@/features/auth/session';
 import { openHelp } from '@/features/home/intro';
 import { disableReminders, enableReminders, remindersEnabled } from '@/features/trip/reminders';
 import { UpdateCard } from '@/features/updates/update-notice';
+import { navApp, type NavApp, setNavApp } from '@/lib/navigate';
 import { supabase } from '@/lib/supabase';
 
 /** Ustawienia (zębatka na Start): konto, przypomnienia z planu, „Jak korzystać” i wersja aplikacji z ręcznym sprawdzeniem aktualizacji. */
@@ -19,6 +21,7 @@ export function SettingsScreen({ visible, onClose, onIntro }: { visible: boolean
   const [name, setName] = useState<string | null>(null);
   const [reminders, setReminders] = useState(remindersEnabled);
   const [reminderInfo, setReminderInfo] = useState('');
+  const [nav, setNav] = useState<NavApp>(navApp);
   const userId = session?.user.id;
 
   // Imię z profilu; bez sieci zostaje sam e-mail.
@@ -92,6 +95,25 @@ export function SettingsScreen({ visible, onClose, onIntro }: { visible: boolean
                     {reminderInfo}
                   </ThemedText>
                 )}
+              </ThemedView>
+
+              <ThemedText type="smallBold">Nawigacja</ThemedText>
+              <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedText type="small">
+                  Dokąd prowadzi „Nawiguj”. Google Maps bez internetu działa tylko na obszarze pobranym wcześniej w Google Maps. „Inna aplikacja” otwiera cel w aplikacji wybranej w Androidzie — OsmAnd, Organic Maps albo Mapy.com nawigują na własnych mapach offline (trzeba je w niej pobrać).
+                </ThemedText>
+                <Segmented
+                  label="Nawiguj w"
+                  options={[
+                    { value: 'google', label: 'Google Maps' },
+                    { value: 'other', label: 'inna aplikacja' },
+                  ]}
+                  value={nav}
+                  onChange={(value) => {
+                    setNavApp(value);
+                    setNav(value);
+                  }}
+                />
               </ThemedView>
 
               <ThemedText type="smallBold">Jak korzystać</ThemedText>

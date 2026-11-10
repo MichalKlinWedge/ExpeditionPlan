@@ -30,9 +30,14 @@ export function cachedTrips(): Trip[] | null {
   return cached === null ? null : (JSON.parse(cached) as Trip[]);
 }
 
-/** `signedIn = false`: tylko lista z telefonu, bez pytania serwera. */
-export async function loadMyTrips(signedIn = true): Promise<MyTrips> {
+/**
+ * `signedIn = false`: tylko lista z telefonu, bez pytania serwera. `onCached` dostaje od razu listę
+ * z telefonu (jeśli jest), zanim odpowie serwer — przy słabym zasięgu ekran nie czeka na sieć.
+ */
+export async function loadMyTrips(signedIn = true, onCached?: (result: MyTrips) => void): Promise<MyTrips> {
   if (!signedIn) return { trips: cachedTrips() ?? [], offline: true, error: '' };
+  const early = onCached === undefined ? null : cachedTrips();
+  if (early !== null) onCached!({ trips: early, offline: false, error: '' });
   const { data, error } = await supabase.from('my_trips').select('*').order('start_date');
   if (!error) {
     localStorage.setItem(TRIPS_KEY, JSON.stringify(data));
@@ -81,7 +86,8 @@ export function activeTrips(trips: Trip[]): Trip[] {
 
 /** Domyślny wyjazd: trwający dziś, inaczej najbliższy nadchodzący, inaczej ostatni. Odłożony i zarchiwizowany na telefonie — tylko gdy nie ma innych. */
 export function pickTrip(trips: Trip[]): string | null {
-  const today = new Date().toISOString().slice(0, 10);
+  // Data telefonu, nie UTC — w Gruzji po północy UTC to jeszcze wczoraj.
+  const today = localToday();
   const archived = archivedTrips();
   const planned = trips.filter((trip) => !isPostponed(trip) && !archived.has(trip.id!));
   const ongoing = planned.find((trip) => trip.start_date! <= today && today <= trip.end_date!);

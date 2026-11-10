@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { navigate } from '@/lib/navigate';
 
 /**
  * Trasa punktu w szczegółach: długość, przewyższenie, czas, link do trasy (mapy.com, wymaga internetu),
@@ -72,7 +73,7 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
       <View style={styles.buttons}>
         {url !== undefined && <Button small label={`🗺 ${routeLinkLabel(url)}`} onPress={() => void Linking.openURL(url)} />}
         {line !== undefined && <Button small variant="primary" label="📍 Gdzie jestem na śladzie" onPress={() => void locate()} />}
-        {start !== undefined && <Button small label="Do startu" onPress={() => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${start[1]},${start[0]}`)} />}
+        {start !== undefined && <Button small label="Do startu" onPress={() => navigate({ lat: start[1]!, lng: start[0]!, name: 'Start trasy' }, 'walking')} />}
       </View>
     </ThemedView>
   );

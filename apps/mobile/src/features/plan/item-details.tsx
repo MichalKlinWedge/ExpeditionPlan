@@ -40,11 +40,14 @@ import { PlacePin } from '@/features/plan/place-pin';
 import { ItemPhotos } from '@/features/trip/journal-view';
 import { TrackCard } from '@/features/plan/track-card';
 import { TrackProfileCard } from '@/features/plan/track-profile';
+import { guideImageUri } from '@/features/plan/guide-images';
+import { navigate, travelMode } from '@/lib/navigate';
 
 /**
  * Szczegóły punktu na telefonie: miejsce z „Nawiguj”, opis, notatki, linki i przewodnik
  * (opis, ciekawostki, historia, zdjęcia z Commons). Tekst przewodnika jest w bazie telefonu —
- * offline zawsze; zdjęcia z pamięci podręcznej (pobierane po synchronizacji, `prefetchGuideImages`).
+ * offline zawsze; zdjęcia — pliki z „Pobierz offline” (`guide-images.ts`), a bez nich pamięć podręczna
+ * (`prefetchGuideImages` po synchronizacji).
  * Nazwy innych opisanych miejsc w treści są odnośnikami — przejście do ich szczegółów, „← Wstecz” wraca.
  * „Posłuchaj” czyta przewodnik syntezatorem mowy telefonu (`expo-speech`, offline, jeśli telefon
  * ma polski głos); zamknięcie szczegółów przerywa czytanie.
@@ -221,7 +224,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
               )}
             </View>
             {place.lat !== undefined && place.lng !== undefined && (
-              <Button small variant="primary" label="Nawiguj" onPress={() => open(`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`)} />
+              <Button small variant="primary" label="Nawiguj" onPress={() => navigate({ lat: place.lat!, lng: place.lng!, name: place.name }, travelMode(item.leg))} />
             )}
           </View>
         )}
@@ -301,7 +304,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.images}>
                 {guide.images.map((image) => (
                   <Pressable key={image.url} onPress={() => open(image.sourceUrl)} style={styles.figure}>
-                    <Image source={{ uri: image.thumbUrl }} style={styles.photo} contentFit="cover" cachePolicy="disk" />
+                    <Image source={{ uri: guideImageUri(image.thumbUrl) }} style={styles.photo} contentFit="cover" cachePolicy="disk" />
                     <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.caption}>
                       {guideImageCredit(image)}
                     </ThemedText>

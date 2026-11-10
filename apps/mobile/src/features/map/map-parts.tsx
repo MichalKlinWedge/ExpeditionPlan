@@ -1,11 +1,12 @@
 import type { MapLine, MapPin } from '@expeditionplan/core';
 import { GeoJSONSource, Layer, Marker } from '@maplibre/maplibre-react-native';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { navigate } from '@/lib/navigate';
 
 /**
  * Wspólne części map telefonu (zakładka Mapa i mapa dnia w Planie): linie dnia, pinezki z numerami
@@ -88,7 +89,7 @@ export function PinMarkers({ pins, selected, onSelect, guided }: { pins: MapPin[
   });
 }
 
-export const navigateTo = (pin: MapPin) => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}`);
+export const navigateTo = (pin: MapPin) => navigate({ lat: pin.lat, lng: pin.lng, name: pin.name });
 
 /** Przewodnik miejsca z karty pinezki: szczegóły albo od razu czytanie na głos. */
 export type PinGuide = { onRead: () => void; onListen: () => void };
