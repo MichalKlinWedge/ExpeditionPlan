@@ -1,12 +1,13 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, itemKindLabel, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeLinkSite, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
+import Image from "next/image";
 import Link from "next/link";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
-import { ArticleIcon, InfoIcon, SparkIcon, TicketIcon } from "@/components/icons";
+import { ArticleIcon, InfoIcon, RouteIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { PlaceLink } from "@/components/place-pin";
 import { DayConstraints, DayEndField, DayNotes, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
@@ -807,12 +808,16 @@ const routeHover = (ref: string) => ({
 });
 
 /** „🗺 trasa” przy punkcie z linkiem do trasy (mapy.com), do podejrzenia przebiegu wprost z planu dnia. */
+/** Ikona serwisu przy linku trasy (favikony zapisane w `public/route-icons`, strona nie łączy się z serwisem). */
+const ROUTE_SITE_ICON = { mapy: "/route-icons/mapy.png", google: "/route-icons/google-maps.png" } as const;
+
 function RouteLink({ doc, item }: { doc: TripDocument; item: Item }) {
   const url = doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.url;
   if (url === undefined || !/^https?:\/\//i.test(url)) return null;
+  const site = routeLinkSite(url);
   return (
-    <a href={url} target="_blank" rel="noreferrer" title={routeLinkLabel(url)} {...routeHover(item.ref)} className="ml-1.5 rounded bg-sea/10 px-1 text-xs text-sea hover:bg-signal/20 hover:underline">
-      🗺 trasa
+    <a href={url} target="_blank" rel="noreferrer" title={routeLinkLabel(url)} aria-label={routeLinkLabel(url)} {...routeHover(item.ref)} className="btn-mini btn-icon ml-1.5">
+      {site === null ? <RouteIcon className="size-3.5" /> : <Image src={ROUTE_SITE_ICON[site]} alt="" width={14} height={14} unoptimized className="size-3.5" />}
     </a>
   );
 }
@@ -1070,9 +1075,9 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                           <ArticleIcon className="size-3.5" />
                         </span>
                       ))}
+                    {/* Rodzaj punktu mówi ikona przed tytułem; nazwa rodzaju tylko gdy ikony nie ma. */}
                     <span className="text-zinc-500">
-                      {" "}
-                      · {source === undefined ? ITEM_KIND[item.kind] : itemKindLabel(source, ITEM_KIND)}
+                      {source === undefined ? ` · ${ITEM_KIND[item.kind]}` : ""}
                       {place && place !== item.title ? ` · ${place}` : ""}
                       {item.driftMin > 15 && item.statedLocal ? ` · plan mówi ${item.statedLocal}, wychodzi +${item.driftMin} min` : ""}
                     </span>
@@ -1204,9 +1209,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                   </span>
                   {lodging.booking !== undefined && onBooking !== null && <BookingButton onClick={() => onBooking(lodging.booking!.ref)} />}
                   {tripId !== undefined && lodging.placeRef !== undefined && (
-                    <span className="ml-1.5 inline-flex align-middle">
-                      <PlaceLink tripId={tripId} place={{ ref: lodging.placeRef, name: lodging.name }} />
-                    </span>
+                    <PlaceLink tripId={tripId} place={{ ref: lodging.placeRef, name: lodging.name }} className="btn-mini btn-icon ml-1.5" />
                   )}
                   {!lodging.onMap && (
                     <span title="Miejsce noclegu bez współrzędnych — „Uzupełnij współrzędne miejsc” albo własna pinezka" className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">

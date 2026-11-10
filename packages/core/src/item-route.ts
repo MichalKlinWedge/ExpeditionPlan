@@ -22,10 +22,16 @@ export const isFootRouteItem = (item: Item) => item.kind === 'activity' || FOOT.
 const GOOGLE_ROUTE_LABEL = 'Trasa w Mapach Google';
 const TRANSIT_ROUTE_LABEL = 'Trasa komunikacją w Mapach Google';
 
+/** Serwis map, do którego prowadzi link trasy (ikona przy punkcie planu); `null` = inny. */
+export function routeLinkSite(url: string): 'mapy' | 'google' | null {
+  if (/(^|\/\/|\.)mapy\.(com|cz)(\/|$)/i.test(url)) return 'mapy';
+  return /\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.|maps\.)?google\.[a-z.]+\/maps)/i.test(url) || /\/\/maps\.google\./i.test(url) ? 'google' : null;
+}
+
 /** Etykieta linku do trasy po adresie. */
 export function routeLinkLabel(url: string): string {
-  if (/(^|\/\/|\.)mapy\.(com|cz)(\/|$)/i.test(url)) return MAPY_ROUTE_LABEL;
-  return /\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.|maps\.)?google\.[a-z.]+\/maps)/i.test(url) || /\/\/maps\.google\./i.test(url) ? GOOGLE_ROUTE_LABEL : 'Trasa na mapie';
+  const site = routeLinkSite(url);
+  return site === 'mapy' ? MAPY_ROUTE_LABEL : site === 'google' ? GOOGLE_ROUTE_LABEL : 'Trasa na mapie';
 }
 
 const CAR = new Set(['car', 'rental_car', 'taxi', 'hired_driver']);

@@ -152,6 +152,8 @@ h2 {
   }
   /* Sama ikona (`IconAction`, pinezka miejsca, „głosuj” w planie): kwadrat o wysokości `btn-mini` z tekstem, dymek z `title`. */
   .btn-icon {
+    /* Sama ikona nie ma linii tekstu, więc bez tego `<button>` i `<a>` w zdaniu stają na różnej wysokości. */
+    vertical-align: middle;
     justify-content: center;
     box-sizing: border-box;
     min-width: calc(1.15rem + 2px);
