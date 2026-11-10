@@ -253,48 +253,88 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
     if (!window.confirm(`Usunąć uczestnika „${person.name}”?`)) return;
     start(async () => setResult(await removeTraveler(tripId, person.id)));
   };
+  const placeName = (id: string | null) => (id === null ? null : (places.find((place) => place.id === id)?.name ?? "?"));
+  // Kolumna tylko wtedy, gdy ktoś ma w niej dane — tabela nie rośnie o puste kolumny.
+  const show = {
+    age: people.some((person) => person.age !== null),
+    family: people.some((person) => person.household || person.guardian_id),
+    when: people.some((person) => travelerPresence(person.from_date, person.to_date) !== null),
+    route: people.some((person) => person.start_place_id || person.end_place_id),
+    documents: people.some((person) => person.passport_until !== null || person.id_card_until !== null),
+  };
+  const columns = 1 + Object.values(show).filter(Boolean).length + (canEdit ? 1 : 0);
   return (
     <div className="flex flex-col gap-3">
       {people.length === 0 ? (
         <p className="text-sm text-zinc-500">Brak uczestników.</p>
       ) : (
-        <ul className="flex flex-col gap-2 text-sm">
-          {people.map((person) =>
-            editing === person.id ? (
-              <li key={person.id} className="card p-3">
-                <TravelerForm tripId={tripId} trip={trip} guardians={guardians} places={places} traveler={person} onDone={() => setEditing(null)} />
-              </li>
-            ) : (
-              <li key={person.id} className="flex flex-wrap items-baseline gap-x-2">
-                <span>
-                  <span className="font-medium">{person.name}</span>
-                  {person.nickname ? ` „${person.nickname}”` : ""}
-                  <span className="text-zinc-500">
-                    {person.age !== null ? ` · ${person.age} l.` : ""}
-                    {person.household ? ` · ${person.household}` : ""}
-                    {person.guardian_id ? ` · pod opieką: ${nameOf.get(person.guardian_id) ?? "?"}` : ""}
-                    {person.is_driver ? " · kierowca" : ""}
-                    {travelerPresence(person.from_date, person.to_date) ? ` · tylko ${travelerPresence(person.from_date, person.to_date)}` : ""}
-                  </span>
-                </span>
-                {person.tentative && <span className="rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">waha się</span>}
-                {canEdit && (
-                  <span className="text-xs text-zinc-500">
-                    <IconAction kind="edit" onClick={() => { setResult({}); setEditing(person.id); }} />{" "}
-                    <IconAction kind="remove" onClick={() => remove(person)} disabled={pending} />
-                  </span>
-                )}
-                {(person.start_place_id || person.end_place_id) && (
-                  <p className="w-full text-xs text-zinc-600 dark:text-zinc-400">
-                    {[person.start_place_id && `start: ${places.find((place) => place.id === person.start_place_id)?.name ?? "?"}`, person.end_place_id && `koniec: ${places.find((place) => place.id === person.end_place_id)?.name ?? "?"}`].filter(Boolean).join(" · ")}
-                  </p>
-                )}
-                <TravelerDocuments person={person} back={person.to_date ?? trip.end} today={today} />
-                {person.notes && <p className="w-full whitespace-pre-line text-xs text-zinc-600 dark:text-zinc-400">{person.notes}</p>}
-              </li>
-            ),
-          )}
-        </ul>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-zinc-500">
+              <tr>
+                <th className="py-1 pr-3 font-normal">Uczestnik</th>
+                {show.age && <th className="py-1 pr-3 font-normal">Wiek</th>}
+                {show.family && <th className="py-1 pr-3 font-normal">Rodzina</th>}
+                {show.when && <th className="py-1 pr-3 font-normal">Kiedy</th>}
+                {show.route && <th className="py-1 pr-3 font-normal">Start / koniec</th>}
+                {show.documents && <th className="py-1 pr-3 font-normal">Dokumenty</th>}
+                {canEdit && <th className="w-px py-1 font-normal" aria-label="Działania" />}
+              </tr>
+            </thead>
+            <tbody>
+              {people.map((person) =>
+                editing === person.id ? (
+                  <tr key={person.id} className="border-t border-zinc-200 dark:border-zinc-800">
+                    <td colSpan={columns} className="py-2">
+                      <div className="card p-3">
+                        <TravelerForm tripId={tripId} trip={trip} guardians={guardians} places={places} traveler={person} onDone={() => setEditing(null)} />
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={person.id} className="border-t border-zinc-200 align-top dark:border-zinc-800">
+                    <td className="py-1.5 pr-3">
+                      <span className="flex flex-wrap items-baseline gap-x-2">
+                        <span>
+                          <span className="font-medium">{person.name}</span>
+                          {person.nickname ? ` „${person.nickname}”` : ""}
+                        </span>
+                        {person.tentative && <span className="rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">waha się</span>}
+                      </span>
+                      {person.is_driver && <span className="block text-xs text-zinc-500">kierowca</span>}
+                      {person.notes && <span className="block whitespace-pre-line text-xs text-zinc-600 dark:text-zinc-400">{person.notes}</span>}
+                    </td>
+                    {show.age && <td className="py-1.5 pr-3 whitespace-nowrap">{person.age !== null ? `${person.age} l.` : <span className="text-zinc-500">—</span>}</td>}
+                    {show.family && (
+                      <td className="py-1.5 pr-3">
+                        {person.household ?? (person.guardian_id ? null : <span className="text-zinc-500">—</span>)}
+                        {person.guardian_id && <span className="block text-xs text-zinc-500">pod opieką: {nameOf.get(person.guardian_id) ?? "?"}</span>}
+                      </td>
+                    )}
+                    {show.when && <td className="py-1.5 pr-3">{travelerPresence(person.from_date, person.to_date) ?? <span className="text-zinc-500">cały wyjazd</span>}</td>}
+                    {show.route && (
+                      <td className="py-1.5 pr-3">
+                        {person.start_place_id ? <span className="block">{placeName(person.start_place_id)}</span> : <span className="block text-zinc-500">—</span>}
+                        {person.end_place_id && person.end_place_id !== person.start_place_id && <span className="block text-xs text-zinc-500">koniec: {placeName(person.end_place_id)}</span>}
+                      </td>
+                    )}
+                    {show.documents && (
+                      <td className="py-1.5 pr-3">
+                        <TravelerDocuments person={person} back={person.to_date ?? trip.end} today={today} />
+                      </td>
+                    )}
+                    {canEdit && (
+                      <td className="py-1.5 whitespace-nowrap">
+                        <IconAction kind="edit" onClick={() => { setResult({}); setEditing(person.id); }} />{" "}
+                        <IconAction kind="remove" onClick={() => remove(person)} disabled={pending} />
+                      </td>
+                    )}
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
       <Status state={result} />
       <SharedTransport people={people} places={places} />
@@ -309,9 +349,9 @@ function TravelerDocuments({ person, back, today }: { person: Traveler; back: st
     ["passport", person.passport_until],
     ["id_card", person.id_card_until],
   ].filter((pair): pair is [IdDocument, string] => pair[1] !== null);
-  if (docs.length === 0) return null;
+  if (docs.length === 0) return <span className="text-zinc-500">—</span>;
   return (
-    <p className="flex w-full flex-wrap gap-x-3 text-xs text-zinc-600 dark:text-zinc-400">
+    <p className="flex flex-col text-xs text-zinc-600 dark:text-zinc-400">
       {docs.map(([document, until]) => {
         const found = idDocumentProblem(document, until, back, today);
         return (

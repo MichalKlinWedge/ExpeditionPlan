@@ -138,38 +138,80 @@ export function MemberStats({
       {without.length > 0 && (
         <div className="flex flex-col gap-1">
           <h3 className="font-medium">Bez konta (albo nieprzypisani)</h3>
-          <ul className="flex flex-col gap-2">
-            {without.map((each) => {
-              // Ostatni ważny, niewykorzystany link dla tej osoby — żeby nie wysyłać drugiego bez potrzeby.
-              const pending = invites.filter((invite) => invite.traveler_id === each.id && invite.revoked_at === null && invite.used_count < invite.max_uses && new Date(invite.expires_at).getTime() > now).at(-1);
-              return (
-                <li key={each.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="font-medium">{each.name}</span>
-                  {pending && <span className="text-xs text-zinc-500">zaproszenie z {date(pending.created_at)} czeka (ważne do {date(pending.expires_at)})</span>}
-                  <TravelerInvite tripId={tripId} travelerId={each.id} name={each.name} tripTitle={trip.title} dates={trip.dates} />
-                </li>
-              );
-            })}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="text-xs text-zinc-500">
+                <tr>
+                  <th className="py-1 pr-3 font-normal">Uczestnik</th>
+                  <th className="py-1 pr-3 font-normal">Zaproszenie</th>
+                  <th className="py-1 font-normal">Zaproś</th>
+                </tr>
+              </thead>
+              <tbody>
+                {without.map((each) => {
+                  // Ostatni ważny, niewykorzystany link dla tej osoby — żeby nie wysyłać drugiego bez potrzeby.
+                  const pending = invites.filter((invite) => invite.traveler_id === each.id && invite.revoked_at === null && invite.used_count < invite.max_uses && new Date(invite.expires_at).getTime() > now).at(-1);
+                  return (
+                    <tr key={each.id} className="border-t border-zinc-200 align-top dark:border-zinc-800">
+                      <td className="py-1.5 pr-3 font-medium whitespace-nowrap">{each.name}</td>
+                      <td className="py-1.5 pr-3">
+                        {pending ? (
+                          <>
+                            czeka od {date(pending.created_at)}
+                            <span className="block text-xs text-zinc-500">ważne do {date(pending.expires_at)}</span>
+                          </>
+                        ) : (
+                          <span className="text-zinc-500">—</span>
+                        )}
+                      </td>
+                      <td className="w-full py-1.5">
+                        <TravelerInvite tripId={tripId} travelerId={each.id} name={each.name} tripTitle={trip.title} dates={trip.dates} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {invites.length > 0 && (
         <div className="flex flex-col gap-1">
           <h3 className="font-medium">Linki zaproszeń</h3>
-          <ul className="flex flex-col gap-0.5">
-            {invites.map((invite) => {
-              const joined = members.filter((member) => member.invite_id === invite.id);
-              const state = invite.revoked_at ? "cofnięty" : new Date(invite.expires_at).getTime() < now ? "wygasł" : invite.used_count >= invite.max_uses ? "wykorzystany" : `ważny do ${date(invite.expires_at)}`;
-              return (
-                <li key={invite.id}>
-                  {date(invite.created_at)} · {MEMBER_ROLE[invite.role] ?? invite.role}
-                  {invite.traveler_id && ` · dla: ${travelers.find((each) => each.id === invite.traveler_id)?.name ?? "?"}`} · użyty {invite.used_count} z {invite.max_uses} · <span className="text-zinc-500">{state}</span>
-                  {joined.length > 0 && <span className="text-zinc-500"> · dołączyli: {joined.map((member) => member.display_name ?? member.email ?? "?").join(", ")}</span>}
-                </li>
-              );
-            })}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left">
+              <thead className="text-xs text-zinc-500">
+                <tr>
+                  <th className="py-1 pr-3 font-normal">Utworzony</th>
+                  <th className="py-1 pr-3 font-normal">Dostęp</th>
+                  <th className="py-1 pr-3 font-normal">Dla</th>
+                  <th className="py-1 pr-3 font-normal">Użycia</th>
+                  <th className="py-1 pr-3 font-normal">Stan</th>
+                  <th className="py-1 font-normal">Dołączyli</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invites.map((invite) => {
+                  const joined = members.filter((member) => member.invite_id === invite.id);
+                  const live = !invite.revoked_at && new Date(invite.expires_at).getTime() >= now && invite.used_count < invite.max_uses;
+                  const state = invite.revoked_at ? "cofnięty" : new Date(invite.expires_at).getTime() < now ? "wygasł" : invite.used_count >= invite.max_uses ? "wykorzystany" : `ważny do ${date(invite.expires_at)}`;
+                  return (
+                    <tr key={invite.id} className="border-t border-zinc-200 align-top dark:border-zinc-800">
+                      <td className="py-1.5 pr-3 whitespace-nowrap">{date(invite.created_at)}</td>
+                      <td className="py-1.5 pr-3">{MEMBER_ROLE[invite.role] ?? invite.role}</td>
+                      <td className="py-1.5 pr-3">{invite.traveler_id ? (travelers.find((each) => each.id === invite.traveler_id)?.name ?? "?") : <span className="text-zinc-500">każdy</span>}</td>
+                      <td className="py-1.5 pr-3 tabular-nums whitespace-nowrap">
+                        {invite.used_count} z {invite.max_uses}
+                      </td>
+                      <td className={`py-1.5 pr-3 whitespace-nowrap ${live ? "" : "text-zinc-500"}`}>{state}</td>
+                      <td className="py-1.5">{joined.length > 0 ? joined.map((member) => member.display_name ?? member.email ?? "?").join(", ") : <span className="text-zinc-500">—</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
