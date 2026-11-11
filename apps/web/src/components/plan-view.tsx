@@ -832,19 +832,25 @@ const routeHover = (ref: string) => ({
   onBlur: () => highlightRoute(null),
 });
 
-/** „🗺 trasa” przy punkcie z linkiem do trasy (mapy.com), do podejrzenia przebiegu wprost z planu dnia. */
 /** Ikona serwisu przy linku trasy (favikony zapisane w `public/route-icons`, strona nie łączy się z serwisem). */
 const ROUTE_SITE_ICON = { mapy: "/route-icons/mapy.png", google: "/route-icons/google-maps.png" } as const;
 
+/**
+ * Linki do trasy przy tytule punktu, jako ikony serwisu: zapisany przy śladzie (mapy.com, Google) i wyliczony
+ * z przejazdu albo spaceru (`legRouteLink`: własny link przejazdu, Mapy Google autem i komunikacją, mapy.com pieszo).
+ */
 function RouteLink({ doc, item }: { doc: TripDocument; item: Item }) {
-  const url = doc.tracks.find((track) => track.ref === item.activity?.trackRef)?.url;
-  if (url === undefined || !/^https?:\/\//i.test(url)) return null;
-  const site = routeLinkSite(url);
-  return (
-    <a href={url} target="_blank" rel="noreferrer" title={routeLinkLabel(url)} aria-label={routeLinkLabel(url)} {...routeHover(item.ref)} className="btn-mini btn-icon ml-1.5">
-      {site === null ? <RouteIcon className="size-3.5" /> : <Image src={ROUTE_SITE_ICON[site]} alt="" width={14} height={14} unoptimized className="size-3.5" />}
-    </a>
-  );
+  const track = doc.tracks.find((each) => each.ref === item.activity?.trackRef)?.url;
+  const computed = legRouteLink(doc, item);
+  const links = [...(track !== undefined && /^https?:\/\//i.test(track) ? [{ url: track, label: routeLinkLabel(track) }] : []), ...(computed !== null && computed.url !== track ? [computed] : [])];
+  return links.map(({ url, label }) => {
+    const site = routeLinkSite(url);
+    return (
+      <a key={url} href={url} target="_blank" rel="noreferrer" title={label} aria-label={label} {...routeHover(item.ref)} className="btn-mini btn-icon ml-1.5">
+        {site === null ? <RouteIcon className="size-3.5" /> : <Image src={ROUTE_SITE_ICON[site]} alt="" width={14} height={14} unoptimized className="size-3.5" />}
+      </a>
+    );
+  });
 }
 
 /** Grupowanie, opis (wszystkie / z opisem / bez), filtry z licznikami i szukanie; „wyczyść” wraca do całej puli. */
@@ -1045,7 +1051,6 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
             const warnings = schedule.warnings.filter((warning) => warning.itemRef === item.ref);
             const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
             const leg = source === undefined ? null : [transitLines(source), legLabel(source) ?? stopsLabel(source)].filter(Boolean).join(" · ") || null;
-            const route = source === undefined ? null : legRouteLink(doc, source);
             const flight = source === undefined ? undefined : flightOf(doc, source);
             const flightText = flight === undefined ? undefined : flightLine(flight);
             const offMap = source !== undefined && missingOnMap(doc, source);
@@ -1176,11 +1181,6 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                 )}
                 {leg && <p className="ml-31 text-xs text-zinc-500">{leg}</p>}
                 {routeStopsLabel(item) && <p className="ml-31 text-xs font-medium text-zinc-600 dark:text-zinc-400">{routeStopsLabel(item)}</p>}
-                {route && (
-                  <a href={route.url} target="_blank" rel="noreferrer" {...routeHover(item.ref)} className="ml-31 self-start text-xs text-sea underline">
-                    {route.label}
-                  </a>
-                )}
                 {warnings.map((warning, index) => (
                   <p key={index} className={`ml-31 text-xs ${warning.severity === "hard" ? "msg-error" : "text-amber-600"}`}>
                     {warning.severity === "hard" ? "⚠ " : "· "}
