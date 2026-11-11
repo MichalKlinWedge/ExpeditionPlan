@@ -125,6 +125,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
             kind: group.kind,
             day,
             title,
+            planned: day < doc.days.length,
             node: (
           <section className="card flex flex-col gap-2 p-4 text-sm">
             <h2 className="card-title">

@@ -101,6 +101,7 @@ function backLink(tripId: string, doc: TripDocument, wroc: string | string[] | u
     const title = doc.items.find((each) => each.ref === ref)?.title;
     return { href: wroc, label: title ?? "Punkt planu" };
   }
+  if (/\/routes\/[^/]+$/.test(path)) return { href: wroc, label: "Trasa" };
   if (path.endsWith("/plan")) return { href: wroc, label: "Plan dzień po dniu" };
   if (path.endsWith("/logistics")) return { href: wroc, label: "Rezerwacje i budżet" };
   if (path.endsWith("/people")) return { href: wroc, label: "Uczestnicy i dostęp" };

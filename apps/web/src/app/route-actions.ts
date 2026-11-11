@@ -1,6 +1,7 @@
 "use server";
 
-import { attachRoute, carRouteFromItem, detachRoute, DocTrack, editRoute, newRoute, plural, removeRoute, trackEndsNote, TripDocument } from "@expeditionplan/core";
+import { attachRoute, carRouteFromItem, detachRoute, DocTrack, editRoute, isGoogleShortLink, type LatLng, newRoute, parseCoordinates, plainName, plural, removeRoute, trackEndsNote, TripDocument } from "@expeditionplan/core";
+import { resolveGoogleLink } from "@expeditionplan/planner";
 import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
@@ -170,13 +171,51 @@ export type RouteEditInput = z.input<typeof EditFields>;
  * Edycja trasy na jej stronie (`editRoute`). Z `updateUsers` podpięte punkty dostają od nowa jej przebieg i liczby
  * (zapis punktów przez `savePlanEdit`, więc plan dnia się przelicza).
  */
-export async function updateRoute(tripId: string, trackRef: string, fields: RouteEditInput, updateUsers: boolean): Promise<FormState> {
+export type NewEndPlace = { name: string; coords: string };
+
+/** Współrzędne nowego końca: wklejone liczby, pełny link z mapy albo krótki link Google (jedno zapytanie HEAD, `resolveGoogleLink`). */
+async function endPoint(coords: string): Promise<LatLng | null> {
+  const text = coords.trim();
+  const direct = parseCoordinates(text);
+  if (direct !== null || !isGoogleShortLink(text)) return direct;
+  const resolved = await resolveGoogleLink(text).catch(() => null);
+  return resolved === null ? null : parseCoordinates(resolved);
+}
+
+/**
+ * Edycja trasy na jej stronie (`editRoute`). Koniec może być nowym miejscem (nazwa + współrzędne albo link z mapy);
+ * miejsce o tej samej nazwie w wyjeździe jest użyte zamiast nowego.
+ */
+export async function updateRoute(tripId: string, trackRef: string, fields: RouteEditInput, updateUsers: boolean, newPlaces: { from?: NewEndPlace; to?: NewEndPlace } = {}): Promise<FormState> {
   const parsed = EditFields.safeParse(fields);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Niepoprawne dane trasy." };
+  const fresh: { end: "from" | "to"; name: string; point: LatLng }[] = [];
+  for (const end of ["from", "to"] as const) {
+    const typed = newPlaces[end];
+    if (typed === undefined) continue;
+    const name = typed.name.trim();
+    const label = end === "from" ? "„Skąd”" : "„Dokąd”";
+    if (name === "" || name.length > 200) return { error: `${label}: wpisz nazwę nowego miejsca (do 200 znaków).` };
+    const point = await endPoint(typed.coords);
+    if (point === null) return { error: `${label}: nie widzę współrzędnych. Wklej np. „49.2, 22.5” albo link z Google Maps lub OpenStreetMap.` };
+    fresh.push({ end, name, point });
+  }
   return commit(tripId, `/trips/${tripId}/routes/${encodeURIComponent(trackRef)}`, (doc) => {
-    const edited = editRoute(doc, trackRef, parsed.data, { updateUsers, ids: () => ({ fromId: uuidv7(), toId: uuidv7() }) });
+    const added: ElementWrite[] = [];
+    let base = doc;
+    const ends: { fromRef?: string; toRef?: string } = {};
+    for (const { end, name, point } of fresh) {
+      const same = base.places.find((place) => plainName(place.name) === plainName(name) && place.lat !== undefined && place.lng !== undefined);
+      const place = same ?? { ref: `id-${uuidv7()}`, name, lat: Math.round(point.lat * 1e5) / 1e5, lng: Math.round(point.lng * 1e5) / 1e5, provider: "user" as const, links: [] };
+      if (same === undefined) {
+        base = { ...base, places: [...base.places, place] };
+        added.push({ collection: "places", element: place, op: "insert" });
+      }
+      ends[end === "from" ? "fromRef" : "toRef"] = place.ref;
+    }
+    const edited = editRoute(base, trackRef, { ...parsed.data, ...ends }, { updateUsers, ids: () => ({ fromId: uuidv7(), toId: uuidv7() }) });
     if (typeof edited === "string") return edited;
-    const places: ElementWrite[] = edited.places.map(({ place, created }) => ({ collection: "places", element: place, op: created ? "insert" : "update" }));
+    const places: ElementWrite[] = [...added, ...edited.places.map(({ place, created }): ElementWrite => ({ collection: "places", element: place, op: created ? "insert" : "update" }))];
     const users = edited.items.length;
     return {
       doc: edited.doc,

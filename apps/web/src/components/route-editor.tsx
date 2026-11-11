@@ -1,10 +1,12 @@
 "use client";
 
 import { trackFromGpx, type TrackLine } from "@expeditionplan/core";
+import Link from "next/link";
 import { type ReactNode, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { type RouteEditInput, updateRoute } from "@/app/route-actions";
+import { type NewEndPlace, type RouteEditInput, updateRoute } from "@/app/route-actions";
+import { PinIcon } from "@/components/icons";
 
 export type RouteEditorValues = {
   name: string;
@@ -30,6 +32,39 @@ function minutes(text: string): number | null {
   return match ? Number(match[1]) * 60 + Number(match[2]) : Math.round(Number(value.replace(",", ".")));
 }
 
+/** Wartość listy „Skąd/Dokąd” dla nowego miejsca. */
+const NEW = "__nowe__";
+
+/**
+ * „Skąd” albo „Dokąd”: miejsce wyjazdu z listy (ikona prowadzi do niego na stronie „Miejsca”) albo nowe — nazwa
+ * i współrzędne lub link z mapy (krótki link Google też).
+ */
+function EndField({ title, value, onChange, options, placeHref, fresh, onFresh }: { title: string; value: string; onChange: (value: string) => void; options: ReactNode; placeHref: string | null; fresh: NewEndPlace; onFresh: (patch: Partial<NewEndPlace>) => void }) {
+  const field = "field px-2 py-1 text-sm";
+  return (
+    <div className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+      <span>{title}</span>
+      <span className="flex items-center gap-1.5">
+        <select value={value} onChange={(event) => onChange(event.target.value)} aria-label={title} className={`${field} min-w-0 flex-1`}>
+          {options}
+          <option value={NEW}>+ nowe miejsce…</option>
+        </select>
+        {placeHref !== null && (
+          <Link href={placeHref} title="Pokaż to miejsce na stronie „Miejsca”" aria-label="Pokaż to miejsce na stronie „Miejsca”" className="btn-mini btn-icon">
+            <PinIcon className="size-3.5" />
+          </Link>
+        )}
+      </span>
+      {value === NEW && (
+        <span className="grid gap-1.5 sm:grid-cols-2">
+          <input value={fresh.name} onChange={(event) => onFresh({ name: event.target.value })} maxLength={200} placeholder="Nazwa nowego miejsca" aria-label={`${title}: nazwa nowego miejsca`} className={field} />
+          <input value={fresh.coords} onChange={(event) => onFresh({ coords: event.target.value })} maxLength={500} placeholder="Współrzędne albo link z mapy" aria-label={`${title}: współrzędne albo link z mapy`} className={field} />
+        </span>
+      )}
+    </div>
+  );
+}
+
 const number = (text: string) => (text.trim() === "" ? null : Number(text.replace(",", ".")));
 const textOrNull = (text: string) => (text.trim() === "" ? null : text.trim());
 
@@ -45,6 +80,8 @@ export function RouteEditor({ tripId, trackRef, initial, places, users, top }: {
   const [line, setLine] = useState<TrackLine | null | undefined>(undefined);
   const [file, setFile] = useState("");
   const [updateUsers, setUpdateUsers] = useState(users > 0);
+  const [fresh, setFresh] = useState<{ from: NewEndPlace; to: NewEndPlace }>({ from: { name: "", coords: "" }, to: { name: "", coords: "" } });
+  const freshFor = (end: "from" | "to") => (patch: Partial<NewEndPlace>) => setFresh((current) => ({ ...current, [end]: { ...current[end], ...patch } }));
   const set = (patch: Partial<RouteEditorValues>) => setValues((current) => ({ ...current, ...patch }));
   const foot = values.kind === "foot";
 
@@ -85,14 +122,16 @@ export function RouteEditor({ tripId, trackRef, initial, places, users, top }: {
         waymarking: textOrNull(values.waymarking),
         routeNotes: textOrNull(values.notes),
         ...(line !== undefined ? { geojson: line } : {}),
-        ...(values.fromRef !== initial.fromRef ? { fromRef: values.fromRef === "" ? null : values.fromRef } : {}),
-        ...(values.toRef !== initial.toRef ? { toRef: values.toRef === "" ? null : values.toRef } : {}),
+        ...(values.fromRef !== initial.fromRef && values.fromRef !== NEW ? { fromRef: values.fromRef === "" ? null : values.fromRef } : {}),
+        ...(values.toRef !== initial.toRef && values.toRef !== NEW ? { toRef: values.toRef === "" ? null : values.toRef } : {}),
       };
-      const result = await updateRoute(tripId, trackRef, fields, updateUsers);
+      const newPlaces = { ...(values.fromRef === NEW ? { from: fresh.from } : {}), ...(values.toRef === NEW ? { to: fresh.to } : {}) };
+      const result = await updateRoute(tripId, trackRef, fields, updateUsers, newPlaces);
       setMessage(result);
       if (result.ok) {
         setLine(undefined);
         setFile("");
+        setFresh({ from: { name: "", coords: "" }, to: { name: "", coords: "" } });
       }
     });
 
@@ -111,6 +150,9 @@ export function RouteEditor({ tripId, trackRef, initial, places, users, top }: {
     </>
   );
   const hasLine = line === undefined ? values.hasLine : line !== null;
+  // Ikona do miejsca tylko przy miejscu z listy; powrót z „Miejsc” wraca na tę trasę.
+  const back = `/trips/${tripId}/routes/${encodeURIComponent(trackRef)}`;
+  const placeHref = (ref: string) => (ref === "" || ref === "keep" || ref === NEW ? null : `/trips/${tripId}/places?miejsce=${encodeURIComponent(ref)}&wroc=${encodeURIComponent(back)}`);
 
   return (
     <form
@@ -126,18 +168,8 @@ export function RouteEditor({ tripId, trackRef, initial, places, users, top }: {
           Nazwa
           <input value={values.name} onChange={(event) => set({ name: event.target.value })} maxLength={120} required className={field} />
         </label>
-        <label className={label}>
-          Skąd
-          <select value={values.fromRef} onChange={(event) => set({ fromRef: event.target.value })} className={field}>
-            {placeOptions(initial.fromRef)}
-          </select>
-        </label>
-        <label className={label}>
-          Dokąd
-          <select value={values.toRef} onChange={(event) => set({ toRef: event.target.value })} className={field}>
-            {placeOptions(initial.toRef)}
-          </select>
-        </label>
+        <EndField title="Skąd" value={values.fromRef} onChange={(fromRef) => set({ fromRef })} options={placeOptions(initial.fromRef)} placeHref={placeHref(values.fromRef)} fresh={fresh.from} onFresh={freshFor("from")} />
+        <EndField title="Dokąd" value={values.toRef} onChange={(toRef) => set({ toRef })} options={placeOptions(initial.toRef)} placeHref={placeHref(values.toRef)} fresh={fresh.to} onFresh={freshFor("to")} />
         <label className={`${label} sm:col-span-2`}>
           Link do trasy
           <input value={values.url} onChange={(event) => set({ url: event.target.value })} type="url" maxLength={500} placeholder="https://" className={field} />
@@ -211,6 +243,7 @@ export function RouteEditor({ tripId, trackRef, initial, places, users, top }: {
           type="button"
           onClick={() => {
             setValues(initial);
+            setFresh({ from: { name: "", coords: "" }, to: { name: "", coords: "" } });
             setLine(undefined);
             setFile("");
             setMessage({});
