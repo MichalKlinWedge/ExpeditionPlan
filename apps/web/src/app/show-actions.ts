@@ -1,7 +1,7 @@
 "use server";
 
 import { isSpeechVoice, SpeechLimitError } from "@expeditionplan/ai";
-import { applyShowDraft, BriefLocation, destinationLine, droppedAudio, editShowText, isShowKind, isShowMusicPath, INTRO_PARTS, type IntroParts, introParts, narrationHash, plural, SCENE_PHOTOS_MAX, setIntroParts, setScenePhotos, type ShowKind, ShowScript, setShowAudio, setShowLocked, showBrief } from "@expeditionplan/core";
+import { applyShowDraft, BriefLocation, destinationLine, droppedAudio, editShowText, isShowKind, isShowMusicPath, INTRO_PARTS, type IntroParts, introParts, narrationHash, OUTRO_PARTS, type OutroParts, outroParts, plural, SCENE_PHOTOS_MAX, setIntroParts, setOutroParts, setScenePhotos, type ShowKind, ShowScript, setShowAudio, setShowLocked, showBrief } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { draftShowNarration } from "@expeditionplan/planner";
 import { refresh } from "next/cache";
@@ -156,23 +156,6 @@ export async function setShowMusicSettings(tripId: string, kind: ShowKind, setti
   return { ok: "Zapisano ustawienia podkładu." };
 }
 
-/** Mapa dojazdu na początku i powrotu na końcu pokazu: pola wyboru w edycji. */
-export async function setShowRoutes(tripId: string, kind: ShowKind, routes: { showApproach?: boolean; showReturn?: boolean }): Promise<FormState> {
-  const loaded = await load(tripId, kind);
-  if ("error" in loaded) return { error: loaded.error };
-  const { supabase, script } = loaded;
-  const next = {
-    ...script,
-    ...(typeof routes.showApproach === "boolean" ? { showApproach: routes.showApproach } : {}),
-    ...(typeof routes.showReturn === "boolean" ? { showReturn: routes.showReturn } : {}),
-  };
-  if (next.showApproach === script.showApproach && next.showReturn === script.showReturn) return { ok: "Bez zmian." };
-  const failed = await save(supabase, tripId, kind, script, next);
-  if (failed) return { error: failed };
-  refresh();
-  return { ok: "Zapisano." };
-}
-
 /** Pola „pokaż” pierwszej sceny (`ShowScript.intro`): mapa dojazdu, mapa trasy, kolaże, plansza „Kto jedzie i plan”. */
 export async function setShowIntro(tripId: string, kind: ShowKind, change: Partial<IntroParts>): Promise<FormState> {
   if (typeof change !== "object" || change === null || Object.entries(change).some(([key, value]) => !(INTRO_PARTS as readonly string[]).includes(key) || typeof value !== "boolean")) return { error: "Nieprawidłowe ustawienie wstępu." };
@@ -182,6 +165,20 @@ export async function setShowIntro(tripId: string, kind: ShowKind, change: Parti
   const before = introParts(script, kind);
   if (INTRO_PARTS.every((part) => change[part] === undefined || change[part] === before[part])) return { ok: "Bez zmian." };
   const failed = await save(supabase, tripId, kind, script, setIntroParts(script, change));
+  if (failed) return { error: failed };
+  refresh();
+  return { ok: "Zapisano." };
+}
+
+/** Pola „pokaż” ostatniej sceny (`ShowScript.outro`): mapa powrotu, mapa trasy, zdjęcia jako kolaż albo po kolei. */
+export async function setShowOutro(tripId: string, kind: ShowKind, change: Partial<OutroParts>): Promise<FormState> {
+  if (typeof change !== "object" || change === null || Object.entries(change).some(([key, value]) => !(OUTRO_PARTS as readonly string[]).includes(key) || typeof value !== "boolean")) return { error: "Nieprawidłowe ustawienie zakończenia." };
+  const loaded = await load(tripId, kind);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, script } = loaded;
+  const before = outroParts(script);
+  if (OUTRO_PARTS.every((part) => change[part] === undefined || change[part] === before[part])) return { ok: "Bez zmian." };
+  const failed = await save(supabase, tripId, kind, script, setOutroParts(script, change));
   if (failed) return { error: failed };
   refresh();
   return { ok: "Zapisano." };

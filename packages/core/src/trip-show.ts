@@ -75,11 +75,21 @@ export const ShowIntro = z.object({
   plan: z.boolean().optional(),
 });
 
+/**
+ * Co pokazuje ostatnia scena (pola „pokaż” pod jej tekstem); brak pola = domyślnie (`outroParts`).
+ * Kolejność w scenie: mapa powrotu, mapa całej trasy, wybrane zdjęcia jako kolaż albo po kolei.
+ */
+export const ShowOutro = z.object({
+  back: z.boolean().optional(),
+  route: z.boolean().optional(),
+  collage: z.boolean().optional(),
+});
+
 export const ShowScript = z.object({
   voice: z.string().min(1).default('Sulafat'),
   scenes: z.array(ShowNarration).default([]),
   music: ShowMusic.optional(),
-  /** Mapa dojazdu na początku (dawne pole zapowiedzi; teraz `intro.approach`, to zostaje domyślną) i powrotu na końcu. */
+  /** Mapa dojazdu na początku i powrotu na końcu (dawne pola; teraz `intro.approach` i `outro.back`, te zostają domyślnymi). */
   showApproach: z.boolean().default(true),
   showReturn: z.boolean().default(true),
   /**
@@ -94,6 +104,7 @@ export const ShowScript = z.object({
    */
   photos: z.record(z.string(), z.array(z.string().max(1000)).max(40)).optional(),
   intro: ShowIntro.optional(),
+  outro: ShowOutro.optional(),
   /** Wiersz pod „Dokąd jedziemy” (kraj, miejsca), zapisany przy szkicu AI z briefu (`destinationLine`), więc publiczny link pokazuje to samo. */
   destination: z.string().max(300).optional(),
 });
@@ -131,6 +142,24 @@ export function setIntroParts(script: ShowScript, change: Partial<IntroParts>): 
   const intro: ShowIntro = { ...script.intro };
   for (const part of INTRO_PARTS) if (typeof change[part] === 'boolean') intro[part] = change[part];
   return { ...script, intro };
+}
+
+export type ShowOutro = z.infer<typeof ShowOutro>;
+/** Elementy ostatniej sceny: mapa powrotu, mapa całej trasy, zdjęcia jako kolaż (`collage`) albo po kolei (`false`). */
+export type OutroParts = { back: boolean; route: boolean; collage: boolean };
+export const OUTRO_PARTS = ['back', 'route', 'collage'] as const;
+
+/** Elementy zakończenia z wyborem w scenariuszu, a bez niego jak dotąd: mapa powrotu (`showReturn`), mapa trasy, zdjęcia po kolei. */
+export function outroParts(script: { outro?: ShowOutro | undefined; showReturn?: boolean } | undefined): OutroParts {
+  const set = script?.outro ?? {};
+  return { back: set.back ?? script?.showReturn ?? true, route: set.route ?? true, collage: set.collage ?? false };
+}
+
+/** Zmiana elementów zakończenia w scenariuszu (tylko podane pola). */
+export function setOutroParts(script: ShowScript, change: Partial<OutroParts>): ShowScript {
+  const outro: ShowOutro = { ...script.outro };
+  for (const part of OUTRO_PARTS) if (typeof change[part] === 'boolean') outro[part] = change[part];
+  return { ...script, outro };
 }
 export type ShowMusic = z.infer<typeof ShowMusic>;
 export type ShowNarration = z.infer<typeof ShowNarration>;
@@ -174,7 +203,9 @@ export type ShowScene = {
   mapless?: true;
   /** Wstęp: które elementy pokazuje (`introParts`); mapa dojazdu gra tylko przy `approach`. */
   intro?: IntroParts;
-  /** Wstęp z mapą dojazdu, ale bez mapy całej trasy. */
+  /** Zakończenie: które elementy pokazuje (`outroParts`); mapa powrotu gra tylko przy `back`. */
+  outro?: OutroParts;
+  /** Wstęp z mapą dojazdu (zakończenie z mapą powrotu), ale bez mapy całej trasy. */
   noOverview?: true;
   /** Plansza „Kto jedzie i plan” na końcu wstępu: imiona uczestników i dni w skrócie. */
   plan?: { people: string[]; days: string[] };
@@ -209,6 +240,8 @@ export type ShowInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
   endPhoto?: string;
   /** Elementy wstępu (`introParts` ze scenariusza); bez nich domyślne dla rodzaju pokazu. */
   introParts?: IntroParts;
+  /** Elementy zakończenia (`outroParts` ze scenariusza); bez nich domyślne. */
+  outroParts?: OutroParts;
   /**
    * Wszystkie opisy miejsc wyjazdu (także miejsc spoza planu dni: inne warianty, punkty usunięte, same miejsca): ich
    * zdjęcia, których żadna scena nie ma w swojej puli, idą do wyboru jako „spoza planu” (`spare`).
@@ -579,6 +612,10 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   const outboundCard = approachCard(doc, outbound, 'Dojazd');
   const backCard = approachCard(doc, back, 'Powrót');
   const localRoute = stats.routeRefs.filter((ref) => !approachRefs.has(ref));
+  // Zakończenie: mapa powrotu, mapa trasy i zdjęcia jako kolaż albo po kolei; bez map plansza z tytułem i liczbami.
+  const end = input.outroParts ?? outroParts(undefined);
+  const backShown = end.back && backCard !== undefined;
+  const outroCollage = end.collage && outroImages.length >= 2 ? outroImages.slice(0, INTRO_COLLAGE_MAX) : [];
   if (outboundCard) intro.push(`Dojazd: ${outboundCard.title}${outboundCard.facts ? ` (${outboundCard.facts})` : ''}`);
   // Bez mapy trasy i dojazdu wstęp zaczyna się planszą z tytułem (jak dotąd w filmie).
   const approachShown = parts.approach && outboundCard !== undefined;
@@ -632,9 +669,13 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       heading: doc.trip.title,
       subheading: numbers.join(' · '),
       routeRefs: localRoute,
-      images: outroImages,
+      images: outroCollage.length > 0 ? [] : outroImages,
       ...(outroPool.length > 0 ? { pool: outroPool } : {}),
       ...(input.photos?.outro !== undefined ? { chosen: true as const } : {}),
+      ...(outroCollage.length > 0 ? { collage: outroCollage } : {}),
+      ...(!end.route && !backShown ? { mapless: true as const } : {}),
+      ...(!end.route && backShown ? { noOverview: true as const } : {}),
+      outro: end,
       stats: [],
       points: [],
       walks: [],

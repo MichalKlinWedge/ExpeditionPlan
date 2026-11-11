@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 
 import { EditToggle } from "@/components/edit-toggle";
 import { PublicShowToggle } from "@/components/public-show-toggle";
-import { type EditorPhoto, type EditorScene, ShowEditor, ShowMusicEditor, ShowRouteOptions } from "@/components/show-editor";
+import { type EditorPhoto, type EditorScene, ShowEditor, ShowMusicEditor } from "@/components/show-editor";
 import { ShowPlayer } from "@/components/show-player";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
@@ -65,13 +65,17 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
       ...(scene.kind === "intro" && scene.intro
         ? { intro: { parts: scene.intro, ...(scene.approach ? { approach: `${scene.approach.title}${scene.approach.facts ? ` · ${scene.approach.facts}` : ""}` } : {}) } }
         : {}),
+      // Ostatnia scena: pola „pokaż” (mapa powrotu tylko, gdy plan ma powrót).
+      ...(scene.kind === "outro" && scene.outro
+        ? { outro: { parts: scene.outro, ...(scene.approach ? { back: `${scene.approach.title}${scene.approach.facts ? ` · ${scene.approach.facts}` : ""}` } : {}) } }
+        : {}),
       // Każda scena wybiera spośród zdjęć całego wyjazdu: najpierw własne, potem innych scen w kolejności filmu.
       // Automatyczne zdjęcia wstępu to jego kolaże: pierwsza zmiana zaczyna od nich.
       ...(photoSources.length > 0
         ? {
             photos: {
               auto: scene.chosen !== true,
-              // Wstęp gra swoje zdjęcia jako kolaż albo po kolei: lista to jedne i drugie.
+              // Wstęp i zakończenie grają swoje zdjęcia jako kolaż albo po kolei: lista to jedne i drugie.
               shown: [...(scene.collage ?? []), ...scene.images].map(asPhoto),
               groups: [...photoSources.filter((source) => source.key === scene.key), ...photoSources.filter((source) => source.key !== scene.key)].map((source) => ({
                 heading: source.key === scene.key ? "Z tej sceny" : source.heading,
@@ -86,7 +90,6 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
   const keys = new Set(scenes.map((scene) => scene.key));
   const toRecord = scenesToRecord(script).filter((key) => keys.has(key));
   const recorded = player.filter((scene) => scene.audio).length;
-  const back = scenes.find((scene) => scene.kind === "outro")?.approach;
   const written = player.filter((scene) => scene.text.trim() !== "").length;
 
   return (
@@ -112,18 +115,10 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
       </div>
       <ShowPlayer exportable scenes={player} credits={credits} {...(music ? { music } : {})} trip={{ title: doc.trip.title, dates: tripDates(doc.trip.startDate, doc.trip.endDate), label: page.label }} />
       {kind === "film" && journalPhotos === 0 && <p className="card p-4 text-sm text-zinc-600 dark:text-zinc-400">Dziennik nie ma jeszcze zdjęć: film bierze je z dziennika (telefon albo strona „Dziennik”), a do tego czasu pokazuje mapy i zdjęcia z opisów miejsc.</p>}
-      {membership.data?.role === "owner" && <PublicShowToggle tripId={id} kind={kind} linkOn={share.data?.enabled === true} showOn={share.data?.enabled === true && (kind === "film" ? share.data.film : share.data.show) === true} />}
       {canEdit && <ShowEditor tripId={id} kind={kind} scenes={editor} voice={script.voice} voices={SPEECH_VOICES} toRecord={toRecord} />}
       {canEdit && <ShowMusicEditor tripId={id} kind={kind} music={music ?? null} />}
-      {canEdit && (
-        <ShowRouteOptions
-          tripId={id}
-          kind={kind}
-          // Mapa dojazdu jest w polach pierwszej sceny; tu zostaje powrót.
-          approach={null}
-          back={back ? { on: script.showReturn, title: `${back.title}${back.facts ? ` · ${back.facts}` : ""}` } : null}
-        />
-      )}
+      {/* Na końcu strony: zgoda na film pod publicznym linkiem wyjazdu. */}
+      {membership.data?.role === "owner" && <PublicShowToggle tripId={id} kind={kind} linkOn={share.data?.enabled === true} showOn={share.data?.enabled === true && (kind === "film" ? share.data.film : share.data.show) === true} />}
     </>
   );
 }

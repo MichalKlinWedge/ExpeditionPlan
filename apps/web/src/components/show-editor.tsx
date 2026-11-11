@@ -1,12 +1,12 @@
 "use client";
 
-import { INTRO_COLLAGE_MAX, type IntroParts, MUSIC_MAX_BYTES, plural, type ShowKind, showMusicFile } from "@expeditionplan/core";
+import { INTRO_COLLAGE_MAX, type IntroParts, MUSIC_MAX_BYTES, type OutroParts, plural, type ShowKind, showMusicFile } from "@expeditionplan/core";
 import { dbErrorMessage } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, useOptimistic, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowTextLock, setShowMusic, setShowIntro, setShowScenePhotos, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowTextLock, setShowMusic, setShowIntro, setShowScenePhotos, setShowMusicSettings, setShowOutro, setShowVoice, voiceSample } from "@/app/show-actions";
 import { IconAction } from "@/components/icon-action";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -34,8 +34,10 @@ export type ScenePhotoChoice = { auto: boolean; shown: EditorPhoto[]; groups: { 
 
 /** Pola „pokaż” wstępu: stan i opis dojazdu („A → B · samolot”, gdy plan go ma). */
 export type IntroChoice = { parts: IntroParts; approach?: string };
+/** Pola „pokaż” ostatniej sceny; `back` — opis powrotu, gdy plan go ma. */
+export type OutroChoice = { parts: OutroParts; back?: string };
 
-export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number; photos?: ScenePhotoChoice; intro?: IntroChoice };
+export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number; photos?: ScenePhotoChoice; intro?: IntroChoice; outro?: OutroChoice };
 
 /** Na żywo w trakcie nagrywania, zanim strona się odświeży: ta scena się nagrywa albo właśnie się nagrała. */
 type Live = "recording" | { seconds: number };
@@ -165,6 +167,7 @@ function SceneText({ tripId, kind, scene, live }: { tripId: string; kind: ShowKi
         </div>
       )}
       {scene.intro && <IntroOptions tripId={tripId} kind={kind} choice={scene.intro} />}
+      {scene.outro && <OutroOptions tripId={tripId} kind={kind} choice={scene.outro} />}
       {scene.photos && (
         <ScenePhotos key={`${scene.photos.auto}:${scene.photos.shown.map((photo) => photo.key).join("|")}`} tripId={tripId} kind={kind} sceneKey={scene.key} choice={scene.photos} />
       )}
@@ -207,18 +210,64 @@ function IntroOptions({ tripId, kind, choice }: { tripId: string; kind: ShowKind
           </label>
         ))}
       </div>
-      {/* Zdjęcia wstępu (lista niżej): jedno albo drugie, nigdy oba naraz. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-zinc-600 dark:text-zinc-400">Zdjęcia wstępu</span>
-        <button type="button" onClick={() => change("collage", true)} disabled={pending || parts.collage} aria-pressed={parts.collage} className="toggle-chip">
-          kolaż
-        </button>
-        <button type="button" onClick={() => change("collage", false)} disabled={pending || !parts.collage} aria-pressed={!parts.collage} className="toggle-chip">
-          pokaz po kolei
-        </button>
-        <span className="text-xs text-zinc-500">{parts.collage ? `jedna plansza z wybranymi zdjęciami (najwyżej ${INTRO_COLLAGE_MAX})` : "każde zdjęcie osobno"}</span>
-      </div>
+      <CollageChoice label="Zdjęcia wstępu" collage={parts.collage} pending={pending} onChange={(on) => change("collage", on)} />
       {!parts.route && !(parts.approach && choice.approach) && <span className="text-xs text-zinc-500">Bez mapy wstęp zaczyna się planszą z tytułem, terminem i liczbami.</span>}
+      {error && <p className="msg-error">{error}</p>}
+    </div>
+  );
+}
+
+/** Zdjęcia sceny (lista niżej) jako kolaż albo po kolei: jedno albo drugie, nigdy oba naraz. */
+function CollageChoice({ label, collage, pending, onChange }: { label: string; collage: boolean; pending: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-zinc-600 dark:text-zinc-400">{label}</span>
+      <button type="button" onClick={() => onChange(true)} disabled={pending || collage} aria-pressed={collage} className="toggle-chip">
+        kolaż
+      </button>
+      <button type="button" onClick={() => onChange(false)} disabled={pending || !collage} aria-pressed={!collage} className="toggle-chip">
+        pokaz po kolei
+      </button>
+      <span className="text-xs text-zinc-500">{collage ? `jedna plansza z wybranymi zdjęciami (najwyżej ${INTRO_COLLAGE_MAX})` : "każde zdjęcie osobno"}</span>
+    </div>
+  );
+}
+
+/**
+ * Co pokazuje ostatnia scena, po kolei: mapa powrotu, mapa całej trasy, zdjęcia (niżej) jako kolaż albo po kolei.
+ * Każde pole zapisuje się od razu (`setShowOutro`); bez map zakończenie zaczyna się planszą z tytułem i liczbami.
+ */
+function OutroOptions({ tripId, kind, choice }: { tripId: string; kind: ShowKind; choice: OutroChoice }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [parts, setParts] = useOptimistic(choice.parts);
+  const [error, setError] = useState<string | null>(null);
+  const change = (part: keyof OutroParts, on: boolean) =>
+    start(async () => {
+      setError(null);
+      setParts({ ...parts, [part]: on });
+      const answer = await setShowOutro(tripId, kind, { [part]: on });
+      if (answer.error) setError(answer.error);
+      else router.refresh();
+    });
+  const options: { part: "back" | "route"; label: string; note?: string }[] = [
+    ...(choice.back ? [{ part: "back" as const, label: "mapa powrotu", note: choice.back }] : []),
+    { part: "route", label: "mapa całej trasy" },
+  ];
+  return (
+    <div className="flex flex-col gap-1 text-sm">
+      <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Pokaż w zakończeniu (po kolei)</span>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {options.map((option) => (
+          <label key={option.part} className="flex items-center gap-1.5" title={option.note}>
+            <input type="checkbox" checked={parts[option.part]} disabled={pending} onChange={(event) => change(option.part, event.target.checked)} />
+            {option.label}
+            {option.note && <span className="text-xs text-zinc-500">({option.note})</span>}
+          </label>
+        ))}
+      </div>
+      <CollageChoice label="Zdjęcia zakończenia" collage={parts.collage} pending={pending} onChange={(on) => change("collage", on)} />
+      {!parts.route && !(parts.back && choice.back) && <span className="text-xs text-zinc-500">Bez mapy zakończenie zaczyna się planszą z tytułem i liczbami.</span>}
       {error && <p className="msg-error">{error}</p>}
     </div>
   );
@@ -558,41 +607,6 @@ export function ShowMusicEditor({ tripId, kind, music }: { tripId: string; kind:
         MP3, M4A, AAC, OGG albo WAV do 20 MB. Gra w pętli przez cały pokaz (od pominiętego początku): pod lektorem ciszej, na ekranie końcowym wygasa. Nazwa pliku jest na ekranie końcowym (tam autor utworu z licencją CC BY).
         Wgrywaj utwory własne albo z licencją, która na to pozwala: pod publicznym linkiem pokazu muzyka też gra.
       </p>
-    </section>
-  );
-}
-
-/**
- * Czy pokaz ma mapę dojazdu na początku i powrotu na końcu (`ShowScript.showApproach`, `showReturn`). Pole jest tylko
- * wtedy, gdy plan taki przejazd ma (`approach`: opis „A → B · samolot”).
- */
-export function ShowRouteOptions({ tripId, kind, approach, back }: { tripId: string; kind: ShowKind; approach: { on: boolean; title: string } | null; back: { on: boolean; title: string } | null }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const [message, setMessage] = useState<FormState | null>(null);
-  if (approach === null && back === null) return null;
-  const change = (routes: { showApproach?: boolean; showReturn?: boolean }) =>
-    start(async () => {
-      const answer = await setShowRoutes(tripId, kind, routes);
-      setMessage(answer.error ? answer : null);
-      if (answer.ok) router.refresh();
-    });
-  return (
-    <section className="card flex flex-col gap-2 p-4 text-sm">
-      <h2 className="card-title">{approach ? "Dojazd i powrót" : "Powrót"}</h2>
-      {approach && (
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={approach.on} disabled={pending} onChange={(event) => change({ showApproach: event.target.checked })} /> mapa dojazdu na początku
-          <span className="text-xs text-zinc-500">{approach.title}</span>
-        </label>
-      )}
-      {back && (
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={back.on} disabled={pending} onChange={(event) => change({ showReturn: event.target.checked })} /> mapa powrotu na końcu
-          <span className="text-xs text-zinc-500">{back.title}</span>
-        </label>
-      )}
-      {message?.error && <p className="msg-error">{message.error}</p>}
     </section>
   );
 }

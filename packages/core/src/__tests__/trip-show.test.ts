@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GuideContent } from '../guide.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
-import { applyShowDraft, audioFits, type IntroParts, introParts, setIntroParts, destinationLine, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenePhotos, scenesToRecord, setScenePhotos, setShowAudio, setShowLocked, ShowScript, showBrief, showMusicFile, showScenes } from '../trip-show.ts';
+import { applyShowDraft, audioFits, type IntroParts, introParts, outroParts, setIntroParts, setOutroParts, destinationLine, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenePhotos, scenesToRecord, setScenePhotos, setShowAudio, setShowLocked, ShowScript, showBrief, showMusicFile, showScenes } from '../trip-show.ts';
 
 const fixture = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
 
@@ -220,6 +220,24 @@ describe('dojazd i zdjęcia we wstępie', () => {
     // Starszy scenariusz: „mapa dojazdu na początku” z pola `showApproach` zapowiedzi.
     expect(introParts({ showApproach: false }, 'preview').approach).toBe(false);
     expect(setIntroParts(ShowScript.parse({}), { plan: true }).intro).toEqual({ plan: true });
+  });
+
+  it('zakończenie: pola „pokaż” — mapa powrotu, mapa trasy, zdjęcia jako kolaż albo po kolei; dawne `showReturn` domyślne', () => {
+    const doc = fixture('maroko');
+    const journal = [1, 2, 3].map((n) => ({ body: `Po ${n}`, photoUrl: `https://example.com/po-${n}.jpg`, photoKey: `p/po-${n}.jpg` }));
+    const outro = (parts?: Parameters<typeof outroParts>[0]) => showScenes(doc, { ...base, kind: 'film', journal, ...(parts ? { outroParts: outroParts(parts) } : {}) }).scenes.at(-1)!;
+    const plain = outro();
+    expect(plain.outro).toEqual({ back: true, route: true, collage: false });
+    expect(plain.approach?.label).toBe('Powrót');
+    expect(plain.mapless).toBeUndefined();
+    expect(plain.collage).toBeUndefined();
+    const collaged = outro({ outro: { collage: true } });
+    expect(collaged.images).toEqual([]);
+    expect(collaged.collage?.map((image) => image.key)).toEqual(plain.images.map((image) => image.key));
+    expect(outro({ outro: { route: false } }).noOverview).toBe(true);
+    expect(outro({ outro: { route: false, back: false } }).mapless).toBe(true);
+    expect(outroParts({ showReturn: false }).back).toBe(false);
+    expect(setOutroParts(ShowScript.parse({}), { route: false }).outro).toEqual({ route: false });
   });
 
   it('zakończenie bez wyboru kończy się ostatnim zdjęciem wyjazdu; dawne „Zdjęcie na koniec” nadal działa, wybór pod tekstem wygrywa', () => {
