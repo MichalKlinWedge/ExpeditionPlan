@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { itemIcon } from '../item-icon.ts';
-import { itemKindLabel, kindChoice, kindChoices, kindPatch, PUBLIC_MODES, publicMode } from '../item-kind.ts';
+import { hiredMode, itemKindLabel, kindChoice, kindChoices, kindPatch, PUBLIC_MODES, publicMode, vehicleFor } from '../item-kind.ts';
 import type { TripDocument } from '../schemas/trip-document.ts';
 
 const LABELS = { visit: 'zwiedzanie', transport: 'przejazd', meal: 'posiłek' };
@@ -28,14 +28,36 @@ describe('rodzaj punktu: transport publiczny', () => {
   it('powrót na „przejazd” daje auto, a lot i taxi nie są transportem publicznym', () => {
     expect(kindPatch({ kind: 'transport', leg: { mode: 'train', links: [] } }, 'transport').leg?.mode).toBe('car');
     expect(kindChoice({ kind: 'transport', leg: { mode: 'flight', links: [] } })).toBe('transport');
-    expect(kindChoice({ kind: 'transport', leg: { mode: 'taxi', links: [] } })).toBe('transport');
+    expect(publicMode({ kind: 'transport', leg: { mode: 'taxi', links: [] } })).toBeUndefined();
     expect(itemKindLabel({ kind: 'transport', leg: { mode: 'flight', links: [] } }, LABELS)).toBe('przejazd');
+  });
+});
+
+describe('rodzaj punktu: taksówka / transfer', () => {
+  it('nowy punkt to taksówka, bus z kierowcą to „transfer”, ikony z trybu', () => {
+    expect(kindPatch(null, 'hired')).toEqual({ kind: 'transport', leg: { mode: 'taxi', links: [] } });
+    const bus = kindPatch({ kind: 'visit' }, 'hired', 'hired_driver');
+    expect(kindChoice(bus)).toBe('hired');
+    expect(hiredMode(bus)).toBe('hired_driver');
+    expect(itemKindLabel(bus, LABELS)).toBe('transfer');
+    expect(itemKindLabel(kindPatch(null, 'hired'), LABELS)).toBe('taksówka');
+    expect(itemIcon({ bookings: [] } as unknown as TripDocument, bus as TripDocument['items'][number])).toBe('🚐');
+  });
+
+  it('auto ↔ taksówka zostawia policzoną trasę, środek spoza listy daje pierwszy z niej', () => {
+    const car = { mode: 'car' as const, durationMin: 40, routed: true, geometry: 'abc', links: [] };
+    expect(kindPatch({ kind: 'transport', leg: car }, 'hired').leg).toEqual({ ...car, mode: 'taxi' });
+    expect(kindPatch({ kind: 'transport', leg: { ...car, mode: 'taxi' } }, 'transport').leg).toEqual(car);
+    expect(kindPatch({ kind: 'transport', leg: car }, 'hired', 'tram').leg?.mode).toBe('taxi');
+    expect(vehicleFor('hired', 'tram')).toBe('taxi');
+    expect(vehicleFor('public', 'tram')).toBe('tram');
+    expect(vehicleFor('visit', 'tram')).toBeUndefined();
   });
 });
 
 describe('rodzaj punktu: trekking i pieszo', () => {
   it('lista ma trekking i pieszo zaraz za przejazdem', () => {
-    expect(kindChoices(LABELS).map(([key]) => key)).toEqual(['visit', 'transport', 'public', 'hike', 'walk', 'meal']);
+    expect(kindChoices(LABELS).map(([key]) => key)).toEqual(['visit', 'transport', 'public', 'hired', 'hike', 'walk', 'meal']);
   });
 
   it('trekking to przejazd z trybem pieszym: nazwa i ikona się zgadzają', () => {

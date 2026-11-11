@@ -1,4 +1,4 @@
-import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode, type TripDocument } from '@expeditionplan/core';
+import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, type TripDocument, type VehicleMode, vehicleChoices, vehicleFor, vehicleMode } from '@expeditionplan/core';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -24,7 +24,7 @@ export type ItemFields = Pick<Item, 'title' | 'kind'> & Partial<Item>;
 /** Wpisane „Skąd” i „Dokąd” przejazdu albo miejsce innego punktu — tylko gdy się zmieniły. */
 export type PlaceChange = { from: string; to: string } | { place: string };
 
-const TRAVEL: KindChoice[] = ['transport', 'public', 'hike', 'walk'];
+const TRAVEL: KindChoice[] = ['transport', 'public', 'hired', 'hike', 'walk'];
 
 type EditorProps = {
   /** `null` = nowy punkt. */
@@ -72,7 +72,7 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
   const [place, setPlace] = useState(placeStart);
   const [title, setTitle] = useState(item?.title ?? '');
   const [kind, setKind] = useState<KindChoice>(item === null ? 'visit' : kindChoice(item));
-  const [vehicle, setVehicle] = useState<PublicMode>((item === null ? undefined : publicMode(item)) ?? PUBLIC_MODES[0]![0]);
+  const [vehicle, setVehicle] = useState<VehicleMode | undefined>(item === null ? undefined : vehicleMode(item));
   const [time, setTime] = useState(timeText(item));
   const [timeMode, setTimeMode] = useState<TimeMode>(timeModeOf(item));
   const [duration, setDuration] = useState(item?.durationMin?.toString() ?? (item === null ? '60' : ''));
@@ -133,7 +133,10 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
           {kindChoices(ITEM_KIND).map(([key, name]) => (
             <Pressable
               key={key}
-              onPress={() => setKind(key)}
+              onPress={() => {
+                setKind(key);
+                setVehicle(vehicleFor(key, vehicle));
+              }}
               style={[styles.chip, { borderColor: kind === key ? theme.text : theme.backgroundSelected, backgroundColor: kind === key ? theme.backgroundSelected : 'transparent' }]}>
               <ThemedText type="small" themeColor={kind === key ? 'text' : 'textSecondary'}>
                 {name}
@@ -141,9 +144,9 @@ function Form({ item, onCancel, onSave, doc }: Omit<EditorProps, 'visible'>) {
             </Pressable>
           ))}
         </View>
-        {kind === 'public' && (
+        {vehicleChoices(kind) && (
           <View style={styles.wrap}>
-            {PUBLIC_MODES.map(([key, name]) => (
+            {vehicleChoices(kind)!.map(([key, name]) => (
               <Pressable
                 key={key}
                 onPress={() => setVehicle(key)}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, PUBLIC_MODES, type PublicMode, publicMode } from "@expeditionplan/core";
+import { ITEM_KIND, type KindChoice, kindChoice, kindChoices, kindPatch, type PlanItem as Item, type VehicleMode, vehicleChoices, vehicleFor, vehicleMode } from "@expeditionplan/core";
 
 /**
  * Edycja punktu planu (MVP-3): nazwa, rodzaj, godzina z precyzją, czas trwania (przedział),
@@ -44,7 +44,7 @@ type Draft = {
   transit: boolean;
   priority: string;
   cutRank: string;
-  vehicle: PublicMode;
+  vehicle: VehicleMode | undefined;
 };
 
 function toDraft(item: Item, transitNow: boolean): Draft {
@@ -67,7 +67,7 @@ function toDraft(item: Item, transitNow: boolean): Draft {
     transit: transitNow,
     priority: item.priority ?? "",
     cutRank: item.cutRank?.toString() ?? "",
-    vehicle: publicMode(item) ?? PUBLIC_MODES[0]![0],
+    vehicle: vehicleMode(item),
   };
 }
 
@@ -146,7 +146,13 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
       </label>
       <label className={label}>
         Rodzaj
-        <select className={input} value={draft.kind} onChange={(event) => set({ kind: event.target.value as KindChoice })}>
+        <select
+          className={input}
+          value={draft.kind}
+          onChange={(event) => {
+            const kind = event.target.value as KindChoice;
+            set({ kind, vehicle: vehicleFor(kind, draft.vehicle) });
+          }}>
           {kindChoices(ITEM_KIND).map(([key, name]) => (
             <option key={key} value={key}>
               {name}
@@ -154,11 +160,11 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
           ))}
         </select>
       </label>
-      {draft.kind === "public" && (
+      {vehicleChoices(draft.kind) && (
         <label className={label}>
           Środek transportu
-          <select className={input} value={draft.vehicle} onChange={(event) => set({ vehicle: event.target.value as PublicMode })}>
-            {PUBLIC_MODES.map(([key, name]) => (
+          <select className={input} value={vehicleFor(draft.kind, draft.vehicle)} onChange={(event) => set({ vehicle: event.target.value as VehicleMode })}>
+            {vehicleChoices(draft.kind)!.map(([key, name]) => (
               <option key={key} value={key}>
                 {name}
               </option>
