@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { type GuideRow, ROUTABLE_MODES, StoredReview, undescribedSights } from "@expeditionplan/core";
+import { DRAFT_PREFIX, draftNameScore, draftsForPlan, type GuideRow, ROUTABLE_MODES, StoredReview, undescribedSights } from "@expeditionplan/core";
 import { dbLoadError, lockedRefs, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -124,15 +124,12 @@ async function Review({ id, supabase }: { id: string; supabase: Supabase }) {
   );
 }
 
-const DRAFT = "Szkic AI: ";
-
-/** Bez `?draft=`: wybór szkicu — najpierw „Szkic AI: <ten plan>”, potem inne szkice, potem pozostałe wyjazdy. */
+/** Bez `?draft=`: wybór szkicu — tylko szkice AI, od najlepiej pasującego nazwą do tego planu, ten wyróżniony. */
 async function ChooseDraft({ id, supabase }: { id: string; supabase: Supabase }) {
   const [trip, mine] = await Promise.all([supabase.from("my_trips").select("title").eq("id", id).maybeSingle(), supabase.from("my_trips").select("id, title").neq("id", id).order("start_date")]);
   if (trip.data === null) notFound();
   const title = trip.data.title!;
-  const rank = (other: { title: string | null }) => (other.title === `${DRAFT}${title}` ? 0 : other.title!.startsWith(DRAFT) ? 1 : 2);
-  const others = [...(mine.data ?? [])].sort((a, b) => rank(a) - rank(b));
+  const { drafts, best } = draftsForPlan(title, mine.data ?? []);
   return (
     <>
       <PageHeader back={{ href: `/trips/${id}`, label: title }} title="Porównanie ze szkicem" intro={<>Wybierz szkic (np. z „Zaplanuj z AI”) — zobaczysz go obok planu i przeniesiesz punkty.</>} />
@@ -140,15 +137,18 @@ async function ChooseDraft({ id, supabase }: { id: string; supabase: Supabase })
         <span className="font-semibold">Propozycje AI do tego planu</span>
         <span className="text-xs text-zinc-500">przegląd planu: harmonogram, trasy, mapa, opisy — każda zmiana obok planu, do zastosowania osobno</span>
       </Link>
-      {others.length === 0 ? (
-        <p className="card p-5 text-zinc-600 dark:text-zinc-400">Nie masz innych wyjazdów ani szkiców do porównania.</p>
+      {drafts.length === 0 ? (
+        <p className="card p-5 text-zinc-600 dark:text-zinc-400">Nie masz szkiców do porównania. Szkic powstaje z „Zaplanuj z AI” albo z „Importuj z pliku” na stronie „Nowy wyjazd”.</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
-          {others.map((other) => (
+          {drafts.map((other) => (
             <li key={other.id}>
-              <Link href={`/trips/${id}/compare?draft=${other.id}`} className={`card flex h-full flex-col gap-1 p-4 transition hover:-translate-y-0.5 hover:border-sea ${rank(other) < 2 ? "border-dashed" : ""}`}>
-                <span className="font-semibold">{other.title!.startsWith(DRAFT) ? other.title!.slice(DRAFT.length) : other.title}</span>
-                <span className="text-xs text-zinc-500">{rank(other) === 0 ? "szkic AI tego planu" : rank(other) === 1 ? "szkic AI" : "inny wyjazd"}</span>
+              <Link
+                href={`/trips/${id}/compare?draft=${other.id}`}
+                className={`card flex h-full flex-col gap-1 p-4 transition hover:-translate-y-0.5 hover:border-sea ${other === best ? "border-2 border-sea" : "border-dashed"}`}
+              >
+                <span className="font-semibold">{other.title!.slice(DRAFT_PREFIX.length)}</span>
+                <span className="text-xs text-zinc-500">{other === best ? (draftNameScore(title, other.title!) === 1 ? "szkic AI tego planu" : "szkic AI — najbardziej pasuje nazwą") : "szkic AI"}</span>
               </Link>
             </li>
           ))}

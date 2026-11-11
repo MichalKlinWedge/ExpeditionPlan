@@ -134,7 +134,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const today = new Date().toISOString().slice(0, 10);
   const hasDrafts = !title.startsWith(DRAFT) && others.some((other) => other.title === `${DRAFT}${title}`);
   // Porównanie: ze szkicu — z jego planem; z planu — wybór szkicu na stronie porównania.
-  const compareHref = source !== undefined ? `/trips/${source.id}/compare?draft=${id}` : canEdit && others.length > 0 ? `/trips/${id}/compare` : null;
+  const compareHref = source !== undefined ? `/trips/${source.id}/compare?draft=${id}` : canEdit && others.some((other) => other.title?.startsWith(DRAFT) === true) ? `/trips/${id}/compare` : null;
 
   return (
     <>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPostponed, tripSections } from '../trip-status.ts';
+import { draftsForPlan, isPostponed, tripSections } from '../trip-status.ts';
 
 const trip = (id: string, start_date: string, end_date: string, status: string | null = 'planning') => ({ id, start_date, end_date, status });
 
@@ -44,5 +44,32 @@ describe('wyjazdy odłożone', () => {
     expect(isPostponed({ status: 'archived' })).toBe(false);
     expect(isPostponed({ status: null })).toBe(false);
     expect(isPostponed({})).toBe(false);
+  });
+});
+
+describe('szkice do porównania z planem', () => {
+  const trips = [
+    { id: 'izery', title: 'Zimowe Izery' },
+    { id: 'maroko', title: 'Szkic AI: Maroko 2026' },
+    { id: 'wegry-stary', title: 'Szkic AI: Budapeszt i Eger' },
+    { id: 'wegry', title: 'Szkic AI: Węgry 2027' },
+    { id: 'madera', title: 'Madera' },
+  ];
+
+  it('tylko szkice AI, najlepiej pasujący nazwą pierwszy i wyróżniony', () => {
+    const { drafts, best } = draftsForPlan('Wegry 2027!', trips);
+    expect(drafts.map((each) => each.id)).toEqual(['wegry', 'maroko', 'wegry-stary']);
+    expect(best?.id).toBe('wegry');
+  });
+
+  it('podobna nazwa wygrywa, choć nie jest taka sama', () => {
+    expect(draftsForPlan('Węgry 2027: Budapeszt, Kékes, Eger', trips).best?.id).toBe('wegry');
+    expect(draftsForPlan('Eger i Budapeszt', trips).best?.id).toBe('wegry-stary');
+  });
+
+  it('nic wspólnego z nazwą: kolejność bez zmian i bez wyróżnienia', () => {
+    const { drafts, best } = draftsForPlan('Islandia', trips);
+    expect(drafts.map((each) => each.id)).toEqual(['maroko', 'wegry-stary', 'wegry']);
+    expect(best).toBeUndefined();
   });
 });
