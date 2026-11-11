@@ -6,7 +6,7 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { addOwnGuideImage, dropGuideImage, findGuideImages, pickGuideImage, removeGuide, reorderGuideImage, saveGuideText } from "@/app/guide-actions";
+import { addOwnGuideImage, dropGuideImage, findGuideImages, pickGuideImage, pickGuideImages, removeGuide, reorderGuideImage, saveGuideText } from "@/app/guide-actions";
 import { GuideArticle, GuideFigure } from "@/components/guide-article";
 import { GuideButtons, PlaceGuideButtons } from "@/components/guide-button";
 import { IconAction } from "@/components/icon-action";
@@ -158,6 +158,12 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
       setState(result);
       if (result.ok) setPicking(null);
     });
+  const pickMany = (chosen: GuideImage[]) =>
+    start(async () => {
+      const result = await pickGuideImages(tripId, guide.rowId, chosen);
+      setState(result);
+      if (result.ok) setPicking(null);
+    });
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-zinc-500">Pierwsze zdjęcie pokazuje się w „Opisie wyprawy”, a punkt bez zdjęcia tam nie trafia. Zmiana dotyczy tylko tego wyjazdu.</p>
@@ -197,7 +203,18 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
       {state.error && <p className="text-xs msg-error">{state.error}</p>}
       {picking !== null && <OwnPhotoUpload tripId={tripId} guideId={guide.rowId} title={guide.title} replaceUrl={picking.replace} onDone={() => setPicking(null)} onState={setState} />}
       {picking !== null ? (
-        <ImagePicker tripId={tripId} guideId={guide.rowId} title={picking.replace ? "Wybierz zdjęcie na wymianę" : "Wybierz kolejne zdjęcie"} used={images.map((image) => image.url)} saving={pending} onPick={pick} onCancel={() => setPicking(null)} />
+        <ImagePicker
+          tripId={tripId}
+          guideId={guide.rowId}
+          title={picking.replace ? "Wybierz zdjęcie na wymianę" : "Zaznacz zdjęcia do dodania"}
+          used={images.map((image) => image.url)}
+          saving={pending}
+          // Dodawanie: wiele naraz do limitu; wymiana: jedno kliknięcie.
+          room={picking.replace ? null : MAX_GUIDE_IMAGES - images.length}
+          onPick={pick}
+          onPickMany={pickMany}
+          onCancel={() => setPicking(null)}
+        />
       ) : (
         <div className="flex items-center gap-3">
           {images.length < MAX_GUIDE_IMAGES && (
@@ -270,8 +287,32 @@ function OwnPhotoUpload({ tripId, guideId, title, replaceUrl, onDone, onState }:
 }
 
 /** Zdjęcia z artykułu opisu i z Commons, a własne hasło szuka w Commons. */
-function ImagePicker({ tripId, guideId, title, used, saving, onPick, onCancel }: { tripId: string; guideId: string; title: string; used: string[]; saving: boolean; onPick: (image: GuideImage) => void; onCancel: () => void }) {
+function ImagePicker({
+  tripId,
+  guideId,
+  title,
+  used,
+  saving,
+  room,
+  onPick,
+  onPickMany,
+  onCancel,
+}: {
+  tripId: string;
+  guideId: string;
+  title: string;
+  used: string[];
+  saving: boolean;
+  /** Ile zdjęć jeszcze się zmieści, gdy wybór dodaje (zaznaczanie wielu); `null` = wymiana jednego. */
+  room: number | null;
+  onPick: (image: GuideImage) => void;
+  onPickMany: (images: GuideImage[]) => void;
+  onCancel: () => void;
+}) {
   const [query, setQuery] = useState("");
+  const [marked, setMarked] = useState<GuideImage[]>([]);
+  const toggle = (image: GuideImage) =>
+    setMarked((current) => (current.some((each) => each.url === image.url) ? current.filter((each) => each.url !== image.url) : room !== null && current.length >= room ? current : [...current, image]));
   const [found, setFound] = useState<Awaited<ReturnType<typeof findGuideImages>> | null>(null);
   const [loading, start] = useTransition();
   useEffect(() => {
@@ -297,11 +338,33 @@ function ImagePicker({ tripId, guideId, title, used, saving, onPick, onCancel }:
       {loading && <p className="text-xs text-zinc-500">Szukam zdjęć…</p>}
       {!loading && found !== null && "error" in found && <p className="text-xs msg-error">{found.error}</p>}
       {!loading && found !== null && "images" in found && images.length === 0 && <p className="text-xs text-zinc-500">Nie ma innych zdjęć. Spróbuj innego hasła.</p>}
+      {room !== null && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+          <button type="button" disabled={saving || marked.length === 0} onClick={() => onPickMany(marked)} className="btn-primary btn-sm">
+            {saving ? "Dodaję…" : `Dodaj zaznaczone (${marked.length})`}
+          </button>
+          {marked.length > 0 && (
+            <button type="button" disabled={saving} onClick={() => setMarked([])} className="btn-mini">
+              odznacz
+            </button>
+          )}
+          <span>{marked.length >= room ? `Więcej się nie zmieści (najwyżej ${MAX_GUIDE_IMAGES} w opisie).` : `Kliknij zdjęcia, żeby je zaznaczyć; zmieści się jeszcze ${room - marked.length}. Zaznaczenie zostaje przy nowym wyszukiwaniu.`}</span>
+        </div>
+      )}
       {!loading && images.length > 0 && (
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {images.map((image) => (
-            <li key={image.url} className="flex flex-col gap-1">
-              <button type="button" disabled={saving} onClick={() => onPick(image)} title={`Wybierz: ${image.title}`} className="rounded-lg hover:ring-2 hover:ring-sea disabled:opacity-50">
+          {images.map((image) => {
+            const at = marked.findIndex((each) => each.url === image.url);
+            return (
+              <li key={image.url} className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  disabled={saving || (room !== null && at === -1 && marked.length >= room)}
+                  onClick={() => (room === null ? onPick(image) : toggle(image))}
+                  aria-pressed={room === null ? undefined : at !== -1}
+                  title={room === null ? `Wybierz: ${image.title}` : at === -1 ? `Zaznacz: ${image.title}` : `Odznacz: ${image.title}`}
+                  className={`relative rounded-lg hover:ring-2 hover:ring-sea disabled:opacity-50 ${at !== -1 ? "ring-4 ring-sea" : ""}`}>
+                  {at !== -1 && <span className="absolute top-1 left-1 flex size-6 items-center justify-center rounded-full bg-sea text-xs font-semibold text-white">{at + 1}</span>}
                 {/* Zdjęcia z Commons (upload.wikimedia.org) — zwykły <img>, jak w opisie. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={image.thumbUrl} alt={image.title} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />
@@ -311,7 +374,8 @@ function ImagePicker({ tripId, guideId, title, used, saving, onPick, onCancel }:
                 {image.license}
               </a>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>

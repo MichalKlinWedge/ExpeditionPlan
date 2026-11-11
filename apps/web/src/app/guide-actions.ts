@@ -357,6 +357,26 @@ export async function addOwnGuideImage(tripId: string, guideId: string, fileId: 
   return result;
 }
 
+/** Kilka zdjęć z Wikimedia naraz, jako kolejne (do limitu `MAX_GUIDE_IMAGES`; nadmiar się nie zapisze). */
+export async function pickGuideImages(tripId: string, guideId: string, images: GuideImage[]): Promise<FormState> {
+  const parsed = GuideImage.array().max(MAX_GUIDE_IMAGES).safeParse(images);
+  if (!parsed.success || parsed.data.length === 0 || !parsed.data.every(isWikimediaImage)) return { error: "Któreś zdjęcie nie pochodzi z Wikimedia albo nie ma licencji." };
+  let added = 0;
+  const result = await changeGuide(
+    tripId,
+    guideId,
+    (current) => {
+      const next = parsed.data.reduce((content, image) => putGuideImage(content, image), current);
+      added = next.images.length - current.images.length;
+      return next;
+    },
+    "",
+  );
+  if (result.error) return result;
+  const skipped = parsed.data.length - added;
+  return { ok: `Dodano ${added} zdj.${skipped > 0 ? ` Pominięto ${skipped}: już są w opisie albo przekroczyłyby limit ${MAX_GUIDE_IMAGES}.` : ""}` };
+}
+
 export async function dropGuideImage(tripId: string, guideId: string, url: string): Promise<FormState> {
   return changeGuide(tripId, guideId, (current) => removeGuideImage(current, url), "Usunięto zdjęcie.");
 }
