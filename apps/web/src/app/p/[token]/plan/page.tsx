@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Plan wyjazdu — Expedition Planner"
 
 export default function PublicPlanPage(props: PageProps<"/p/[token]/plan">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
         <PublicPlan params={props.params} searchParams={props.searchParams} />
       </Suspense>

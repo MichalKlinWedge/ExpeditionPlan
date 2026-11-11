@@ -27,7 +27,7 @@ export const maxDuration = 300;
 
 export default function PlanPage(props: PageProps<"/trips/[id]/plan">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
         <Plan params={props.params} searchParams={props.searchParams} />
       </Suspense>

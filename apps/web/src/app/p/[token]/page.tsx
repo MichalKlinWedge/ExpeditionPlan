@@ -23,7 +23,7 @@ export const metadata: Metadata = { title: "Opis wyprawy — Expedition Planner"
 
 export default function PublicOverviewPage(props: PageProps<"/p/[token]">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
         <Overview params={props.params} searchParams={props.searchParams} />
       </Suspense>

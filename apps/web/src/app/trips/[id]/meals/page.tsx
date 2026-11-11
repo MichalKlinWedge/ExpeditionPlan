@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Posiłki — Expedition Planner" };
 
 export default function MealsPage(props: PageProps<"/trips/[id]/meals">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
         <View params={props.params} searchParams={props.searchParams} />
       </Suspense>

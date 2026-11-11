@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Film z wyjazdu — Expedition Planne
 
 export default function PublicFilmPage(props: PageProps<"/p/[token]/film">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
         <PublicShowView params={props.params} kind="film" />
       </Suspense>

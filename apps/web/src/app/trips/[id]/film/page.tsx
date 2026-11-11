@@ -15,7 +15,7 @@ export const maxDuration = 120;
  */
 export default function FilmPage(props: PageProps<"/trips/[id]/film">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
         <ShowView params={props.params} kind="film" />
       </Suspense>

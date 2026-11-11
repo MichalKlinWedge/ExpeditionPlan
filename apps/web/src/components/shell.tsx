@@ -6,9 +6,15 @@ import { RememberDetails } from "./remember-details";
 import { TripNav } from "./trip-nav";
 import { UserMenu } from "./user-menu";
 
-/** Wspólna rama stron: granatowy pasek z poziomicami (nazwa aplikacji, „Pomoc”, użytkownik) i treść. `wide` — plan z mapą obok. */
-export function Shell({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
-  const width = wide ? "max-w-6xl" : "max-w-3xl";
+/** Szerokość treści każdej strony: plan z mapą obok i film wyznaczają ją dla wszystkich. */
+const CONTENT_WIDTH = "max-w-6xl";
+
+/**
+ * Wspólna rama stron: granatowy pasek z poziomicami (nazwa aplikacji, „Pomoc”, użytkownik) i treść. Każda strona ma tę
+ * samą szerokość treści (jak plan z mapą obok i film), żeby przechodzenie między zakładkami nie skakało.
+ */
+export function Shell({ children }: { children: React.ReactNode }) {
+  const width = CONTENT_WIDTH;
   return (
     <div className="flex flex-1 flex-col">
       <header className="topo shadow-md print:hidden">

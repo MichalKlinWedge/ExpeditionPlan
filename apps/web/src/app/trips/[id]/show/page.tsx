@@ -15,7 +15,7 @@ export const maxDuration = 120;
  */
 export default function ShowPage(props: PageProps<"/trips/[id]/show">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
         <ShowView params={props.params} kind="preview" />
       </Suspense>

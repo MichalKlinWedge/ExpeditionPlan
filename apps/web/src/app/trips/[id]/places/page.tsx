@@ -23,7 +23,7 @@ export const metadata: Metadata = { title: "Miejsca — Expedition Planner" };
 
 export default function PlacesPage(props: PageProps<"/trips/[id]/places">) {
   return (
-    <Shell wide>
+    <Shell>
       <Suspense fallback={<Loading />}>
         <View params={props.params} searchParams={props.searchParams} />
       </Suspense>
