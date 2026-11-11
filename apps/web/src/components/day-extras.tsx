@@ -1,6 +1,6 @@
 "use client";
 
-import { addExtraToPlan, type DayExtraItem, dayExtras, EXTRA_FIT, extraDistanceText, extraMinutes, extraTimeText, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
+import { addExtraToPlan, type DayExtraItem, dayExtras, EXTRA_FIT, extraDistanceText, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import { useState, useTransition } from "react";
 
@@ -47,16 +47,19 @@ export function DayExtras({ doc, dayRef, tripId, slackMin, onEdit, onRules, canF
     });
 
   return (
-    <div id={`extras-${dayRef}`} className="panel flex flex-col gap-2 p-3 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium">Po drodze i w pobliżu</p>
-        {canFind && (
-          <button type="button" onClick={find} disabled={pending} className="btn-secondary btn-sm">
-            <SparkIcon className="size-4" />
-            {pending ? "Szukam…" : list.fetchedAt ? "Szukaj od nowa (AI)" : "Znajdź atrakcje (AI)"}
-          </button>
-        )}
-      </div>
+    // Osobna karta pod dniem, zwijana; stan pamięta przeglądarka (`RememberDetails`, wspólny dla dni).
+    <details id={`extras-${dayRef}`} open data-remember="po-drodze" className="card p-4 text-sm">
+      <summary className="card-title cursor-pointer">
+        Po drodze i w pobliżu
+        {list.open.length > 0 && <span className="font-normal text-zinc-500"> · {plural(list.open.length, ["atrakcja", "atrakcje", "atrakcji"])}</span>}
+      </summary>
+      <div className="mt-3 flex flex-col gap-2">
+      {canFind && (
+        <button type="button" onClick={find} disabled={pending} className="btn-secondary btn-sm self-start">
+          <SparkIcon className="size-4" />
+          {pending ? "Szukam…" : list.fetchedAt ? "Szukaj od nowa (AI)" : "Znajdź atrakcje (AI)"}
+        </button>
+      )}
       {list.fetchedAt === undefined && (
         <p className="text-xs text-zinc-500">Atrakcje przy trasie i punktach dnia, które da się dorzucić, gdy zostanie czas albo coś wypadnie z planu — z czasem, jaki zajmą. Odrzucone nie wracają przy kolejnym szukaniu.</p>
       )}
@@ -155,6 +158,7 @@ export function DayExtras({ doc, dayRef, tripId, slackMin, onEdit, onRules, canF
           ; wybór i opis: AI (Gemini); czas objazdu szacunkowy, z odległości. Sprawdzone {shortDate(list.fetchedAt)}.
         </p>
       )}
-    </div>
+      </div>
+    </details>
   );
 }

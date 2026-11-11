@@ -180,7 +180,12 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
   /** Punkt z listy albo z mapy: wyróżnienie w obu miejscach. */
   const select = (ref: string, from: "list" | "map") => {
     setSelected(ref);
-    if (from === "map") document.getElementById(`item-${ref}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (from !== "map") return;
+    const row = document.getElementById(`item-${ref}`);
+    // Atrakcja „po drodze” w zwiniętej karcie: najpierw ją rozwinąć.
+    const box = row?.closest("details");
+    if (box && !box.open) box.open = true;
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   /**
@@ -951,9 +956,14 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
   const sunMarks = schedule ? daySunMarks(schedule) : [];
   // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu”.
   const extras = itemExtras(doc, dayRef);
-  const showExtras = () => document.getElementById(`extras-${dayRef}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const showExtras = () => {
+    const box = document.getElementById(`extras-${dayRef}`);
+    if (box instanceof HTMLDetailsElement) box.open = true;
+    box?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
+    <>
     <section className="flex flex-col gap-3 card p-4">
       <header className="card-title flex flex-wrap items-baseline justify-between gap-2">
         <div>
@@ -1290,20 +1300,21 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
         </div>
       )}
 
-      <DayExtras
-        doc={doc}
-        dayRef={dayRef}
-        tripId={tripId ?? ""}
-        slackMin={schedule?.slackMin ?? null}
-        onEdit={actions?.edit ?? null}
-        onRules={onRules}
-        canFind={extrasAi && tripId !== undefined}
-        selected={selected}
-        onSelect={onSelect}
-      />
-
       <DayNotes doc={doc} dayRef={dayRef} onRules={onRules} />
     </section>
+    {/* Osobna, zwijana karta pod dniem. */}
+    <DayExtras
+      doc={doc}
+      dayRef={dayRef}
+      tripId={tripId ?? ""}
+      slackMin={schedule?.slackMin ?? null}
+      onEdit={actions?.edit ?? null}
+      onRules={onRules}
+      canFind={extrasAi && tripId !== undefined}
+      selected={selected}
+      onSelect={onSelect}
+    />
+    </>
   );
 }
 
