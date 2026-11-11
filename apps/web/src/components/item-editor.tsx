@@ -22,6 +22,25 @@ const PRECISION: Record<string, string> = {
 
 const PARTS: Record<string, string> = { morning: "rano", midday: "południe", afternoon: "popołudnie", evening: "wieczór", night: "noc" };
 
+/** Podpowiedzi pól (`title` — po najechaniu myszą). */
+const TIP = {
+  title: "Nazwa punktu w planie, na mapie, w przypomnieniach na telefonie i w wydruku.",
+  kind: "Rodzaj decyduje o ikonie, kolorze na osi dnia i o tym, co punkt potrafi: przejazd ma trasę, skąd i dokąd, posiłek — knajpy w pobliżu, nocleg — dane obiektu.",
+  vehicle: "Jak się jedzie albo idzie. Autem, taksówką i pieszo trasę i czas liczy „Przelicz przejazdy”; przy komunikacji publicznej punkt dostaje link do rozkładu.",
+  precision:
+    "Godzina to „nie wcześniej niż”: punkt zaczyna się o niej albo po końcu poprzednich punktów, jeśli kończą się później.\n• bez godziny — zaraz po poprzednim punkcie\n• dokładnie — o tej godzinie; spóźnienie to ostrzeżenie\n• dokładnie do — ma się skończyć o tej godzinie (np. przyjazd na lotnisko); start liczy się wstecz od czasu trwania\n• około — ostrzeżenie dopiero przy spóźnieniu ponad 15 min\n• przedział — od–do; bez „Trwa” czas punktu to ten przedział\n• pora dnia — nie wcześniej niż początek pory; ostrzeżenie, gdy wyjdzie poza nią\n• cały dzień — bez godziny, w kolejności dnia\n• względnie — przesunięcie od początku poprzedniego punktu albo od „godziny zero” dnia",
+  start: "Godzina rozpoczęcia, czasu lokalnego miejsca.",
+  end: "Przy „dokładnie” i „około” tylko informacja, do której. Samo „Do” bez „Od” przy „dokładnie” zapisze się jako „dokładnie do”.",
+  partOfDay: "Okno pory dnia: punkt nie zacznie się przed jej początkiem, a gdy wypadnie po jej końcu, plan ostrzeże.",
+  offset: "O ile później niż punkt odniesienia, np. 1:20 albo 80 (minut).",
+  from: "Początek poprzedniego punktu albo „godzina zero” dnia (ustalana w dniu, np. start po przylocie).",
+  duration: "Czas punktu w minutach (scenariusz optymistyczny). Przy przejeździe puste = czas trasy.",
+  durationMax: "Górna granica czasu, gdy trwa „1–1,5 h”: tyle liczy scenariusz pesymistyczny i propozycje cięć.",
+  stops: "Postoje i przerwy w trakcie punktu (np. kawa w trasie, odpoczynek na szlaku): dodają się do czasu trwania albo do czasu drogi i nie giną przy przeliczeniu trasy.",
+  buffer: "Zapas po punkcie, zanim ruszy następny (np. zwrot auta, przebranie się po kąpieli).",
+  priority: "Jak ważny jest punkt: „koniecznie” nigdy nie trafia do propozycji cięć, „opcjonalnie” idzie tam pierwsze.",
+};
+
 const input = "w-full field px-2 py-1 text-sm";
 const label = "flex flex-col gap-1 text-xs text-zinc-500";
 
@@ -140,11 +159,11 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
         event.preventDefault();
         onSave(toPatch(draft, item, transitNow));
       }}>
-      <label className={`${label} col-span-2`}>
+      <label className={`${label} col-span-2`} title={TIP.title}>
         Nazwa
         <input className={input} value={draft.title} onChange={(event) => set({ title: event.target.value })} />
       </label>
-      <label className={label}>
+      <label className={label} title={TIP.kind}>
         Rodzaj
         <select
           className={input}
@@ -161,7 +180,7 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
         </select>
       </label>
       {vehicleChoices(draft.kind) && (
-        <label className={label}>
+        <label className={label} title={TIP.vehicle}>
           Środek transportu
           <select className={input} value={vehicleFor(draft.kind, draft.vehicle)} onChange={(event) => set({ vehicle: event.target.value as VehicleMode })}>
             {vehicleChoices(draft.kind)!.map(([key, name]) => (
@@ -172,7 +191,7 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
           </select>
         </label>
       )}
-      <label className={label}>
+      <label className={label} title={TIP.precision}>
         Godzina
         <select className={input} value={draft.precision} onChange={(event) => set({ precision: event.target.value })}>
           {Object.entries(PRECISION).map(([key, name]) => (
@@ -183,20 +202,20 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
         </select>
       </label>
       {needsStart && (
-        <label className={label}>
+        <label className={label} title={TIP.start}>
           Od{startRequired ? "" : " (opcjonalnie)"}
           <input type="time" required={startRequired} className={input} value={draft.start} onChange={(event) => set({ start: event.target.value })} />
         </label>
       )}
       {(needsStart || draft.precision === "by") && (
-        <label className={label}>
+        <label className={label} title={TIP.end}>
           {draft.precision === "by" ? "Do (koniec, np. przyjazd)" : `Do${draft.precision === "range" ? "" : " (opcjonalnie)"}`}
           <input type="time" required={draft.precision === "range" || draft.precision === "by"} className={input} value={draft.end} onChange={(event) => set({ end: event.target.value })} />
         </label>
       )}
       {draft.precision === "by" && <p className="col-span-2 self-end text-xs text-zinc-500">Początek liczy się od czasu trwania (z trasy albo „Trwa”), tak żeby skończyć o tej godzinie.</p>}
       {draft.precision === "part_of_day" && (
-        <label className={label}>
+        <label className={label} title={TIP.partOfDay}>
           Pora
           <select className={input} value={draft.partOfDay} onChange={(event) => set({ partOfDay: event.target.value })}>
             {Object.entries(PARTS).map(([key, name]) => (
@@ -209,11 +228,11 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
       )}
       {draft.precision === "relative" && (
         <>
-          <label className={label}>
+          <label className={label} title={TIP.offset}>
             Przesunięcie (h:mm)
             <input className={input} value={draft.offset} onChange={(event) => set({ offset: event.target.value })} placeholder="1:20" />
           </label>
-          <label className={label}>
+          <label className={label} title={TIP.from}>
             Od czego
             <select className={input} value={draft.from} onChange={(event) => set({ from: event.target.value as Draft["from"] })}>
               <option value="previous">początku poprzedniego punktu</option>
@@ -222,23 +241,23 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
           </label>
         </>
       )}
-      <label className={label}>
+      <label className={label} title={TIP.duration}>
         Trwa (min)
         <input type="number" min={0} className={input} value={draft.durationMin} onChange={(event) => set({ durationMin: event.target.value })} />
       </label>
-      <label className={label}>
+      <label className={label} title={TIP.durationMax}>
         Najdłużej (min)
         <input type="number" min={0} className={input} value={draft.durationMaxMin} onChange={(event) => set({ durationMaxMin: event.target.value })} />
       </label>
-      <label className={label}>
+      <label className={label} title={TIP.stops}>
         Postoje, przerwy (min)
         <input type="number" min={0} className={input} value={draft.stopsMin} onChange={(event) => set({ stopsMin: event.target.value })} />
       </label>
-      <label className={label}>
+      <label className={label} title={TIP.buffer}>
         Bufor po (min)
         <input type="number" min={0} className={input} value={draft.bufferAfterMin} onChange={(event) => set({ bufferAfterMin: event.target.value })} />
       </label>
-      <label className={label}>
+      <label className={label} title={TIP.priority}>
         Priorytet
         <select className={input} value={draft.priority} onChange={(event) => set({ priority: event.target.value })}>
           <option value="">—</option>
