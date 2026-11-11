@@ -1,12 +1,13 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeLinkSite, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeLinkSite, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Image from "next/image";
 import Link from "next/link";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
+import { DayExtras } from "@/components/day-extras";
 import { ArticleIcon, InfoIcon, RouteIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { PlaceLink } from "@/components/place-pin";
 import { DayConstraints, DayEndField, DayNotes, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
@@ -69,6 +70,8 @@ type Props = {
    * pustego miejsca. Nagłówek i przyciski są poza widokiem, bo widok odtwarza się przy nowej wersji danych.
    */
   beside?: boolean;
+  /** „Po drodze i w pobliżu”: szukanie z AI (dostęp do AI); i tak tylko w edycji. */
+  extrasAi?: boolean;
 };
 
 /**
@@ -86,7 +89,7 @@ export function PlanPageGrid({ header, actions, children }: { header: ReactNode;
   );
 }
 
-export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay, bookingDocuments, beside = false }: Props) {
+export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, guided, guidedOnly = false, initialDay, bookingDocuments, beside = false, extrasAi = false }: Props) {
   useRefreshOnReturn();
   const { inputs } = state;
   const [doc, setDoc] = useState(state.doc);
@@ -167,7 +170,9 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
       mapRefs = dayItems(doc, mapDay.ref).map((item) => item.ref);
     }
   }
-  const map = dayMap(doc, mapRefs, { baseRef: mapDay ? dayLodging(doc, mapDay.ref)?.placeRef : undefined, pool: true });
+  const dayOnly = dayMap(doc, mapRefs, { baseRef: mapDay ? dayLodging(doc, mapDay.ref)?.placeRef : undefined, pool: true });
+  // Atrakcje „po drodze i w pobliżu” dnia: gwiazdki bez numerów.
+  const map = mapDay === undefined ? dayOnly : { ...dayOnly, pins: [...dayOnly.pins, ...extraPins(doc, mapDay.ref)] };
   const mapKey = JSON.stringify([map.lines, map.straightLegs, map.pins.map((pin) => [pin.placeRef, pin.lat, pin.lng, pin.stops.map((stop) => stop.n), pin.pool?.length])]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- mapa przerysowuje się tylko przy zmianie tego, co pokazuje
   const stableMap = useMemo(() => map, [mapKey]);
@@ -440,6 +445,7 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
               onBooking={bookingDocuments ? setOpenBooking : null}
               field={fieldLog(doc, mapDay.ref, inputs)}
               fieldVariants={inputs.activeVariants}
+              extrasAi={canEdit && extrasAi && !guidedOnly}
             />
           )}
           {Object.keys(weather).length > 0 && <p className="text-xs text-zinc-500">{WEATHER_ATTRIBUTION}</p>}
@@ -899,6 +905,8 @@ type DayProps = {
   field: FieldLog;
   /** Warianty wybrane na telefonie (groupRef → variantRef). */
   fieldVariants: Record<string, string>;
+  /** Szukanie „po drodze i w pobliżu” z AI (edycja + dostęp do AI). */
+  extrasAi: boolean;
 };
 
 /** Kolor kropki na osi dnia według rodzaju punktu. */
@@ -922,7 +930,7 @@ function BookingButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, tripId, itemBase, guided, guidedOnly, onBooking, field, fieldVariants }: DayProps) {
+function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, onRules, dnd, numbers, selected, onSelect, weather, tripId, itemBase, guided, guidedOnly, onBooking, field, fieldVariants, extrasAi }: DayProps) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const [editing, setEditing] = useState<string | null>(null);
   const hydrated = useHydrated();
@@ -941,6 +949,9 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
   const sun = schedule?.facts.sun;
   // Wschód i zachód w godzinach planu: linia między punktami w miejscu tej godziny.
   const sunMarks = schedule ? daySunMarks(schedule) : [];
+  // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu”.
+  const extras = itemExtras(doc, dayRef);
+  const showExtras = () => document.getElementById(`extras-${dayRef}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   return (
     <section className="flex flex-col gap-3 card p-4">
@@ -1105,6 +1116,24 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       </span>
                     )}
                     {offMap && onPin && source?.placeRef && <PinButton onClick={() => onPin(source.placeRef!, places.get(source.placeRef!)?.name ?? item.title)} />}
+                    {(() => {
+                      const marks = extras.get(item.ref);
+                      if (marks === undefined) return null;
+                      return (
+                        <>
+                          {marks.near.length > 0 && (
+                            <button type="button" onClick={showExtras} title={`Po drodze i w pobliżu: ${marks.near.map((each) => each.title).join(", ")}`} className="btn-mini ml-1.5">
+                              ★ +{marks.near.length} w pobliżu
+                            </button>
+                          )}
+                          {marks.swaps.length > 0 && (
+                            <button type="button" onClick={showExtras} title={`Gdy ten punkt wypadnie: ${marks.swaps.map((each) => each.title).join(", ")}`} className="btn-mini ml-1.5">
+                              ⇄ zamiennik
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </span>
                 </div>
                 {flightText && (
@@ -1260,6 +1289,18 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
           </ul>
         </div>
       )}
+
+      <DayExtras
+        doc={doc}
+        dayRef={dayRef}
+        tripId={tripId ?? ""}
+        slackMin={schedule?.slackMin ?? null}
+        onEdit={actions?.edit ?? null}
+        onRules={onRules}
+        canFind={extrasAi && tripId !== undefined}
+        selected={selected}
+        onSelect={onSelect}
+      />
 
       <DayNotes doc={doc} dayRef={dayRef} onRules={onRules} />
     </section>

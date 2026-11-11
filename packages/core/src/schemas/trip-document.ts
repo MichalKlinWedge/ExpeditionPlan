@@ -140,6 +140,45 @@ export const DocPlace = z.object({
 // ---------------------------------------------------------------------------------------------
 // Dni i punkty
 
+/**
+ * Atrakcja po drodze albo w pobliżu punktów dnia (`core/day-extras.ts`): z OpenStreetMap lub z puli,
+ * wybrana i opisana przez AI, z czasem objazdu policzonym przez kod. Nie jest punktem planu, póki
+ * człowiek jej nie wstawi.
+ */
+export const DayExtra = z.object({
+  /** Stały klucz: `node/123` z OSM albo `pool:<ref>` dla punktu z puli. */
+  id: z.string().min(1),
+  title: text,
+  /** Rodzaj po polsku („zamek”, „punkt widokowy”). */
+  type: z.string().optional(),
+  /** Co to jest i dlaczego warto (1–2 zdania). */
+  why: z.string().optional(),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  /** Punkt planu, przy którym leży (przy jego miejscu albo na jego trasie). */
+  nearRef: Ref.optional(),
+  /** Przy miejscu punktu (`at`), przy drodze pieszo (`foot`) albo przy drodze autem (`car`). */
+  along: z.enum(['at', 'foot', 'car']),
+  /** Odległość od miejsca albo od trasy (m). */
+  offM: z.number().int().nonnegative(),
+  /** Dojście albo zjazd tam i z powrotem (min). */
+  detourMin: z.number().int().nonnegative(),
+  /** Czas na miejscu (min). */
+  stayMin: z.number().int().nonnegative(),
+  /** `pass` — widać po drodze, bez dodatkowego czasu; `stop` — krótki postój; `visit` — zwiedzanie. */
+  fit: z.enum(['pass', 'stop', 'visit']),
+  /** Punkt planu, który może zastąpić, gdy tamten wypadnie. */
+  swapRef: Ref.optional(),
+  weather: z.enum(['outdoor', 'indoor', 'any']).optional(),
+  /** Punkt z puli wyjazdu (wstawienie przenosi go do dnia). */
+  poolRef: Ref.optional(),
+  wikipedia: HttpUrl.optional(),
+  website: HttpUrl.optional(),
+  /** `dismissed` — odrzucona (nie wraca przy odświeżeniu); `added` — wstawiona do planu jako `addedRef`. */
+  status: z.enum(['dismissed', 'added']).optional(),
+  addedRef: Ref.optional(),
+});
+
 export const DocDay = z.object({
   ref: Ref,
   date: IsoDate,
@@ -165,6 +204,8 @@ export const DocDay = z.object({
   scenarios: z.boolean().optional(),
   /** Jazda dnia tak, jak podaje dokument („246 km · 2 h 52 min”) — do porównania z wyliczoną. */
   statedDriving: z.object({ distanceKm: z.number().nonnegative().optional(), durationMin: z.number().int().nonnegative().optional() }).optional(),
+  /** „Po drodze i w pobliżu” — atrakcje do dorzucenia albo na zamianę (`core/day-extras.ts`), szukane na kliknięcie. */
+  extras: z.object({ fetchedAt: IsoDate, items: z.array(DayExtra) }).optional(),
 });
 
 export const PartOfDay = z.enum(['morning', 'midday', 'afternoon', 'evening', 'night']);

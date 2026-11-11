@@ -72,6 +72,7 @@ export * from './traveler-presence.ts';
 export * from './lodging-info.ts';
 export * from './booking-import.ts';
 export * from './brief-import.ts';
+export * from './day-extras.ts';
 export * from './doc-text.ts';
 export * from './votes.ts';
 export * from './transit-info.ts';

@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, dayLabel, dayLodging, type DaySchedule, daySunMarks, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, itemExtras, dayLabel, dayLodging, type DaySchedule, daySunMarks, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -32,6 +32,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayMap, useDayStops } from '@/features/plan/day-map';
 import { DayTrackProfiles } from '@/features/plan/track-profile';
+import { DayExtrasCard } from '@/features/plan/day-extras-card';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ContactList } from '@/features/plan/item-facts';
 import { PlacePin } from '@/features/plan/place-pin';
@@ -765,6 +766,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [extrasOpen, setExtrasOpen] = useState(false);
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done, pulled: inputs.pulled };
   let schedule: DaySchedule | null = null;
@@ -786,6 +788,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
   const sun = schedule?.facts.sun;
   // Wschód i zachód w godzinach planu: linia między kartami w miejscu tej godziny.
   const sunMarks = schedule ? daySunMarks(schedule) : [];
+  // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu” (lista pod dniem).
+  const extras = itemExtras(doc, dayRef);
   const slack = schedule?.slack ? SLACK[schedule.slack] : undefined;
   const { map, pinOf } = useDayStops(doc, schedule?.items.map((item) => item.ref).join(',') ?? '', lodging?.placeRef);
   const [mapPlace, setMapPlace] = useState<string | null>(null);
@@ -931,6 +935,18 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
                   {routeStopsLabel(item)}
                 </ThemedText>
               )}
+              {(() => {
+                const marks = extras.get(item.ref);
+                if (marks === undefined) return null;
+                const text = [marks.near.length > 0 ? `★ +${marks.near.length} w pobliżu` : null, marks.swaps.length > 0 ? '⇄ jest zamiennik' : null].filter(Boolean).join(' · ');
+                return (
+                  <Pressable onPress={() => setExtrasOpen(true)} hitSlop={6}>
+                    <ThemedText type="small" themeColor="accent">
+                      {text} — lista pod dniem
+                    </ThemedText>
+                  </Pressable>
+                );
+              })()}
               {offMap && (
                 <ThemedText type="small" style={{ color: SOFT }}>
                   brak na mapie (miejsce bez współrzędnych)
@@ -1036,6 +1052,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
       )}
 
       {schedule && <Warnings list={schedule.warnings.filter((warning) => warning.itemRef === undefined)} />}
+
+      <DayExtrasCard doc={doc} dayRef={dayRef} slackMin={schedule?.slackMin ?? null} open={extrasOpen} onToggle={() => setExtrasOpen(!extrasOpen)} />
 
       {cuts.length > 0 && (
         <View style={styles.group}>

@@ -184,7 +184,7 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       for (const { marker } of markers.current) marker.remove();
       markers.current = data.pins.map((pin) => {
         const element = pinElement(pin);
-        const first = pin.stops[0]?.ref ?? pin.pool?.[0]?.ref;
+        const first = pin.stops[0]?.ref ?? pin.pool?.[0]?.ref ?? pin.extra?.ref;
         if (first !== undefined) element.addEventListener("click", () => select.current(first));
         const draggable = movable && pin.movable === true;
         if (draggable) element.title += "\n(przeciągnij, żeby przesunąć)";
@@ -317,7 +317,7 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
 function highlight(markers: { pin: MapPin; marker: Marker }[], selected: string | null): MapPin | undefined {
   let found: MapPin | undefined;
   for (const { pin, marker } of markers) {
-    const active = selected !== null && (pin.stops.some((stop) => stop.ref === selected) || (pin.pool ?? []).some((each) => each.ref === selected));
+    const active = selected !== null && (pin.stops.some((stop) => stop.ref === selected) || (pin.pool ?? []).some((each) => each.ref === selected) || pin.extra?.ref === selected);
     const element = marker.getElement();
     element.dataset.active = String(active);
     element.style.zIndex = active ? "10" : "";
@@ -343,7 +343,7 @@ function pinElement(pin: MapPin): HTMLElement {
   const element = document.createElement("button");
   element.type = "button";
   element.className = "group cursor-pointer";
-  const titles = [...pin.stops.map((stop) => `${stop.n}. ${stop.title}`), ...(pin.pool ?? []).map((each) => `pula: ${each.title}`)];
+  const titles = [...pin.stops.map((stop) => `${stop.n}. ${stop.title}`), ...(pin.pool ?? []).map((each) => `pula: ${each.title}`), ...(pin.extra ? ["po drodze i w pobliżu"] : [])];
   element.title = [pin.name, ...titles, ...(pin.base ? ["nocleg"] : [])].join("\n");
   const face = document.createElement("span");
   const ring = "border-2 border-white shadow-md transition-[scale,box-shadow] group-data-[active=true]:scale-125 group-data-[active=true]:ring-4 group-data-[active=true]:ring-signal/60";
@@ -353,6 +353,10 @@ function pinElement(pin: MapPin): HTMLElement {
   } else if (pin.base) {
     face.textContent = "⌂";
     face.className = `flex size-6 items-center justify-center rounded-full bg-indigo-500 text-sm text-white ${ring}`;
+  } else if (pin.extra) {
+    // Atrakcja po drodze: mała gwiazdka, nie punkt planu.
+    face.textContent = "★";
+    face.className = `flex size-5 items-center justify-center rounded-full bg-amber-500 text-[11px] text-white ${ring}`;
   } else {
     // Sam cel przejazdu (numer stoi przy starcie) jest w kolorze planu, szare są tylko punkty z puli.
     face.className = `block size-3 rounded-full ${pin.arrival ? "bg-sea" : "bg-zinc-400"} ${ring}`;

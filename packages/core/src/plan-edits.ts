@@ -21,7 +21,7 @@ export type PlanEdit = {
   changed: Item[];
   /** Miejsca do zapisania (własna pinezka): nowe idą do bazy przed punktem, który je wskazuje. */
   places?: { place: PlanPlace; created?: true }[];
-  others?: ({ collection: 'variants'; element: Doc['variants'][number] } | { collection: 'sources'; element: Doc['sources'][number] })[];
+  others?: ({ collection: 'variants'; element: Doc['variants'][number] } | { collection: 'sources'; element: Doc['sources'][number] } | { collection: 'days'; element: Doc['days'][number] })[];
   created?: Item;
   removed?: string;
   /** O ile minut przesunięto wcześniej kolejne punkty po usunięciu (`removeItemClosingGap`). */

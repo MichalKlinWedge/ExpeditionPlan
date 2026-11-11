@@ -88,6 +88,9 @@ export const NOTE_TOPIC: Record<string, string> = {
 };
 
 /** Zapas czasu w dniu (`schedule.slack`). */
+/** Jak atrakcja „po drodze i w pobliżu” mieści się w dniu (`DayExtra.fit`). */
+export const EXTRA_FIT: Record<string, string> = { pass: 'po drodze', stop: 'krótki postój', visit: 'zwiedzanie' };
+
 export const SLACK_LABEL = { large: 'duży zapas', small: 'mały zapas', none: 'bez zapasu', negative: 'dzień się nie spina' };
 
 /** Obszar propozycji z przeglądu planu z AI (`ReviewCategory`). */

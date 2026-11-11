@@ -19,6 +19,7 @@ export * from './brief-document.ts';
 export * from './transit.ts';
 export * from './transit-osm.ts';
 export * from './track-osm.ts';
+export * from './day-extras.ts';
 export * from './venue.ts';
 export * from './venue-page.ts';
 export * from './wiki.ts';

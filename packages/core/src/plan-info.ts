@@ -148,6 +148,8 @@ export type MapPin = {
   stops: { ref: string; n: number; title: string }[];
   /** Baza (nocleg) dnia. */
   base?: boolean;
+  /** Atrakcja „po drodze i w pobliżu” (`core/day-extras.ts`): `ref` = `extra:<id>`, bez numeru. */
+  extra?: { ref: string; title: string };
   /** Punkty z puli w tym miejscu (bez numeru — poza dniem). */
   pool?: { ref: string; title: string }[];
   /** Cel przejazdu: numer przejazdu stoi przy jego starcie, więc cel może nie mieć własnego numeru. */

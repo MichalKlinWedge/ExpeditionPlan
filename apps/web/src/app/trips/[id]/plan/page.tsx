@@ -14,6 +14,7 @@ import { PlanActionButton } from "@/components/plan-action-button";
 import { CoverageInfo, PlanPageGrid, PlanView } from "@/components/plan-view";
 import { Loading, Shell } from "@/components/shell";
 import { PageHeader } from "@/components/page-header";
+import { aiAccessError } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Plan dzień po dniu — Expedition Planner" };
@@ -40,9 +41,10 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
   const wantsEdit = await editMode();
   const { day } = await searchParams;
   const { supabase } = await requireUser(`/trips/${id}/plan`);
-  const [{ data, error }, membership] = await Promise.all([
+  const [{ data, error }, membership, aiDenied] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
+    aiAccessError(),
   ]);
   if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
@@ -114,6 +116,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
         guided={guided}
         initialDay={typeof day === "string" ? day : undefined}
         bookingDocuments={bookingDocuments}
+        extrasAi={aiDenied === null}
       />
     </PlanPageGrid>
   );

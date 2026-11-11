@@ -157,7 +157,7 @@ export const SPECS: Record<Collection, Spec> = {
     fields: [
       'date', 'tz', 'title', 'summary', ['baseRef', 'base_place_id'],
       ['lodgingRef', { bookings: 'lodging_booking_id', variantGroups: 'lodging_group_id' }],
-      'anchorTime', 'dayStart', 'dayEnd', 'scenarios', 'statedDriving',
+      'anchorTime', 'dayStart', 'dayEnd', 'scenarios', 'statedDriving', 'extras',
     ],
     ownOrder: true,
   },
