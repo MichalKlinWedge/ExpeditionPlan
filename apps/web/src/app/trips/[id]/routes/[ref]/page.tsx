@@ -70,6 +70,7 @@ async function View({ params }: { params: Promise<{ id: string; ref: string }> }
   const line = routeLine(track) === undefined ? undefined : (track.geojson as TrackLine);
   const profile = line === undefined ? null : trackProfile(line);
   const sketch = profile === null ? null : profileSketch(profile, 160);
+  const hasProfile = profile !== null && sketch !== null;
   const sections = line === undefined || profile?.hasElevation !== true ? [] : trackSections(line, { pace: planPace(trackSections(line), track.durationMin) });
   const ends = track.route?.from !== undefined || track.route?.to !== undefined ? `${track.route?.from?.name ?? "?"} → ${track.route?.to?.name ?? "?"}` : null;
   const facts = routeFacts(track);
@@ -133,13 +134,25 @@ async function View({ params }: { params: Promise<{ id: string; ref: string }> }
         </div>
       </section>
 
-      <section className="card flex flex-col gap-2 p-4 text-sm">
+      {editing && (
+        <RouteEditor
+          tripId={id}
+          trackRef={track.ref}
+          initial={initial}
+          places={doc.places.filter((place) => place.lat !== undefined && place.lng !== undefined).map((place) => ({ ref: place.ref, name: place.name })).sort((a, b) => a.name.localeCompare(b.name, "pl"))}
+          users={users.length}
+        />
+      )}
+
+      {/* Mapa i profil obok siebie (na wąskim ekranie jedno pod drugim); bez profilu mapa na całą szerokość. */}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <section className={`card flex flex-col gap-2 p-4 text-sm ${hasProfile ? "" : "lg:col-span-2"}`}>
         <h2 className="card-title">Mapa</h2>
-        {map.pins.length === 0 && map.lines.length === 0 ? <p className="text-zinc-500">Trasa nie ma linii ani końców ze współrzędnymi: dodaj plik GPX albo skąd i dokąd w edycji.</p> : <MemoriesMap map={map} fitLines />}
+        {map.pins.length === 0 && map.lines.length === 0 ? <p className="text-zinc-500">Trasa nie ma linii ani końców ze współrzędnymi: dodaj plik GPX albo skąd i dokąd w edycji.</p> : <MemoriesMap map={map} fitLines square={hasProfile} />}
         {line === undefined && map.pins.length > 0 && <p className="text-xs text-zinc-500">Bez linii: na mapie są tylko końce. Linię da plik GPX{kind === "car" ? " albo „Przelicz trasę” przy podpiętym przejeździe" : ""}.</p>}
       </section>
 
-      {profile !== null && sketch !== null && (
+      {hasProfile && (
         <section className="card flex flex-col gap-2 p-4 text-sm">
           <h2 className="card-title">Profil i trudność trasy</h2>
           <WalkProfile profile={sketch} minEle={profile.minEle!} maxEle={profile.maxEle!} />
@@ -181,16 +194,7 @@ async function View({ params }: { params: Promise<{ id: string; ref: string }> }
           {sections.length > 0 && <p className="text-xs text-zinc-500">Czas wg DIN 33466 (4 km/h, 300 m/h w górę, 500 m/h w dół), liczony po odcinkach, bez postojów{track.durationMin !== undefined ? "; tempo dopasowane do czasu trasy" : ""}.</p>}
         </section>
       )}
-
-      {editing && (
-        <RouteEditor
-          tripId={id}
-          trackRef={track.ref}
-          initial={initial}
-          places={doc.places.filter((place) => place.lat !== undefined && place.lng !== undefined).map((place) => ({ ref: place.ref, name: place.name })).sort((a, b) => a.name.localeCompare(b.name, "pl"))}
-          users={users.length}
-        />
-      )}
+      </div>
     </>
   );
 }
