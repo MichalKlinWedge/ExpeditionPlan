@@ -111,7 +111,7 @@ export function editGuideText(content: GuideContent, text: z.input<typeof GuideD
 }
 
 /** Najwięcej zdjęć w opisie po ręcznych zmianach. */
-export const MAX_GUIDE_IMAGES = 8;
+export const MAX_GUIDE_IMAGES = 12;
 
 const WIKIMEDIA_FILE = /^https:\/\/[a-z0-9.-]+\.wikimedia\.org\//;
 const WIKIMEDIA_PAGE = /^https:\/\/([a-z0-9-]+\.)*(wikimedia|wikipedia|wikivoyage)\.org\//;
