@@ -43,6 +43,10 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
 
   const narration = new Map(script.scenes.map((scene) => [scene.key, scene]));
   const asPhoto = (image: ShowImage): EditorPhoto => ({ key: showImageKey(image), url: image.url, caption: image.caption });
+  // Zdjęcia do wyboru w scenach: własne zdjęcia każdego dnia i zakończenia (`ShowScene.pool`).
+  const photoSources = scenes.flatMap((scene) =>
+    scene.pool && scene.pool.length > 0 ? [{ key: scene.key, heading: scene.kind === "outro" ? "Zakończenie" : scene.heading, photos: scene.pool.map(asPhoto) }] : [],
+  );
   const [player, music] = await Promise.all([playerScenes(supabase, doc, scenes, script), playerMusic(supabase, script)]);
   const editor: EditorScene[] = scenes.map((scene) => {
     const told = narration.get(scene.key);
@@ -56,7 +60,20 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
       edited: told?.edited === true,
       status: told === undefined || told.text.trim() === "" ? "none" : fits ? "ready" : told.audio ? "old" : "new",
       ...(fits ? { seconds: Math.round(told.audio.durationMs / 1000) } : {}),
-      ...(scene.pool && scene.pool.length > 0 ? { photos: { auto: scene.chosen !== true, shown: scene.images.map(asPhoto), pool: scene.pool.map(asPhoto) } } : {}),
+      // Dni i zakończenie wybierają spośród zdjęć całego wyjazdu: najpierw własne, potem innych scen w kolejności filmu.
+      ...((scene.kind === "day" || scene.kind === "outro") && photoSources.length > 0
+        ? {
+            photos: {
+              auto: scene.chosen !== true,
+              shown: scene.images.map(asPhoto),
+              groups: [...photoSources.filter((source) => source.key === scene.key), ...photoSources.filter((source) => source.key !== scene.key)].map((source) => ({
+                heading: source.key === scene.key ? "Z tej sceny" : source.heading,
+                own: source.key === scene.key,
+                photos: source.photos,
+              })),
+            },
+          }
+        : {}),
     };
   });
   const keys = new Set(scenes.map((scene) => scene.key));

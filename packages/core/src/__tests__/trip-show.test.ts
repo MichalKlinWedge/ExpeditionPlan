@@ -232,6 +232,12 @@ describe('dojazd i zdjęcia we wstępie', () => {
       expect(chosen.credits.images.some((image) => image.title === 'File:Drugie.jpg')).toBe(true);
     }
     expect(showScenes(doc, { ...base, kind: 'film', journal, guideOf, photos: { [key]: [] } }).scenes.find((each) => each.key === key)!.images).toEqual([]);
+    // Dzień bez własnych zdjęć wybiera spośród zdjęć całego wyjazdu (tu z dnia 1), zakończenie też.
+    const other = `day:${days[1]!.ref}`;
+    const borrowed = showScenes(doc, { ...base, kind: 'film', journal, guideOf, photos: { [other]: ['p/2.jpg'], outro: ['p/1.jpg'] } }).scenes;
+    expect(borrowed.find((each) => each.key === other)!.pool).toBeUndefined();
+    expect(borrowed.find((each) => each.key === other)!.images.map((image) => image.caption)).toEqual(['D0 2']);
+    expect(borrowed.find((each) => each.key === 'outro')!.images.map((image) => image.key)).toEqual(['p/1.jpg']);
   });
 
   it('wybór zdjęć w scenariuszu: kolejność bez powtórek, `null` wraca do automatu', () => {

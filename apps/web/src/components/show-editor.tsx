@@ -26,8 +26,11 @@ export type RecordingStatus = "none" | "new" | "old" | "ready";
 /** Zdjęcie do wyboru w edycji pokazu: stały klucz (`ShowImage.key`), podpisany adres miniatury i podpis. */
 export type EditorPhoto = { key: string; url: string; caption: string };
 
-/** Zdjęcia sceny w edycji: wybrane automatycznie albo ręcznie (`shown` w kolejności pokazu) i cała pula sceny. */
-export type ScenePhotoChoice = { auto: boolean; shown: EditorPhoto[]; pool: EditorPhoto[] };
+/**
+ * Zdjęcia sceny w edycji: wybrane automatycznie albo ręcznie (`shown` w kolejności pokazu) i zdjęcia do wyboru,
+ * po grupach: najpierw własne sceny (`own`), potem innych dni i zakończenia.
+ */
+export type ScenePhotoChoice = { auto: boolean; shown: EditorPhoto[]; groups: { heading: string; own: boolean; photos: EditorPhoto[] }[] };
 
 export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number; photos?: ScenePhotoChoice };
 
@@ -158,7 +161,7 @@ function SceneText({ tripId, kind, scene, live }: { tripId: string; kind: ShowKi
           {!changed && result?.ok && <span className="msg-ok">{result.ok}</span>}
         </div>
       )}
-      {scene.photos && scene.photos.pool.length > 0 && (
+      {scene.photos && (
         <ScenePhotos key={`${scene.photos.auto}:${scene.photos.shown.map((photo) => photo.key).join("|")}`} tripId={tripId} kind={kind} sceneKey={scene.key} choice={scene.photos} />
       )}
     </li>
@@ -177,7 +180,13 @@ function ScenePhotos({ tripId, kind, sceneKey, choice }: { tripId: string; kind:
   const [shown, setShown] = useState(choice.shown);
   const [error, setError] = useState<string | null>(null);
   const picked = new Set(shown.map((photo) => photo.key));
-  const rest = choice.pool.filter((photo) => !picked.has(photo.key));
+  // Do dodania: najpierw zdjęcia tej sceny, potem innych dni i zakończenia; już wybrane i powtórzone znikają z listy.
+  const offered = new Set(picked);
+  const rest = choice.groups
+    .map((group) => ({ ...group, photos: group.photos.filter((photo) => !offered.has(photo.key) && offered.add(photo.key)) }))
+    .filter((group) => group.photos.length > 0);
+  const count = rest.reduce((sum, group) => sum + group.photos.length, 0);
+  const own = choice.groups.find((group) => group.own)?.photos.length ?? 0;
   const store = (next: EditorPhoto[] | null) => {
     setError(null);
     setAuto(next === null);
@@ -235,15 +244,25 @@ function ScenePhotos({ tripId, kind, sceneKey, choice }: { tripId: string; kind:
           ))}
         </ol>
       )}
-      {rest.length > 0 && (
-        <details className="panel p-2">
-          <summary className="cursor-pointer text-xs text-zinc-600 dark:text-zinc-400">Dodaj zdjęcia ({rest.length} do wyboru; kliknięte idzie na koniec)</summary>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {rest.map((photo) => (
-              <button key={photo.key} type="button" onClick={() => store([...shown, photo])} disabled={pending} title={`Dodaj: ${photo.caption}`} className="overflow-hidden rounded opacity-80 hover:opacity-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt={photo.caption} className="h-16 w-24 object-cover" />
-              </button>
+      {count > 0 && (
+        // Własny klucz sceny dla `RememberDetails`: inaczej ten sam nagłówek otwierałby listy wszystkich scen naraz.
+        <details className="panel p-2" data-remember={`zdjecia-sceny:${sceneKey}`}>
+          <summary className="cursor-pointer text-xs text-zinc-600 dark:text-zinc-400">
+            Dodaj zdjęcia ({count} do wyboru{own === 0 ? ", ta scena nie ma własnych: z innych dni" : ""}; kliknięte idzie na koniec)
+          </summary>
+          <div className="mt-2 flex flex-col gap-2">
+            {rest.map((group) => (
+              <div key={group.heading} className="flex flex-col gap-1">
+                <span className="text-xs text-zinc-500">{group.heading}</span>
+                <div className="flex flex-wrap gap-2">
+                  {group.photos.map((photo) => (
+                    <button key={photo.key} type="button" onClick={() => store([...shown, photo])} disabled={pending} title={`Dodaj: ${photo.caption}`} className="overflow-hidden rounded opacity-80 hover:opacity-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photo.url} alt={photo.caption} className="h-16 w-24 object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </details>
