@@ -23,24 +23,22 @@ export function PublicShowToggle({ tripId, kind, linkOn, showOn }: { tripId: str
   return (
     <section className="card flex flex-col gap-2 p-4 text-sm">
       <h2 className="card-title">Publiczny link</h2>
+      <label className={`flex items-center gap-2 ${linkOn ? "" : "text-zinc-500"}`}>
+        <input type="checkbox" checked={showOn} disabled={pending || !linkOn} onChange={(event) => change(event.target.checked)} /> pokaż „{page.title}” na publicznej stronie wyjazdu
+      </label>
       {!linkOn ? (
-        <p className="flex flex-wrap items-center gap-2 text-zinc-600 dark:text-zinc-400">
-          Pokaz można udostępnić pod publicznym linkiem wyjazdu, a tego linku jeszcze nie ma.
+        <p className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+          Najpierw utwórz publiczny link wyjazdu, wtedy zaznaczysz to pole.
           <Link href={`/trips/${tripId}/people`} className="btn-mini">
             Uczestnicy i dostęp
           </Link>
         </p>
       ) : (
-        <>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={showOn} disabled={pending} onChange={(event) => change(event.target.checked)} /> {page.title.toLowerCase()} pod publicznym linkiem
-          </label>
-          <p className="text-xs text-zinc-500">
-            {showOn
-              ? `Kto ma link do wyjazdu, ogląda ten film w zakładce „${page.title}”, bez logowania. Dopisz /${kind === "film" ? "film" : "show"} do linku, żeby wysłać od razu ten film.`
-              : "Tekst i głos lektora idą pod link bez zmian (ustawienia ukrywania imion i cen ich nie obejmują), razem ze zdjęciami z dziennika."}
-          </p>
-        </>
+        <p className="text-xs text-zinc-500">
+          {showOn
+            ? `Kto ma link do wyjazdu, ogląda ten film w zakładce „${page.title}”, bez logowania. Dopisz /${kind === "film" ? "film" : "show"} do linku, żeby wysłać od razu ten film.`
+            : "Tekst i głos lektora idą pod link bez zmian (ustawienia ukrywania imion i cen ich nie obejmują), razem ze zdjęciami z dziennika."}
+        </p>
       )}
       {result.error && <p className="msg-error">{result.error}</p>}
       {result.ok && <p className="msg-ok">{result.ok}</p>}
