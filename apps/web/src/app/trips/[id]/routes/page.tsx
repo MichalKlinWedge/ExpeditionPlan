@@ -71,6 +71,13 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const editing = mayEdit && (await editMode());
   const groups = routeGroups(doc);
+  // Pierwszy dzień planu, w którym grupa jest użyta (pula i nieużywane na końcu) — do sortowania i nagłówka.
+  const dayIndex = new Map(doc.days.map((day, index) => [day.ref, index]));
+  const firstDay = (group: (typeof groups)[number]) => {
+    const days = group.tracks.flatMap((track) => routeUsers(doc, track.ref).map((item) => (item.dayRef === undefined ? doc.days.length : (dayIndex.get(item.dayRef) ?? doc.days.length))));
+    return days.length === 0 ? doc.days.length + 1 : Math.min(...days);
+  };
+  const dayText = (index: number) => (index < doc.days.length ? `Dz. ${index + 1}, ${dayChip(doc.days[index]!.date)}` : index === doc.days.length ? "w puli" : "nieużywana");
   const unsaved = unsavedCarRoutes(doc);
   const view = (track: Doc["tracks"][number], kind: keyof typeof ROUTE_KIND): RouteView => {
     const ends = track.route?.from !== undefined && track.route.to !== undefined ? `${track.route.from.name} → ${track.route.to.name}` : undefined;
@@ -110,15 +117,20 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         </section>
       ) : (
         <RouteFilter
-          groups={groups.map((group, index) => ({
+          groups={groups.map((group, index) => {
+            const day = firstDay(group);
+            const title = group.from !== undefined && group.to !== undefined ? `${group.from} → ${group.to}` : group.tracks.length === 1 ? group.tracks[0]!.name : `Trasa ${index + 1}`;
+            return {
             key: group.tracks[0]!.ref,
             kind: group.kind,
+            day,
+            title,
             node: (
           <section className="card flex flex-col gap-2 p-4 text-sm">
             <h2 className="card-title">
-              {ROUTE_ICON[group.kind]} {group.from !== undefined && group.to !== undefined ? `${group.from} → ${group.to}` : group.tracks.length === 1 ? group.tracks[0]!.name : `Trasa ${index + 1}`}
+              {ROUTE_ICON[group.kind]} {title}
               <span className="ml-2 text-sm font-normal text-zinc-500">
-                {ROUTE_KIND[group.kind]}
+                {ROUTE_KIND[group.kind]} · {dayText(day)}
                 {group.tracks.length > 1 ? ` · ${plural(group.tracks.length, ["wariant", "warianty", "wariantów"])}` : ""}
               </span>
             </h2>
@@ -129,7 +141,8 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
             </ul>
           </section>
             ),
-          }))}
+            };
+          })}
         />
       )}
     </>
