@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { encodePolyline, type LngLat } from '../polyline.ts';
-import { attachRoute, carRouteFromItem, detachRoute, newRoute, removeRoute, routeChoices, routeGroups, routeKindFor, routeUsers } from '../route-library.ts';
+import { attachRoute, carRouteFromItem, detachRoute, editRoute, newRoute, removeRoute, routeMap, routeChoices, routeGroups, routeKindFor, routeUsers } from '../route-library.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const road: LngLat[] = [
@@ -100,5 +100,26 @@ describe('Trasy wyjazdu', () => {
     expect(gpx.track.route).toEqual({ mode: 'foot', from: { name: 'Kletna', lat: 50.23, lng: 16.86 }, to: { name: 'Śnieżnik', lat: 50.2, lng: 16.85 } });
     expect(newRoute(doc, 'id-n3', { kind: 'foot', name: 'Bez niczego' })).toBe('Podaj plik GPX, link do trasy albo skąd i dokąd.');
     expect(newRoute(doc, 'id-n3', { kind: 'foot', name: ' ', url: 'https://mapy.com/s/x' })).toBe('Trasa musi mieć nazwę.');
+  });
+
+  it('edycja trasy: pola się zmieniają i czyszczą, podpięte punkty biorą nowe liczby, nowa linia kasuje wodę i schroniska', () => {
+    const withPois = { ...doc, tracks: doc.tracks.map((track) => ({ ...track, pois: { fetchedAt: '2027-01-01', items: [] } })) };
+    const edited = editRoute(withPois, 'slad', { name: 'Śnieżnik od Kletna', durationMin: 300, difficulty: 'średnia', url: 'https://mapy.com/s/abc', ascentM: null }, { updateUsers: true, ids: () => ids });
+    if (typeof edited === 'string') throw new Error(edited);
+    expect(edited.track).toMatchObject({ name: 'Śnieżnik od Kletna', durationMin: 300, difficulty: 'średnia', url: 'https://mapy.com/s/abc' });
+    expect(edited.track.ascentM).toBeUndefined();
+    expect(edited.track.pois).toBeDefined();
+    expect(edited.items.map((item) => [item.ref, item.durationMin, item.activity?.difficulty])).toEqual([['wejscie', 300, 'średnia']]);
+    const kept = editRoute(withPois, 'slad', { durationMin: 300 }, { updateUsers: false, ids: () => ids });
+    if (typeof kept === 'string') throw new Error(kept);
+    expect(kept.items).toEqual([]);
+    expect(kept.doc.items.find((item) => item.ref === 'wejscie')!.durationMin).toBe(180);
+    const relined = editRoute(withPois, 'slad', { geojson: { type: 'LineString', coordinates: [[16.8, 50.25], [16.82, 50.22], [16.85, 50.2]] }, fromRef: 'szczyt' }, { updateUsers: false, ids: () => ids });
+    if (typeof relined === 'string') throw new Error(relined);
+    expect(relined.track.pois).toBeUndefined();
+    expect(relined.track.route).toEqual({ mode: 'foot', from: { name: 'Śnieżnik', lat: 50.2, lng: 16.85 } });
+    expect(editRoute(doc, 'slad', { geojson: null }, { updateUsers: false, ids: () => ids })).toBe('Trasa musi mieć linię z pliku GPX, link albo skąd i dokąd.');
+    expect(editRoute(doc, 'slad', { name: ' ' }, { updateUsers: false, ids: () => ids })).toBe('Trasa musi mieć nazwę.');
+    expect(routeMap(doc.tracks[0]!)).toMatchObject({ pins: [{ placeRef: 'trasa-start' }, { placeRef: 'trasa-koniec' }], lines: [{ track: true }] });
   });
 });

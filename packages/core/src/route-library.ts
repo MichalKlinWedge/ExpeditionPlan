@@ -1,6 +1,6 @@
 import { isFootRouteItem, legEnds } from './item-route.ts';
 import { pluralForm } from './format.ts';
-import { formatMinutes } from './plan-info.ts';
+import { type DayMap, formatMinutes, type MapPin } from './plan-info.ts';
 import { decodePolyline, distanceM, encodePolyline, type LngLat } from './polyline.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { routeNameEnds, setTrackEnds, type TrackEndsEdit } from './track-ends.ts';
@@ -332,4 +332,91 @@ export function newRoute(doc: Doc, ref: string, input: NewRouteInput): { doc: Do
     ...(input.geojson !== undefined ? { geojson: input.geojson } : {}),
   };
   return { doc: { ...doc, tracks: [...doc.tracks, track] }, track };
+}
+
+/** Pola edycji trasy: wartość zmienia, `null` czyści, brak pola zostawia. */
+export type RouteEditFields = {
+  name?: string;
+  url?: string | null;
+  distanceKm?: number | null;
+  durationMin?: number | null;
+  ascentM?: number | null;
+  descentM?: number | null;
+  difficulty?: string | null;
+  waymarking?: string | null;
+  routeNotes?: string | null;
+  /** Nowa linia z pliku GPX albo `null` = bez linii. */
+  geojson?: NonNullable<Track['geojson']> | null;
+  /** Miejsce wyjazdu ze współrzędnymi; `null` = bez końca. */
+  fromRef?: string | null;
+  toRef?: string | null;
+};
+
+export type RouteEditResult = { doc: Doc; track: Track; items: Item[]; places: { place: Doc['places'][number]; created: boolean }[] };
+
+/**
+ * Edycja trasy w „Trasach”. Z `updateUsers` podpięte punkty biorą od nowa jej przebieg i liczby (`attachRoute`), tak
+ * jak po podpięciu — inaczej zostaje w nich kopia sprzed zmiany (ślad pieszy i tak rysuje się z trasy).
+ * `ids` daje klucze nowych miejsc końców. Tekst = powód odmowy.
+ */
+export function editRoute(doc: Doc, trackRef: string, fields: RouteEditFields, options: { updateUsers: boolean; ids: () => { fromId: string; toId: string } }): RouteEditResult | string {
+  const current = doc.tracks.find((track) => track.ref === trackRef);
+  if (current === undefined) return 'Tej trasy już nie ma — odśwież stronę.';
+  const name = fields.name === undefined ? current.name : fields.name.trim();
+  if (name === '') return 'Trasa musi mieć nazwę.';
+  const kind = routeKind(current);
+  const apply = <K extends keyof Track>(track: Track, key: K, value: Track[K] | null | undefined): Track => {
+    if (value === undefined) return track;
+    const { [key]: _old, ...rest } = track;
+    return (value === null || value === '' ? rest : { ...rest, [key]: value }) as Track;
+  };
+  let track: Track = { ...current, name };
+  track = apply(track, 'url', fields.url);
+  track = apply(track, 'distanceKm', fields.distanceKm);
+  track = apply(track, 'durationMin', fields.durationMin);
+  track = apply(track, 'ascentM', kind === 'foot' ? fields.ascentM : fields.ascentM === undefined ? undefined : null);
+  track = apply(track, 'descentM', kind === 'foot' ? fields.descentM : fields.descentM === undefined ? undefined : null);
+  track = apply(track, 'difficulty', fields.difficulty?.trim() ?? fields.difficulty);
+  track = apply(track, 'waymarking', fields.waymarking?.trim() ?? fields.waymarking);
+  track = apply(track, 'routeNotes', fields.routeNotes?.trim() ?? fields.routeNotes);
+  if (fields.geojson !== undefined) {
+    // Nowa linia albo jej brak: woda i schroniska dotyczyły starej.
+    const { pois: _pois, ...rest } = apply(track, 'geojson', fields.geojson);
+    track = rest;
+  }
+  const end = (value: string | null | undefined, old: RouteEnd | undefined) => (value === undefined ? old : value === null ? undefined : (placeEnd(doc, value) ?? old));
+  const from = end(fields.fromRef, current.route?.from);
+  const to = end(fields.toRef, current.route?.to);
+  const { from: _from, to: _to, ...route } = current.route ?? { mode: kind };
+  track = { ...track, route: { ...route, ...(from ? { from } : {}), ...(to ? { to } : {}) } };
+  if (routeLine(track) === undefined && track.url === undefined && (track.route?.from === undefined || track.route.to === undefined)) {
+    return 'Trasa musi mieć linię z pliku GPX, link albo skąd i dokąd.';
+  }
+
+  let next: Doc = { ...doc, tracks: doc.tracks.map((each) => (each.ref === trackRef ? track : each)) };
+  const items: Item[] = [];
+  const places = new Map<string, { place: Doc['places'][number]; created: boolean }>();
+  if (options.updateUsers) {
+    for (const user of routeUsers(next, trackRef)) {
+      const attached = attachRoute(next, user.ref, trackRef, options.ids());
+      if (typeof attached === 'string') continue;
+      next = attached.doc;
+      items.push(attached.item);
+      for (const each of attached.ends?.places ?? []) places.set(each.place.ref, { place: each.place, created: each.created || places.get(each.place.ref)?.created === true });
+    }
+  }
+  return { doc: next, track, items: items.map((item) => next.items.find((each) => each.ref === item.ref)!), places: [...places.values()] };
+}
+
+/** Mapa jednej trasy: linia i pinezki początku i końca (bez numerów punktów planu). */
+export function routeMap(track: Track): DayMap {
+  const line = routeLine(track);
+  const ends = routeEnds(track);
+  const pin = (key: string, name: string | undefined, point: LngLat | undefined): MapPin[] => (point === undefined ? [] : [{ placeRef: key, name: name ?? (key === 'trasa-start' ? 'Start' : 'Koniec'), lat: point[1], lng: point[0], stops: [] }]);
+  const same = ends.from !== undefined && ends.to !== undefined && distanceM(ends.from, ends.to) < 30;
+  return {
+    pins: [...pin('trasa-start', track.route?.from?.name, ends.from), ...(same ? [] : pin('trasa-koniec', track.route?.to?.name, ends.to))],
+    lines: line === undefined ? [] : [{ coordinates: line, routed: true, ...(routeKind(track) === 'foot' ? { track: true as const } : {}) }],
+    numbers: {},
+  };
 }

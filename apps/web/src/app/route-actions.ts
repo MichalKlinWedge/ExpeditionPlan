@@ -1,6 +1,6 @@
 "use server";
 
-import { attachRoute, carRouteFromItem, detachRoute, DocTrack, newRoute, removeRoute, trackEndsNote, TripDocument } from "@expeditionplan/core";
+import { attachRoute, carRouteFromItem, detachRoute, DocTrack, editRoute, newRoute, plural, removeRoute, trackEndsNote, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
@@ -125,5 +125,43 @@ export async function addRoute(tripId: string, fields: NewRouteFields): Promise<
     const created = newRoute(doc, `id-${uuidv7()}`, parsed.data);
     if (typeof created === "string") return created;
     return { doc: created.doc, writes: [{ collection: "tracks", element: created.track, op: "insert" }], ok: `Dodano trasę „${created.track.name}”.` };
+  });
+}
+
+const text = (max: number) => z.string().trim().max(max).nullable().optional();
+const EditFields = z.object({
+  name: Name.optional(),
+  url: z.url().regex(/^https?:\/\//i, "Link musi zaczynać się od https://.").max(500).nullable().optional(),
+  distanceKm: z.number().nonnegative().max(5000).nullable().optional(),
+  durationMin: z.number().int().nonnegative().max(14_400).nullable().optional(),
+  ascentM: z.number().int().nonnegative().max(30_000).nullable().optional(),
+  descentM: z.number().int().nonnegative().max(30_000).nullable().optional(),
+  difficulty: text(120),
+  waymarking: text(200),
+  routeNotes: text(2000),
+  geojson: DocTrack.shape.geojson.unwrap().refine((line) => line.coordinates.length <= 2000, "Za dużo punktów śladu.").nullable().optional(),
+  fromRef: z.string().max(80).nullable().optional(),
+  toRef: z.string().max(80).nullable().optional(),
+});
+export type RouteEditInput = z.input<typeof EditFields>;
+
+/**
+ * Edycja trasy na jej stronie (`editRoute`). Z `updateUsers` podpięte punkty dostają od nowa jej przebieg i liczby
+ * (zapis punktów przez `savePlanEdit`, więc plan dnia się przelicza).
+ */
+export async function updateRoute(tripId: string, trackRef: string, fields: RouteEditInput, updateUsers: boolean): Promise<FormState> {
+  const parsed = EditFields.safeParse(fields);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Niepoprawne dane trasy." };
+  return commit(tripId, `/trips/${tripId}/routes/${encodeURIComponent(trackRef)}`, (doc) => {
+    const edited = editRoute(doc, trackRef, parsed.data, { updateUsers, ids: () => ({ fromId: uuidv7(), toId: uuidv7() }) });
+    if (typeof edited === "string") return edited;
+    const places: ElementWrite[] = edited.places.map(({ place, created }) => ({ collection: "places", element: place, op: created ? "insert" : "update" }));
+    const users = edited.items.length;
+    return {
+      doc: edited.doc,
+      writes: [...places, { collection: "tracks", element: edited.track, op: "update" }],
+      items: edited.items.map((item) => item.ref),
+      ok: `Zapisano trasę.${users > 0 ? ` Zaktualizowano ${plural(users, ["podpięty punkt", "podpięte punkty", "podpiętych punktów"])} — plan dnia przeliczony.` : ""}`,
+    };
   });
 }

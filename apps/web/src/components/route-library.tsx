@@ -36,13 +36,16 @@ export function RouteCard({ tripId, route, editing }: { tripId: string; route: R
       setMessage(await action());
     });
   const itemHref = (ref: string) => `/trips/${tripId}/item/${encodeURIComponent(ref)}`;
+  const detailsHref = `/trips/${tripId}/routes/${encodeURIComponent(route.ref)}`;
 
   return (
     <li id={`trasa-${route.ref}`} className="panel flex scroll-mt-4 flex-col gap-2 p-3 sm:flex-row">
       {route.sketch !== undefined && (
-        <svg viewBox="-4 -4 108 108" className="size-24 shrink-0 rounded bg-zinc-50 dark:bg-zinc-900" role="img" aria-label={`Szkic trasy ${route.name}`}>
-          <polyline points={route.sketch} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" className="text-teal-700 dark:text-teal-400" />
-        </svg>
+        <Link href={detailsHref} aria-label={`Szczegóły trasy ${route.name}`} className="shrink-0 self-start">
+          <svg viewBox="-4 -4 108 108" className="size-24 rounded bg-zinc-50 dark:bg-zinc-900" role="img" aria-label={`Szkic trasy ${route.name}`}>
+            <polyline points={route.sketch} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" className="text-teal-700 dark:text-teal-400" />
+          </svg>
+        </Link>
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {editing ? (
@@ -65,6 +68,11 @@ export function RouteCard({ tripId, route, editing }: { tripId: string; route: R
             <span aria-hidden="true">{route.icon}</span> {route.name}
           </p>
         )}
+        <p>
+          <Link href={detailsHref} className="btn-mini">
+            mapa, profil{editing ? " i edycja" : " i szczegóły"}
+          </Link>
+        </p>
         {(route.facts || route.ends) && <p className="text-zinc-600 dark:text-zinc-400">{[route.ends, route.facts].filter(Boolean).join(" · ")}</p>}
         {route.url && (
           <p>

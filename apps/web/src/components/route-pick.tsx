@@ -37,7 +37,7 @@ export function RoutePick({
       setMessage({});
       setMessage(await action());
     });
-  const href = (ref: string) => `/trips/${tripId}/routes#trasa-${encodeURIComponent(ref)}`;
+  const href = (ref: string) => `/trips/${tripId}/routes/${encodeURIComponent(ref)}`;
   const variants = options.filter((option) => option.variant);
   const others = options.filter((option) => !option.variant);
   const label = (option: RouteOption) => `${option.name}${option.facts ? ` · ${option.facts}` : ""}`;
