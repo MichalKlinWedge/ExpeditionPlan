@@ -61,12 +61,13 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
       edited: told?.edited === true,
       status: told === undefined || told.text.trim() === "" ? "none" : fits ? "ready" : told.audio ? "old" : "new",
       ...(fits ? { seconds: Math.round(told.audio.durationMs / 1000) } : {}),
-      // Dni i zakończenie wybierają spośród zdjęć całego wyjazdu: najpierw własne, potem innych scen w kolejności filmu.
-      ...((scene.kind === "day" || scene.kind === "outro") && photoSources.length > 0
+      // Każda scena wybiera spośród zdjęć całego wyjazdu: najpierw własne, potem innych scen w kolejności filmu.
+      // Automatyczne zdjęcia wstępu to jego kolaże: pierwsza zmiana zaczyna od nich.
+      ...(photoSources.length > 0
         ? {
             photos: {
               auto: scene.chosen !== true,
-              shown: scene.images.map(asPhoto),
+              shown: (scene.chosen ? scene.images : [...(scene.guideCollage ?? []), ...(scene.collage ?? []), ...scene.images]).map(asPhoto),
               groups: [...photoSources.filter((source) => source.key === scene.key), ...photoSources.filter((source) => source.key !== scene.key)].map((source) => ({
                 heading: source.key === scene.key ? "Z tej sceny" : source.heading,
                 own: source.key === scene.key,

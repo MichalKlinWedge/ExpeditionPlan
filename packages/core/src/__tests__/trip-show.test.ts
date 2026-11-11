@@ -245,6 +245,15 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(outside.scenes.find((each) => each.key === other)!.images.map((image) => image.key)).toEqual(['https://upload.wikimedia.org/Poza.jpg']);
     expect(outside.credits.images.some((image) => image.title === 'File:Poza.jpg')).toBe(true);
     expect(showScenes(doc, { ...base, kind: 'film', journal, guideOf, allGuides: [{ title: 'x', images: loose.images }] }).credits.images.some((image) => image.title === 'File:Poza.jpg')).toBe(false);
+    // Wstęp i „Dokąd jedziemy” też dostają wybrane zdjęcia; wybór we wstępie zastępuje jego kolaże.
+    const opening = showScenes(doc, { ...base, kind: 'film', journal, guideOf, photos: { intro: ['p/2.jpg', 'p/1.jpg'], about: ['p/3.jpg'] } }).scenes;
+    expect(opening[0]).toMatchObject({ key: 'intro', chosen: true });
+    expect(opening[0]!.images.map((image) => image.key)).toEqual(['p/2.jpg', 'p/1.jpg']);
+    expect(opening[0]!.collage).toBeUndefined();
+    expect(opening[0]!.guideCollage).toBeUndefined();
+    expect(opening[1]).toMatchObject({ key: 'about', chosen: true, mapless: true });
+    expect(opening[1]!.images.map((image) => image.key)).toEqual(['p/3.jpg']);
+    expect(showScenes(doc, { ...base, kind: 'film', journal, guideOf }).scenes[1]!.images).toEqual([]);
   });
 
   it('wybór zdjęć w scenariuszu: kolejność bez powtórek, `null` wraca do automatu', () => {

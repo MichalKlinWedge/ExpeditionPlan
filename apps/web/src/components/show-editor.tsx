@@ -217,7 +217,11 @@ function ScenePhotos({ tripId, kind, sceneKey, choice }: { tripId: string; kind:
           bez zdjęć
         </button>
         <span className="text-xs text-zinc-500">
-          {auto ? "Wybrane przez pokaz; zmiana kolejności albo dodanie zdjęcia przejmuje wybór." : `Wybrane: ${shown.length}. Pokaz pokaże każde, a gdy lektor skończy wcześniej, scena trwa dłużej.`}
+          {auto
+            ? shown.length === 0
+              ? "Bez wyboru ta scena nie ma zdjęć; dodaj je poniżej."
+              : "Wybrane przez pokaz; zmiana kolejności albo dodanie zdjęcia przejmuje wybór."
+            :`Wybrane: ${shown.length}. Pokaz pokaże każde, a gdy lektor skończy wcześniej, scena trwa dłużej.`}
         </span>
       </div>
       {shown.length > 0 && (

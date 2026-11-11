@@ -488,18 +488,27 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   for (const entry of loose) if (entry.body.trim() !== '') outro.push(`Wpis z dziennika: ${clip(entry.body.trim(), 400)}`);
 
   // Każde zdjęcie gra raz: wstęp ich nie powtarza, zakończenie ma tylko zdjęcia z wpisów bez dnia.
-  const outroImages = scenePhotos(journalImages(loose), tripPool, input.photos?.outro);
-  for (const image of outroImages) {
-    const guideImage = guideImages.get(showImageKey(image));
-    if (guideImage !== undefined) usedImages.set(guideImage.url, guideImage);
-  }
+  // Wstęp, „Dokąd jedziemy” i zakończenie z wybranymi zdjęciami: podziękowania tylko za te, które grają.
+  const chosenFor = (key: string, auto: readonly ShowImage[]) => {
+    const shown = scenePhotos(auto, tripPool, input.photos?.[key]);
+    for (const image of shown) {
+      const guideImage = guideImages.get(showImageKey(image));
+      if (guideImage !== undefined) usedImages.set(guideImage.url, guideImage);
+    }
+    return shown;
+  };
+  const outroImages = chosenFor('outro', journalImages(loose));
+  // Wybór zdjęć wstępu zastępuje jego kolaże: wybrane zdjęcia lecą po kolei jak w dniu.
+  const introChosen = input.photos?.intro !== undefined;
+  const introImages = chosenFor('intro', []);
+  const aboutImages = chosenFor('about', []);
   // Zdjęcie z opisu miejsca wybrane na koniec, którego żaden dzień nie pokazuje, też dostaje podziękowanie.
   const endGuide = input.endPhoto ? guideImages.get(input.endPhoto) : undefined;
   if (endGuide !== undefined) usedImages.set(endGuide.url, endGuide);
-  const collage = collageOf(dayScenes);
+  const collage = introChosen ? [] : collageOf(dayScenes);
   // Film zaczyna się bez mapy: zamiast niej kolaż ze zdjęć opisów miejsc (najpierw tych, których dni nie pokazują).
   const guideCollage: ShowImage[] = [];
-  if (after) {
+  if (after && !introChosen) {
     const sights = dayItems.flat().filter((item) => isSight(item) && !approachRefs.has(item.ref) && !skipped.has(item.ref));
     const candidates = sights.flatMap((item) => {
       const image = input.guideOf(item)?.images[0];
@@ -540,7 +549,8 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       heading: doc.trip.title,
       subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`,
       routeRefs: localRoute,
-      images: [],
+      images: introImages,
+      ...(introChosen ? { chosen: true as const } : {}),
       ...(collage.length > 0 ? { collage } : {}),
       ...(after ? { mapless: true as const } : {}),
       ...(guideCollage.length > 0 ? { guideCollage } : {}),
@@ -556,8 +566,9 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       kind: 'about',
       heading: after ? 'Dokąd pojechaliśmy' : 'Dokąd jedziemy',
       routeRefs: [],
-      images: [],
-      // Plansza z tekstem: mapa całej trasy była przed chwilą we wstępie.
+      images: aboutImages,
+      ...(input.photos?.about !== undefined ? { chosen: true as const } : {}),
+      // Plansza z tekstem: mapa całej trasy była przed chwilą we wstępie; zdjęcia (tylko wybrane) po niej.
       mapless: true,
       stats: [],
       points: [],
