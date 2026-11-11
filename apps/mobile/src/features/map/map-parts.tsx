@@ -59,6 +59,8 @@ export function DayLines({ lines, id }: { lines: MapLine[]; id: string }) {
 
 /** Szara pinezka miejsca tylko z puli (poza dniami). */
 const POOL_PIN = '#8A94A3';
+/** Atrakcja „po drodze i w pobliżu” (`MapPin.extra`): bursztynowa gwiazdka, mniejsza od punktów dnia. */
+const EXTRA_PIN = '#F59E0B';
 
 /** Pinezki: numery kolejności dnia, baza noclegowa ⌂, pula — szara, wybrana — pomarańczowa. Dzieci `<Map>`. */
 export function PinMarkers({ pins, selected, onSelect, guided }: { pins: MapPin[]; selected: string | null; onSelect: (placeRef: string) => void; guided?: ReadonlySet<string> }) {
@@ -72,11 +74,11 @@ export function PinMarkers({ pins, selected, onSelect, guided }: { pins: MapPin[
           <View
             style={[
               styles.pin,
-              { backgroundColor: pin.placeRef === selected ? theme.primary : pin.base ? BASE : pin.stops.length === 0 && pin.pool ? POOL_PIN : theme.accent },
-              pin.stops.length === 0 && pin.pool && pin.placeRef !== selected && styles.poolPin,
+              { backgroundColor: pin.placeRef === selected ? theme.primary : pin.base ? BASE : pin.extra ? EXTRA_PIN : pin.stops.length === 0 && pin.pool ? POOL_PIN : theme.accent },
+              ((pin.stops.length === 0 && pin.pool) || pin.extra) && pin.placeRef !== selected && styles.poolPin,
               label.length > 2 && styles.pinWide,
             ]}>
-            <ThemedText style={styles.pinText}>{label || (pin.base ? '⌂' : '•')}</ThemedText>
+            <ThemedText style={styles.pinText}>{label || (pin.base ? '⌂' : pin.extra ? '★' : '•')}</ThemedText>
           </View>
           {guided?.has(pin.placeRef) && (
             <View style={[styles.badge, { backgroundColor: theme.backgroundElement }]}>
@@ -98,12 +100,13 @@ export type PinGuide = { onRead: () => void; onListen: () => void };
 export type PinPool = { onOpen: (ref: string) => void; onInsert?: (ref: string) => void };
 
 /** Karta wybranego miejsca: nazwa, punkty z godzinami, punkty z puli, „Nawiguj” (Google Maps), przewodnik i „Zamknij”. */
-export function PinCard({ pin, times, onClose, small = false, guide, pool }: { pin: MapPin; times: Map<string, string>; onClose: () => void; small?: boolean; guide?: PinGuide; pool?: PinPool }) {
+export function PinCard({ pin, times, onClose, small = false, guide, pool, onExtra }: { pin: MapPin; times: Map<string, string>; onClose: () => void; small?: boolean; guide?: PinGuide; pool?: PinPool; onExtra?: () => void }) {
   return (
     <View style={styles.block}>
       <ThemedText type="smallBold" style={small ? undefined : styles.title}>
         {pin.name}
         {pin.base ? ' · nocleg' : ''}
+        {pin.extra ? ' · ★ po drodze i w pobliżu' : ''}
       </ThemedText>
       {pin.stops.map((stop) => (
         <ThemedText key={stop.ref} type="small" themeColor="textSecondary">
@@ -124,6 +127,7 @@ export function PinCard({ pin, times, onClose, small = false, guide, pool }: { p
         <Button label="Nawiguj" variant="primary" small={small} onPress={() => navigateTo(pin)} />
         {guide && <Button label="📖 Poczytaj" small={small} onPress={guide.onRead} />}
         {guide && <Button label="▶ Posłuchaj" small={small} onPress={guide.onListen} />}
+        {pin.extra && onExtra && <Button label="Szczegóły" small={small} onPress={onExtra} />}
         <Button label="Zamknij" small={small} onPress={onClose} />
       </View>
     </View>

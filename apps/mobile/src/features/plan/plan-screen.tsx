@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, itemExtras, dayLabel, dayLodging, type DaySchedule, daySunMarks, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, dayLabel, dayLodging, type DaySchedule, daySunMarks, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -874,7 +874,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
       {/* Mapa dnia nad punktami planu: numer pinezki przewija w dół do punktu, karta punktu — z powrotem do mapy. */}
       {schedule && (
         <View onLayout={(event) => (mapTop.current = event.nativeEvent.layout.y)}>
-          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} />
+          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} extras={extraPins(doc, dayRef)} onExtra={() => setExtrasOpen(true)} />
         </View>
       )}
       {/* Profil wysokości tras dnia ze śladem GPX (offline z planu); stuknięcie — szczegóły punktu. */}

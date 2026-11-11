@@ -1,4 +1,4 @@
-import { dayMap, type DayMap as DayMapData, type DaySchedule, type PlanItem, type TripDocument } from '@expeditionplan/core';
+import { dayMap, type DayMap as DayMapData, type DaySchedule, type MapPin, type PlanItem, type TripDocument } from '@expeditionplan/core';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -42,9 +42,12 @@ type Props = {
   /** Miejsca z przewodnikiem: `placeRef` → punkt (`guidedPlaces`). */
   guides?: Map<string, PlanItem>;
   onGuide?: (item: PlanItem, play: boolean) => void;
+  /** Atrakcje „po drodze i w pobliżu” dnia (`extraPins`): gwiazdki bez numerów; „Szczegóły” rozwija ich listę pod dniem. */
+  extras?: MapPin[];
+  onExtra?: () => void;
 };
 
-export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, variantsKey, guides, onGuide }: Props) {
+export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, variantsKey, guides, onGuide, extras = [], onExtra }: Props) {
   const theme = useTheme();
   const mapStyle = useMapStyle();
   const camera = useRef<CameraRef>(null);
@@ -54,7 +57,8 @@ export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, vari
   const transitChosen = full.pins.some((each) => each.placeRef === selected && each.transit);
   // Dzień złożony z samego dojazdu — pokazujemy go mimo wyłączonego przełącznika.
   const shown = showTransit || transitChosen || full.pins.every((pin) => pin.transit);
-  const view = withoutTransit(full, shown);
+  const dayView = withoutTransit(full, shown);
+  const view = extras.length === 0 || dayView.pins.length === 0 ? dayView : { ...dayView, pins: [...dayView.pins, ...extras] };
   const times = new Map(schedule.items.map((item) => [item.ref, item.startLocal]));
 
   useEffect(() => {
@@ -104,6 +108,7 @@ export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, vari
           times={times}
           onClose={() => onSelect(null)}
           small
+          onExtra={onExtra}
           guide={(() => {
             const item = guides?.get(pin.placeRef);
             return item === undefined || onGuide === undefined ? undefined : { onRead: () => onGuide(item, false), onListen: () => onGuide(item, true) };
@@ -111,7 +116,7 @@ export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, vari
         />
       ) : (
         <ThemedText type="small" themeColor="textSecondary">
-          Numery = kolejność dnia. Dotknij pinezki, żeby nawigować.
+          Numery = kolejność dnia{extras.length > 0 ? ', ★ = atrakcje po drodze i w pobliżu' : ''}. Dotknij pinezki, żeby nawigować.
         </ThemedText>
       )}
     </View>
