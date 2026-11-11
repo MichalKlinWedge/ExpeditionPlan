@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { Loading, Shell } from "@/components/shell";
 import { ShowView } from "@/components/show-view";
 
-export const metadata: Metadata = { title: "Pokaz z lektorem — Expedition Planner" };
+export const metadata: Metadata = { title: "Film zapowiedź — Expedition Planner" };
 
 /** Nagranie jednej sceny trwa kilka–kilkanaście sekund; szkic tekstu z AI do ok. minuty. */
 export const maxDuration = 120;

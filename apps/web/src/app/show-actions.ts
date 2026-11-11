@@ -298,6 +298,6 @@ export async function setPublicShow(tripId: string, kind: ShowKind, on: boolean)
   if (error) return { error: error.code === "42501" ? "Pokaz pod linkiem włącza tylko właściciel wyjazdu." : error.message };
   if (data !== true) return { error: "Najpierw utwórz publiczny link na stronie „Uczestnicy i dostęp”." };
   refresh();
-  const tab = kind === "film" ? "Film z wyjazdu" : "Pokaz z lektorem";
+  const tab = kind === "film" ? "Film z wyjazdu" : "Film zapowiedź";
   return { ok: on ? `Pokaz jest pod publicznym linkiem: zakładka „${tab}”.` : "Pokaz zniknął z publicznego linku." };
 }

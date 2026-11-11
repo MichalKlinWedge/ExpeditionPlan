@@ -10,7 +10,7 @@ import { Loading, Shell } from "@/components/shell";
  */
 
 // Link prywatny — nie do wyszukiwarek.
-export const metadata: Metadata = { title: "Pokaz z lektorem — Expedition Planner", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Film zapowiedź — Expedition Planner", robots: { index: false, follow: false } };
 
 export default function PublicShowPage(props: PageProps<"/p/[token]/show">) {
   return (

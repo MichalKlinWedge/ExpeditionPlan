@@ -33,7 +33,7 @@ const SECTIONS = [
   { path: "places", title: "Miejsca", Icon: PinIcon },
   { path: "guides", title: "Opisy miejsc", Icon: ArticleIcon },
   { path: "print", title: "Wydruk / PDF", Icon: PrinterIcon },
-  { path: "show", title: "Pokaz z lektorem", Icon: FilmIcon },
+  { path: "show", title: "Film zapowiedź", Icon: FilmIcon },
   null,
   { path: "brief", title: "Brief wyjazdu", Icon: NoteIcon },
   { path: "compare", title: "Porównanie ze szkicem", Icon: CompareIcon },
