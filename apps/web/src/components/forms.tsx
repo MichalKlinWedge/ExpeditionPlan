@@ -107,7 +107,7 @@ type TripRange = { start: string; end: string };
 type TripPlace = { id: string; ref: string; name: string };
 
 /** Nowy uczestnik albo edycja istniejącego (`traveler`) — te same pola, inna akcja. */
-export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone }: { tripId: string; trip: TripRange; guardians: { id: string; name: string }[]; places: TripPlace[]; traveler?: Traveler; onDone?: () => void }) {
+export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone, onCancel = onDone }: { tripId: string; trip: TripRange; guardians: { id: string; name: string }[]; places: TripPlace[]; traveler?: Traveler; onDone?: () => void; onCancel?: () => void }) {
   const placeList = useId();
   const placeName = (id: string | null | undefined) => places.find((place) => place.id === id)?.name ?? "";
   // Tylko dla pinezek przy „Start” i „Koniec” — pola zostają niekontrolowane.
@@ -199,8 +199,8 @@ export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone
         <button disabled={pending} className="btn-primary btn-sm">
           {pending ? "Zapisuję…" : traveler ? "Zapisz" : "Dodaj"}
         </button>
-        {traveler && onDone && (
-          <button type="button" onClick={onDone} className="btn-secondary btn-sm">
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="btn-secondary btn-sm">
             Anuluj
           </button>
         )}
@@ -335,9 +335,41 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
         </div>
       )}
       <Status state={result} />
+      {canEdit && <NewTraveler tripId={tripId} trip={trip} guardians={guardians} places={places} />}
       <SharedTransport people={people} places={places} />
-      {canEdit && <TravelerForm tripId={tripId} trip={trip} guardians={guardians} places={places} />}
     </div>
+  );
+}
+
+/** Nowy uczestnik: formularz dopiero po kliknięciu, we własnej ramce, żeby nie zlewał się z listą. */
+function NewTraveler({ tripId, trip, guardians, places }: { tripId: string; trip: TripRange; guardians: { id: string; name: string }[]; places: TripPlace[] }) {
+  const [open, setOpen] = useState(false);
+  const [added, setAdded] = useState(0);
+  if (!open) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => setOpen(true)} className="btn-secondary btn-sm">
+          + Dodaj uczestnika
+        </button>
+        {added > 0 && <span className="msg-ok text-xs">Dodano.</span>}
+      </div>
+    );
+  }
+  return (
+    <section className="panel flex flex-col gap-3">
+      <h3 className="text-sm font-semibold">Nowy uczestnik</h3>
+      <TravelerForm
+        tripId={tripId}
+        trip={trip}
+        guardians={guardians}
+        places={places}
+        onDone={() => {
+          setOpen(false);
+          setAdded((count) => count + 1);
+        }}
+        onCancel={() => setOpen(false)}
+      />
+    </section>
   );
 }
 
