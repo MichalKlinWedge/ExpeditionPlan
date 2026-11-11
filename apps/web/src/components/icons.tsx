@@ -29,6 +29,15 @@ export const RouteIcon = (props: Props) => (
   </Svg>
 );
 
+/** Szlak: kręta przerywana droga z chorągiewką na końcu („Trasy”). */
+export const TrailIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M5 20c2-4 7-3 7-7s-5-3-4-7" strokeDasharray="2.5 2.5" />
+    <path d="M8 6V2.5l5 1.8-5 1.7" />
+    <circle cx="5" cy="20" r="1.5" />
+  </Svg>
+);
+
 export const TicketIcon = (props: Props) => (
   <Svg {...props}>
     <path d="M4 7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4Z" />

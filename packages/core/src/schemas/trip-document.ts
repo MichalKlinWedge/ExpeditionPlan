@@ -339,6 +339,11 @@ export const ItemLeg = z.object({
    * uproszczona — `polyline.ts`). Bez niej mapa łączy miejsca prosto. Nie wypełnia jej AI.
    */
   geometry: z.string().optional(),
+  /**
+   * Trasa autem z „Tras” wyjazdu (`tracks`, `core/route-library.ts`), z której przejazd ma przebieg: kopia jej linii,
+   * „Jedź przez” i linku jest w polach wyżej, a sama trasa zostaje w „Trasach” po usunięciu punktu.
+   */
+  trackRef: Ref.optional(),
 });
 
 /** Klucz kolejności w dniu: porównywany jak tekst („0010” < „0020” < „0025”). */
@@ -754,7 +759,19 @@ export const DocTrack = z.object({
   waymarking: z.string().optional(),
   routeNotes: z.string().optional(),
   url: HttpUrl.optional(),
-  /** Geometria z pliku GPX (uproszczona, `core/gpx.ts`): GeoJSON LineString, [lng, lat, wysokość?]. */
+  /**
+   * Przebieg trasy (`core/route-library.ts`): środek (brak = pieszo), końce z nazwą i współrzędnymi do grupowania
+   * wariantów tej samej trasy i do podpięcia przy punkcie bez „skąd/dokąd”, oraz „Jedź przez” trasy autem.
+   */
+  route: z
+    .object({
+      mode: z.enum(['foot', 'car']),
+      from: z.object({ name: z.string().max(200), lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).optional(),
+      to: z.object({ name: z.string().max(200), lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).optional(),
+      via: z.array(z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })).max(9).optional(),
+    })
+    .optional(),
+  /** Geometria z pliku GPX (uproszczona, `core/gpx.ts`) albo trasy autem: GeoJSON LineString, [lng, lat, wysokość?]. */
   geojson: z
     .object({ type: z.literal('LineString'), coordinates: z.array(z.array(z.number()).min(2).max(3)).min(2) })
     .optional(),
@@ -928,6 +945,7 @@ export function checkReferences(doc: Shape): { path: (string | number)[]; messag
       expect(['items', i, 'leg', 'fromPlaceRef'], it.leg.fromPlaceRef, 'places');
       expect(['items', i, 'leg', 'toPlaceRef'], it.leg.toPlaceRef, 'places');
       expect(['items', i, 'leg', 'ticketBookingRef'], it.leg.ticketBookingRef, 'bookings');
+      expect(['items', i, 'leg', 'trackRef'], it.leg.trackRef, 'tracks');
     }
     if (it.dayRef === undefined && it.planStatus === 'scheduled') {
       problems.push({ path: ['items', i, 'planStatus'], message: 'Punkt bez dnia jest w puli — nie może mieć statusu scheduled.' });

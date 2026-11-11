@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, stopsLabel, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
 import { bookingDetails, itemBookingRef, localToday, vaultDocument, type VaultDocument } from "@expeditionplan/core";
+import { carRouteFromItem, itemRouteRef, routeChoices, routeFacts, routeKindFor } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload, type TripState } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -21,6 +22,7 @@ import { journalCards } from "@/lib/journal";
 import { ItemTexts } from "@/components/item-texts";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
+import { RoutePick } from "@/components/route-pick";
 import { RouteSiteLink } from "@/components/route-site-link";
 import { TrackProfile } from "@/components/track-profile";
 import { TrackUpload } from "@/components/track-upload";
@@ -96,6 +98,21 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   const notes = doc.notes.filter((note) => note.scope === "item" && note.targetRef === item.ref);
   const track = item.activity?.trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === item.activity!.trackRef);
   const transit = isTransitItem(item) ? transitDetailRows(item) : null;
+  // Trasa z „Tras” wyjazdu: podpięta, do podpięcia (warianty tej drogi najpierw), zapis przebiegu przejazdu autem.
+  const routeKind = routeKindFor(item);
+  const libraryRef = itemRouteRef(item);
+  const libraryTrack = libraryRef === undefined ? undefined : doc.tracks.find((each) => each.ref === libraryRef);
+  const routePick =
+    routeKind === undefined ? null : (
+      <RoutePick
+        tripId={id}
+        itemRef={item.ref}
+        {...(libraryTrack !== undefined ? { current: { ref: libraryTrack.ref, name: libraryTrack.name } } : {})}
+        options={routeChoices(doc, item).map(({ track: each, variant }) => ({ ref: each.ref, name: each.name, facts: routeFacts(each), variant }))}
+        editing={editing}
+        canSave={routeKind === "car" && libraryTrack === undefined && carRouteFromItem(doc, item.ref, "id-podglad") !== null}
+      />
+    );
   // Bez miejsca, przejazdu, rezerwacji i opisu karta z podstawowymi danymi byłaby pusta.
   const hasInfo = place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || editing || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
@@ -235,6 +252,15 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             />
           )}
           {canEdit && <TrackUpload tripId={id} itemRef={item.ref} hasLine={track?.geojson !== undefined} />}
+          {routePick}
+        </section>
+      )}
+
+      {routeKind === "car" && (libraryTrack !== undefined || editing) && (
+        <section className="card flex flex-col gap-2 p-4 text-sm">
+          <h2 className="card-title">Trasa przejazdu</h2>
+          {routePick}
+          <p className="text-xs text-zinc-500">Przebieg z „Jedź przez” albo własnego linku zapisuje się w „Trasach” sam po przeliczeniu trasy i zostaje tam po usunięciu punktu.</p>
         </section>
       )}
 

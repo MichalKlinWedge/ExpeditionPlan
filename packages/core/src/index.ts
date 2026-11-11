@@ -27,6 +27,7 @@ export * from './google-route.ts';
 export * from './item-plan.ts';
 export * from './item-route.ts';
 export * from './track-ends.ts';
+export * from './route-library.ts';
 export * from './pool-nearby.ts';
 export * from './polyline.ts';
 export * from './coordinates.ts';

@@ -1,9 +1,9 @@
 "use server";
 
-import { Currency, DRAFT_PREFIX, formatMinutes, IsoDate, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
+import { carRouteFromItem, Currency, DRAFT_PREFIX, formatMinutes, IsoDate, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { geoapifyLookup, googleLinkVias, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
-import { COLLECTIONS, dbErrorMessage, importTrip, lockedRefs, type PullPayload, refIndex, rowForUpdate, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
+import { COLLECTIONS, dbErrorMessage, importTrip, lockedRefs, type PullPayload, refIndex, rowForUpdate, saveElements, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
@@ -553,6 +553,8 @@ export async function routeTrip(tripId: string): Promise<FormState> {
  * ręcznie. Dystans z planu nie blokuje wyniku (`mismatch`), bo użytkownik sam wskazał końce.
  * Koniec bez współrzędnych jest szukany po nazwie (Geoapify); współrzędne zapisują się razem z trasą,
  * a komunikat mówi, co znaleziono, żeby dało się wychwycić inną miejscowość o tej samej nazwie.
+ * Przejazd z własnym przebiegiem („Jedź przez”, własny link) zapisuje się też w „Trasach” (`carRouteFromItem`),
+ * więc zostaje po usunięciu punktu i da się go podpiąć gdzie indziej.
  */
 export async function routeItem(tripId: string, itemRef: string): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/item/${itemRef}`);
@@ -592,16 +594,23 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
     };
     return { error: `Nie przeliczono trasy: ${why[result?.status ?? ""] ?? "ten środek transportu nie ma tras."} Czas przejazdu to stary szacunek.` };
   }
+  const custom = own.length > 0 || target?.leg?.routeUrl !== undefined;
+  const library = custom ? carRouteFromItem(routed, itemRef, `id-${uuidv7()}`) : null;
   try {
-    const changed = routed.items.filter((item) => item.ref === itemRef);
-    const ids = refIndex(payload.tables);
+    const final = TripDocument.parse(library?.doc ?? routed);
+    const changed = final.items.filter((item) => item.ref === itemRef);
+    let ids = refIndex(payload.tables);
     const owner = new Map(COLLECTIONS.flatMap((collection) => (doc[collection] as { ref?: string }[]).flatMap((element) => (element.ref ? [[element.ref, collection] as const] : []))));
     const index = { idOf: (ref: string) => ids[ref]!, collectionOf: (ref: string) => owner.get(ref) };
     for (const { place } of located) {
       const { error: placeError } = await supabase.from("places").update(rowForUpdate("places", place, index) as never).eq("id", index.idOf(place.ref));
       if (placeError) throw new Error(dbErrorMessage(placeError));
     }
-    await saveMergeEdit(supabase, tripId, { doc: TripDocument.parse(routed), created: [], changed, others: [], removed: [], kept: [], copied: {} }, ids);
+    if (library !== null) {
+      const track = final.tracks.find((each) => each.ref === library.track.ref)!;
+      ids = await saveElements(supabase, tripId, final, [{ collection: "tracks", element: track, op: library.created ? "insert" : "update" }], ids);
+    }
+    await saveMergeEdit(supabase, tripId, { doc: final, created: [], changed, others: [], removed: [], kept: [], copied: {} }, ids);
   } catch (e) {
     return { error: `Nie zapisano trasy: ${e instanceof Error ? e.message : String(e)}` };
   }
@@ -615,7 +624,8 @@ export async function routeItem(tripId: string, itemRef: string): Promise<FormSt
     unresolved: " Nie udało się rozwinąć Twojego linku Google, więc trasa idzie od „skąd” do „dokąd”.",
     not_google: "",
   }[link.status];
-  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${formatMinutes(minutes)}. Plan dnia się zmienił.${viaNote}${foundAs === "" ? "" : ` Znalezione po nazwie: ${foundAs}. Jeśli to inne miejsce, przypnij je na stronie „Miejsca”.`}` };
+  const saved = library === null ? "" : library.created ? ` Zapisano w „Trasach” jako „${library.track.name}”.` : ` Zaktualizowano trasę „${library.track.name}” w „Trasach”.`;
+  return { ok: `Trasa przeliczona: ${Math.round(result.after!.distanceKm)} km, ${formatMinutes(minutes)}. Plan dnia się zmienił.${viaNote}${saved}${foundAs === "" ? "" : ` Znalezione po nazwie: ${foundAs}. Jeśli to inne miejsce, przypnij je na stronie „Miejsca”.`}` };
 }
 
 /**
