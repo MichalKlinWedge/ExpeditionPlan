@@ -98,6 +98,13 @@ describe('Trasy wyjazdu', () => {
     const gpx = newRoute(doc, 'id-n2', { kind: 'foot', name: 'Trasa z Kletna do Śnieżnik', geojson: { type: 'LineString', coordinates: [[16.86, 50.23], [16.85, 50.2]] } });
     if (typeof gpx === 'string') throw new Error(gpx);
     expect(gpx.track.route).toEqual({ mode: 'foot', from: { name: 'Kletna', lat: 50.23, lng: 16.86 }, to: { name: 'Śnieżnik', lat: 50.2, lng: 16.85 } });
+    // Trasa bez linii (sam link i końce) uzupełnia brakujące „skąd” przejazdu z końca trasy.
+    const linkOnly = newRoute(car.doc, 'id-n4', { kind: 'car', name: 'Link', url: 'https://maps.app.goo.gl/x', fromRef: 'a', toRef: 'b' });
+    if (typeof linkOnly === 'string') throw new Error(linkOnly);
+    const noFrom = { ...linkOnly.doc, items: linkOnly.doc.items.map((item) => (item.ref === 'powrot' ? { ...item, leg: { ...item.leg!, fromPlaceRef: undefined } } : item)) };
+    const filled = attachRoute(noFrom, 'powrot', 'id-n4', ids);
+    if (typeof filled === 'string') throw new Error(filled);
+    expect(filled.item.leg).toMatchObject({ fromPlaceRef: 'a', toPlaceRef: 'b', routeUrl: 'https://maps.app.goo.gl/x', trackRef: 'id-n4' });
     expect(newRoute(doc, 'id-n3', { kind: 'foot', name: 'Bez niczego' })).toBe('Podaj plik GPX, link do trasy albo skąd i dokąd.');
     expect(newRoute(doc, 'id-n3', { kind: 'foot', name: ' ', url: 'https://mapy.com/s/x' })).toBe('Trasa musi mieć nazwę.');
   });

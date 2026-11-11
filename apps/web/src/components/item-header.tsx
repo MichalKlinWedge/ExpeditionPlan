@@ -54,7 +54,8 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
         onSave={(patch) => save(updateItem(doc, itemRef, patch))}
       />
       {item.kind === "transport" ? (
-        <ItemLegEditor tripId={tripId} doc={doc} item={item} onEdit={save} disabled={pending} />
+        // Podpięcie innej trasy z „Tras” zmienia końce, link i „Jedź przez”: formularz zaczyna wtedy od zapisanych.
+        <ItemLegEditor key={item.leg?.trackRef ?? "bez-trasy"} tripId={tripId} doc={doc} item={item} onEdit={save} disabled={pending} />
       ) : (
         <ItemPlaceEditor key={item.placeRef ?? "brak"} tripId={tripId} doc={doc} item={item} onEdit={(edit) => save(edit)} disabled={pending} />
       )}

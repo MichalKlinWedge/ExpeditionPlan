@@ -190,7 +190,9 @@ export function attachRoute(doc: Doc, itemRef: string, trackRef: string, ids: { 
 
   const line = routeLine(track);
   const named = track.route?.from !== undefined && track.route.to !== undefined ? `Trasa z ${track.route.from.name} do ${track.route.to.name}` : track.name;
-  const ends = line === undefined ? null : setTrackEnds(doc, itemRef, ids, { name: named, coordinates: line });
+  // Brakujące „skąd/dokąd” punktu: z linii, a trasa bez linii (sam link) — z zapisanych końców.
+  const endsLine = line ?? (track.route?.from !== undefined && track.route.to !== undefined ? [[track.route.from.lng, track.route.from.lat], [track.route.to.lng, track.route.to.lat]] : undefined);
+  const ends = endsLine === undefined ? null : setTrackEnds(doc, itemRef, ids, { name: named, coordinates: endsLine });
   const base = ends?.doc ?? doc;
   const item = base.items.find((each) => each.ref === itemRef)!;
   let next: Item;
