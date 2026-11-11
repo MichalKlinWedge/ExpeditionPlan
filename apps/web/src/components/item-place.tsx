@@ -63,7 +63,7 @@ export function ItemPlaceEditor({ tripId, doc, item, onEdit, disabled = false }:
               if (window.confirm(`Odpiąć ten punkt od „${place.name}”? Samo miejsce zostaje w planie${uses > 1 ? " i przy innych punktach" : ""}.`)) onEdit(clearItemPlace(doc, item.ref));
             }}
             title="Punkt bez miejsca; miejsce zostaje na stronie „Miejsca”"
-            className="btn-mini btn-mini-danger self-center">
+            className="btn-mini btn-mini-danger">
             Odepnij od miejsca
           </button>
         )}
