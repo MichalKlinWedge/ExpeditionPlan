@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 
 import { EditToggle } from "@/components/edit-toggle";
 import { PublicShowToggle } from "@/components/public-show-toggle";
-import { type EditorPhoto, type EditorScene, ShowEditor, ShowEndPhoto, ShowMusicEditor, ShowRouteOptions } from "@/components/show-editor";
+import { type EditorPhoto, type EditorScene, ShowEditor, ShowMusicEditor, ShowRouteOptions } from "@/components/show-editor";
 import { ShowPlayer } from "@/components/show-player";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
@@ -86,10 +86,6 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
   const keys = new Set(scenes.map((scene) => scene.key));
   const toRecord = scenesToRecord(script).filter((key) => keys.has(key));
   const recorded = player.filter((scene) => scene.audio).length;
-  // Kandydaci na zdjęcie przed planszą końcową: wszystkie zdjęcia dni w kolejności filmu, także niepokazane w scenach.
-  const days = scenes.filter((scene) => scene.kind === "day");
-  const endCandidates = days.flatMap((scene) => scene.pool ?? scene.images).map(asPhoto);
-  const lastPhoto = days.flatMap((scene) => scene.images).at(-1);
   const back = scenes.find((scene) => scene.kind === "outro")?.approach;
   const written = player.filter((scene) => scene.text.trim() !== "").length;
 
@@ -128,7 +124,6 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
           back={back ? { on: script.showReturn, title: `${back.title}${back.facts ? ` · ${back.facts}` : ""}` } : null}
         />
       )}
-      {canEdit && <ShowEndPhoto tripId={id} kind={kind} choice={script.endPhoto} photos={endCandidates} last={lastPhoto === undefined ? undefined : showImageKey(lastPhoto)} />}
     </>
   );
 }

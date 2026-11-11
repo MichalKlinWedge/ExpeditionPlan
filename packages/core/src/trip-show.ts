@@ -83,8 +83,8 @@ export const ShowScript = z.object({
   showApproach: z.boolean().default(true),
   showReturn: z.boolean().default(true),
   /**
-   * Zdjęcie przed planszą końcową (`ShowImage.key`): brak = ostatnie zdjęcie wyjazdu, pusty tekst = bez zdjęcia
-   * (`withEndPhoto`).
+   * Dawne „Zdjęcie na koniec” (`ShowImage.key`, pusty tekst = bez zdjęcia): już bez edycji, zostaje jako ostatnie zdjęcie
+   * automatycznego zakończenia, póki nikt nie wybierze zdjęć zakończenia pod jego tekstem.
    */
   endPhoto: z.string().max(1000).optional(),
   /**
@@ -205,7 +205,7 @@ export type ShowInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
   kind: ShowKind;
   /** Zdjęcia scen wybrane w edycji (`ShowScript.photos`). */
   photos?: ShowScript['photos'];
-  /** Zdjęcie na koniec (`ShowScript.endPhoto`): zdjęcie z opisu miejsca spoza scen też dostaje podziękowanie. */
+  /** Dawne zdjęcie na koniec (`ShowScript.endPhoto`): ostatnie zdjęcie automatycznego zakończenia. */
   endPhoto?: string;
   /** Elementy wstępu (`introParts` ze scenariusza); bez nich domyślne dla rodzaju pokazu. */
   introParts?: IntroParts;
@@ -365,21 +365,6 @@ function collageOf(days: readonly ShowScene[]): ShowImage[] {
     for (const day of days) if (day.images[round] && picked.length < COLLAGE_MAX) picked.push(day.images[round]!);
   }
   return picked.length >= 2 ? picked : [];
-}
-
-/**
- * Zdjęcie przed planszą końcową, dopisane na koniec zakończenia: wybrane (`ShowScript.endPhoto` = `ShowImage.key` albo
- * adres), domyślnie ostatnie zdjęcie ostatniego dnia, który je ma; pusty tekst = bez zdjęcia. Jedyne zdjęcie, które gra
- * drugi raz — tak chciał organizator.
- */
-export function withEndPhoto<S extends { kind: string; images: ShowImage[]; pool?: ShowImage[] }>(scenes: readonly S[], choice?: string): S[] {
-  if (choice === '') return [...scenes];
-  const days = scenes.filter((scene) => scene.kind === 'day');
-  // Zdjęcie na koniec można wybrać także spośród tych, których scena dnia nie pokazuje.
-  const all = days.flatMap((scene) => [...scene.images, ...(scene.pool ?? [])]);
-  const chosen = choice === undefined ? days.flatMap((scene) => scene.images).at(-1) : all.find((image) => showImageKey(image) === choice);
-  if (chosen === undefined) return [...scenes];
-  return scenes.map((scene) => (scene.kind === 'outro' && !scene.images.some((image) => image.url === chosen.url) ? { ...scene, images: [...scene.images, chosen] } : scene));
 }
 
 export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; credits: ShowCredits; spare: ShowImage[] } {
@@ -548,12 +533,15 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     }
     return shown;
   };
-  const outroImages = chosenFor('outro', journalImages(loose));
+  // Zakończenie bez wyboru: zdjęcia wpisów bez dnia i na koniec ostatnie zdjęcie wyjazdu (jedyne, które gra drugi raz),
+  // a w starszym scenariuszu zdjęcie z dawnego „Zdjęcia na koniec” (pusty tekst = bez niego).
+  const lastPhoto =
+    input.endPhoto === '' ? undefined : input.endPhoto !== undefined ? tripPool.find((image) => showImageKey(image) === input.endPhoto) : dayScenes.flatMap((scene) => scene.images).at(-1);
+  const outroAuto = journalImages(loose);
+  if (lastPhoto !== undefined && !outroAuto.some((image) => showImageKey(image) === showImageKey(lastPhoto))) outroAuto.push(lastPhoto);
+  const outroImages = chosenFor('outro', outroAuto);
   const parts = input.introParts ?? introParts(undefined, input.kind);
   const aboutImages = chosenFor('about', []);
-  // Zdjęcie z opisu miejsca wybrane na koniec, którego żaden dzień nie pokazuje, też dostaje podziękowanie.
-  const endGuide = input.endPhoto ? guideImages.get(input.endPhoto) : undefined;
-  if (endGuide !== undefined) usedImages.set(endGuide.url, endGuide);
   // Zdjęcia wstępu: wybrane pod jego tekstem, a bez wyboru po jednym z kolejnych dni (do 6); w filmie, gdy dni dają
   // mniej, dochodzą zdjęcia opisów miejsc, najpierw tych, których dni nie pokazują. Grają jako kolaż albo po kolei.
   const autoIntro = [...collageOf(dayScenes)];

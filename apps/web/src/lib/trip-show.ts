@@ -1,6 +1,6 @@
 import "server-only";
 
-import { audioFits, dayMap, type DayMap, GuideContent, guideFor, type GuideRow, introParts, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument, withEndPhoto } from "@expeditionplan/core";
+import { audioFits, dayMap, type DayMap, GuideContent, guideFor, type GuideRow, introParts, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument } from "@expeditionplan/core";
 import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 
 import type { PlayerMusic, PlayerScene, ShowMapData } from "@/components/show-player";
@@ -108,7 +108,7 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
     return maps.get(key)!;
   };
   // Zdjęcie przed planszą końcową (wybrane w edycji albo ostatnie) idzie na koniec zakończenia.
-  return withEndPhoto(scenes, script.endPhoto).map((scene) => {
+  return scenes.map((scene) => {
     const told = narration.get(scene.key);
     const url = told && audioFits(told, script.voice) ? audioUrls.get(told.audio.path) : undefined;
     const map = mapFor(scene.routeRefs);

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GuideContent } from '../guide.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
-import { applyShowDraft, audioFits, type IntroParts, introParts, setIntroParts, destinationLine, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenePhotos, scenesToRecord, setScenePhotos, setShowAudio, setShowLocked, ShowScript, showBrief, showMusicFile, showScenes, withEndPhoto } from '../trip-show.ts';
+import { applyShowDraft, audioFits, type IntroParts, introParts, setIntroParts, destinationLine, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenePhotos, scenesToRecord, setScenePhotos, setShowAudio, setShowLocked, ShowScript, showBrief, showMusicFile, showScenes } from '../trip-show.ts';
 
 const fixture = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
 
@@ -71,7 +71,8 @@ describe('sceny pokazu', () => {
     expect(scene.images[0]).toEqual({ url: 'https://example.com/a.jpg', caption: 'Dotarliśmy' });
     expect(scene.facts).toContain('Wpis z dziennika: Dotarliśmy\nzmęczeni');
     const outro = scenes.at(-1)!;
-    expect(outro.images).toEqual([{ url: 'https://example.com/b.jpg', caption: 'Po powrocie: było warto' }]);
+    // Zakończenie: zdjęcie wpisu bez dnia, potem ostatnie zdjęcie wyjazdu (tu jedyne zdjęcie dnia).
+    expect(outro.images).toEqual([{ url: 'https://example.com/b.jpg', caption: 'Po powrocie: było warto' }, { url: 'https://example.com/a.jpg', caption: 'Dotarliśmy' }]);
     expect(outro.facts).toContain('Wpis z dziennika: Po powrocie: było warto');
     expect(showBrief(doc, scenes, 'film').after).toBe(true);
   });
@@ -153,7 +154,7 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(scenes.at(-1)!.approach?.label).toBe('Powrót');
   });
 
-  it('film: każde zdjęcie raz — wstęp bez zdjęć, zakończenie tylko ze zdjęciami spoza dni', () => {
+  it('film: każde zdjęcie raz — wstęp bez zdjęć, zakończenie ze zdjęciami spoza dni i ostatnim zdjęciem wyjazdu', () => {
     const doc = fixture('maroko');
     const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
     const journal = [
@@ -162,8 +163,10 @@ describe('dojazd i zdjęcia we wstępie', () => {
     ];
     const { scenes } = showScenes(doc, { ...base, kind: 'film', journal });
     expect(scenes[0]!.images).toEqual([]);
-    expect(scenes.at(-1)!.images.map((image) => image.caption)).toEqual(['Po powrocie']);
-    const urls = scenes.flatMap((scene) => scene.images.map((image) => image.url));
+    const last = `D${days.length - 1} 2`;
+    expect(scenes.at(-1)!.images.map((image) => image.caption)).toEqual(['Po powrocie', last]);
+    // Powtarza się tylko ostatnie zdjęcie wyjazdu (na koniec, jak dawne „Zdjęcie na koniec”).
+    const urls = scenes.slice(0, -1).flatMap((scene) => scene.images.map((image) => image.url));
     expect(new Set(urls).size).toBe(urls.length);
   });
 
@@ -219,15 +222,16 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(setIntroParts(ShowScript.parse({}), { plan: true }).intro).toEqual({ plan: true });
   });
 
-  it('zdjęcie na koniec: domyślnie ostatnie, wybrane po kluczu, pusty wybór = bez zdjęcia', () => {
+  it('zakończenie bez wyboru kończy się ostatnim zdjęciem wyjazdu; dawne „Zdjęcie na koniec” nadal działa, wybór pod tekstem wygrywa', () => {
     const doc = fixture('maroko');
     const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
     const journal = days.slice(0, 2).flatMap((day, at) => [1, 2].map((n) => ({ dayRef: day.ref, body: `D${at} ${n}`, photoUrl: `https://example.com/${at}-${n}.jpg`, photoKey: `p/${at}-${n}.jpg` })));
-    const { scenes } = showScenes(doc, { ...base, kind: 'film', journal });
-    expect(withEndPhoto(scenes).at(-1)!.images.map((image) => image.caption)).toEqual(['D1 2']);
-    expect(withEndPhoto(scenes, 'p/0-1.jpg').at(-1)!.images.map((image) => image.caption)).toEqual(['D0 1']);
-    expect(withEndPhoto(scenes, '').at(-1)!.images).toEqual([]);
-    expect(withEndPhoto(scenes, 'nie-ma').at(-1)!.images).toEqual([]);
+    const outro = (extra: Partial<Parameters<typeof showScenes>[1]> = {}) => showScenes(doc, { ...base, kind: 'film', journal, ...extra }).scenes.at(-1)!;
+    expect(outro().images.map((image) => image.caption)).toEqual(['D1 2']);
+    expect(outro({ endPhoto: 'p/0-1.jpg' }).images.map((image) => image.caption)).toEqual(['D0 1']);
+    expect(outro({ endPhoto: '' }).images).toEqual([]);
+    expect(outro({ endPhoto: 'nie-ma' }).images).toEqual([]);
+    expect(outro({ endPhoto: 'p/0-1.jpg', photos: { outro: ['p/0-2.jpg'] } }).images.map((image) => image.caption)).toEqual(['D0 2']);
   });
 
   it('zdjęcia sceny wybrane w edycji: z puli dnia, w podanej kolejności, z podziękowaniem; pusta lista = bez zdjęć', () => {
