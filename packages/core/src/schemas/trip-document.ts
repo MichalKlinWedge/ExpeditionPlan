@@ -172,6 +172,8 @@ export const DayExtra = z.object({
   weather: z.enum(['outdoor', 'indoor', 'any']).optional(),
   /** Punkt z puli wyjazdu (wstawienie przenosi go do dnia). */
   poolRef: Ref.optional(),
+  /** Miasto po drodze, przy którym leży (długi przejazd albo szukanie w mieście). */
+  town: z.string().max(120).optional(),
   wikipedia: HttpUrl.optional(),
   website: HttpUrl.optional(),
   /** `dismissed` — odrzucona (nie wraca przy odświeżeniu); `added` — wstawiona do planu jako `addedRef`. */

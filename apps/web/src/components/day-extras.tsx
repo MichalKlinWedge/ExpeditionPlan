@@ -1,6 +1,6 @@
 "use client";
 
-import { addExtraToPlan, type DayExtraItem, dayExtras, EXTRA_FIT, extraDistanceText, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
+import { addExtraToPlan, type DayExtraItem, dayExtras, EXTRA_FIT, EXTRA_SCOPE, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import { useState, useTransition } from "react";
 
@@ -36,14 +36,19 @@ export const extraKey = (extra: Pick<DayExtraItem, "id">) => `extra:${extra.id}`
 export function DayExtras({ doc, dayRef, tripId, slackMin, onEdit, onRules, canFind, selected, onSelect }: Props) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<{ ok?: string; error?: string }>({});
+  // Doprecyzowanie szukania: gdzie (cały dzień, trasa przejazdu, miasto) i czego (własne słowa dla AI).
+  const [scope, setScope] = useState<ExtraScope>("day");
+  const [city, setCity] = useState("");
+  const [hint, setHint] = useState("");
   const list = dayExtras(doc, dayRef);
   const titles = new Map(doc.items.map((item) => [item.ref, item.title]));
   if (list.open.length === 0 && list.dismissed.length === 0 && !canFind) return null;
 
+  const narrowed = scope !== "day" || hint.trim() !== "";
   const find = () =>
     start(async () => {
       setMessage({});
-      setMessage(await findDayExtras(tripId, dayRef));
+      setMessage(await findDayExtras(tripId, dayRef, { scope, ...(scope === "city" ? { city } : {}), ...(hint.trim() ? { hint } : {}) }));
     });
 
   return (
@@ -55,10 +60,36 @@ export function DayExtras({ doc, dayRef, tripId, slackMin, onEdit, onRules, canF
       </summary>
       <div className="mt-3 flex flex-col gap-2">
       {canFind && (
-        <button type="button" onClick={find} disabled={pending} className="btn-secondary btn-sm self-start">
-          <SparkIcon className="size-4" />
-          {pending ? "Szukam…" : list.fetchedAt ? "Szukaj od nowa (AI)" : "Znajdź atrakcje (AI)"}
-        </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-zinc-600 dark:text-zinc-400">Gdzie szukać</span>
+            {(Object.keys(EXTRA_SCOPE) as ExtraScope[]).map((each) => (
+              <button key={each} type="button" onClick={() => setScope(each)} disabled={pending} aria-pressed={scope === each} className="toggle-chip">
+                {EXTRA_SCOPE[each]}
+              </button>
+            ))}
+            {scope === "city" && (
+              <input value={city} onChange={(event) => setCity(event.target.value)} maxLength={80} placeholder="np. Brno" aria-label="Miasto, w którym szukać" className="field w-48 px-2 py-1 text-sm" />
+            )}
+          </div>
+          <input
+            value={hint}
+            onChange={(event) => setHint(event.target.value)}
+            maxLength={300}
+            placeholder="Doprecyzuj (opcjonalnie): np. przerwa na obiad w połowie drogi, zamki i punkty widokowe, coś dla dzieci"
+            aria-label="Doprecyzowanie dla AI"
+            className="field w-full max-w-2xl px-2 py-1 text-sm"
+          />
+          <button type="button" onClick={find} disabled={pending || (scope === "city" && city.trim() === "")} className="btn-secondary btn-sm self-start">
+            <SparkIcon className="size-4" />
+            {pending ? "Szukam…" : narrowed ? "Szukaj i dopisz (AI)" : list.fetchedAt ? "Szukaj od nowa (AI)" : "Znajdź atrakcje (AI)"}
+          </button>
+          {list.fetchedAt !== undefined && (
+            <p className="text-xs text-zinc-500">
+              {narrowed ? "Wyniki dojdą do listy poniżej." : "Cały dzień bez doprecyzowania wymienia listę (odrzucone i wstawione zostają)."} Długi przejazd autem, też z domu, daje miasta po drodze na przerwę.
+            </p>
+          )}
+        </div>
       )}
       {list.fetchedAt === undefined && (
         <p className="text-xs text-zinc-500">Atrakcje przy trasie i punktach dnia, które da się dorzucić, gdy zostanie czas albo coś wypadnie z planu — z czasem, jaki zajmą. Odrzucone nie wracają przy kolejnym szukaniu.</p>
@@ -80,6 +111,7 @@ export function DayExtras({ doc, dayRef, tripId, slackMin, onEdit, onRules, canF
                   </button>
                   <span className="font-medium">{extra.title}</span>
                   {extra.type && <span className="text-zinc-500">· {extra.type}</span>}
+                  {extra.town && <span className="text-zinc-500">· {extra.town}</span>}
                   {extra.poolRef && <span className="rounded bg-sky-100 px-1 text-xs text-sky-900 dark:bg-sky-950 dark:text-sky-200">z puli</span>}
                   {extra.weather === "indoor" && <span className="rounded bg-zinc-100 px-1 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">pod dachem</span>}
                 </div>

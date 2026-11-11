@@ -4,6 +4,8 @@ import {
   type DayCorridor,
   type ExtraCandidate,
   type ExtraPick,
+  type ExtraRequest,
+  type ExtraTown,
   instantToZoned,
   type LngLat,
   type OsmFeature,
@@ -26,9 +28,19 @@ import { bboxAround, OVERPASS_UA, OVERPASS_URL } from './transit-osm.ts';
 
 type Doc = TripDocument;
 
-/** Atrakcje z nazwą i znane (Wikidata) — kilka filtrów na każdą linię korytarza. */
+/**
+ * Główne rodzaje atrakcji po stałych kluczach — tanie dla serwera, więc także w pasie wzdłuż długiej drogi
+ * (setki kilometrów autostrady).
+ */
+const MAIN_FILTERS = [
+  'nwr[tourism~"^(attraction|viewpoint|museum|gallery|zoo|aquarium)$"][name]',
+  'nwr[historic~"^(castle|fort|ruins|archaeological_site|city_gate|palace|monastery|manor|tower)$"][name]',
+  'nwr[natural~"^(waterfall|cave_entrance|arch|gorge|hot_spring|geyser|volcano)$"][name]',
+];
+
+/** Atrakcje z nazwą i znane (Wikidata) — pełny zestaw przy miejscach, krótkich przejazdach i w miastach. */
 const FILTERS = [
-  'nwr[~"^(tourism|historic|natural)$"~"^(attraction|viewpoint|museum|gallery|zoo|aquarium|castle|fort|ruins|archaeological_site|city_gate|palace|monastery|manor|tower|waterfall|cave_entrance|arch|gorge|hot_spring|geyser|volcano)$"][name]',
+  ...MAIN_FILTERS,
   'nwr[wikidata][~"^(historic|natural|man_made|leisure)$"~"."][name]',
   'nwr[wikidata][amenity=place_of_worship][name]',
   'nwr[wikidata][building~"^(cathedral|church|mosque|temple|chapel)$"][name]',
@@ -40,27 +52,68 @@ const MAX_ELEMENTS = 600;
 
 const coords = (line: readonly LngLat[]) => line.map(([lng, lat]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join(',');
 
-/** Zapytanie: atrakcje w pasie wokół miejsc i przejść (700 m) i wokół dróg przejazdów (2 km), w prostokącie dnia. */
-export function dayExtrasQuery(lines: { near: LngLat[][]; car: LngLat[][] }): string {
-  const all = [...lines.near, ...lines.car].flat();
-  const box = bboxAround(all, 3);
+/** Miasta po drodze długiego przejazdu: duże do 12 km od trasy, mniejsze do 4 km. */
+const CITY_OFF_M = 12_000;
+const TOWN_OFF_M = 4000;
+/** Podane miasto szukamy do tylu kilometrów od korytarza dnia. */
+const CITY_SEARCH_KM = 60;
+/** Atrakcje w mieście: do tylu metrów od jego środka (`TOWN_AREA_M` w kodzie). */
+const TOWN_RADIUS_M = 3000;
+const MAX_TOWNS = 60;
+
+/** Ucieczka znaku regex wewnątrz napisu Overpass QL (odwrotny ukośnik podwójnie). */
+const regexEscape = (text: string) => text.replace(/[\\^$.*+?()[\]{}|"]/g, (char) => `\\\\${char}`);
+
+/**
+ * Zapytanie: atrakcje w pasie wokół miejsc i przejść (700 m) i wokół dróg przejazdów (2 km), a przy długich
+ * przejazdach także w miastach po drodze; zakres `route` — tylko przejazdy, `city` — tylko podane miasto
+ * (szukane po nazwie, też polskiej i angielskiej, do `CITY_SEARCH_KM` od korytarza). Odpowiedź: najpierw atrakcje,
+ * potem same miasta (`place`).
+ */
+export function dayExtrasQuery(lines: { near: LngLat[][]; car: LngLat[][]; long?: LngLat[][] }, request: ExtraRequest = { scope: 'day' }): string {
+  const all = [...lines.near, ...lines.car, ...(lines.long ?? [])].flat();
+  // Miasto podane do szukania może leżeć dalej, a miasto po drodze — do `CITY_OFF_M` obok trasy.
+  const box = bboxAround(all, request.scope === 'city' ? CITY_SEARCH_KM : (lines.long ?? []).length > 0 ? CITY_OFF_M / 1000 + 3 : 3);
   const bbox = [box.south, box.west, box.north, box.east].map((value) => value.toFixed(5)).join(',');
-  const parts = [
-    ...lines.near.flatMap((line) => FILTERS.map((filter) => `${filter}(around:700,${coords(line)});`)),
-    ...lines.car.flatMap((line) => FILTERS.map((filter) => `${filter}(around:2000,${coords(line)});`)),
-  ];
-  return [`[out:json][timeout:${SERVER_TIMEOUT_S}][maxsize:67108864][bbox:${bbox}];`, `(${parts.join(' ')});`, `out center tags qt ${MAX_ELEMENTS};`].join('\n');
+  const city = request.scope === 'city' ? request.city?.trim() : undefined;
+  const towns =
+    city !== undefined && city !== ''
+      ? [`node[place~"^(city|town|village|suburb)$"][~"^name(:pl|:en)?$"~"^${regexEscape(city)}$",i];`]
+      : (lines.long ?? []).flatMap((line) => [`node[place=city](around:${CITY_OFF_M},${coords(line)});`, `node[place=town](around:${TOWN_OFF_M},${coords(line)});`]);
+  const inTowns = towns.length > 0 ? FILTERS.map((filter) => `${filter}(around.towns:${TOWN_RADIUS_M});`) : [];
+  const parts =
+    request.scope === 'city'
+      ? inTowns
+      : [
+          ...(request.scope === 'route' ? [] : lines.near.flatMap((line) => FILTERS.map((filter) => `${filter}(around:700,${coords(line)});`))),
+          ...lines.car.flatMap((line) => FILTERS.map((filter) => `${filter}(around:2000,${coords(line)});`)),
+          ...(lines.long ?? []).flatMap((line) => MAIN_FILTERS.map((filter) => `${filter}(around:2000,${coords(line)});`)),
+          ...inTowns,
+        ];
+  return [
+    `[out:json][timeout:${SERVER_TIMEOUT_S}][maxsize:67108864][bbox:${bbox}];`,
+    ...(towns.length > 0 ? [`(${towns.join(' ')})->.towns;`] : []),
+    `(${parts.join(' ')})->.found;`,
+    `.found out center tags qt ${MAX_ELEMENTS};`,
+    ...(towns.length > 0 ? [`.towns out tags qt ${MAX_TOWNS};`] : []),
+  ].join('\n');
 }
 
-/** Atrakcje OSM w korytarzu dnia. Błąd serwera (przeciążenie, 429) to wyjątek z polskim opisem. */
-export async function fetchDayAttractions(corridor: DayCorridor, options: { url?: string; fetchImpl?: typeof fetch; timeoutMs?: number } = {}): Promise<OsmFeature[]> {
+/**
+ * Atrakcje OSM w korytarzu dnia (z miastami po drodze albo w podanym mieście); miasta wracają jako elementy z `place`
+ * (`corridorTowns`). Błąd serwera (przeciążenie, 429) to wyjątek z polskim opisem.
+ */
+export async function fetchDayAttractions(
+  corridor: DayCorridor,
+  options: { url?: string; fetchImpl?: typeof fetch; timeoutMs?: number; request?: ExtraRequest } = {},
+): Promise<OsmFeature[]> {
   const lines = corridorQueryLines(corridor);
-  if (lines.near.length + lines.car.length === 0) return [];
+  if (lines.near.length + lines.car.length + lines.long.length === 0) return [];
   const fetchImpl = options.fetchImpl ?? fetch;
   const response = await fetchImpl(options.url ?? OVERPASS_URL, {
     method: 'POST',
     headers: { 'User-Agent': OVERPASS_UA, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ data: dayExtrasQuery(lines) }).toString(),
+    body: new URLSearchParams({ data: dayExtrasQuery(lines, options.request) }).toString(),
     signal: AbortSignal.timeout(options.timeoutMs ?? (SERVER_TIMEOUT_S + 10) * 1000),
   });
   if ([429, 502, 503, 504].includes(response.status)) throw new Error('Serwer OpenStreetMap (Overpass) jest teraz zajęty. Spróbuj za minutę.');
@@ -88,8 +141,8 @@ export const DayExtrasAnswer = z.object({
 
 const clip = (text: string | undefined, max: number) => (text === undefined ? undefined : text.length > max ? `${text.slice(0, max)}…` : text);
 
-/** Dzień z faktami silnika (godziny, zapas, zachód) i kandydaci z faktami z kodu — dla modelu. */
-export function dayExtrasContext(doc: Doc, dayRef: string, options: ScheduleOptions, candidates: readonly ExtraCandidate[]) {
+/** Dzień z faktami silnika (godziny, zapas, zachód), miasta po drodze, prośba użytkownika i kandydaci z faktami z kodu — dla modelu. */
+export function dayExtrasContext(doc: Doc, dayRef: string, options: ScheduleOptions, candidates: readonly ExtraCandidate[], extra: { towns?: readonly ExtraTown[]; request?: ExtraRequest } = {}) {
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const places = new Map(doc.places.map((place) => [place.ref, place.name]));
   let schedule: ReturnType<typeof scheduleDay> | null = null;
@@ -118,6 +171,15 @@ export function dayExtrasContext(doc: Doc, dayRef: string, options: ScheduleOpti
         ...(item?.description ? { description: clip(item.description, 120) } : {}),
       };
     }),
+    ...(extra.request && (extra.request.scope !== 'day' || extra.request.hint)
+      ? {
+          request: {
+            where: extra.request.scope === 'city' ? `w mieście ${extra.request.city ?? ''}`.trim() : extra.request.scope === 'route' ? 'na trasie przejazdu' : 'cały dzień',
+            ...(extra.request.hint ? { wish: extra.request.hint } : {}),
+          },
+        }
+      : {}),
+    ...(extra.towns && extra.towns.length > 0 ? { towns: extra.towns.map((town) => ({ name: town.name, place: town.place, offKm: Math.round(town.offM / 100) / 10 })) } : {}),
     candidates: candidates.map((each) => ({
       id: each.id,
       name: each.name,
@@ -126,6 +188,7 @@ export function dayExtrasContext(doc: Doc, dayRef: string, options: ScheduleOpti
       offM: each.offM,
       detourMin: each.detourMin,
       ...(each.nearRef ? { nearRef: each.nearRef } : {}),
+      ...(each.town ? { town: each.town } : {}),
       ...(each.wikipedia ? { wikipedia: decodeURIComponent(each.wikipedia.replace(/^https:\/\//, '')) } : {}),
       ...(each.openingHours ? { openingHours: each.openingHours } : {}),
       ...(each.note ? { note: clip(each.note, 200) } : {}),
@@ -133,7 +196,7 @@ export function dayExtrasContext(doc: Doc, dayRef: string, options: ScheduleOpti
   };
 }
 
-export function dayExtrasPrompt(doc: Doc, dayRef: string, options: ScheduleOptions, candidates: readonly ExtraCandidate[]): string {
+export function dayExtrasPrompt(doc: Doc, dayRef: string, options: ScheduleOptions, candidates: readonly ExtraCandidate[], extra: { towns?: readonly ExtraTown[]; request?: ExtraRequest } = {}): string {
   return [
     'Dzień planu wyjazdu i lista atrakcji w pobliżu jego punktów i trasy (z OpenStreetMap i z puli pomysłów wyjazdu). Wybierz te, które warto znać na wypadek, gdy zostanie czas albo coś wypadnie z planu.',
     '',
@@ -145,12 +208,14 @@ export function dayExtrasPrompt(doc: Doc, dayRef: string, options: ScheduleOptio
     '5. `fit`: `pass` — widać po drodze bez zatrzymywania albo leży tuż przy trasie (wieża, zamek nad drogą, wodospad przy szlaku; tylko przy małym `offM`); `stop` — krótki postój do ok. 20 min na miejscu; `visit` — zwiedzanie.',
     '6. `swapRef`: `ref` punktu planu, który ta atrakcja może zastąpić, gdy tamten wypadnie (zamknięte, pogoda, brak biletów) — podobny charakter i blisko; inaczej null. `weather`: `indoor`, gdy to dobre miejsce na deszcz.',
     '7. Uwzględnij uczestników (wiek) i to, że `along: car` to zjazd z drogi autem, a `at`/`foot` — dojście pieszo.',
+    '8. Długi przejazd autem (`towns` = miasta przy trasie, `offKm` od drogi; kandydat z `town` leży w takim mieście): zaproponuj miejsca na przerwę w drodze — rozprostować nogi, zjeść, zobaczyć coś krótko — rozłożone wzdłuż trasy, nie wszystkie w jednym mieście. `why` może powiedzieć, że to dobra przerwa po drodze.',
+    '9. `request` to prośba użytkownika (gdzie szukać i czego chce): ma pierwszeństwo przy wyborze i kolejności; nadal tylko z listy `candidates`.',
     '',
     'JSON Schema odpowiedzi:',
     JSON.stringify(z.toJSONSchema(DayExtrasAnswer, { io: 'input', unrepresentable: 'any' })),
     '',
     'Dzień i kandydaci:',
-    JSON.stringify(dayExtrasContext(doc, dayRef, options, candidates), null, 1),
+    JSON.stringify(dayExtrasContext(doc, dayRef, options, candidates, extra), null, 1),
   ].join('\n');
 }
 
@@ -160,10 +225,11 @@ export async function pickDayExtras(
   dayRef: string,
   options: ScheduleOptions,
   candidates: readonly ExtraCandidate[],
-  deps: { client: AiClient; timeoutMs?: number; onUsage?: (usage: AiUsage) => void },
+  deps: { client: AiClient; timeoutMs?: number; onUsage?: (usage: AiUsage) => void; towns?: readonly ExtraTown[]; request?: ExtraRequest },
 ): Promise<ExtraPick[]> {
   if (candidates.length === 0) return [];
-  const answer = await askStructured(deps.client, DayExtrasAnswer, dayExtrasPrompt(doc, dayRef, options, candidates), {
+  const extra = { ...(deps.towns ? { towns: deps.towns } : {}), ...(deps.request ? { request: deps.request } : {}) };
+  const answer = await askStructured(deps.client, DayExtrasAnswer, dayExtrasPrompt(doc, dayRef, options, candidates, extra), {
     system: SYSTEM,
     maxTokens: 8000,
     timeoutMs: deps.timeoutMs ?? 120_000,

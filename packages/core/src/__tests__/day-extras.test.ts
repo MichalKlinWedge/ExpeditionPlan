@@ -5,6 +5,7 @@ import {
   applyExtraPicks,
   attractionType,
   corridorQueryLines,
+  corridorTowns,
   dayCorridor,
   dayExtras,
   detourMinutes,
@@ -15,6 +16,7 @@ import {
   wikipediaUrl,
 } from '../day-extras.ts';
 import { scheduleDay } from '../engine/schedule.ts';
+import { encodePolyline, type LngLat } from '../polyline.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 import type { OsmFeature } from '../track-pois.ts';
 
@@ -38,6 +40,24 @@ const doc = TripDocument.parse({
 
 const refs = scheduleDay(doc, 'd1').items.map((item) => item.ref);
 const corridor = dayCorridor(doc, refs);
+
+/** Dzień dojazdu z domu: 600 km autem po drogach (przez Brno), na miejscu spacer. */
+const lerp = (a: LngLat, b: LngLat, n: number) => Array.from({ length: n }, (_, i): LngLat => [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]);
+const road: LngLat[] = [...lerp([17.03, 51.1], [16.6, 49.2], 30), ...lerp([16.6, 49.2], [17.63, 47.68], 30), [17.63, 47.68]];
+const drive = (mode: 'car' | 'bus') =>
+  TripDocument.parse({
+    schemaVersion: 1,
+    trip: { title: 'Dojazd', startDate: '2027-03-25', endDate: '2027-03-25', primaryTz: 'Europe/Warsaw', baseCurrency: 'PLN' },
+    places: [
+      { ref: 'dom', name: 'Wrocław', lat: road[0]![1], lng: road[0]![0] },
+      { ref: 'gyor', name: 'Győr', lat: road.at(-1)![1], lng: road.at(-1)![0] },
+    ],
+    days: [{ ref: 'd1', date: '2027-03-25', tz: 'Europe/Warsaw' }],
+    items: [
+      { ref: 'jazda', dayRef: 'd1', sortKey: '10', kind: 'transport', title: 'Przejazd', leg: { mode, fromPlaceRef: 'dom', toPlaceRef: 'gyor', durationMin: 344, distanceKm: 600, geometry: encodePolyline(road) } },
+      { ref: 'spacer', dayRef: 'd1', sortKey: '20', kind: 'visit', title: 'Starówka', placeRef: 'gyor', durationMin: 90 },
+    ],
+  });
 
 const features: OsmFeature[] = [
   { id: 'node/1', lat: 50.005, lng: 20.06, tags: { name: 'Zamek Wysoki', historic: 'castle', wikidata: 'Q1', wikipedia: 'pl:Zamek Wysoki' } },
@@ -117,6 +137,52 @@ describe('po drodze i w pobliżu', () => {
     const pooled = addExtraToPlan(withDay, 'd1', 'pool:kapliczka', { itemId: 'x', placeId: 'y' })!;
     expect(pooled.created).toBeUndefined();
     expect(pooled.changed.find((each) => each.ref === 'kapliczka')).toMatchObject({ dayRef: 'd1', parentRef: 'jazda' });
+  });
+
+  it('dojazd z domu własnym autem zostaje w korytarzu (długi: miasta po drodze), autobus — nie', () => {
+    const car = drive('car');
+    const carCorridor = dayCorridor(car, scheduleDay(car, 'd1').items.map((item) => item.ref));
+    expect(carCorridor.paths.some((path) => path.mode === 'car' && path.ref === 'jazda')).toBe(true);
+    const lines = corridorQueryLines(carCorridor);
+    expect(lines.long).toHaveLength(1);
+    expect(lines.car).toEqual([]);
+    expect(lines.long[0]!.length).toBeLessThanOrEqual(250);
+    const bus = drive('bus');
+    expect(dayCorridor(bus, scheduleDay(bus, 'd1').items.map((item) => item.ref)).paths).toEqual([]);
+  });
+
+  it('miasto po drodze: atrakcja w nim, choć dalej niż pas przy drodze, dostaje miasto i zjazd autem', () => {
+    const car = drive('car');
+    const carCorridor = dayCorridor(car, scheduleDay(car, 'd1').items.map((item) => item.ref));
+    // Brno ok. 6 km obok trasy, katedra w centrum.
+    const features: OsmFeature[] = [
+      { id: 'node/brno', lat: 49.2, lng: 16.68, tags: { place: 'city', name: 'Brno' } },
+      { id: 'way/katedra', lat: 49.191, lng: 16.68, tags: { name: 'Katedrála sv. Petra a Pavla', building: 'cathedral', wikidata: 'Q1' } },
+      { id: 'node/daleko', lat: 49.4, lng: 16.95, tags: { name: 'Zamek w polu', historic: 'castle' } },
+    ];
+    const towns = corridorTowns(carCorridor, features);
+    expect(towns.map((town) => town.name)).toEqual(['Brno']);
+    const candidates = extraCandidates(car, carCorridor, features, new Set(), { towns });
+    const katedra = candidates.find((each) => each.id === 'way/katedra')!;
+    expect(katedra).toMatchObject({ town: 'Brno', along: 'car' });
+    expect(katedra.offM).toBeGreaterThan(2000);
+    expect(candidates.some((each) => each.id === 'node/daleko' || each.id === 'node/brno')).toBe(false);
+    // Tylko trasa przejazdu: punkty przy miejscach na miejscu odpadają.
+    const spot = carCorridor.spots.find((each) => each.ref === 'spacer')!;
+    const near: OsmFeature = { id: 'node/rynek', lat: spot.lat + 0.001, lng: spot.lng, tags: { name: 'Ratusz', historic: 'building', wikidata: 'Q2' } };
+    expect(extraCandidates(car, carCorridor, [...features, near], new Set(), { towns, scope: 'route' }).some((each) => each.id === 'node/rynek')).toBe(false);
+    expect(extraCandidates(car, carCorridor, [...features, near], new Set(), { towns, scope: 'city' }).map((each) => each.id)).toEqual(['way/katedra']);
+  });
+
+  it('szukanie zawężone dopisuje do listy, pełne — wymienia otwarte', () => {
+    const at = corridor.spots[0]!;
+    const one = extraCandidates(doc, corridor, [{ id: 'node/9', lat: at.lat + 0.002, lng: at.lng, tags: { name: 'Wieża', man_made: 'tower' } }]);
+    const pick = (id: string) => ({ id, title: id, why: '', stayMin: 10, fit: 'stop' as const });
+    const first = applyExtraPicks(doc, 'd1', one, [pick('node/9')], '2027-01-01')!;
+    const withFirst = { ...doc, days: doc.days.map((each) => (each.ref === 'd1' ? first : each)) };
+    const pool = extraCandidates(doc, corridor, []);
+    expect(applyExtraPicks(withFirst, 'd1', pool, [pick(pool[0]!.id)], '2027-01-02', true)!.extras!.items.map((each) => each.id)).toEqual([pool[0]!.id, 'node/9']);
+    expect(applyExtraPicks(withFirst, 'd1', pool, [pick(pool[0]!.id)], '2027-01-02')!.extras!.items.map((each) => each.id)).toEqual([pool[0]!.id]);
   });
 
   it('rodzaje i linki z tagów OSM', () => {

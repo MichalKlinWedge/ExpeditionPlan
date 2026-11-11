@@ -25,6 +25,21 @@ describe('po drodze i w pobliżu — OSM i AI', () => {
     expect(query).toContain('out center tags qt 600;');
   });
 
+  it('zapytanie: miasta po drodze długiego przejazdu, tylko trasa, podane miasto po nazwie', () => {
+    const lines = { near: [[[20, 50], [20.01, 50]]] as [number, number][][], car: [[[20, 50], [21, 50]]] as [number, number][][], long: [[[20, 50], [21, 50]]] as [number, number][][] };
+    const day = dayExtrasQuery(lines);
+    expect(day).toContain('node[place=city](around:12000,');
+    expect(day).toContain('(around.towns:3000);');
+    expect(day).toContain('.towns out tags qt 60;');
+    const route = dayExtrasQuery(lines, { scope: 'route' });
+    expect(route).not.toContain('(around:700,');
+    expect(route).toContain('(around:2000,');
+    const city = dayExtrasQuery(lines, { scope: 'city', city: 'Bratysława' });
+    expect(city).toContain('[~"^name(:pl|:en)?$"~"^Bratysława$",i]');
+    expect(city).not.toContain('(around:2000,');
+    expect(dayExtrasQuery(lines, { scope: 'city', city: 'St. "X"' })).toContain('^St\\\\. \\\\"X\\\\"$');
+  });
+
   it('Overpass: element z obrysem daje środek; przeciążenie to polski błąd', async () => {
     const reply = { elements: [{ type: 'way', id: 7, center: { lat: 31.1, lon: -7.9 }, tags: { name: 'Kasba', historic: 'castle' } }] };
     let body = '';

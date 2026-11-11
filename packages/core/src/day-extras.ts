@@ -57,7 +57,9 @@ const modeOf = (item: Item | undefined): 'foot' | 'car' | null | undefined => {
 
 /**
  * Korytarz dnia z mapy dnia (`dayMap`, kolejność z silnika): trasa po drogach i ślady GPX z rodzajem
- * przejazdu, proste między miejscami — po długości. Dojazd i powrót (`isTransit`) pomija.
+ * przejazdu, proste między miejscami — po długości. Dojazd i powrót (`isTransit`) pomija, chyba że to własny
+ * przejazd autem z trasą po drogach: na długiej drodze z domu też robi się przerwy. Prosta takiego dojazdu nie
+ * jest drogą, więc odpada.
  */
 export function dayCorridor(doc: Doc, refs: readonly string[], baseRef?: string): DayCorridor {
   const map = dayMap(doc, refs, baseRef === undefined ? {} : { baseRef });
@@ -65,7 +67,11 @@ export function dayCorridor(doc: Doc, refs: readonly string[], baseRef?: string)
   const paths: Path[] = [];
   const legEnds = Object.entries(map.straightLegs ?? {});
   for (const line of map.lines) {
-    if (line.transit) continue;
+    if (line.transit) {
+      const own = line.routed && !line.track ? modeOf(items.get(line.refs?.[0] ?? '')) : null;
+      if (own === 'car') paths.push({ mode: 'car', coordinates: line.coordinates, ...(line.refs?.[0] ? { ref: line.refs[0] } : {}) });
+      continue;
+    }
     if (line.routed) {
       const ref = line.refs?.[0];
       const mode = line.track ? 'foot' : modeOf(items.get(ref ?? ''));
@@ -93,8 +99,25 @@ export function dayCorridor(doc: Doc, refs: readonly string[], baseRef?: string)
   return { spots, paths };
 }
 
-/** Linie do zapytania Overpass (`around`): miejsca i przejścia pieszo w promieniu „przy miejscu”, przejazdy — „przy drodze”. */
-export function corridorQueryLines(corridor: DayCorridor): { near: LngLat[][]; car: LngLat[][] } {
+/** Od tylu metrów przejazd jest „długi”: zapytanie zbiera też miasta przy trasie i atrakcje w nich (przerwa w drodze). */
+export const LONG_DRIVE_M = 40_000;
+/** Najwięcej punktów jednej linii w zapytaniu: dłuższą trasę upraszczamy mocniej (600 km autostrady to tysiące punktów). */
+const QUERY_POINTS_MAX = 250;
+
+const lengthM = (line: readonly LngLat[]) => line.reduce((sum, point, index) => (index === 0 ? 0 : sum + distanceM(line[index - 1]!, point)), 0);
+
+/** Uproszczenie z rosnącą tolerancją, aż linia ma najwyżej `QUERY_POINTS_MAX` punktów. */
+function capPoints(line: LngLat[], toleranceM: number): LngLat[] {
+  let out = simplifyPath(line, toleranceM);
+  for (let tolerance = toleranceM * 2; out.length > QUERY_POINTS_MAX; tolerance *= 2) out = simplifyPath(line, tolerance);
+  return out;
+}
+
+/**
+ * Linie do zapytania Overpass (`around`): miejsca i przejścia pieszo w promieniu „przy miejscu”, przejazdy — „przy drodze”;
+ * długie przejazdy (`long`, od `LONG_DRIVE_M`) osobno: tańszy pas przy drodze i szukanie miast po drodze.
+ */
+export function corridorQueryLines(corridor: DayCorridor): { near: LngLat[][]; car: LngLat[][]; long: LngLat[][] } {
   // Miejsca łańcuchem po kolei, póki są blisko siebie (dalej to osobne linie — inaczej pas biegłby na przełaj).
   const near: LngLat[][] = [];
   let chain: LngLat[] = [];
@@ -116,11 +139,40 @@ export function corridorQueryLines(corridor: DayCorridor): { near: LngLat[][]; c
       if (last !== undefined && end !== undefined && distanceM(end, path.coordinates[0]!) < 50) last.push(...path.coordinates.slice(1));
       else lines.push([...path.coordinates]);
     }
-    return lines.map((line) => simplifyPath(line, mode === 'car' ? 150 : 30));
+    return lines;
   };
   // Pojedynczy punkt: `around` dostaje go dwa razy (linia zerowej długości).
   const pad = (line: LngLat[]) => (line.length === 1 ? [line[0]!, line[0]!] : line);
-  return { near: [...near, ...joined('foot')].map(pad), car: joined('car').map(pad) };
+  const car = joined('car');
+  const long = (line: LngLat[]) => lengthM(line) >= LONG_DRIVE_M;
+  return {
+    near: [...near, ...joined('foot').map((line) => capPoints(line, 30))].map(pad),
+    car: car.filter((line) => !long(line)).map((line) => pad(capPoints(line, 150))),
+    long: car.filter(long).map((line) => capPoints(line, 150)),
+  };
+}
+
+/** Gdzie szukać: cały dzień, tylko przy trasie przejazdów (z miastami po drodze) albo w podanym mieście. */
+export type ExtraScope = 'day' | 'route' | 'city';
+export const EXTRA_SCOPE: Record<ExtraScope, string> = { day: 'cały dzień', route: 'trasa przejazdu', city: 'w mieście' };
+/** Prośba użytkownika przy szukaniu: zakres i własne słowa dla AI („zamki i punkty widokowe”, „przerwa na obiad”). */
+export type ExtraRequest = { scope: ExtraScope; city?: string; hint?: string };
+
+/** Miasto z OSM (`place`) przy trasie dnia albo podane do szukania. */
+export type ExtraTown = { name: string; lat: number; lng: number; place: string; offM: number };
+/** Atrakcja do tylu metrów od środka miasta liczy się jako „w mieście” (także poza pasem przy drodze). */
+export const TOWN_AREA_M = 3000;
+
+/** Miasta z odpowiedzi Overpass (elementy z `place`): nazwa po polsku, gdy jest, i odległość od trasy dnia. */
+export function corridorTowns(corridor: DayCorridor, features: readonly OsmFeature[]): ExtraTown[] {
+  const towns: ExtraTown[] = [];
+  for (const feature of features) {
+    const place = feature.tags.place;
+    const name = feature.tags['name:pl']?.trim() || feature.tags.name?.trim();
+    if (!place || !name || towns.some((each) => each.name === name)) continue;
+    towns.push({ name, lat: feature.lat, lng: feature.lng, place, offM: Math.round(placeAnywhere(corridor, feature)?.offM ?? 0) });
+  }
+  return towns;
 }
 
 /** Rodzaje atrakcji z tagów OSM: nazwa po polsku i waga (ciekawsze wyżej). */
@@ -176,6 +228,25 @@ export function detourMinutes(along: ExtraAlong, offM: number): number {
 
 const effort = (option: { along: ExtraAlong; detourMin: number }) => option.detourMin + (option.along === 'car' ? PARKING_MIN : 0);
 
+/**
+ * Atrakcja poza pasem korytarza (w mieście po drodze albo w podanym mieście): objazd od najbliższego miejsca, przejścia
+ * albo drogi dnia, bez limitu odległości; dalej niż spacer liczy się jako zjazd autem.
+ */
+function placeAnywhere(corridor: DayCorridor, at: { lat: number; lng: number }): { along: ExtraAlong; offM: number; detourMin: number; nearRef?: string } | null {
+  const point = pointOf(at);
+  const options: { along: ExtraAlong; offM: number; nearRef?: string }[] = [
+    ...corridor.spots.map((spot) => ({ along: 'at' as const, offM: distanceM(pointOf(spot), point), ...(spot.ref ? { nearRef: spot.ref } : {}) })),
+    ...corridor.paths.map((path) => ({ along: path.mode, offM: offPath(path.coordinates, point), ...(path.ref ? { nearRef: path.ref } : {}) })),
+  ];
+  const best = options
+    .map((each) => {
+      const along: ExtraAlong = each.offM > STRAIGHT_FOOT_M ? 'car' : each.along;
+      return { ...each, along, offM: Math.round(each.offM), detourMin: detourMinutes(along, each.offM) };
+    })
+    .sort((a, b) => effort(a) - effort(b) || a.offM - b.offM)[0];
+  return best ?? null;
+}
+
 /** Gdzie atrakcja leży względem dnia: najtańszy objazd spośród miejsc, przejść i przejazdów w zasięgu. */
 export function placeOnCorridor(corridor: DayCorridor, at: { lat: number; lng: number }): { along: ExtraAlong; offM: number; detourMin: number; nearRef?: string } | null {
   const point = pointOf(at);
@@ -210,8 +281,13 @@ export type ExtraCandidate = {
   openingHours?: string;
   /** Tagi z OSM w skrócie (opis, wstęp), dla AI. */
   note?: string;
+  /** Miasto po drodze albo podane, w którym leży. */
+  town?: string;
   score: number;
 };
+
+/** Zakres kandydatów: miasta po drodze (atrakcje w nich także poza pasem), tylko przy przejazdach, tylko w mieście. */
+export type CandidateOptions = { towns?: readonly ExtraTown[]; scope?: ExtraScope };
 
 const round5 = (value: number) => Math.round(value * 1e5) / 1e5;
 const httpUrl = (value: string | undefined) => (value && /^https?:\/\//i.test(value) ? value : undefined);
@@ -221,21 +297,49 @@ const httpUrl = (value: string | undefined) => (value && /^https?:\/\//i.test(va
  * które plan już ma, bez odrzuconych i bez powtórek nazwy. Najpierw pula, potem znane (Wikidata, Wikipedia)
  * i ciekawsze rodzaje, a przy równych — mniejszy objazd.
  */
-export function extraCandidates(doc: Doc, corridor: DayCorridor, features: readonly OsmFeature[], skipIds: ReadonlySet<string> = new Set()): ExtraCandidate[] {
+export function extraCandidates(doc: Doc, corridor: DayCorridor, features: readonly OsmFeature[], skipIds: ReadonlySet<string> = new Set(), options: CandidateOptions = {}): ExtraCandidate[] {
   const known = new Set(doc.places.map((place) => plainName(place.name)));
   const places = new Map(doc.places.map((place) => [place.ref, place]));
   const spots = corridor.spots.map(pointOf);
+  const towns = options.towns ?? [];
+  const scope = options.scope ?? 'day';
+  const townOf = (at: { lat: number; lng: number }) =>
+    towns
+      .map((town) => ({ town, m: distanceM(pointOf(town), pointOf(at)) }))
+      .filter((each) => each.m <= TOWN_AREA_M)
+      .sort((a, b) => a.m - b.m)[0]?.town;
+  // W pasie korytarza albo w mieście po drodze (wtedy objazd od najbliższej drogi, choćby dalej niż pas).
+  const locate = (at: { lat: number; lng: number }) => {
+    const town = townOf(at);
+    if (scope === 'city') return town === undefined ? null : { where: placeAnywhere(corridor, at), town };
+    const where = placeOnCorridor(corridor, at) ?? (town === undefined ? null : placeAnywhere(corridor, at));
+    if (where === null || (scope === 'route' && where.along !== 'car')) return null;
+    return { where, town };
+  };
   const found: ExtraCandidate[] = [];
   for (const item of doc.items) {
     if (item.dayRef !== undefined || item.planStatus === 'rejected') continue;
     const place = places.get(item.placeRef ?? '');
     if (place?.lat === undefined || place.lng === undefined || skipIds.has(`pool:${item.ref}`)) continue;
-    const where = placeOnCorridor(corridor, { lat: place.lat, lng: place.lng });
-    if (where === null) continue;
-    found.push({ id: `pool:${item.ref}`, name: item.title, type: 'z puli wyjazdu', lat: place.lat, lng: place.lng, ...where, poolRef: item.ref, ...(item.description ? { note: item.description.slice(0, 200) } : {}), score: 10 });
+    const located = locate({ lat: place.lat, lng: place.lng });
+    if (located?.where == null) continue;
+    found.push({
+      id: `pool:${item.ref}`,
+      name: item.title,
+      type: 'z puli wyjazdu',
+      lat: place.lat,
+      lng: place.lng,
+      ...located.where,
+      poolRef: item.ref,
+      ...(item.description ? { note: item.description.slice(0, 200) } : {}),
+      ...(located.town ? { town: located.town.name } : {}),
+      score: 10,
+    });
   }
   const pooled = found.map((each) => plainName(each.name));
   for (const feature of features) {
+    // Same miasta (`place`) to nie atrakcje: służą tylko do szukania w nich.
+    if (feature.tags.place) continue;
     const kind = attractionType(feature.tags);
     if (kind === null || skipIds.has(feature.id)) continue;
     const name = feature.tags['name:pl']?.trim() || feature.tags.name!.trim();
@@ -243,8 +347,9 @@ export function extraCandidates(doc: Doc, corridor: DayCorridor, features: reado
     if (known.has(plain) || known.has(plainName(feature.tags.name!)) || pooled.includes(plain)) continue;
     // Samo miejsce punktu (pod inną nazwą w OSM).
     if (spots.some((spot) => distanceM(spot, [feature.lng, feature.lat]) < 60)) continue;
-    const where = placeOnCorridor(corridor, feature);
-    if (where === null) continue;
+    const located = locate(feature);
+    if (located?.where == null) continue;
+    const where = located.where;
     const wikipedia = wikipediaUrl(feature.tags.wikipedia);
     const website = httpUrl(feature.tags.website ?? feature.tags['contact:website']);
     const note = [feature.tags.description, feature.tags.fee === 'yes' ? 'wstęp płatny' : feature.tags.fee === 'no' ? 'wstęp wolny' : undefined, feature.tags.heritage ? 'zabytek' : undefined].filter(Boolean).join('; ');
@@ -260,6 +365,7 @@ export function extraCandidates(doc: Doc, corridor: DayCorridor, features: reado
       ...(website ? { website } : {}),
       ...(feature.tags.opening_hours ? { openingHours: feature.tags.opening_hours } : {}),
       ...(note ? { note } : {}),
+      ...(located.town ? { town: located.town.name } : {}),
       score,
     });
   }
@@ -287,14 +393,15 @@ const PASS_M: Record<ExtraAlong, number> = { at: 100, foot: 100, car: 500 };
 
 /**
  * Nowa lista dnia z wyboru AI: odrzucone i wstawione zostają (żeby nie wracały), poprzednie otwarte
- * zastępuje nowy wybór. Klucze spoza kandydatów i zamienniki spoza dnia odpadają.
+ * zastępuje nowy wybór — chyba że `merge` (szukanie zawężone: trasa, miasto, własna prośba), wtedy nowe
+ * dochodzą na początek listy. Klucze spoza kandydatów i zamienniki spoza dnia odpadają.
  */
-export function applyExtraPicks(doc: Doc, dayRef: string, candidates: readonly ExtraCandidate[], picks: readonly ExtraPick[], today: string): Doc['days'][number] | null {
+export function applyExtraPicks(doc: Doc, dayRef: string, candidates: readonly ExtraCandidate[], picks: readonly ExtraPick[], today: string, merge = false): Doc['days'][number] | null {
   const day = doc.days.find((each) => each.ref === dayRef);
   if (day === undefined) return null;
   const byId = new Map(candidates.map((each) => [each.id, each]));
   const dayRefs = new Set(doc.items.filter((item) => item.dayRef === dayRef).map((item) => item.ref));
-  const kept = (day.extras?.items ?? []).filter((each) => each.status !== undefined);
+  const kept = (day.extras?.items ?? []).filter((each) => merge || each.status !== undefined);
   const keptIds = new Set(kept.map((each) => each.id));
   const fresh: DayExtraItem[] = [];
   for (const pick of picks) {
@@ -318,6 +425,7 @@ export function applyExtraPicks(doc: Doc, dayRef: string, candidates: readonly E
       ...(pick.swapRef && dayRefs.has(pick.swapRef) ? { swapRef: pick.swapRef } : {}),
       ...(pick.weather ? { weather: pick.weather } : {}),
       ...(candidate.poolRef ? { poolRef: candidate.poolRef } : {}),
+      ...(candidate.town ? { town: candidate.town } : {}),
       ...(candidate.wikipedia ? { wikipedia: candidate.wikipedia } : {}),
       ...(candidate.website ? { website: candidate.website } : {}),
     });
