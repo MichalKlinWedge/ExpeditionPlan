@@ -1106,7 +1106,7 @@ function SunLine({ kind, time }: { kind: 'sunrise' | 'sunset'; time: string }) {
   return (
     <View accessible accessibilityLabel={`${time} ${label}`} style={styles.sunLine}>
       <ThemedText type="small" style={styles.sunText}>
-        {kind === 'sunrise' ? '☀' : '🌇'} {time} {label}
+        {kind === 'sunrise' ? '☀' : '☾'} {time} {label}
       </ThemedText>
       <View style={styles.sunRule} />
     </View>

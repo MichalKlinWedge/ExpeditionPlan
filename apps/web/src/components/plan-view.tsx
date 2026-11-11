@@ -620,7 +620,7 @@ function SunLine({ kind, time }: { kind: "sunrise" | "sunset"; time: string }) {
     <li aria-label={`${time} ${label}`} className="relative flex items-center gap-3 border-l-2 border-zinc-200 py-0.5 pl-4 text-xs text-amber-700 dark:border-zinc-800 dark:text-amber-300">
       <span aria-hidden="true" className="absolute top-1/2 -left-px h-px w-4 bg-amber-400/70 dark:bg-amber-600/70" />
       <span aria-hidden="true" className="w-28 shrink-0 tabular-nums">
-        {kind === "sunrise" ? "☀" : "🌇"} {time}
+        {kind === "sunrise" ? "☀" : "☾"} {time}
       </span>
       <span aria-hidden="true" className="shrink-0">{label}</span>
       <span aria-hidden="true" className="h-px flex-1 border-t border-dashed border-amber-400/70 dark:border-amber-600/70" />
