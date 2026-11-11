@@ -1,6 +1,6 @@
 import "server-only";
 
-import { audioFits, dayMap, type DayMap, guideFor, type GuideRow, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument, withEndPhoto } from "@expeditionplan/core";
+import { audioFits, dayMap, type DayMap, GuideContent, guideFor, type GuideRow, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument, withEndPhoto } from "@expeditionplan/core";
 import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 
 import type { PlayerMusic, PlayerScene, ShowMapData } from "@/components/show-player";
@@ -33,8 +33,15 @@ async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((p
   // Zapowiedź nie pokazuje dziennika: nie ma czego podpisywać.
   const signed = sign && kind === "film" && paths.length > 0 ? await sign(paths) : new Map<string, string>();
 
-  const { scenes, credits } = showScenes(doc, {
+  // Wszystkie opisy wyjazdu (także miejsc spoza planu dni): ich zdjęcia są do wyboru w scenach.
+  const allGuides = rows.flatMap((row) => {
+    if (row.deleted_at || row.audience !== "adult") return [];
+    const parsed = GuideContent.safeParse(row.content);
+    return parsed.success && parsed.data.images.length > 0 ? [{ title: row.title, images: parsed.data.images }] : [];
+  });
+  const { scenes, credits, spare } = showScenes(doc, {
     ...inputs,
+    allGuides,
     activeVariants: { ...inputs.activeVariants, ...picked },
     kind,
     ...(script?.photos ? { photos: script.photos } : {}),
@@ -50,7 +57,7 @@ async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((p
       return { body: row.body ?? "", ...(day !== undefined ? { dayRef: day } : {}), ...(url !== undefined ? { photoUrl: url, photoKey: row.photo_path! } : {}) };
     }),
   });
-  return { doc, scenes, credits };
+  return { doc, scenes, credits, spare };
 }
 
 const signer = (supabase: Supabase, bucket: string) => async (paths: string[]) => {
@@ -67,8 +74,8 @@ export async function loadShow(supabase: Supabase, tripId: string, payload: Pull
   const { data: stored, error } = await supabase.from("trip_shows").select("content").eq("trip_id", tripId).eq("kind", options.kind).maybeSingle();
   const parsed = ShowScript.safeParse(stored?.content ?? {});
   const script = parsed.success ? parsed.data : ShowScript.parse({});
-  const { doc, scenes, credits } = await scenesFrom(payload, journal, options.photos ? signer(supabase, "journal") : null, options.kind, options.variants, script);
-  return { doc, scenes, credits, script, exists: stored !== null, loadError: error?.message };
+  const { doc, scenes, credits, spare } = await scenesFrom(payload, journal, options.photos ? signer(supabase, "journal") : null, options.kind, options.variants, script);
+  return { doc, scenes, credits, spare, script, exists: stored !== null, loadError: error?.message };
 }
 
 /**

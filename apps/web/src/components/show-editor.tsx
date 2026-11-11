@@ -248,7 +248,7 @@ function ScenePhotos({ tripId, kind, sceneKey, choice }: { tripId: string; kind:
         // Własny klucz sceny dla `RememberDetails`: inaczej ten sam nagłówek otwierałby listy wszystkich scen naraz.
         <details className="panel p-2" data-remember={`zdjecia-sceny:${sceneKey}`}>
           <summary className="cursor-pointer text-xs text-zinc-600 dark:text-zinc-400">
-            Dodaj zdjęcia ({count} do wyboru{own === 0 ? ", ta scena nie ma własnych: z innych dni" : ""}; kliknięte idzie na koniec)
+            Dodaj zdjęcia ({count} do wyboru{own === 0 ? ", ta scena nie ma własnych: z innych dni i opisów miejsc" : ""}; kliknięte idzie na koniec)
           </summary>
           <div className="mt-2 flex flex-col gap-2">
             {rest.map((group) => (

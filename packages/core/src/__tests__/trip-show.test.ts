@@ -238,6 +238,13 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(borrowed.find((each) => each.key === other)!.pool).toBeUndefined();
     expect(borrowed.find((each) => each.key === other)!.images.map((image) => image.caption)).toEqual(['D0 2']);
     expect(borrowed.find((each) => each.key === 'outro')!.images.map((image) => image.key)).toEqual(['p/1.jpg']);
+    // Opis miejsca spoza planu dni: jego zdjęcie jest do wyboru („spare”), z podziękowaniem, gdy gra; automat go nie bierze.
+    const loose = guide('Miejsce poza planem', 'Poza');
+    const outside = showScenes(doc, { ...base, kind: 'film', journal, guideOf, allGuides: [{ title: 'Miejsce poza planem', images: loose.images }], photos: { [other]: ['https://upload.wikimedia.org/Poza.jpg'] } });
+    expect(outside.spare.map((image) => image.caption)).toEqual(['Miejsce poza planem']);
+    expect(outside.scenes.find((each) => each.key === other)!.images.map((image) => image.key)).toEqual(['https://upload.wikimedia.org/Poza.jpg']);
+    expect(outside.credits.images.some((image) => image.title === 'File:Poza.jpg')).toBe(true);
+    expect(showScenes(doc, { ...base, kind: 'film', journal, guideOf, allGuides: [{ title: 'x', images: loose.images }] }).credits.images.some((image) => image.title === 'File:Poza.jpg')).toBe(false);
   });
 
   it('wybór zdjęć w scenariuszu: kolejność bez powtórek, `null` wraca do automatu', () => {

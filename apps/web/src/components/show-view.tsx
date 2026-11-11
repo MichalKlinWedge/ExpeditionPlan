@@ -36,17 +36,18 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
   } catch (e) {
     return <p className="text-sm msg-error">Plan w bazie nie przechodzi walidacji: {e instanceof Error ? e.message : String(e)}</p>;
   }
-  const { doc, scenes, credits, script } = loaded;
+  const { doc, scenes, credits, spare, script } = loaded;
   const journalPhotos = ((data as PullPayload).tables as unknown as { journal_entries?: { photo_path: string | null; deleted_at?: string | null }[] }).journal_entries?.filter((row) => row.photo_path && !row.deleted_at).length ?? 0;
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const canEdit = mayEdit && (await editMode());
 
   const narration = new Map(script.scenes.map((scene) => [scene.key, scene]));
   const asPhoto = (image: ShowImage): EditorPhoto => ({ key: showImageKey(image), url: image.url, caption: image.caption });
-  // Zdjęcia do wyboru w scenach: własne zdjęcia każdego dnia i zakończenia (`ShowScene.pool`).
-  const photoSources = scenes.flatMap((scene) =>
-    scene.pool && scene.pool.length > 0 ? [{ key: scene.key, heading: scene.kind === "outro" ? "Zakończenie" : scene.heading, photos: scene.pool.map(asPhoto) }] : [],
-  );
+  // Zdjęcia do wyboru w scenach: własne zdjęcia każdego dnia i zakończenia (`ShowScene.pool`), na końcu z opisów miejsc spoza planu dni.
+  const photoSources = [
+    ...scenes.flatMap((scene) => (scene.pool && scene.pool.length > 0 ? [{ key: scene.key, heading: scene.kind === "outro" ? "Zakończenie" : scene.heading, photos: scene.pool.map(asPhoto) }] : [])),
+    ...(spare.length > 0 ? [{ key: "spare", heading: "Z opisów miejsc spoza planu dni", photos: spare.map(asPhoto) }] : []),
+  ];
   const [player, music] = await Promise.all([playerScenes(supabase, doc, scenes, script), playerMusic(supabase, script)]);
   const editor: EditorScene[] = scenes.map((scene) => {
     const told = narration.get(scene.key);

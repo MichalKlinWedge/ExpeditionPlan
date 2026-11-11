@@ -160,6 +160,11 @@ export type ShowInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
   photos?: ShowScript['photos'];
   /** Zdjęcie na koniec (`ShowScript.endPhoto`): zdjęcie z opisu miejsca spoza scen też dostaje podziękowanie. */
   endPhoto?: string;
+  /**
+   * Wszystkie opisy miejsc wyjazdu (także miejsc spoza planu dni: inne warianty, punkty usunięte, same miejsca): ich
+   * zdjęcia, których żadna scena nie ma w swojej puli, idą do wyboru jako „spoza planu” (`spare`).
+   */
+  allGuides?: readonly { title: string; images: readonly GuideImage[] }[];
 };
 
 const IMAGES_PER_DAY = 6;
@@ -326,7 +331,7 @@ export function withEndPhoto<S extends { kind: string; images: ShowImage[]; pool
   return scenes.map((scene) => (scene.kind === 'outro' && !scene.images.some((image) => image.url === chosen.url) ? { ...scene, images: [...scene.images, chosen] } : scene));
 }
 
-export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; credits: ShowCredits } {
+export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; credits: ShowCredits; spare: ShowImage[] } {
   const schedule = { ...(input.activeVariants ? { activeVariants: input.activeVariants } : {}), ...(input.pulled ? { pulled: input.pulled } : {}) };
   // Film opowiada o tym, co było; zapowiedź o tym, co będzie (niezależnie od daty).
   const after = input.kind === 'film';
@@ -363,7 +368,16 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     return pool;
   });
   const outroPool = journalPool(loose);
-  const tripPool = [...dayPools.flat(), ...outroPool].filter((image, at, all) => all.findIndex((each) => showImageKey(each) === showImageKey(image)) === at);
+  // Zdjęcia opisów miejsc, których nie ma w planie dni (inne warianty, same miejsca): do wyboru, nigdy automatycznie.
+  const spare: ShowImage[] = [];
+  for (const guide of input.allGuides ?? []) {
+    for (const image of guide.images) {
+      if (guideImages.has(image.url)) continue;
+      guideImages.set(image.url, image);
+      spare.push({ url: image.thumbUrl, caption: guide.title, key: image.url, ...(image.author ? { credit: image.author } : {}) });
+    }
+  }
+  const tripPool = [...dayPools.flat(), ...outroPool, ...spare].filter((image, at, all) => all.findIndex((each) => showImageKey(each) === showImageKey(image)) === at);
 
   const dayScenes: ShowScene[] = days.map((day, index) => {
     const items = dayItems[index]!.filter((item) => !approachRefs.has(item.ref));
@@ -569,6 +583,7 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   ];
   return {
     scenes,
+    spare,
     credits: {
       articles: [...usedArticles.values()].map((article) => ({ title: article.title, url: article.url, site: article.site })),
       images: [...usedImages.values()].map((image) => ({ title: image.title, ...(image.author ? { author: image.author } : {}), ...(image.license ? { license: image.license } : {}), sourceUrl: image.sourceUrl, ...(image.own ? { own: true } : {}) })),
