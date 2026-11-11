@@ -94,6 +94,17 @@ async function View({ params }: { params: Promise<{ id: string; ref: string }> }
     hasLine: line !== undefined,
   };
 
+  const usedBy = (
+    <div className="flex flex-wrap items-center gap-1">
+      <span className="text-zinc-500">{users.length > 0 ? "Podpięta do:" : "Nie jest podpięta do żadnego punktu — podepniesz ją na liście „Trasy” albo na karcie punktu."}</span>
+      {users.map((item) => (
+        <Link key={item.ref} href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} className="btn-mini">
+          {dayOf(item)} · {item.title}
+        </Link>
+      ))}
+    </div>
+  );
+
   return (
     <>
       <PageHeader
@@ -105,40 +116,30 @@ async function View({ params }: { params: Promise<{ id: string; ref: string }> }
           </>
         }
         actions={mayEdit && <EditToggle editing={editing} />}
-        intro={<>{[ROUTE_KIND[kind], ends, facts].filter(Boolean).join(" · ")}</>}
+        intro={
+          <>
+            {[ROUTE_KIND[kind], ends, facts, track.descentM !== undefined ? `↓ ${track.descentM} m` : null].filter(Boolean).join(" · ")}
+            {track.url !== undefined && <RouteSiteLink url={track.url} className="ml-1.5" />}
+          </>
+        }
       />
 
-      <section className="card flex flex-col gap-2 p-4 text-sm">
-        <h2 className="card-title">Szczegóły</h2>
-        {ends && <p>{ends}</p>}
-        {(facts || track.descentM !== undefined) && (
-          <p>
-            {facts}
-            {track.descentM !== undefined ? ` · ↓ ${track.descentM} m` : ""}
-          </p>
-        )}
-        {(track.difficulty || track.waymarking) && <p className="text-zinc-600 dark:text-zinc-400">{[track.difficulty, track.waymarking].filter(Boolean).join(" · ")}</p>}
-        {track.routeNotes && <p className="whitespace-pre-line">{track.routeNotes}</p>}
-        {track.url !== undefined && (
-          <p className="flex items-center gap-1.5">
-            Trasa na mapie: <RouteSiteLink url={track.url} />
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="text-zinc-500">{users.length > 0 ? "Podpięta do:" : "Nie jest podpięta do żadnego punktu — podepniesz ją na liście „Trasy” albo na karcie punktu."}</span>
-          {users.map((item) => (
-            <Link key={item.ref} href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} className="btn-mini">
-              {dayOf(item)} · {item.title}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Skąd–dokąd, liczby i link są w nagłówku; w trybie edycji „gdzie podpięta” idzie na górę formularza. */}
+      {!editing && (
+        <section className="card flex flex-col gap-2 p-4 text-sm">
+          <h2 className="card-title">Szczegóły</h2>
+          {(track.difficulty || track.waymarking) && <p className="text-zinc-600 dark:text-zinc-400">{[track.difficulty, track.waymarking].filter(Boolean).join(" · ")}</p>}
+          {track.routeNotes && <p className="whitespace-pre-line">{track.routeNotes}</p>}
+          {usedBy}
+        </section>
+      )}
 
       {editing && (
         <RouteEditor
           tripId={id}
           trackRef={track.ref}
           initial={initial}
+          top={usedBy}
           places={doc.places.filter((place) => place.lat !== undefined && place.lng !== undefined).map((place) => ({ ref: place.ref, name: place.name })).sort((a, b) => a.name.localeCompare(b.name, "pl"))}
           users={users.length}
         />

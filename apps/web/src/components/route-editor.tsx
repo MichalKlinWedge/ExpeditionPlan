@@ -1,7 +1,7 @@
 "use client";
 
 import { trackFromGpx, type TrackLine } from "@expeditionplan/core";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { type RouteEditInput, updateRoute } from "@/app/route-actions";
@@ -37,7 +37,7 @@ const textOrNull = (text: string) => (text.trim() === "" ? null : text.trim());
  * Edycja trasy na jej stronie (`updateRoute` → core `editRoute`): nazwa, skąd i dokąd, link, liczby, trudność,
  * oznakowanie, uwagi i linia z pliku GPX (zamiana albo usunięcie). Podpięte punkty mogą od razu wziąć nowe liczby.
  */
-export function RouteEditor({ tripId, trackRef, initial, places, users }: { tripId: string; trackRef: string; initial: RouteEditorValues; places: { ref: string; name: string }[]; users: number }) {
+export function RouteEditor({ tripId, trackRef, initial, places, users, top }: { tripId: string; trackRef: string; initial: RouteEditorValues; places: { ref: string; name: string }[]; users: number; top?: ReactNode }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<FormState>({});
   const [values, setValues] = useState(initial);
@@ -120,6 +120,7 @@ export function RouteEditor({ tripId, trackRef, initial, places, users }: { trip
         save();
       }}>
       <h2 className="card-title">Edycja trasy</h2>
+      {top}
       <div className="grid gap-2 sm:grid-cols-2">
         <label className={`${label} sm:col-span-2`}>
           Nazwa

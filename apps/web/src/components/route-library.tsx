@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { attachItemRoute, removeRouteAction, renameRoute } from "@/app/route-actions";
+import { RouteSiteLink } from "@/components/route-site-link";
 
 export type RouteUseView = { ref: string; title: string; day: string };
 export type RouteView = {
@@ -73,12 +74,10 @@ export function RouteCard({ tripId, route, editing }: { tripId: string; route: R
             mapa, profil{editing ? " i edycja" : " i szczegóły"}
           </Link>
         </p>
-        {(route.facts || route.ends) && <p className="text-zinc-600 dark:text-zinc-400">{[route.ends, route.facts].filter(Boolean).join(" · ")}</p>}
-        {route.url && (
-          <p>
-            <a href={route.url} target="_blank" rel="noreferrer" className="underline">
-              trasa na mapie
-            </a>
+        {(route.facts || route.ends || route.url) && (
+          <p className="text-zinc-600 dark:text-zinc-400">
+            {[route.ends, route.facts].filter(Boolean).join(" · ")}
+            {route.url && <RouteSiteLink url={route.url} className={route.facts || route.ends ? "ml-1.5" : ""} />}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-1">

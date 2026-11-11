@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { EditToggle } from "@/components/edit-toggle";
 import { NewRoute } from "@/components/new-route";
 import { PageHeader } from "@/components/page-header";
+import { RouteFilter } from "@/components/route-filter";
 import { RouteCard, type RouteUseView, type RouteView } from "@/components/route-library";
 import { Loading, Shell } from "@/components/shell";
 import { UnsavedCarRoutes } from "@/components/unsaved-car-routes";
@@ -108,8 +109,12 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
           <p className="text-zinc-600 dark:text-zinc-400">Trasa pojawi się tu po wgraniu pliku GPX albo linku z mapy przy przejściu, a przy przejeździe autem po „Zapisz w „Trasach”” na karcie punktu albo przeliczeniu trasy z „Jedź przez”. W trybie edycji możesz ją też dodać ręcznie.</p>
         </section>
       ) : (
-        groups.map((group, index) => (
-          <section key={group.tracks[0]!.ref} className="card flex flex-col gap-2 p-4 text-sm">
+        <RouteFilter
+          groups={groups.map((group, index) => ({
+            key: group.tracks[0]!.ref,
+            kind: group.kind,
+            node: (
+          <section className="card flex flex-col gap-2 p-4 text-sm">
             <h2 className="card-title">
               {ROUTE_ICON[group.kind]} {group.from !== undefined && group.to !== undefined ? `${group.from} → ${group.to}` : group.tracks.length === 1 ? group.tracks[0]!.name : `Trasa ${index + 1}`}
               <span className="ml-2 text-sm font-normal text-zinc-500">
@@ -123,7 +128,9 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
               ))}
             </ul>
           </section>
-        ))
+            ),
+          }))}
+        />
       )}
     </>
   );
