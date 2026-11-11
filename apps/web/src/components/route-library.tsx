@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { attachItemRoute, removeRouteAction, renameRoute } from "@/app/route-actions";
+import { attachItemRoute, removeRouteAction } from "@/app/route-actions";
 import { RouteSiteLink } from "@/components/route-site-link";
 
 export type RouteUseView = { ref: string; title: string; day: string };
@@ -24,12 +24,11 @@ export type RouteView = {
 
 /**
  * Jedna trasa na stronie „Trasy”: szkic linii, liczby, link do mapy, gdzie jest podpięta (przyciski do kart punktów),
- * a w trybie edycji nazwa, podpięcie do punktu i usunięcie nieużywanej.
+ * a w trybie edycji podpięcie do punktu i usunięcie nieużywanej (nazwę i resztę zmienia się na stronie trasy).
  */
-export function RouteCard({ tripId, route, editing }: { tripId: string; route: RouteView; editing: boolean }) {
+export function RouteCard({ tripId, route, editing, showName }: { tripId: string; route: RouteView; editing: boolean; showName: boolean }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<FormState>({});
-  const [name, setName] = useState(route.name);
   const [target, setTarget] = useState(route.candidates[0]?.ref ?? "");
   const run = (action: () => Promise<FormState>) =>
     start(async () => {
@@ -49,26 +48,8 @@ export function RouteCard({ tripId, route, editing }: { tripId: string; route: R
         </Link>
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        {editing ? (
-          <form
-            className="flex flex-wrap items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              run(() => renameRoute(tripId, route.ref, name));
-            }}>
-            <span aria-hidden="true">{route.icon}</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} maxLength={120} aria-label="Nazwa trasy" className="field min-w-0 flex-1 px-2 py-1 text-sm" />
-            {name.trim() !== route.name && (
-              <button type="submit" disabled={pending} className="btn-primary btn-sm">
-                Zapisz
-              </button>
-            )}
-          </form>
-        ) : (
-          <p className="font-semibold">
-            <span aria-hidden="true">{route.icon}</span> {route.name}
-          </p>
-        )}
+        {/* Nazwę pojedynczej trasy ma nagłówek grupy; przy wariantach odróżnia je nazwa. Zmienia się ją w edycji trasy. */}
+        {showName && <p className="font-semibold">{route.name}</p>}
         <p>
           <Link href={detailsHref} className="btn-mini">
             mapa, profil{editing ? " i edycja" : " i szczegóły"}

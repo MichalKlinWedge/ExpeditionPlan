@@ -1,7 +1,7 @@
 import { isFootRouteItem, legEnds } from './item-route.ts';
 import { pluralForm } from './format.ts';
 import { type DayMap, formatMinutes, type MapPin } from './plan-info.ts';
-import { decodePolyline, distanceM, encodePolyline, type LngLat } from './polyline.ts';
+import { decodePolyline, distanceM, encodePolyline, type LngLat, simplifyPath } from './polyline.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { routeNameEnds, setTrackEnds, type TrackEndsEdit } from './track-ends.ts';
 
@@ -429,4 +429,15 @@ export function unsavedCarRoutes(doc: Doc): Item[] {
   return doc.items
     .filter((item) => routeKindFor(item) === 'car' && item.leg!.trackRef === undefined && carRouteFromItem(doc, item.ref, 'id-sprawdz') !== null)
     .sort(planOrder(dayOrder(doc)));
+}
+
+/** Wynik trasy po drogach (OpenRouteService) jako pola edycji trasy autem: linia uproszczona do 25 m, km i czas. `null` = bez linii. */
+export function routeLineFields(route: { distanceKm: number; durationMin: number; geometry?: string }): RouteEditFields | null {
+  const points = route.geometry === undefined ? [] : simplifyPath(decodePolyline(route.geometry), 25);
+  if (points.length < 2) return null;
+  return {
+    geojson: { type: 'LineString', coordinates: points.map((point) => [round(point[0]), round(point[1])]) },
+    distanceKm: Math.round(route.distanceKm * 10) / 10,
+    durationMin: Math.max(1, Math.round(route.durationMin)),
+  };
 }

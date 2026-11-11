@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { DrawRouteButton } from "@/components/draw-route-button";
 import { EditToggle } from "@/components/edit-toggle";
 import { MemoriesMap } from "@/components/memories-map";
 import { PageHeader } from "@/components/page-header";
@@ -150,7 +151,8 @@ async function View({ params }: { params: Promise<{ id: string; ref: string }> }
         <section className={`card flex flex-col gap-2 p-4 text-sm ${hasProfile ? "" : "lg:col-span-2"}`}>
         <h2 className="card-title">Mapa</h2>
         {map.pins.length === 0 && map.lines.length === 0 ? <p className="text-zinc-500">Trasa nie ma linii ani końców ze współrzędnymi: dodaj plik GPX albo skąd i dokąd w edycji.</p> : <MemoriesMap map={map} fitLines square={hasProfile} />}
-        {line === undefined && map.pins.length > 0 && <p className="text-xs text-zinc-500">Bez linii: na mapie są tylko końce. Linię da plik GPX{kind === "car" ? " albo „Przelicz trasę” przy podpiętym przejeździe" : ""}.</p>}
+        {line === undefined && map.pins.length > 0 && <p className="text-xs text-zinc-500">Bez linii: na mapie są tylko końce. Linię da plik GPX{kind === "car" ? " albo przebieg po drogach wyznaczony z końców (w trybie edycji)" : ""}.</p>}
+        {editing && kind === "car" && track.route?.from !== undefined && track.route.to !== undefined && <DrawRouteButton tripId={id} trackRef={track.ref} hasLine={line !== undefined} />}
       </section>
 
       {hasProfile && (

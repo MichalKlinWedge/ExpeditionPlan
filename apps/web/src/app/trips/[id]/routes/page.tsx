@@ -119,7 +119,8 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         <RouteFilter
           groups={groups.map((group, index) => {
             const day = firstDay(group);
-            const title = group.from !== undefined && group.to !== undefined ? `${group.from} → ${group.to}` : group.tracks.length === 1 ? group.tracks[0]!.name : `Trasa ${index + 1}`;
+            // Pojedyncza trasa: jej nazwa; warianty: wspólne końce (nazwy są przy wariantach).
+            const title = group.tracks.length === 1 ? group.tracks[0]!.name : group.from !== undefined && group.to !== undefined ? `${group.from} → ${group.to}` : `Trasa ${index + 1}`;
             return {
             key: group.tracks[0]!.ref,
             kind: group.kind,
@@ -137,7 +138,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
             </h2>
             <ul className="flex flex-col gap-2">
               {group.tracks.map((track) => (
-                <RouteCard key={track.ref} tripId={id} route={view(track, group.kind)} editing={editing} />
+                <RouteCard key={track.ref} tripId={id} route={view(track, group.kind)} editing={editing} showName={group.tracks.length > 1} />
               ))}
             </ul>
           </section>

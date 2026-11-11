@@ -1,12 +1,13 @@
 "use server";
 
-import { attachRoute, carRouteFromItem, detachRoute, DocTrack, editRoute, isGoogleShortLink, type LatLng, newRoute, parseCoordinates, plainName, plural, removeRoute, trackEndsNote, TripDocument } from "@expeditionplan/core";
-import { resolveGoogleLink } from "@expeditionplan/planner";
+import { attachRoute, carRouteFromItem, detachRoute, DocTrack, editRoute, isGoogleShortLink, type LatLng, newRoute, parseCoordinates, formatMinutes, plainName, plural, removeRoute, routeKind, routeLine, routeLineFields, trackEndsNote, TripDocument } from "@expeditionplan/core";
+import { googleLinkVias, resolveGoogleLink } from "@expeditionplan/planner";
 import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/app/actions";
+import { aiAccessError, routeLookup } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { pullTrip, validationError } from "@/lib/trip-snapshot";
 
@@ -143,11 +144,13 @@ export type NewRouteFields = z.input<typeof NewRoute>;
 export async function addRoute(tripId: string, fields: NewRouteFields): Promise<FormState> {
   const parsed = NewRoute.safeParse(fields);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Niepoprawne dane trasy." };
-  return commit(tripId, `/trips/${tripId}/routes`, (doc) => {
-    const created = newRoute(doc, `id-${uuidv7()}`, parsed.data);
+  const ref = `id-${uuidv7()}`;
+  const saved = await commit(tripId, `/trips/${tripId}/routes`, (doc) => {
+    const created = newRoute(doc, ref, parsed.data);
     if (typeof created === "string") return created;
     return { doc: created.doc, writes: [{ collection: "tracks", element: created.track, op: "insert" }], ok: `Dodano trasę „${created.track.name}”.` };
   });
+  return saved.ok ? withLine(saved, await drawCarRoute(tripId, ref, true)) : saved;
 }
 
 const text = (max: number) => z.string().trim().max(max).nullable().optional();
@@ -200,7 +203,7 @@ export async function updateRoute(tripId: string, trackRef: string, fields: Rout
     if (point === null) return { error: `${label}: nie widzę współrzędnych. Wklej np. „49.2, 22.5” albo link z Google Maps lub OpenStreetMap.` };
     fresh.push({ end, name, point });
   }
-  return commit(tripId, `/trips/${tripId}/routes/${encodeURIComponent(trackRef)}`, (doc) => {
+  const saved = await commit(tripId, `/trips/${tripId}/routes/${encodeURIComponent(trackRef)}`, (doc) => {
     const added: ElementWrite[] = [];
     let base = doc;
     const ends: { fromRef?: string; toRef?: string } = {};
@@ -224,4 +227,62 @@ export async function updateRoute(tripId: string, trackRef: string, fields: Rout
       ok: `Zapisano trasę.${users > 0 ? ` Zaktualizowano ${plural(users, ["podpięty punkt", "podpięte punkty", "podpiętych punktów"])} — plan dnia przeliczony.` : ""}`,
     };
   });
+  return saved.ok ? withLine(saved, await drawCarRoute(tripId, trackRef, true)) : saved;
+}
+
+/** Komunikat zapisu z dopisanym wynikiem wyznaczenia przebiegu (błąd tego kroku nie unieważnia zapisu). */
+function withLine(saved: FormState, drawn: FormState | null): FormState {
+  if (drawn === null) return saved;
+  return { ok: `${saved.ok} ${drawn.ok ?? `Przebiegu nie wyznaczono: ${drawn.error}`}` };
+}
+
+/**
+ * Przebieg trasy autem po drogach (OpenRouteService) z jej końców, przez „Jedź przez” albo punkty pośrednie własnego
+ * linku Google (jak „Przelicz trasę” przy przejeździe; z Google nic nie zapisujemy). Linia, km i czas trafiają do trasy
+ * i do podpiętych przejazdów. `auto` (po zapisie): tylko trasa autem bez linii i z oboma końcami, bez komunikatu, gdy
+ * nie ma czego liczyć.
+ */
+async function drawCarRoute(tripId: string, trackRef: string, auto: boolean): Promise<FormState | null> {
+  const { supabase } = await requireUser(`/trips/${tripId}/routes/${encodeURIComponent(trackRef)}`);
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return auto ? null : { error: pulled.error };
+  const track = stateFromPayload(pulled.payload).doc.tracks.find((each) => each.ref === trackRef);
+  if (track === undefined) return auto ? null : { error: "Tej trasy już nie ma — odśwież stronę." };
+  if (routeKind(track) !== "car") return auto ? null : { error: "Przebieg po drogach liczy się tylko dla trasy autem; pieszą narysuje plik GPX." };
+  if (auto && routeLine(track) !== undefined) return null;
+  const from = track.route?.from;
+  const to = track.route?.to;
+  if (from === undefined || to === undefined) return auto ? null : { error: "Ustaw „Skąd” i „Dokąd” — od nich liczy się przebieg." };
+  const denied = await aiAccessError();
+  if (denied) return auto ? null : { error: denied };
+  const lookup = routeLookup();
+  if (lookup === null) return auto ? null : { error: "Serwer nie ma klucza OPENROUTESERVICE_API_KEY." };
+  const own = track.route?.via ?? [];
+  const link = own.length > 0 ? { vias: own, status: "own" as const } : await googleLinkVias(track.url);
+  let result;
+  try {
+    result = await lookup(from, to, "driving-car", link.vias);
+  } catch (e) {
+    return { error: `usługa tras nie odpowiedziała (${e instanceof Error ? e.message : String(e)}), spróbuj za chwilę.` };
+  }
+  const fields = result === null ? null : routeLineFields(result);
+  if (fields === null) return { error: "nie znaleziono drogi między końcami tej trasy." };
+  const via = link.vias.length > 0 ? ` przez ${plural(link.vias.length, ["punkt", "punkty", "punktów"])} ${link.status === "own" ? "z „Jedź przez”" : "z Twojego linku"}` : "";
+  const note = link.status === "none" ? " Twój link ma tylko start i cel, więc drogę wybrał OpenRouteService i może iść inaczej niż w Google." : "";
+  return commit(tripId, `/trips/${tripId}/routes/${encodeURIComponent(trackRef)}`, (doc) => {
+    const edited = editRoute(doc, trackRef, fields, { updateUsers: true, ids: () => ({ fromId: uuidv7(), toId: uuidv7() }) });
+    if (typeof edited === "string") return edited;
+    return {
+      doc: edited.doc,
+      writes: [...edited.places.map(({ place, created }): ElementWrite => ({ collection: "places", element: place, op: created ? "insert" : "update" })), { collection: "tracks", element: edited.track, op: "update" }],
+      items: edited.items.map((item) => item.ref),
+      ok: `Wyznaczono przebieg po drogach${via}: ${fields.distanceKm!.toLocaleString("pl-PL")} km, ${formatMinutes(fields.durationMin!)}.${note}`,
+    };
+  });
+}
+
+/** „Wyznacz przebieg” na stronie trasy autem. */
+export async function drawRouteLine(tripId: string, trackRef: string): Promise<FormState> {
+  const drawn = (await drawCarRoute(tripId, trackRef, false)) ?? { error: "nie ma czego wyznaczyć." };
+  return drawn.error === undefined ? drawn : { error: `Nie wyznaczono przebiegu: ${drawn.error}` };
 }
