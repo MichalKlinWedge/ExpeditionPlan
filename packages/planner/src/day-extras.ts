@@ -35,7 +35,7 @@ const FILTERS = [
 ];
 
 const SERVER_TIMEOUT_S = 60;
-/** Najwięcej elementów w odpowiedzi — w dużym mieście atrakcji są setki, a AI dostaje 40. */
+/** Najwięcej elementów w odpowiedzi — w dużym mieście atrakcji są setki, a AI dostaje 60. */
 const MAX_ELEMENTS = 600;
 
 const coords = (line: readonly LngLat[]) => line.map(([lng, lat]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join(',');
@@ -83,7 +83,7 @@ export const DayExtrasAnswer = z.object({
         weather: z.enum(['outdoor', 'indoor', 'any']).nullish(),
       }),
     )
-    .max(15),
+    .max(24),
 });
 
 const clip = (text: string | undefined, max: number) => (text === undefined ? undefined : text.length > max ? `${text.slice(0, max)}…` : text);
@@ -139,7 +139,7 @@ export function dayExtrasPrompt(doc: Doc, dayRef: string, options: ScheduleOptio
     '',
     'Zasady:',
     '1. Wybieraj tylko z listy `candidates`, kluczem `id`. Nie dopisuj innych miejsc.',
-    '2. Najwyżej 12, od najciekawszych. Pomiń drobiazgi (zwykłe pomniki, przeciętne kościoły, parki osiedlowe), chyba że są wyjątkowe. Kandydaci „z puli wyjazdu” to pomysły podróżnych — bierz je, gdy pasują.',
+    '2. Najwyżej 20, od najciekawszych. Pomiń drobiazgi (zwykłe pomniki, przeciętne kościoły, parki osiedlowe), chyba że są wyjątkowe. Kandydaci „z puli wyjazdu” to pomysły podróżnych — bierz je, gdy pasują.',
     '3. `title`: nazwa po polsku, gdy jest znana, inaczej oryginalna. `type`: rodzaj po polsku jednym-dwoma słowami. `why`: 1–2 zdania po polsku, co to jest i dlaczego warto; bez cen i godzin otwarcia z pamięci.',
     '4. `stayMin`: realny czas na miejscu (obejrzeć z zewnątrz 5–15 min, krótki spacer 20–40 min, muzeum lub zamek ze zwiedzaniem 60–120 min). Dojazdu nie wliczaj: `detourMin` policzył kod.',
     '5. `fit`: `pass` — widać po drodze bez zatrzymywania albo leży tuż przy trasie (wieża, zamek nad drogą, wodospad przy szlaku; tylko przy małym `offM`); `stop` — krótki postój do ok. 20 min na miejscu; `visit` — zwiedzanie.',

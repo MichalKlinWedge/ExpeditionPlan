@@ -38,8 +38,8 @@ const PARKING_MIN = 5;
 /** Tuż przy drodze: zatrzymanie na poboczu. */
 const ROADSIDE_M = 150;
 const ROADSIDE_MIN = 2;
-/** Kandydatów dla AI: więcej to dłuższa odpowiedź bez lepszego wyboru. */
-export const EXTRA_CANDIDATES_MAX = 40;
+/** Kandydatów dla AI (wybiera do 20): więcej to dłuższa odpowiedź bez lepszego wyboru. */
+export const EXTRA_CANDIDATES_MAX = 60;
 
 type Path = { mode: 'foot' | 'car'; coordinates: LngLat[]; ref?: string };
 type Spot = { lat: number; lng: number; ref?: string };
