@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { encodePolyline, type LngLat } from '../polyline.ts';
-import { attachRoute, carRouteFromItem, detachRoute, removeRoute, routeChoices, routeGroups, routeKindFor, routeUsers } from '../route-library.ts';
+import { attachRoute, carRouteFromItem, detachRoute, newRoute, removeRoute, routeChoices, routeGroups, routeKindFor, routeUsers } from '../route-library.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const road: LngLat[] = [
@@ -87,5 +87,18 @@ describe('Trasy wyjazdu', () => {
     expect(detached.item.leg!.trackRef).toBeUndefined();
     expect(detached.item.leg!.geometry).toBe(encodePolyline(road));
     expect(detachRoute(doc, 'pociag')).toBeNull();
+  });
+
+  it('trasa dodana ręcznie: końce z miejsc albo z nazwy pliku, bez linii, linku i końców — odmowa', () => {
+    const car = newRoute(doc, 'id-n1', { kind: 'car', name: 'Przez Brzeg', fromRef: 'a', toRef: 'b', distanceKm: 80, durationMin: 85, ascentM: 300 });
+    if (typeof car === 'string') throw new Error(car);
+    expect(car.track).toEqual({ ref: 'id-n1', name: 'Przez Brzeg', distanceKm: 80, durationMin: 85, route: { mode: 'car', from: { name: 'Wrocław', lat: 51.1, lng: 17.03 }, to: { name: 'Nysa', lat: 50.9, lng: 17.4 } } });
+    const saved = carRouteFromItem(car.doc, 'jazda', 'id-r1')!.doc;
+    expect(routeGroups(saved)[0]!.tracks.map((track) => track.ref)).toEqual(['id-r1', 'id-n1']);
+    const gpx = newRoute(doc, 'id-n2', { kind: 'foot', name: 'Trasa z Kletna do Śnieżnik', geojson: { type: 'LineString', coordinates: [[16.86, 50.23], [16.85, 50.2]] } });
+    if (typeof gpx === 'string') throw new Error(gpx);
+    expect(gpx.track.route).toEqual({ mode: 'foot', from: { name: 'Kletna', lat: 50.23, lng: 16.86 }, to: { name: 'Śnieżnik', lat: 50.2, lng: 16.85 } });
+    expect(newRoute(doc, 'id-n3', { kind: 'foot', name: 'Bez niczego' })).toBe('Podaj plik GPX, link do trasy albo skąd i dokąd.');
+    expect(newRoute(doc, 'id-n3', { kind: 'foot', name: ' ', url: 'https://mapy.com/s/x' })).toBe('Trasa musi mieć nazwę.');
   });
 });

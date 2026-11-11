@@ -1,6 +1,6 @@
 "use server";
 
-import { attachRoute, carRouteFromItem, detachRoute, removeRoute, trackEndsNote, TripDocument } from "@expeditionplan/core";
+import { attachRoute, carRouteFromItem, detachRoute, DocTrack, newRoute, removeRoute, trackEndsNote, TripDocument } from "@expeditionplan/core";
 import { type ElementWrite, refIndex, saveElements, savePlanEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
@@ -99,5 +99,31 @@ export async function removeRouteAction(tripId: string, trackRef: string): Promi
     const next = removeRoute(doc, trackRef);
     if (typeof next === "string") return next;
     return { doc: next, writes: [{ collection: "tracks", element: track!, op: "remove" }], ok: `Usunięto trasę „${track!.name}”.` };
+  });
+}
+
+const NewRoute = z.object({
+  kind: z.enum(["foot", "car"]),
+  name: Name,
+  // Tylko http(s): link trafia do `href` i do przeglądarki telefonu.
+  url: z.url().regex(/^https?:\/\//i, "Link musi zaczynać się od https://.").max(500).optional(),
+  distanceKm: z.number().nonnegative().max(5000).optional(),
+  durationMin: z.number().int().nonnegative().max(14_400).optional(),
+  ascentM: z.number().int().nonnegative().max(30_000).optional(),
+  descentM: z.number().int().nonnegative().max(30_000).optional(),
+  geojson: DocTrack.shape.geojson.unwrap().refine((line) => line.coordinates.length <= 2000, "Za dużo punktów śladu.").optional(),
+  fromRef: z.string().max(80).optional(),
+  toRef: z.string().max(80).optional(),
+});
+export type NewRouteFields = z.input<typeof NewRoute>;
+
+/** Trasa dodana ręcznie w „Trasach”: bez punktu planu, do podpięcia później. Plik GPX czyta przeglądarka (`trackFromGpx`). */
+export async function addRoute(tripId: string, fields: NewRouteFields): Promise<FormState> {
+  const parsed = NewRoute.safeParse(fields);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Niepoprawne dane trasy." };
+  return commit(tripId, `/trips/${tripId}/routes`, (doc) => {
+    const created = newRoute(doc, `id-${uuidv7()}`, parsed.data);
+    if (typeof created === "string") return created;
+    return { doc: created.doc, writes: [{ collection: "tracks", element: created.track, op: "insert" }], ok: `Dodano trasę „${created.track.name}”.` };
   });
 }

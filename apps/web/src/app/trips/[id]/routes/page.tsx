@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EditToggle } from "@/components/edit-toggle";
+import { NewRoute } from "@/components/new-route";
 import { PageHeader } from "@/components/page-header";
 import { RouteCard, type RouteUseView, type RouteView } from "@/components/route-library";
 import { Loading, Shell } from "@/components/shell";
@@ -97,10 +98,11 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
           </>
         }
       />
+      {editing && <NewRoute tripId={id} places={doc.places.filter((place) => place.lat !== undefined && place.lng !== undefined).map((place) => ({ ref: place.ref, name: place.name })).sort((a, b) => a.name.localeCompare(b.name, "pl"))} />}
       {groups.length === 0 ? (
         <section className="card p-4 text-sm">
           <h2 className="card-title">Brak tras</h2>
-          <p className="text-zinc-600 dark:text-zinc-400">Trasa pojawi się tu po wgraniu pliku GPX albo linku z mapy przy przejściu, a przy przejeździe autem po „Zapisz w „Trasach”” na karcie punktu albo przeliczeniu trasy z „Jedź przez”.</p>
+          <p className="text-zinc-600 dark:text-zinc-400">Trasa pojawi się tu po wgraniu pliku GPX albo linku z mapy przy przejściu, a przy przejeździe autem po „Zapisz w „Trasach”” na karcie punktu albo przeliczeniu trasy z „Jedź przez”. W trybie edycji możesz ją też dodać ręcznie.</p>
         </section>
       ) : (
         groups.map((group, index) => (

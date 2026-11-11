@@ -3,7 +3,7 @@ import { pluralForm } from './format.ts';
 import { formatMinutes } from './plan-info.ts';
 import { decodePolyline, distanceM, encodePolyline, type LngLat } from './polyline.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
-import { setTrackEnds, type TrackEndsEdit } from './track-ends.ts';
+import { routeNameEnds, setTrackEnds, type TrackEndsEdit } from './track-ends.ts';
 
 /**
  * „Trasy” wyjazdu: ślady piesze (GPX, link z mapy) i trasy autem (przebieg z OpenRouteService, „Jedź przez”,
@@ -285,4 +285,51 @@ export function routeFacts(track: Track): string {
   ]
     .filter((each) => each !== null)
     .join(' · ');
+}
+
+export type NewRouteInput = {
+  kind: RouteKind;
+  name: string;
+  url?: string;
+  distanceKm?: number;
+  durationMin?: number;
+  ascentM?: number;
+  descentM?: number;
+  /** Linia z pliku GPX (`trackFromGpx`). */
+  geojson?: NonNullable<Track['geojson']>;
+  /** Miejsca wyjazdu ze współrzędnymi: początek i koniec trasy. */
+  fromRef?: string;
+  toRef?: string;
+};
+
+/**
+ * Trasa dodana ręcznie w „Trasach”, bez punktu planu: nazwa, środek, link, liczby, plik GPX i końce. Końce z miejsc
+ * wyjazdu, a bez nich z nazwy pliku „Trasa z A do B” i końców jego linii — po nich trasa trafia do wariantów tej
+ * samej drogi. Tekst = powód odmowy.
+ */
+export function newRoute(doc: Doc, ref: string, input: NewRouteInput): { doc: Doc; track: Track } | string {
+  const name = input.name.trim();
+  if (name === '') return 'Trasa musi mieć nazwę.';
+  const line = input.geojson === undefined ? undefined : routeLine(input);
+  const typed = routeNameEnds(name, doc.places);
+  const end = (placeRef: string | undefined, typedName: string | undefined, point: LngLat | undefined): RouteEnd | undefined => {
+    const place = placeEnd(doc, placeRef);
+    if (place !== undefined) return place;
+    return typedName !== undefined && point !== undefined ? { name: typedName, lat: round(point[1]), lng: round(point[0]) } : undefined;
+  };
+  const from = end(input.fromRef, typed.from, line?.[0]);
+  const to = end(input.toRef, typed.to, line?.at(-1));
+  if (line === undefined && input.url === undefined && (from === undefined || to === undefined)) return 'Podaj plik GPX, link do trasy albo skąd i dokąd.';
+  const track: Track = {
+    ref,
+    name,
+    ...(input.distanceKm !== undefined ? { distanceKm: input.distanceKm } : {}),
+    ...(input.ascentM !== undefined && input.kind === 'foot' ? { ascentM: input.ascentM } : {}),
+    ...(input.descentM !== undefined && input.kind === 'foot' ? { descentM: input.descentM } : {}),
+    ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
+    ...(input.url !== undefined ? { url: input.url } : {}),
+    route: { mode: input.kind, ...(from ? { from } : {}), ...(to ? { to } : {}) },
+    ...(input.geojson !== undefined ? { geojson: input.geojson } : {}),
+  };
+  return { doc: { ...doc, tracks: [...doc.tracks, track] }, track };
 }
