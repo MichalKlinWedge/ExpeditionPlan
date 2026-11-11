@@ -1,12 +1,12 @@
 import { SPEECH_VOICES } from "@expeditionplan/ai";
-import { audioFits, scenesToRecord, type ShowKind } from "@expeditionplan/core";
+import { audioFits, scenesToRecord, type ShowImage, showImageKey, type ShowKind } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EditToggle } from "@/components/edit-toggle";
 import { PublicShowToggle } from "@/components/public-show-toggle";
-import { type EditorScene, ShowEditor, ShowEndPhoto, ShowMusicEditor, ShowRouteOptions } from "@/components/show-editor";
+import { type EditorPhoto, type EditorScene, ShowEditor, ShowEndPhoto, ShowMusicEditor, ShowRouteOptions } from "@/components/show-editor";
 import { ShowPlayer } from "@/components/show-player";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
@@ -42,6 +42,7 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
   const canEdit = mayEdit && (await editMode());
 
   const narration = new Map(script.scenes.map((scene) => [scene.key, scene]));
+  const asPhoto = (image: ShowImage): EditorPhoto => ({ key: showImageKey(image), url: image.url, caption: image.caption });
   const [player, music] = await Promise.all([playerScenes(supabase, doc, scenes, script), playerMusic(supabase, script)]);
   const editor: EditorScene[] = scenes.map((scene) => {
     const told = narration.get(scene.key);
@@ -55,16 +56,17 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
       edited: told?.edited === true,
       status: told === undefined || told.text.trim() === "" ? "none" : fits ? "ready" : told.audio ? "old" : "new",
       ...(fits ? { seconds: Math.round(told.audio.durationMs / 1000) } : {}),
+      ...(scene.pool && scene.pool.length > 0 ? { photos: { auto: scene.chosen !== true, shown: scene.images.map(asPhoto), pool: scene.pool.map(asPhoto) } } : {}),
     };
   });
   const keys = new Set(scenes.map((scene) => scene.key));
   const toRecord = scenesToRecord(script).filter((key) => keys.has(key));
   const recorded = player.filter((scene) => scene.audio).length;
   const approach = scenes.find((scene) => scene.kind === "intro")?.approach;
-  // Kandydaci na zdjęcie przed planszą końcową: zdjęcia dni w kolejności filmu (adresy podpisane z odtwarzacza).
-  const endCandidates = player
-    .filter((scene) => scene.kind === "day")
-    .flatMap((scene) => scene.images.map((image) => ({ key: image.key ?? image.url, url: image.url, caption: image.caption })));
+  // Kandydaci na zdjęcie przed planszą końcową: wszystkie zdjęcia dni w kolejności filmu, także niepokazane w scenach.
+  const days = scenes.filter((scene) => scene.kind === "day");
+  const endCandidates = days.flatMap((scene) => scene.pool ?? scene.images).map(asPhoto);
+  const lastPhoto = days.flatMap((scene) => scene.images).at(-1);
   const back = scenes.find((scene) => scene.kind === "outro")?.approach;
   const written = player.filter((scene) => scene.text.trim() !== "").length;
 
@@ -102,7 +104,7 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
           back={back ? { on: script.showReturn, title: `${back.title}${back.facts ? ` · ${back.facts}` : ""}` } : null}
         />
       )}
-      {canEdit && <ShowEndPhoto tripId={id} kind={kind} choice={script.endPhoto} photos={endCandidates} />}
+      {canEdit && <ShowEndPhoto tripId={id} kind={kind} choice={script.endPhoto} photos={endCandidates} last={lastPhoto === undefined ? undefined : showImageKey(lastPhoto)} />}
     </>
   );
 }

@@ -106,13 +106,30 @@ export type PlayerScene = {
   guideCollage?: ShowImage[];
   /** Scena bez mapy (wstęp filmu): plansza z tekstem (`text`), potem kolaże i zdjęcia. */
   mapless?: boolean;
+  /** Zdjęcia wybrane w edycji (`ShowScript.photos`): scena trwa tyle, żeby pokazać każde (`chosenPhotosMs`). */
+  chosen?: boolean;
 };
 
 /** Kolaż etapu `collage`: `index` 0 — z dziennika (`collage`), 1 — z opisów miejsc (`guideCollage`). */
 export const collageAt = (scene: PlayerScene, index: number): ShowImage[] | undefined => (index === 1 ? scene.guideCollage : scene.collage);
 
+/**
+ * Najkrótsza scena, w której zmieści się każde wybrane zdjęcie (po `PHOTO_MIN_MS`) obok map (razem najwyżej
+ * `MAP_SHARE` sceny, każda co najmniej `MAP_MIN_MS`): wybranych zdjęć nic nie ucina, po lektorze zdjęcia lecą dalej.
+ */
+const chosenPhotosMs = (scene: PlayerScene) => {
+  const slides = scene.images.length + (scene.collage && scene.collage.length > 0 ? 1 : 0);
+  if (!scene.chosen || slides === 0) return 0;
+  const shots = 1 + (scene.approach ? 1 : 0);
+  return Math.max((slides * PHOTO_MIN_MS) / (1 - MAP_SHARE), slides * PHOTO_MIN_MS + shots * MAP_MIN_MS);
+};
+
 const sceneMs = (scene: PlayerScene) =>
-  scene.kind === "title" ? TITLE_MS : scene.kind === "end" ? END_MS : (scene.audio?.durationMs ?? (scene.text.trim() === "" ? 5_000 : readingMs(scene.text)));
+  scene.kind === "title"
+    ? TITLE_MS
+    : scene.kind === "end"
+      ? END_MS
+      : Math.max(scene.audio?.durationMs ?? (scene.text.trim() === "" ? 5_000 : readingMs(scene.text)), chosenPhotosMs(scene));
 
 /** Kolumny kolażu: 2 i 3 zdjęcia w rzędzie, 4 w kwadracie, więcej po 3 (na wąskim ekranie po 2). */
 export const collageGrid = (count: number) => (count <= 3 ? { columns: count } : count === 4 ? { columns: 2 } : { columns: 3 });

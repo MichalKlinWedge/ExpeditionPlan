@@ -1,7 +1,7 @@
 "use server";
 
 import { isSpeechVoice, SpeechLimitError } from "@expeditionplan/ai";
-import { applyShowDraft, BriefLocation, destinationLine, droppedAudio, editShowText, isShowKind, isShowMusicPath, narrationHash, plural, type ShowKind, ShowScript, setShowAudio, setShowLocked, showBrief } from "@expeditionplan/core";
+import { applyShowDraft, BriefLocation, destinationLine, droppedAudio, editShowText, isShowKind, isShowMusicPath, narrationHash, plural, SCENE_PHOTOS_MAX, setScenePhotos, type ShowKind, ShowScript, setShowAudio, setShowLocked, showBrief } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { draftShowNarration } from "@expeditionplan/planner";
 import { refresh } from "next/cache";
@@ -187,6 +187,25 @@ export async function setShowEndPhoto(tripId: string, kind: ShowKind, choice: st
   if (failed) return { error: failed };
   refresh();
   return { ok: "Zapisano zdjęcie na koniec." };
+}
+
+/**
+ * Zdjęcia jednej sceny (`ShowScript.photos`): klucze zdjęć w kolejności pokazu, `[]` = bez zdjęć, `null` = automatycznie.
+ * Klucz spoza puli sceny pokaz pominie (`scenePhotos`), więc tu wystarczy kształt.
+ */
+export async function setShowScenePhotos(tripId: string, kind: ShowKind, sceneKey: string, keys: string[] | null): Promise<FormState> {
+  if (typeof sceneKey !== "string" || sceneKey.length > 200) return { error: "Nieprawidłowa scena." };
+  if (keys !== null && (!Array.isArray(keys) || keys.length > SCENE_PHOTOS_MAX || keys.some((key) => typeof key !== "string" || key.length === 0 || key.length > 1000))) return { error: "Nieprawidłowe zdjęcia." };
+  const loaded = await load(tripId, kind);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, scenes, script } = loaded;
+  if (!scenes.some((scene) => scene.key === sceneKey)) return { error: "Tej sceny nie ma już w pokazie." };
+  const next = setScenePhotos(script, sceneKey, keys);
+  if (JSON.stringify(next.photos ?? null) === JSON.stringify(script.photos ?? null)) return { ok: "Bez zmian." };
+  const failed = await save(supabase, tripId, kind, script, next);
+  if (failed) return { error: failed };
+  refresh();
+  return { ok: "Zapisano zdjęcia sceny." };
 }
 
 /** Ile przeglądarka czeka przy limicie minutowym: tyle, ile podał Google, w rozsądnych granicach. */

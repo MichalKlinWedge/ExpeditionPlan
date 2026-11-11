@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GuideContent } from '../guide.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
-import { applyShowDraft, audioFits, destinationLine, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenesToRecord, setShowAudio, setShowLocked, ShowScript, showBrief, showMusicFile, showScenes, withEndPhoto } from '../trip-show.ts';
+import { applyShowDraft, audioFits, destinationLine, droppedAudio, editShowText, isShowMusicPath, narrationHash, readingMs, scenePhotos, scenesToRecord, setScenePhotos, setShowAudio, setShowLocked, ShowScript, showBrief, showMusicFile, showScenes, withEndPhoto } from '../trip-show.ts';
 
 const fixture = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
 
@@ -203,6 +203,43 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(withEndPhoto(scenes, 'p/0-1.jpg').at(-1)!.images.map((image) => image.caption)).toEqual(['D0 1']);
     expect(withEndPhoto(scenes, '').at(-1)!.images).toEqual([]);
     expect(withEndPhoto(scenes, 'nie-ma').at(-1)!.images).toEqual([]);
+  });
+
+  it('zdjęcia sceny wybrane w edycji: z puli dnia, w podanej kolejności, z podziękowaniem; pusta lista = bez zdjęć', () => {
+    const doc = fixture('maroko');
+    const days = [...doc.days].sort((a, b) => a.date.localeCompare(b.date));
+    const journal = [1, 2, 3].map((n) => ({ dayRef: days[0]!.ref, body: `D0 ${n}`, photoUrl: `https://example.com/${n}.jpg`, photoKey: `p/${n}.jpg` }));
+    const sight = doc.items.find((item) => item.kind === 'visit' && item.dayRef === days[0]!.ref);
+    const twoImages = (title: string): GuideContent => {
+      const one = guide(title, 'Jedno');
+      return { ...one, images: [...one.images, { ...one.images[0]!, url: 'https://upload.wikimedia.org/Drugie.jpg', thumbUrl: 'https://upload.wikimedia.org/thumb/Drugie.jpg', title: 'File:Drugie.jpg', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Drugie.jpg' }] };
+    };
+    const guideOf = (item: { title: string }) => (sight !== undefined && item.title === sight.title ? twoImages(sight.title) : null);
+    const key = `day:${days[0]!.ref}`;
+    const auto = showScenes(doc, { ...base, kind: 'film', journal, guideOf });
+    const day = auto.scenes.find((scene) => scene.key === key)!;
+    expect(day.chosen).toBeUndefined();
+    // W puli są wszystkie zdjęcia dnia, także drugie z opisu miejsca, którego automat nie bierze.
+    expect(day.pool!.map((image) => image.key)).toEqual(expect.arrayContaining(['p/1.jpg', 'p/2.jpg', 'p/3.jpg', ...(sight ? ['https://upload.wikimedia.org/Drugie.jpg'] : [])]));
+    expect(auto.credits.images.some((image) => image.title === 'File:Drugie.jpg')).toBe(false);
+
+    const picked = ['p/3.jpg', ...(sight ? ['https://upload.wikimedia.org/Drugie.jpg'] : []), 'nie-ma', 'p/1.jpg', 'p/3.jpg'];
+    const chosen = showScenes(doc, { ...base, kind: 'film', journal, guideOf, photos: { [key]: picked } });
+    const scene = chosen.scenes.find((each) => each.key === key)!;
+    expect(scene.chosen).toBe(true);
+    expect(scene.images.map((image) => image.key)).toEqual(['p/3.jpg', ...(sight ? ['https://upload.wikimedia.org/Drugie.jpg'] : []), 'p/1.jpg']);
+    if (sight) {
+      expect(chosen.credits.images.some((image) => image.title === 'File:Drugie.jpg')).toBe(true);
+    }
+    expect(showScenes(doc, { ...base, kind: 'film', journal, guideOf, photos: { [key]: [] } }).scenes.find((each) => each.key === key)!.images).toEqual([]);
+  });
+
+  it('wybór zdjęć w scenariuszu: kolejność bez powtórek, `null` wraca do automatu', () => {
+    const script = ShowScript.parse({});
+    const next = setScenePhotos(script, 'day:d1', ['b', 'a', 'b']);
+    expect(next.photos).toEqual({ 'day:d1': ['b', 'a'] });
+    expect(setScenePhotos(next, 'day:d1', null).photos).toBeUndefined();
+    expect(scenePhotos([{ url: 'auto' }] as never, [], undefined)).toEqual([{ url: 'auto' }]);
   });
 
   it('starszy scenariusz bez pól wyboru pokazuje dojazd i powrót', () => {

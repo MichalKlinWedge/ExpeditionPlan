@@ -21,7 +21,7 @@ type Scenes = ReturnType<typeof showScenes>;
 export const showPath = (tripId: string, kind: ShowKind) => `/trips/${tripId}/${kind === "film" ? "film" : "show"}`;
 
 /** Sceny z dokumentu wyjazdu, opisów miejsc i (w filmie) zdjęć dziennika podpisanych przez `sign`. */
-async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((paths: string[]) => Promise<Map<string, string>>) | null, kind: ShowKind, chosen: Record<string, string> = {}) {
+async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((paths: string[]) => Promise<Map<string, string>>) | null, kind: ShowKind, chosen: Record<string, string> = {}, script?: ShowScript) {
   const { doc, inputs } = stateFromPayload(payload);
   // Wybór z widoku planu (jak na karcie punktu) przed wyborem w terenie; tylko warianty, które plan ma.
   const picked = Object.fromEntries(Object.entries(chosen).filter(([group, ref]) => doc.variants.some((variant) => variant.ref === ref && variant.groupRef === group)));
@@ -37,6 +37,8 @@ async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((p
     ...inputs,
     activeVariants: { ...inputs.activeVariants, ...picked },
     kind,
+    ...(script?.photos ? { photos: script.photos } : {}),
+    ...(script?.endPhoto ? { endPhoto: script.endPhoto } : {}),
     guideOf: (item) => {
       if (item.kind === "lodging") return null;
       const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
@@ -61,10 +63,12 @@ const signer = (supabase: Supabase, bucket: string) => async (paths: string[]) =
 /** `variants` — warianty wybrane w widoku planu (`chosenVariantsFromCookie`); bez nich te wybrane w planie. */
 export async function loadShow(supabase: Supabase, tripId: string, payload: PullPayload, options: { photos?: boolean; kind: ShowKind; variants?: Record<string, string> }) {
   const journal = (payload.tables as unknown as { journal_entries?: JournalRow[] }).journal_entries ?? [];
-  const { doc, scenes, credits } = await scenesFrom(payload, journal, options.photos ? signer(supabase, "journal") : null, options.kind, options.variants);
+  // Scenariusz przed scenami: wybór zdjęć scen i zdjęcie na koniec zmieniają zdjęcia i podziękowania.
   const { data: stored, error } = await supabase.from("trip_shows").select("content").eq("trip_id", tripId).eq("kind", options.kind).maybeSingle();
   const parsed = ShowScript.safeParse(stored?.content ?? {});
-  return { doc, scenes, credits, script: parsed.success ? parsed.data : ShowScript.parse({}), exists: stored !== null, loadError: error?.message };
+  const script = parsed.success ? parsed.data : ShowScript.parse({});
+  const { doc, scenes, credits } = await scenesFrom(payload, journal, options.photos ? signer(supabase, "journal") : null, options.kind, options.variants, script);
+  return { doc, scenes, credits, script, exists: stored !== null, loadError: error?.message };
 }
 
 /**
@@ -109,6 +113,7 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
       ...(subheading ? { subheading } : {}),
       text: told?.text ?? "",
       images: scene.images,
+      ...(scene.chosen ? { chosen: true } : {}),
       ...(scene.collage ? { collage: scene.collage } : {}),
       ...(scene.guideCollage ? { guideCollage: scene.guideCollage } : {}),
       ...(scene.mapless ? { mapless: true } : {}),
@@ -155,9 +160,9 @@ export async function loadPublicShow(token: string, kind: ShowKind) {
   if (trip.error || trip.data === null || show.error || show.data === null) return null;
   const payload = trip.data as unknown as PullPayload;
   const stored = show.data as { content?: unknown; journal?: JournalRow[] };
-  const { doc, scenes, credits } = await scenesFrom(payload, stored.journal ?? [], signer(supabase, "journal"), kind);
   const parsed = ShowScript.safeParse(stored.content ?? {});
   const script = parsed.success ? parsed.data : ShowScript.parse({});
+  const { doc, scenes, credits } = await scenesFrom(payload, stored.journal ?? [], signer(supabase, "journal"), kind, {}, script);
   const [player, music] = await Promise.all([playerScenes(supabase, doc, scenes, script), playerMusic(supabase, script)]);
   return { doc, credits, player, music };
 }

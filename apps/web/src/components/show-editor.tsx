@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { type ChangeEvent, useOptimistic, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowTextLock, setShowMusic, setShowEndPhoto, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowTextLock, setShowMusic, setShowEndPhoto, setShowScenePhotos, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
 import { IconAction } from "@/components/icon-action";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -23,7 +23,13 @@ const MAX_WAITS = 4;
 /** Stan nagrania sceny: bez tekstu, tekst bez nagrania, nagranie starszego tekstu albo głosu, nagranie aktualne. */
 export type RecordingStatus = "none" | "new" | "old" | "ready";
 
-export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number };
+/** Zdjęcie do wyboru w edycji pokazu: stały klucz (`ShowImage.key`), podpisany adres miniatury i podpis. */
+export type EditorPhoto = { key: string; url: string; caption: string };
+
+/** Zdjęcia sceny w edycji: wybrane automatycznie albo ręcznie (`shown` w kolejności pokazu) i cała pula sceny. */
+export type ScenePhotoChoice = { auto: boolean; shown: EditorPhoto[]; pool: EditorPhoto[] };
+
+export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number; photos?: ScenePhotoChoice };
 
 /** Na żywo w trakcie nagrywania, zanim strona się odświeży: ta scena się nagrywa albo właśnie się nagrała. */
 type Live = "recording" | { seconds: number };
@@ -152,7 +158,98 @@ function SceneText({ tripId, kind, scene, live }: { tripId: string; kind: ShowKi
           {!changed && result?.ok && <span className="msg-ok">{result.ok}</span>}
         </div>
       )}
+      {scene.photos && scene.photos.pool.length > 0 && (
+        <ScenePhotos key={`${scene.photos.auto}:${scene.photos.shown.map((photo) => photo.key).join("|")}`} tripId={tripId} kind={kind} sceneKey={scene.key} choice={scene.photos} />
+      )}
     </li>
+  );
+}
+
+/**
+ * Zdjęcia sceny pod jej tekstem (`ShowScript.photos`): automatycznie albo wybrane z puli sceny, wiele naraz, w ustalonej
+ * kolejności (strzałki). Każda zmiana zapisuje się od razu; pierwsza zmiana przy „automatycznie” zaczyna od zdjęć,
+ * które wybrał pokaz.
+ */
+function ScenePhotos({ tripId, kind, sceneKey, choice }: { tripId: string; kind: ShowKind; sceneKey: string; choice: ScenePhotoChoice }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [auto, setAuto] = useState(choice.auto);
+  const [shown, setShown] = useState(choice.shown);
+  const [error, setError] = useState<string | null>(null);
+  const picked = new Set(shown.map((photo) => photo.key));
+  const rest = choice.pool.filter((photo) => !picked.has(photo.key));
+  const store = (next: EditorPhoto[] | null) => {
+    setError(null);
+    setAuto(next === null);
+    if (next !== null) setShown(next);
+    start(async () => {
+      const answer = await setShowScenePhotos(tripId, kind, sceneKey, next === null ? null : next.map((photo) => photo.key));
+      if (answer.error) {
+        setError(answer.error);
+        setAuto(choice.auto);
+        setShown(choice.shown);
+      } else router.refresh();
+    });
+  };
+  const move = (at: number, by: -1 | 1) => {
+    const next = [...shown];
+    const [photo] = next.splice(at, 1);
+    next.splice(at + by, 0, photo!);
+    store(next);
+  };
+  return (
+    <div className="flex flex-col gap-1.5 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Zdjęcia sceny</span>
+        <button type="button" onClick={() => store(null)} disabled={pending || auto} aria-pressed={auto} className="toggle-chip">
+          automatycznie
+        </button>
+        <button type="button" onClick={() => store([])} disabled={pending || (!auto && shown.length === 0)} aria-pressed={!auto && shown.length === 0} className="toggle-chip">
+          bez zdjęć
+        </button>
+        <span className="text-xs text-zinc-500">
+          {auto ? "Wybrane przez pokaz; zmiana kolejności albo dodanie zdjęcia przejmuje wybór." : `Wybrane: ${shown.length}. Pokaz pokaże każde, a gdy lektor skończy wcześniej, scena trwa dłużej.`}
+        </span>
+      </div>
+      {shown.length > 0 && (
+        <ol className="flex flex-wrap gap-2">
+          {shown.map((photo, at) => (
+            <li key={photo.key} className="flex w-28 flex-col gap-1">
+              <div className="relative overflow-hidden rounded">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt={photo.caption} title={photo.caption} className="h-20 w-28 object-cover" />
+                <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 text-xs font-semibold text-white">{at + 1}</span>
+              </div>
+              <div className="flex gap-1">
+                <button type="button" onClick={() => move(at, -1)} disabled={pending || at === 0} className="btn-mini" aria-label="Wcześniej" title="Wcześniej">
+                  ←
+                </button>
+                <button type="button" onClick={() => move(at, 1)} disabled={pending || at === shown.length - 1} className="btn-mini" aria-label="Później" title="Później">
+                  →
+                </button>
+                <button type="button" onClick={() => store(shown.filter((each) => each.key !== photo.key))} disabled={pending} className="btn-mini btn-mini-danger" aria-label="Usuń ze sceny" title="Usuń ze sceny">
+                  ✕
+                </button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+      {rest.length > 0 && (
+        <details className="panel p-2">
+          <summary className="cursor-pointer text-xs text-zinc-600 dark:text-zinc-400">Dodaj zdjęcia ({rest.length} do wyboru; kliknięte idzie na koniec)</summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {rest.map((photo) => (
+              <button key={photo.key} type="button" onClick={() => store([...shown, photo])} disabled={pending} title={`Dodaj: ${photo.caption}`} className="overflow-hidden rounded opacity-80 hover:opacity-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt={photo.caption} className="h-16 w-24 object-cover" />
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
+      {error && <p className="msg-error">{error}</p>}
+    </div>
   );
 }
 
@@ -421,7 +518,7 @@ export function ShowRouteOptions({ tripId, kind, approach, back }: { tripId: str
  * Zdjęcie przed planszą końcową (`ShowScript.endPhoto`): ostatnie zdjęcie wyjazdu (domyślnie), wybrane z miniatur albo
  * żadne. Wybór zapisuje się od razu.
  */
-export function ShowEndPhoto({ tripId, kind, choice, photos }: { tripId: string; kind: ShowKind; choice: string | undefined; photos: { key: string; url: string; caption: string }[] }) {
+export function ShowEndPhoto({ tripId, kind, choice, photos, last }: { tripId: string; kind: ShowKind; choice: string | undefined; photos: EditorPhoto[]; last: string | undefined }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<FormState | null>(null);
@@ -432,7 +529,7 @@ export function ShowEndPhoto({ tripId, kind, choice, photos }: { tripId: string;
       setMessage(answer.error ? answer : null);
       if (answer.ok) router.refresh();
     });
-  const chosen = choice === undefined ? photos.at(-1)!.key : choice;
+  const chosen = choice === undefined ? last : choice;
   return (
     <section className="card flex flex-col gap-2 p-4 text-sm">
       <h2 className="card-title">Zdjęcie na koniec</h2>

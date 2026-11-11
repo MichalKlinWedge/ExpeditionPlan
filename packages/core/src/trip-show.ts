@@ -74,6 +74,11 @@ export const ShowScript = z.object({
    * (`withEndPhoto`).
    */
   endPhoto: z.string().max(1000).optional(),
+  /**
+   * Zdjęcia scen wybrane w edycji: klucz sceny → klucze zdjęć (`ShowImage.key`) w kolejności pokazu, spośród
+   * `ShowScene.pool`; pusta lista = scena bez zdjęć, brak sceny = wybór automatyczny (`scenePhotos`).
+   */
+  photos: z.record(z.string(), z.array(z.string().max(1000)).max(40)).optional(),
   /** Wiersz pod „Dokąd jedziemy” (kraj, miejsca), zapisany przy szkicu AI z briefu (`destinationLine`), więc publiczny link pokazuje to samo. */
   destination: z.string().max(300).optional(),
 });
@@ -125,6 +130,10 @@ export type ShowScene = {
   mapless?: true;
   /** Kolaż ze zdjęć opisów miejsc (wstęp filmu): pierwsze zdjęcia kolejnych miejsc, najpierw te, których dni nie pokazują. */
   guideCollage?: ShowImage[];
+  /** Zdjęcia do wyboru w edycji (dzień: wszystkie z dziennika i z opisów jego miejsc; zakończenie: z wpisów bez dnia). */
+  pool?: ShowImage[];
+  /** Zdjęcia sceny wybrał człowiek (`ShowScript.photos`): pokaz wydłuża scenę, żeby pokazać każde. */
+  chosen?: true;
   /** Fakty sceny dla AI piszącego tekst lektora. */
   facts: string[];
 };
@@ -143,6 +152,10 @@ export type ShowInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
   journal?: readonly { dayRef?: string; body: string; photoUrl?: string; photoKey?: string }[];
   /** Zapowiedź (czas przyszły, bez dziennika) albo film z wyjazdu (czas przeszły, dziennik na pierwszym planie). */
   kind: ShowKind;
+  /** Zdjęcia scen wybrane w edycji (`ShowScript.photos`). */
+  photos?: ShowScript['photos'];
+  /** Zdjęcie na koniec (`ShowScript.endPhoto`): zdjęcie z opisu miejsca spoza scen też dostaje podziękowanie. */
+  endPhoto?: string;
 };
 
 const IMAGES_PER_DAY = 6;
@@ -252,11 +265,35 @@ const isSight = (item: Item) => item.kind === 'visit' || item.kind === 'activity
 
 const clip = (text: string, limit: number) => (text.length <= limit ? text : `${text.slice(0, limit).replace(/\s+\S*$/, '')}…`);
 
-/** Zdjęcia wpisów dziennika (podpis: pierwszy wiersz wpisu), najwyżej `FILM_IMAGES_PER_DAY`. */
-function journalImages(entries: ShowInput['journal'] & {}): ShowImage[] {
-  return entries
-    .flatMap((entry) => (entry.photoUrl === undefined ? [] : [{ url: entry.photoUrl, caption: entry.body.split('\n')[0]?.trim() ?? '', ...(entry.photoKey ? { key: entry.photoKey } : {}) }]))
-    .slice(0, FILM_IMAGES_PER_DAY);
+/** Wszystkie zdjęcia wpisów dziennika (podpis: pierwszy wiersz wpisu). */
+function journalPool(entries: ShowInput['journal'] & {}): ShowImage[] {
+  return entries.flatMap((entry) => (entry.photoUrl === undefined ? [] : [{ url: entry.photoUrl, caption: entry.body.split('\n')[0]?.trim() ?? '', ...(entry.photoKey ? { key: entry.photoKey } : {}) }]));
+}
+
+/** Zdjęcia wpisów dziennika, najwyżej `FILM_IMAGES_PER_DAY`. */
+const journalImages = (entries: ShowInput['journal'] & {}): ShowImage[] => journalPool(entries).slice(0, FILM_IMAGES_PER_DAY);
+
+/** Najwięcej zdjęć wybranych do jednej sceny. */
+export const SCENE_PHOTOS_MAX = 40;
+
+/** Stały klucz zdjęcia pokazu (ścieżka w dzienniku, plik z Commons); bez klucza adres. */
+export const showImageKey = (image: ShowImage): string => image.key ?? image.url;
+
+/** Zdjęcia sceny: wybrane w edycji (w tej kolejności, tylko z puli sceny), inaczej automatyczne. */
+export function scenePhotos(auto: readonly ShowImage[], pool: readonly ShowImage[], choice: readonly string[] | undefined): ShowImage[] {
+  if (choice === undefined) return [...auto];
+  const byKey = new Map(pool.map((image) => [showImageKey(image), image]));
+  return [...new Set(choice)].flatMap((key) => (byKey.has(key) ? [byKey.get(key)!] : [])).slice(0, SCENE_PHOTOS_MAX);
+}
+
+/** Wybór zdjęć sceny w scenariuszu: lista kluczy w kolejności albo `null` = z powrotem automatycznie. */
+export function setScenePhotos(script: ShowScript, sceneKey: string, keys: readonly string[] | null): ShowScript {
+  const photos = { ...script.photos };
+  if (keys === null) delete photos[sceneKey];
+  else photos[sceneKey] = [...new Set(keys)].slice(0, SCENE_PHOTOS_MAX);
+  const next: ShowScript = { ...script, photos };
+  if (Object.keys(photos).length === 0) delete next.photos;
+  return next;
 }
 
 const COLLAGE_MAX = 6;
@@ -275,11 +312,12 @@ function collageOf(days: readonly ShowScene[]): ShowImage[] {
  * adres), domyślnie ostatnie zdjęcie ostatniego dnia, który je ma; pusty tekst = bez zdjęcia. Jedyne zdjęcie, które gra
  * drugi raz — tak chciał organizator.
  */
-export function withEndPhoto<S extends { kind: string; images: ShowImage[] }>(scenes: readonly S[], choice?: string): S[] {
+export function withEndPhoto<S extends { kind: string; images: ShowImage[]; pool?: ShowImage[] }>(scenes: readonly S[], choice?: string): S[] {
   if (choice === '') return [...scenes];
   const days = scenes.filter((scene) => scene.kind === 'day');
-  const all = days.flatMap((scene) => scene.images);
-  const chosen = choice === undefined ? days.flatMap((scene) => scene.images).at(-1) : all.find((image) => (image.key ?? image.url) === choice);
+  // Zdjęcie na koniec można wybrać także spośród tych, których scena dnia nie pokazuje.
+  const all = days.flatMap((scene) => [...scene.images, ...(scene.pool ?? [])]);
+  const chosen = choice === undefined ? days.flatMap((scene) => scene.images).at(-1) : all.find((image) => showImageKey(image) === choice);
   if (chosen === undefined) return [...scenes];
   return scenes.map((scene) => (scene.kind === 'outro' && !scene.images.some((image) => image.url === chosen.url) ? { ...scene, images: [...scene.images, chosen] } : scene));
 }
@@ -296,6 +334,8 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   const usedImages = new Map<string, GuideImage>();
   const usedArticles = new Map<string, GuideContent['article']>();
   const seenUrls = new Set<string>();
+  /** Zdjęcia opisów miejsc ze wszystkich pul dni (do podziękowania za zdjęcie na koniec). */
+  const guideImages = new Map<string, GuideImage>();
 
   const dayItems = days.map((day) => itemsForDay(doc, day.ref, schedule).filter((item) => item.parentRef === undefined || isRouteStop(doc, item)));
   const { outbound, back } = approaches(doc, dayItems[0] ?? [], dayItems.at(-1) ?? [], dayItems.flat());
@@ -307,15 +347,24 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     const sights = items.filter(isSight).filter((item) => !(after && skipped.has(item.ref)));
     const journal = journalAll.filter((entry) => entry.dayRef === day.ref);
     const images = journalImages(journal);
+    // Pula do wyboru w edycji: wszystkie zdjęcia dziennika tego dnia i wszystkie zdjęcia opisów jego miejsc.
+    const pool = journalPool(journal);
+    const poolGuide = new Map<string, GuideImage>();
+    const autoUrls = new Set<string>();
     const facts: string[] = [`Dzień ${index + 1}: ${dayLabel(day.date)}${day.title ? ` — ${day.title}` : ''}`];
     if (day.summary) facts.push(`Opis dnia: ${day.summary}`);
     for (const item of sights) {
       const guide = input.guideOf(item);
-      const image = guide?.images.find((each) => !seenUrls.has(each.url));
+      const asShow = (image: GuideImage): ShowImage => ({ url: image.thumbUrl, caption: item.title, key: image.url, ...(image.author ? { credit: image.author } : {}) });
+      for (const each of guide?.images ?? []) {
+        if (poolGuide.has(each.url)) continue;
+        poolGuide.set(each.url, each);
+        pool.push(asShow(each));
+      }
+      const image = guide?.images.find((each) => !seenUrls.has(each.url) && !autoUrls.has(each.url));
       if (guide && image !== undefined && images.length < IMAGES_PER_DAY) {
-        seenUrls.add(image.url);
-        usedImages.set(image.url, image);
-        images.push({ url: image.thumbUrl, caption: item.title, key: image.url, ...(image.author ? { credit: image.author } : {}) });
+        autoUrls.add(image.url);
+        images.push(asShow(image));
       }
       const km = item.activity?.distanceKm ?? item.leg?.distanceKm;
       const parts = [
@@ -364,13 +413,27 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       .filter((title, at, all) => all.indexOf(title) === at)
       .slice(0, POINTS_PER_DAY);
     if (lodging !== null) points.push(`Nocleg: ${lodging.name}`);
+    const key = `day:${day.ref}`;
+    const choice = input.photos?.[key];
+    const shown = scenePhotos(images, pool, choice);
+    // Podziękowania i „już pokazane” liczą się ze zdjęć, które naprawdę grają.
+    for (const image of shown) {
+      const guideImage = poolGuide.get(showImageKey(image));
+      if (guideImage === undefined) continue;
+      seenUrls.add(guideImage.url);
+      usedImages.set(guideImage.url, guideImage);
+      guideImages.set(guideImage.url, guideImage);
+    }
+    for (const [url, each] of poolGuide) guideImages.set(url, each);
     return {
-      key: `day:${day.ref}`,
+      key,
       kind: 'day',
       heading: `Dzień ${index + 1}${day.title ? ` · ${day.title}` : ''}`,
       subheading: dayLabel(day.date),
       routeRefs: items.map((item) => item.ref).filter((ref) => !(after && skipped.has(ref))),
-      images,
+      images: shown,
+      ...(pool.length > 0 ? { pool } : {}),
+      ...(choice !== undefined ? { chosen: true as const } : {}),
       stats: dayStats(doc, counted),
       points,
       walks,
@@ -400,7 +463,11 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   for (const entry of loose) if (entry.body.trim() !== '') outro.push(`Wpis z dziennika: ${clip(entry.body.trim(), 400)}`);
 
   // Każde zdjęcie gra raz: wstęp ich nie powtarza, zakończenie ma tylko zdjęcia z wpisów bez dnia.
-  const outroImages = journalImages(loose);
+  const outroPool = journalPool(loose);
+  const outroImages = scenePhotos(journalImages(loose), outroPool, input.photos?.outro);
+  // Zdjęcie z opisu miejsca wybrane na koniec, którego żaden dzień nie pokazuje, też dostaje podziękowanie.
+  const endGuide = input.endPhoto ? guideImages.get(input.endPhoto) : undefined;
+  if (endGuide !== undefined) usedImages.set(endGuide.url, endGuide);
   const collage = collageOf(dayScenes);
   // Film zaczyna się bez mapy: zamiast niej kolaż ze zdjęć opisów miejsc (najpierw tych, których dni nie pokazują).
   const guideCollage: ShowImage[] = [];
@@ -477,6 +544,8 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       subheading: numbers.join(' · '),
       routeRefs: localRoute,
       images: outroImages,
+      ...(outroPool.length > 0 ? { pool: outroPool } : {}),
+      ...(input.photos?.outro !== undefined ? { chosen: true as const } : {}),
       stats: [],
       points: [],
       walks: [],
