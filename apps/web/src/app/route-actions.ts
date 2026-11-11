@@ -156,6 +156,7 @@ export async function addRoute(tripId: string, fields: NewRouteFields): Promise<
 const text = (max: number) => z.string().trim().max(max).nullable().optional();
 const EditFields = z.object({
   name: Name.optional(),
+  kind: z.enum(["foot", "car"]).optional(),
   url: z.url().regex(/^https?:\/\//i, "Link musi zaczynać się od https://.").max(500).nullable().optional(),
   distanceKm: z.number().nonnegative().max(5000).nullable().optional(),
   durationMin: z.number().int().nonnegative().max(14_400).nullable().optional(),

@@ -114,6 +114,7 @@ export function RouteEditor({ tripId, trackRef, initial, places, users, top }: {
       }
       const fields: RouteEditInput = {
         name: values.name,
+        ...(values.kind !== initial.kind ? { kind: values.kind } : {}),
         url: textOrNull(values.url),
         distanceKm: numbers.km,
         durationMin: numbers.time,
@@ -164,6 +165,18 @@ export function RouteEditor({ tripId, trackRef, initial, places, users, top }: {
       <h2 className="card-title">Edycja trasy</h2>
       {top}
       <div className="grid gap-2 sm:grid-cols-2">
+        <div className={`${label} sm:col-span-2`}>
+          Rodzaj
+          <span className="flex flex-wrap items-center gap-2">
+            {(["foot", "car"] as const).map((each) => (
+              <button key={each} type="button" onClick={() => set({ kind: each })} disabled={pending || (users > 0 && each !== initial.kind)} aria-pressed={values.kind === each} className="toggle-chip">
+                {each === "foot" ? "🥾 pieszo (trekking, spacer)" : "🚗 autem"}
+              </button>
+            ))}
+            {users > 0 && <span>Rodzaj zmienisz po odpięciu trasy od punktów.</span>}
+            {values.kind !== initial.kind && values.kind === "car" && <span>Podejście, zejście, trudność i oznakowanie znikną po zapisie.</span>}
+          </span>
+        </div>
         <label className={`${label} sm:col-span-2`}>
           Nazwa
           <input value={values.name} onChange={(event) => set({ name: event.target.value })} maxLength={120} required className={field} />

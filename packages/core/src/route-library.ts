@@ -337,6 +337,8 @@ export function newRoute(doc: Doc, ref: string, input: NewRouteInput): { doc: Do
 /** Pola edycji trasy: wartość zmienia, `null` czyści, brak pola zostawia. */
 export type RouteEditFields = {
   name?: string;
+  /** Inny rodzaj: tylko trasa niepodpięta do punktów (do przejścia pieszo nie pasuje przejazd i odwrotnie). */
+  kind?: RouteKind;
   url?: string | null;
   distanceKm?: number | null;
   durationMin?: number | null;
@@ -364,7 +366,11 @@ export function editRoute(doc: Doc, trackRef: string, fields: RouteEditFields, o
   if (current === undefined) return 'Tej trasy już nie ma — odśwież stronę.';
   const name = fields.name === undefined ? current.name : fields.name.trim();
   if (name === '') return 'Trasa musi mieć nazwę.';
-  const kind = routeKind(current);
+  const was = routeKind(current);
+  const kind = fields.kind ?? was;
+  if (kind !== was && routeUsers(doc, trackRef).length > 0) {
+    return `Trasa jest podpięta do punktów ${ROUTE_KIND[was]}; najpierw ją odepnij, potem zmień rodzaj.`;
+  }
   const apply = <K extends keyof Track>(track: Track, key: K, value: Track[K] | null | undefined): Track => {
     if (value === undefined) return track;
     const { [key]: _old, ...rest } = track;
@@ -379,6 +385,11 @@ export function editRoute(doc: Doc, trackRef: string, fields: RouteEditFields, o
   track = apply(track, 'difficulty', fields.difficulty?.trim() ?? fields.difficulty);
   track = apply(track, 'waymarking', fields.waymarking?.trim() ?? fields.waymarking);
   track = apply(track, 'routeNotes', fields.routeNotes?.trim() ?? fields.routeNotes);
+  if (kind !== was) {
+    // Autem nie ma podejść, trudności, oznakowania ani wody przy szlaku; pieszo — punktów „Jedź przez”.
+    const { ascentM: _ascent, descentM: _descent, difficulty: _difficulty, waymarking: _waymarking, pois: _pois, ...rest } = track;
+    track = kind === 'car' ? rest : track;
+  }
   if (fields.geojson !== undefined) {
     // Nowa linia albo jej brak: woda i schroniska dotyczyły starej.
     const { pois: _pois, ...rest } = apply(track, 'geojson', fields.geojson);
@@ -387,8 +398,8 @@ export function editRoute(doc: Doc, trackRef: string, fields: RouteEditFields, o
   const end = (value: string | null | undefined, old: RouteEnd | undefined) => (value === undefined ? old : value === null ? undefined : (placeEnd(doc, value) ?? old));
   const from = end(fields.fromRef, current.route?.from);
   const to = end(fields.toRef, current.route?.to);
-  const { from: _from, to: _to, ...route } = current.route ?? { mode: kind };
-  track = { ...track, route: { ...route, ...(from ? { from } : {}), ...(to ? { to } : {}) } };
+  const { from: _from, to: _to, via, mode: _mode } = current.route ?? { mode: kind };
+  track = { ...track, route: { mode: kind, ...(from ? { from } : {}), ...(to ? { to } : {}), ...(via !== undefined && kind === 'car' ? { via } : {}) } };
   if (routeLine(track) === undefined && track.url === undefined && (track.route?.from === undefined || track.route.to === undefined)) {
     return 'Trasa musi mieć linię z pliku GPX, link albo skąd i dokąd.';
   }

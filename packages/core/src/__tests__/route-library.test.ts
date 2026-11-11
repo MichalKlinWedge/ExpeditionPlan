@@ -120,6 +120,12 @@ describe('Trasy wyjazdu', () => {
     expect(relined.track.route).toEqual({ mode: 'foot', from: { name: 'Śnieżnik', lat: 50.2, lng: 16.85 } });
     expect(editRoute(doc, 'slad', { geojson: null }, { updateUsers: false, ids: () => ids })).toBe('Trasa musi mieć linię z pliku GPX, link albo skąd i dokąd.');
     expect(editRoute(doc, 'slad', { name: ' ' }, { updateUsers: false, ids: () => ids })).toBe('Trasa musi mieć nazwę.');
+    expect(editRoute(doc, 'slad', { kind: 'car' }, { updateUsers: false, ids: () => ids })).toBe('Trasa jest podpięta do punktów pieszo; najpierw ją odepnij, potem zmień rodzaj.');
+    const loose = detachRoute(withPois, 'wejscie')!.doc;
+    const toCar = editRoute(loose, 'slad', { kind: 'car' }, { updateUsers: false, ids: () => ids });
+    if (typeof toCar === 'string') throw new Error(toCar);
+    expect(toCar.track).toMatchObject({ route: { mode: 'car' }, distanceKm: 12, durationMin: 240 });
+    expect([toCar.track.ascentM, toCar.track.pois]).toEqual([undefined, undefined]);
     expect(routeLineFields({ distanceKm: 70.04, durationMin: 74.6, geometry: encodePolyline(road) })).toEqual({ geojson: { type: 'LineString', coordinates: road }, distanceKm: 70, durationMin: 75 });
     expect(routeLineFields({ distanceKm: 1, durationMin: 1 })).toBeNull();
     expect(unsavedCarRoutes(doc).map((item) => item.ref)).toEqual(['jazda']);
