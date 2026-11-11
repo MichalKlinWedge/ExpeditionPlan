@@ -256,10 +256,11 @@ function ScenePhotos({ tripId, kind, sceneKey, choice }: { tripId: string; kind:
       } else router.refresh();
     });
   };
-  const move = (at: number, by: -1 | 1) => {
+  /** O jedno miejsce (`-1`, `1`) albo na początek (`"first"`). */
+  const move = (at: number, by: -1 | 1 | "first") => {
     const next = [...shown];
     const [photo] = next.splice(at, 1);
-    next.splice(at + by, 0, photo!);
+    next.splice(by === "first" ? 0 : at + by, 0, photo!);
     store(next);
   };
   return (
@@ -283,13 +284,16 @@ function ScenePhotos({ tripId, kind, sceneKey, choice }: { tripId: string; kind:
       {shown.length > 0 && (
         <ol className="flex flex-wrap gap-2">
           {shown.map((photo, at) => (
-            <li key={photo.key} className="flex w-28 flex-col gap-1">
+            <li key={photo.key} className="flex w-32 flex-col gap-1">
               <div className="relative overflow-hidden rounded">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt={photo.caption} title={photo.caption} className="h-20 w-28 object-cover" />
+                <img src={photo.url} alt={photo.caption} title={photo.caption} className="h-20 w-32 object-cover" />
                 <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 text-xs font-semibold text-white">{at + 1}</span>
               </div>
               <div className="flex gap-1">
+                <button type="button" onClick={() => move(at, "first")} disabled={pending || at === 0} className="btn-mini" aria-label="Na początek" title="Na początek">
+                  ⇤
+                </button>
                 <button type="button" onClick={() => move(at, -1)} disabled={pending || at === 0} className="btn-mini" aria-label="Wcześniej" title="Wcześniej">
                   ←
                 </button>
