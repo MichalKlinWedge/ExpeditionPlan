@@ -286,7 +286,9 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
                 editing === person.id ? (
                   <tr key={person.id} className="border-t border-zinc-200 dark:border-zinc-800">
                     <td colSpan={columns} className="py-2">
-                      <div className="card p-3">
+                      {/* Boks jak sekcja strony: belka z tytułem i formularz z odstępem od ramki. */}
+                      <div className="card flex flex-col gap-3 p-4">
+                        <h3 className="card-title">Edycja: {person.name}</h3>
                         <TravelerForm tripId={tripId} trip={trip} guardians={guardians} places={places} traveler={person} onDone={() => setEditing(null)} />
                       </div>
                     </td>
@@ -356,8 +358,8 @@ function NewTraveler({ tripId, trip, guardians, places }: { tripId: string; trip
     );
   }
   return (
-    <section className="panel flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">Nowy uczestnik</h3>
+    <section className="card flex flex-col gap-3 p-4">
+      <h3 className="card-title">Nowy uczestnik</h3>
       <TravelerForm
         tripId={tripId}
         trip={trip}
