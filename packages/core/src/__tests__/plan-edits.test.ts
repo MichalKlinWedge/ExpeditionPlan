@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { scheduleDay } from '../engine/schedule.ts';
-import { addItem, addItemAtPin, addPoolItem, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, placeUses, removeItem, setLegRoute, removeItemClosingGap, renamePlace, replacePlace, setItemPlace, updateItem } from '../plan-edits.ts';
+import { addItem, addItemAtPin, addPoolItem, clearItemPlace, dayItems, documentProblem, dropItem, ItemInUseError, moveToDay, movePlace, moveWithinDay, placeUses, removeItem, setLegRoute, removeItemClosingGap, renamePlace, replacePlace, setItemPlace, updateItem } from '../plan-edits.ts';
 import { isTransit } from '../plan-info.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
@@ -435,5 +435,16 @@ describe('miejsce punktu', () => {
     expect(created.places).toEqual([{ place: { ref: 'id-nowe', name: 'Całkiem nowe miejsce', provider: 'unknown', links: [] }, created: true }]);
     expect(created.changed.find((each) => each.ref === item.ref)?.placeRef).toBe('id-nowe');
     expect(documentProblem(created.doc)).toBeNull();
+  });
+
+  it('odepnij od miejsca: punkt bez miejsca, miejsce zostaje w planie', () => {
+    const doc = load('maroko');
+    const item = doc.items.find((each) => each.placeRef !== undefined)!;
+    const edit = clearItemPlace(doc, item.ref)!;
+    const changed = edit.changed.find((each) => each.ref === item.ref)!;
+    expect('placeRef' in changed).toBe(false);
+    expect(edit.doc.places.some((place) => place.ref === item.placeRef)).toBe(true);
+    expect(documentProblem(edit.doc)).toBeNull();
+    expect(clearItemPlace(edit.doc, item.ref)).toBeNull();
   });
 });

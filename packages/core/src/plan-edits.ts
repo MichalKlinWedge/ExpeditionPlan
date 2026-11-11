@@ -358,6 +358,15 @@ export function setItemPlace(doc: Doc, itemRef: string, placeId: string, name: s
   return edit === null ? null : { ...edit, places: [{ place, created: true }] };
 }
 
+/** Punkt bez miejsca: samo miejsce zostaje w planie (inne punkty, nocleg, rezerwacje, strona „Miejsca”). */
+export function clearItemPlace(doc: Doc, itemRef: string): PlanEdit | null {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  if (item?.placeRef === undefined) return null;
+  const { placeRef: _place, ...free } = item;
+  const changed = [free];
+  return { doc: replace(doc, changed), changed };
+}
+
 export type LegRouteEdit = PlanEdit & { placesChanged: boolean; viaChanged: boolean };
 
 /**

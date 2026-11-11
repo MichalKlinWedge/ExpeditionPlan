@@ -1,6 +1,6 @@
 "use client";
 
-import { type PlanEdit, type PlanItem as Item, placeUses, renamePlace, replacePlace, setItemPlace, type TripDocument } from "@expeditionplan/core";
+import { clearItemPlace, type PlanEdit, type PlanItem as Item, placeUses, renamePlace, replacePlace, setItemPlace, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import { useId, useState } from "react";
 
@@ -55,6 +55,18 @@ export function ItemPlaceEditor({ tripId, doc, item, onEdit, disabled = false }:
         <button type="button" disabled={disabled || !changed} onClick={() => onEdit(setItemPlace(doc, item.ref, uuidv7(), typed))} title="Miejsce z listy albo nowe, tylko dla tego punktu" className="btn-secondary btn-sm">
           {place === undefined ? "Przypnij miejsce" : "Tylko ten punkt"}
         </button>
+        {place !== undefined && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              if (window.confirm(`Odpiąć ten punkt od „${place.name}”? Samo miejsce zostaje w planie${uses > 1 ? " i przy innych punktach" : ""}.`)) onEdit(clearItemPlace(doc, item.ref));
+            }}
+            title="Punkt bez miejsca; miejsce zostaje na stronie „Miejsca”"
+            className="btn-mini btn-mini-danger self-center">
+            Odepnij od miejsca
+          </button>
+        )}
       </div>
     </div>
   );
