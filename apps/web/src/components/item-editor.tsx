@@ -245,7 +245,9 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
         Kolejność cięcia
         <input type="number" min={0} className={input} value={draft.cutRank} onChange={(event) => set({ cutRank: event.target.value })} placeholder="1 = pierwsze" />
       </label>
-      <label className="flex items-center gap-2 text-xs text-zinc-500">
+      <label
+        className="flex items-center gap-2 text-xs text-zinc-500"
+        title="Godzina, na którą nie masz wpływu (lot, mecz, bilet, start wycieczki): przesuwanie i usuwanie innych punktów jej nie rusza, spóźnienie to czerwone ostrzeżenie, zapas dnia liczy się do niej, a punkt nie trafia do „Co wyciąć”. Samo „dokładnie” to tylko planowany start, który może się przesunąć.">
         <input type="checkbox" checked={draft.isFixed} onChange={(event) => set({ isFixed: event.target.checked })} />
         stała godzina
       </label>
