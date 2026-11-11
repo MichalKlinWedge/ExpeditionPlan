@@ -7,7 +7,7 @@ import { planWithAi } from "@/app/actions";
 import { SparkIcon } from "@/components/icons";
 
 /**
- * „Zaplanuj z AI”: uruchamia łańcuch na serwerze i po sukcesie otwiera plan nowego szkicu.
+ * „Zaplanuj z AI”: uruchamia łańcuch na serwerze i po sukcesie otwiera szkic obok tego planu (porównanie) — plan zostaje bez zmian.
  * Licznik sekund, bo planowanie trwa zwykle 30–90 s.
  */
 export function AiPlanButton({ tripId, children }: { tripId: string; children?: ReactNode }) {
@@ -29,7 +29,8 @@ export function AiPlanButton({ tripId, children }: { tripId: string; children?: 
     start(async () => {
       const answer = await planWithAi(tripId);
       setResult(answer);
-      if (answer.tripId) router.push(`/trips/${answer.tripId}/plan`);
+      // Zostajemy przy tym planie: szkic otwiera się obok niego na porównaniu, skąd przenosi się punkty.
+      if (answer.tripId) router.push(`/trips/${tripId}/compare?draft=${answer.tripId}`);
     });
   };
 
@@ -49,7 +50,7 @@ export function AiPlanButton({ tripId, children }: { tripId: string; children?: 
         </span>
       </div>
       {result?.error && <p className="text-sm msg-error">{result.error}</p>}
-      {result?.ok && <p className="text-sm msg-ok">{result.ok} Otwieram plan…</p>}
+      {result?.ok && <p className="text-sm msg-ok">{result.ok} Otwieram szkic obok Twojego planu…</p>}
       {children}
       <p className="text-xs text-zinc-400">Miejsca: © OpenStreetMap, Geoapify.</p>
     </div>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { type GuideRow, guideFor, placesOffMap, vaultDocument, type VaultDocument } from "@expeditionplan/core";
+import { DRAFT_PREFIX, type GuideRow, guideFor, isDraft, placesOffMap, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -66,6 +66,11 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
   });
   // Dokumenty rezerwacji z sejfu do okna rezerwacji (RLS już odcięło te, których ktoś nie widzi).
   const bookingDocuments = ((data as PullPayload).tables.documents ?? []).map((row) => vaultDocument(row as Record<string, unknown>)).filter((each): each is VaultDocument => each !== null && each.bookingId !== null);
+  // Szkic AI to osobny wyjazd: pasek mówi, że plan, z którego powstał, jest nietknięty, i prowadzi do porównania.
+  const title = state.doc.trip.title;
+  const source = isDraft({ title })
+    ? ((await supabase.from("my_trips").select("id, title, role").eq("title", title.slice(DRAFT_PREFIX.length))).data ?? []).find((each) => each.role === "owner" || each.role === "editor")
+    : undefined;
   return (
     <PlanPageGrid
       header={
@@ -79,6 +84,24 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
               </>
             }
           />
+          {isDraft({ title }) && (
+            <div className="panel-ai flex flex-col gap-2 p-3 text-sm">
+              <p>
+                <strong>To szkic AI</strong> — osobny wyjazd z „Zaplanuj z AI”.{" "}
+                {source ? `Twój plan „${source.title}” jest nietknięty; punkty ze szkicu przenosisz do niego na porównaniu.` : "Plan, z którego powstał, jest nietknięty."}
+              </p>
+              {source?.id && (
+                <div className="flex flex-wrap gap-2">
+                  <Link href={`/trips/${source.id}/compare?draft=${id}`} className="btn-secondary btn-sm">
+                    Porównaj z planem i przenieś punkty
+                  </Link>
+                  <Link href={`/trips/${source.id}/plan`} className="btn-secondary btn-sm">
+                    Twój plan
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
           {editing && <PlacePinner tripId={id} places={placesOffMap(state.doc).flatMap((place) => (ids[place.ref] ? [{ ...place, id: ids[place.ref]! }] : []))} />}
         </div>
       }
