@@ -247,7 +247,9 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
           <option value="optional">opcjonalnie</option>
         </select>
       </label>
-      <label className={label}>
+      <label
+        className={label}
+        title="Gdy dzień się nie spina, lista „Co wyciąć, żeby dzień się spiął” pod planem dnia proponuje wyciąć punkty w tej kolejności: 1 = najpierw. Pierwsze idą punkty „opcjonalnie”. Nigdy nie proponuje punktów „koniecznie”, ze stałą godziną, przejazdów ani noclegów.">
         Kolejność cięcia
         <input type="number" min={0} className={input} value={draft.cutRank} onChange={(event) => set({ cutRank: event.target.value })} placeholder="1 = pierwsze" />
       </label>
