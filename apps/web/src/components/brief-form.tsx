@@ -85,10 +85,12 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term, ai = false
   const setFixed = (index: number, patch: Partial<Fixed>) =>
     update({ fixed: draft.fixed.map((each, i) => (i === index ? { ...each, ...patch } : each)) });
 
-  // Puste pola opcjonalne nie idą do walidacji jako "" — Zod oczekuje braku pola.
+  // Puste pola opcjonalne nie idą do walidacji jako "" — Zod oczekuje braku pola. Element „Już ustalone” bez żadnej
+  // wpisanej wartości (sam rodzaj i strefa) odpada; wypełniony bez „Co” wraca z komunikatem z serwera.
+  const filled = (each: Fixed) => Object.entries(each).some(([key, value]) => key !== "kind" && key !== "startTz" && typeof value === "string" && value.trim() !== "");
   const payload = JSON.stringify({
     ...draft,
-    fixed: draft.fixed.map((each) => Object.fromEntries(Object.entries(each).filter(([, value]) => value !== "" && value !== undefined))),
+    fixed: draft.fixed.filter(filled).map((each) => Object.fromEntries(Object.entries(each).filter(([, value]) => value !== "" && value !== undefined))),
   });
 
   return (

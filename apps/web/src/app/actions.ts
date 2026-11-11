@@ -323,6 +323,10 @@ export async function saveBrief(tripId: string, _prev: FormState, form: FormData
   if (!parsed.success) {
     const issue = parsed.error.issues[0]!;
     if (issue.path[0] === "travelers") return { error: "Dodaj najpierw uczestników wyjazdu (na stronie wyjazdu)." };
+    if (issue.path[0] === "fixed" && typeof issue.path[1] === "number") {
+      const field = FIXED_FIELDS[String(issue.path[2])] ?? String(issue.path[2] ?? "");
+      return { error: `Już ustalone, pozycja ${issue.path[1] + 1}: ${issue.path[2] === "title" ? "wpisz, co to jest (pole „Co”)" : `popraw pole „${field}”`}.` };
+    }
     return { error: `${BRIEF_FIELDS[String(issue.path[0])] ?? issue.path.join(".")}: ${issue.message}` };
   }
   const row = { trip_id: tripId, brief: parsed.data as unknown as NonNullable<Json> };
@@ -333,6 +337,9 @@ export async function saveBrief(tripId: string, _prev: FormState, form: FormData
   refresh();
   return { ok: "Zapisano brief wyjazdu." };
 }
+
+/** Nazwy pól elementu „Już ustalone” w komunikatach walidacji. */
+const FIXED_FIELDS: Record<string, string> = { kind: "Rodzaj", title: "Co", startLocal: "Od", endLocal: "Do", startTz: "Strefa godzin", reference: "Numer rezerwacji / lotu", note: "Uwagi" };
 
 /** Nazwy pól briefu w komunikatach walidacji. */
 const BRIEF_FIELDS: Record<string, string> = {
