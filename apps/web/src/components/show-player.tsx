@@ -108,6 +108,10 @@ export type PlayerScene = {
   mapless?: boolean;
   /** Zdjęcia wybrane w edycji (`ShowScript.photos`): scena trwa tyle, żeby pokazać każde (`chosenPhotosMs`). */
   chosen?: boolean;
+  /** Wstęp z mapą dojazdu, ale bez mapy całej trasy. */
+  noOverview?: boolean;
+  /** Plansza „Kto jedzie i plan” na końcu wstępu: etap `text` z `index` 1. */
+  plan?: { people: string[]; days: string[] };
 };
 
 /** Kolaż etapu `collage`: `index` 0 — z dziennika (`collage`), 1 — z opisów miejsc (`guideCollage`). */
@@ -118,7 +122,7 @@ export const collageAt = (scene: PlayerScene, index: number): ShowImage[] | unde
  * `MAP_SHARE` sceny, każda co najmniej `MAP_MIN_MS`): wybranych zdjęć nic nie ucina, po lektorze zdjęcia lecą dalej.
  */
 const chosenPhotosMs = (scene: PlayerScene) => {
-  const slides = scene.images.length + (scene.collage && scene.collage.length > 0 ? 1 : 0);
+  const slides = scene.images.length + (scene.collage && scene.collage.length > 0 ? 1 : 0) + (scene.guideCollage && scene.guideCollage.length > 0 ? 1 : 0) + (scene.plan ? 1 : 0);
   if (!scene.chosen || slides === 0) return 0;
   const shots = 1 + (scene.approach ? 1 : 0);
   return Math.max((slides * PHOTO_MIN_MS) / (1 - MAP_SHARE), slides * PHOTO_MIN_MS + shots * MAP_MIN_MS);
@@ -155,16 +159,22 @@ export type ScenePhase = { kind: "approach" | "map" | "walk" | "pin" | "collage"
 /** Etap ze zdjęciami (kolaż albo zdjęcie) albo plansza z tekstem: zasłania mapę i nie ma karty. */
 export const isPhotoPhase = (phase: ScenePhase) => phase.kind === "photo" || phase.kind === "collage" || phase.kind === "text";
 
+/** Etapy po mapach, po kolei: kolaż z opisów miejsc, kolaż zdjęć dni, zdjęcia, plansza „Kto jedzie i plan”. */
+function introSlides(scene: PlayerScene): { kind: "collage" | "photo" | "text"; index: number }[] {
+  return [
+    ...(scene.guideCollage && scene.guideCollage.length > 0 ? [{ kind: "collage" as const, index: 1 }] : []),
+    ...(scene.collage && scene.collage.length > 0 ? [{ kind: "collage" as const, index: 0 }] : []),
+    ...scene.images.map((_, index) => ({ kind: "photo" as const, index })),
+    ...(scene.plan ? [{ kind: "text" as const, index: 1 }] : []),
+  ];
+}
+
 /**
  * Scena bez mapy (wstęp filmu): plansza z tytułem i liczbami (`MAP_MS`, a bez zdjęć cała scena), potem kolaż
  * z opisów miejsc, kolaż z dziennika i zdjęcia, po równo w reszcie czasu.
  */
 function maplessPhases(scene: PlayerScene, span: number): ScenePhase[] {
-  const slides: { kind: "collage" | "photo"; index: number }[] = [
-    ...(scene.guideCollage && scene.guideCollage.length > 0 ? [{ kind: "collage" as const, index: 1 }] : []),
-    ...(scene.collage && scene.collage.length > 0 ? [{ kind: "collage" as const, index: 0 }] : []),
-    ...scene.images.map((_, index) => ({ kind: "photo" as const, index })),
-  ];
+  const slides = introSlides(scene);
   const textMs = slides.length === 0 ? span : Math.min(MAP_MS, span / (slides.length + 1));
   const phases: ScenePhase[] = [{ kind: "text", index: 0, start: 0, end: textMs }];
   const per = slides.length === 0 ? 0 : (span - textMs) / slides.length;
@@ -184,15 +194,12 @@ function maplessPhases(scene: PlayerScene, span: number): ScenePhase[] {
 export function scenePhases(scene: PlayerScene, span: number): ScenePhase[] {
   if (isCard(scene)) return [{ kind: "map", index: 0, start: 0, end: span }];
   if (scene.mapless) return maplessPhases(scene, span);
-  // Kolaż liczy się jak jedno zdjęcie i idzie przed zdjęciami.
-  const slides: { kind: "collage" | "photo"; index: number }[] = [
-    ...(scene.collage && scene.collage.length > 0 ? [{ kind: "collage" as const, index: 0 }] : []),
-    ...scene.images.map((_, index) => ({ kind: "photo" as const, index })),
-  ];
+  // Kolaż liczy się jak jedno zdjęcie i idzie przed zdjęciami; plansza planu (wstęp) jak zdjęcie, na końcu.
+  const slides = introSlides(scene);
   const photos = slides.length;
   const shots: { kind: ScenePhase["kind"]; index: number; ms: number }[] = [];
   if (scene.approach) shots.push({ kind: "approach", index: 0, ms: MAP_MS });
-  shots.push({ kind: "map", index: 0, ms: MAP_MS });
+  if (!scene.noOverview) shots.push({ kind: "map", index: 0, ms: MAP_MS });
   for (const index of scene.walks.slice(0, MAX_WALKS).keys()) shots.push({ kind: "walk", index, ms: WALK_MS });
   const total = () => shots.reduce((sum, shot) => sum + shot.ms, 0);
   const limit = photos > 0 ? Math.max(span * MAP_SHARE, MAP_MIN_MS) : span;
@@ -695,11 +702,30 @@ export function ShowPlayer({
 
         {scene.mapless && (
           // Wstęp filmu bez mapy: plansza z tytułem, terminem i liczbami wyjazdu.
-          <div className={`pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#1b2a3a] px-8 text-center transition-opacity duration-1000 ${phase.kind === "text" ? "opacity-100" : "opacity-0"}`}>
+          <div className={`pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#1b2a3a] px-8 text-center transition-opacity duration-1000 ${phase.kind === "text" && phase.index === 0 ? "opacity-100" : "opacity-0"}`}>
             <div className="topo absolute inset-0 opacity-60" />
             <p className="relative text-3xl font-bold sm:text-5xl">{scene.heading}</p>
             {scene.subheading && <p className="relative text-base text-white/85 sm:text-xl">{scene.subheading}</p>}
             {scene.stats.length > 0 && <p className="relative text-sm text-white/75 sm:text-lg">{scene.stats.join(" · ")}</p>}
+          </div>
+        )}
+
+        {scene.plan && (
+          // Plansza „Kto jedzie i plan” na końcu wstępu: imiona i dni w skrócie.
+          <div className={`pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#1b2a3a] px-8 text-center transition-opacity duration-1000 ${phase.kind === "text" && phase.index === 1 ? "opacity-100" : "opacity-0"}`}>
+            <div className="topo absolute inset-0 opacity-60" />
+            {scene.plan.people.length > 0 && (
+              <>
+                <p className="relative text-xs tracking-widest text-white/70 uppercase sm:text-sm">Kto jedzie</p>
+                <p className="relative max-w-4xl text-lg sm:text-2xl">{scene.plan.people.join(", ")}</p>
+              </>
+            )}
+            <p className="relative mt-3 text-xs tracking-widest text-white/70 uppercase sm:text-sm">Plan</p>
+            <ul className="relative flex max-w-4xl flex-wrap justify-center gap-x-5 gap-y-1 text-sm text-white/90 sm:text-lg">
+              {scene.plan.days.map((day) => (
+                <li key={day}>{day}</li>
+              ))}
+            </ul>
           </div>
         )}
 

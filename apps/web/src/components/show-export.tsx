@@ -315,17 +315,32 @@ export function ShowExport({
     };
 
     // Plansza wstępu filmu bez mapy, jak w odtwarzaczu: tytuł, termin i liczby na ciemnym tle.
-    const drawText = (scene: PlayerScene) => {
+    /** Plansza: `index` 0 — tytuł, termin i liczby wyjazdu; 1 — „Kto jedzie i plan” (wstęp). */
+    const drawText = (scene: PlayerScene, index = 0) => {
       context.save();
       context.fillStyle = "#1b2a3a";
       context.fillRect(0, 0, W, H);
       context.textAlign = "center";
       context.textBaseline = "middle";
-      const rows: [string, string, string][] = [
-        [scene.heading, `bold 96px ${font}`, "#ffffff"],
-        ...(scene.subheading ? [[scene.subheading, `44px ${font}`, "rgba(255,255,255,0.85)"] as [string, string, string]] : []),
-        ...(scene.stats.length > 0 ? [[scene.stats.join(" · "), `36px ${font}`, "rgba(255,255,255,0.75)"] as [string, string, string]] : []),
-      ];
+      const label = `30px ${font}`;
+      const dim = "rgba(255,255,255,0.7)";
+      const rows: [string, string, string][] =
+        index === 1 && scene.plan
+          ? [
+              ...(scene.plan.people.length > 0
+                ? ([
+                    ["KTO JEDZIE", label, dim],
+                    [scene.plan.people.join(", "), `48px ${font}`, "#ffffff"],
+                  ] as [string, string, string][])
+                : []),
+              ["PLAN", label, dim],
+              [scene.plan.days.join("   "), `38px ${font}`, "rgba(255,255,255,0.9)"],
+            ]
+          : [
+              [scene.heading, `bold 96px ${font}`, "#ffffff"],
+              ...(scene.subheading ? [[scene.subheading, `44px ${font}`, "rgba(255,255,255,0.85)"] as [string, string, string]] : []),
+              ...(scene.stats.length > 0 ? [[scene.stats.join(" · "), `36px ${font}`, "rgba(255,255,255,0.75)"] as [string, string, string]] : []),
+            ];
       const laid = rows.map(([text, style, color]) => {
         context.font = style;
         return { lines: wrap(context, text, W - 240), style, color, size: Number(/(\d+)px/.exec(style)![1]) };
@@ -415,7 +430,7 @@ export function ShowExport({
       context.fillText(credit, 20, 18);
       context.restore();
 
-      if (phase.kind === "text") drawText(scene);
+      if (phase.kind === "text") drawText(scene, phase.index);
       const collage = phase.kind === "collage" ? collageAt(scene, phase.index) : undefined;
       if (collage) {
         // Kolaż wyłania się z planszy albo z poprzedniego kolażu (wstęp filmu bez mapy).
@@ -425,7 +440,7 @@ export function ShowExport({
           const before = phases[phases.indexOf(phase) - 1];
           const previous = before?.kind === "collage" ? collageAt(scene, before.index) : undefined;
           if (previous) drawCollage(previous, since + (before!.end - before!.start), before!.end - before!.start, 1);
-          else if (before?.kind === "text") drawText(scene);
+          else if (before?.kind === "text") drawText(scene, before.index);
         }
         drawCollage(collage, since, phase.end - phase.start, fade);
       }

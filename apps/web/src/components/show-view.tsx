@@ -61,6 +61,10 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
       edited: told?.edited === true,
       status: told === undefined || told.text.trim() === "" ? "none" : fits ? "ready" : told.audio ? "old" : "new",
       ...(fits ? { seconds: Math.round(told.audio.durationMs / 1000) } : {}),
+      // Pierwsza scena: pola „pokaż” (mapa dojazdu tylko, gdy plan ma dojazd).
+      ...(scene.kind === "intro" && scene.intro
+        ? { intro: { parts: scene.intro, film: kind === "film", ...(scene.approach ? { approach: `${scene.approach.title}${scene.approach.facts ? ` · ${scene.approach.facts}` : ""}` } : {}) } }
+        : {}),
       // Każda scena wybiera spośród zdjęć całego wyjazdu: najpierw własne, potem innych scen w kolejności filmu.
       // Automatyczne zdjęcia wstępu to jego kolaże: pierwsza zmiana zaczyna od nich.
       ...(photoSources.length > 0
@@ -81,7 +85,6 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
   const keys = new Set(scenes.map((scene) => scene.key));
   const toRecord = scenesToRecord(script).filter((key) => keys.has(key));
   const recorded = player.filter((scene) => scene.audio).length;
-  const approach = scenes.find((scene) => scene.kind === "intro")?.approach;
   // Kandydaci na zdjęcie przed planszą końcową: wszystkie zdjęcia dni w kolejności filmu, także niepokazane w scenach.
   const days = scenes.filter((scene) => scene.kind === "day");
   const endCandidates = days.flatMap((scene) => scene.pool ?? scene.images).map(asPhoto);
@@ -119,7 +122,8 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
         <ShowRouteOptions
           tripId={id}
           kind={kind}
-          approach={approach ? { on: script.showApproach, title: `${approach.title}${approach.facts ? ` · ${approach.facts}` : ""}` } : null}
+          // Mapa dojazdu jest w polach pierwszej sceny; tu zostaje powrót.
+          approach={null}
           back={back ? { on: script.showReturn, title: `${back.title}${back.facts ? ` · ${back.facts}` : ""}` } : null}
         />
       )}

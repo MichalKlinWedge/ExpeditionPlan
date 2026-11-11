@@ -1,6 +1,6 @@
 import "server-only";
 
-import { audioFits, dayMap, type DayMap, GuideContent, guideFor, type GuideRow, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument, withEndPhoto } from "@expeditionplan/core";
+import { audioFits, dayMap, type DayMap, GuideContent, guideFor, type GuideRow, introParts, isShowWalk, type ShowKind, ShowScript, showScenes, type TripDocument, withEndPhoto } from "@expeditionplan/core";
 import { type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 
 import type { PlayerMusic, PlayerScene, ShowMapData } from "@/components/show-player";
@@ -46,6 +46,7 @@ async function scenesFrom(payload: PullPayload, journal: JournalRow[], sign: ((p
     kind,
     ...(script?.photos ? { photos: script.photos } : {}),
     ...(script?.endPhoto ? { endPhoto: script.endPhoto } : {}),
+    introParts: introParts(script, kind),
     guideOf: (item) => {
       if (item.kind === "lodging") return null;
       const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
@@ -135,7 +136,10 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
         ...(walk.at ? { at: walk.at } : {}),
         ...(walk.profile ? { profile: walk.profile } : {}),
       })),
-      ...(scene.approach && (scene.kind === "intro" ? script.showApproach : script.showReturn) ? { approach: { map: approachMap(dayMap(doc, scene.approach.refs)), label: scene.approach.label, title: scene.approach.title, facts: scene.approach.facts } } : {}),
+      ...(scene.noOverview ? { noOverview: true } : {}),
+      ...(scene.plan ? { plan: scene.plan } : {}),
+      // Wstęp: mapa dojazdu według pól wstępu (`introParts`), zakończenie: mapa powrotu według `showReturn`.
+      ...(scene.approach && (scene.kind === "intro" ? scene.intro?.approach === true : script.showReturn) ? { approach: { map: approachMap(dayMap(doc, scene.approach.refs)), label: scene.approach.label, title: scene.approach.title, facts: scene.approach.facts } } : {}),
       ...(url !== undefined && told?.audio ? { audio: { url, durationMs: told.audio.durationMs } } : {}),
     };
   });

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { itemsForDay, type ScheduleOptions } from './engine/schedule.ts';
-import { dayLabel, formatKm, plural } from './format.ts';
+import { capitalized, dayLabel, formatKm, plural } from './format.ts';
 import type { GuideContent, GuideImage } from './guide.ts';
 import { LEG_MODE } from './labels.ts';
 import { dayLodging, formatMinutes, isTransit, transitPlaceRefs } from './plan-info.ts';
@@ -62,11 +62,23 @@ export const ShowMusic = z.object({
   skipS: z.number().min(0).max(3600).default(0),
 });
 
+/**
+ * Co pokazuje pierwsza scena (pola „pokaż” w edycji pod jej tekstem); brak pola = domyślnie (`introParts`).
+ * Kolejność w scenie: mapa dojazdu, mapa całej trasy, kolaże, wybrane zdjęcia, plansza „Kto jedzie i plan”.
+ */
+export const ShowIntro = z.object({
+  approach: z.boolean().optional(),
+  route: z.boolean().optional(),
+  collage: z.boolean().optional(),
+  guideCollage: z.boolean().optional(),
+  plan: z.boolean().optional(),
+});
+
 export const ShowScript = z.object({
   voice: z.string().min(1).default('Sulafat'),
   scenes: z.array(ShowNarration).default([]),
   music: ShowMusic.optional(),
-  /** Mapa dojazdu na początku i powrotu na końcu pokazu (pola wyboru w edycji pokazu). */
+  /** Mapa dojazdu na początku (dawne pole zapowiedzi; teraz `intro.approach`, to zostaje domyślną) i powrotu na końcu. */
   showApproach: z.boolean().default(true),
   showReturn: z.boolean().default(true),
   /**
@@ -80,6 +92,7 @@ export const ShowScript = z.object({
    * (`scenePhotos`).
    */
   photos: z.record(z.string(), z.array(z.string().max(1000)).max(40)).optional(),
+  intro: ShowIntro.optional(),
   /** Wiersz pod „Dokąd jedziemy” (kraj, miejsca), zapisany przy szkicu AI z briefu (`destinationLine`), więc publiczny link pokazuje to samo. */
   destination: z.string().max(300).optional(),
 });
@@ -89,6 +102,33 @@ export type ShowKind = (typeof SHOW_KINDS)[number];
 export const isShowKind = (value: unknown): value is ShowKind => SHOW_KINDS.includes(value as ShowKind);
 
 export type ShowAudio = z.infer<typeof ShowAudio>;
+export type ShowIntro = z.infer<typeof ShowIntro>;
+/** Elementy pierwszej sceny: mapa dojazdu, mapa całej trasy, kolaż zdjęć dni, kolaż z opisów miejsc (film), plansza planu. */
+export type IntroParts = { approach: boolean; route: boolean; collage: boolean; guideCollage: boolean; plan: boolean };
+export const INTRO_PARTS = ['approach', 'route', 'collage', 'guideCollage', 'plan'] as const;
+
+/**
+ * Elementy wstępu z wyborem w scenariuszu, a bez niego jak dotąd: zapowiedź z mapą trasy i dojazdu (`showApproach`),
+ * film bez map (plansza z tytułem), oba z kolażami; plansza „Kto jedzie i plan” tylko na życzenie.
+ */
+export function introParts(script: { intro?: ShowIntro | undefined; showApproach?: boolean } | undefined, kind: ShowKind): IntroParts {
+  const film = kind === 'film';
+  const set = script?.intro ?? {};
+  return {
+    approach: set.approach ?? (film ? false : (script?.showApproach ?? true)),
+    route: set.route ?? !film,
+    collage: set.collage ?? true,
+    guideCollage: set.guideCollage ?? true,
+    plan: set.plan ?? false,
+  };
+}
+
+/** Zmiana elementów wstępu w scenariuszu (tylko podane pola). */
+export function setIntroParts(script: ShowScript, change: Partial<IntroParts>): ShowScript {
+  const intro: ShowIntro = { ...script.intro };
+  for (const part of INTRO_PARTS) if (typeof change[part] === 'boolean') intro[part] = change[part];
+  return { ...script, intro };
+}
 export type ShowMusic = z.infer<typeof ShowMusic>;
 export type ShowNarration = z.infer<typeof ShowNarration>;
 export type ShowScript = z.infer<typeof ShowScript>;
@@ -131,6 +171,12 @@ export type ShowScene = {
   mapless?: true;
   /** Kolaż ze zdjęć opisów miejsc (wstęp filmu): pierwsze zdjęcia kolejnych miejsc, najpierw te, których dni nie pokazują. */
   guideCollage?: ShowImage[];
+  /** Wstęp: które elementy pokazuje (`introParts`); mapa dojazdu gra tylko przy `approach`. */
+  intro?: IntroParts;
+  /** Wstęp z mapą dojazdu, ale bez mapy całej trasy. */
+  noOverview?: true;
+  /** Plansza „Kto jedzie i plan” na końcu wstępu: imiona uczestników i dni w skrócie. */
+  plan?: { people: string[]; days: string[] };
   /**
    * Własne zdjęcia sceny do wyboru w edycji (dzień: wszystkie z dziennika i z opisów jego miejsc; zakończenie: z wpisów
    * bez dnia). Wybierać można też spośród zdjęć innych scen dni i zakończenia.
@@ -160,6 +206,8 @@ export type ShowInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
   photos?: ShowScript['photos'];
   /** Zdjęcie na koniec (`ShowScript.endPhoto`): zdjęcie z opisu miejsca spoza scen też dostaje podziękowanie. */
   endPhoto?: string;
+  /** Elementy wstępu (`introParts` ze scenariusza); bez nich domyślne dla rodzaju pokazu. */
+  introParts?: IntroParts;
   /**
    * Wszystkie opisy miejsc wyjazdu (także miejsc spoza planu dni: inne warianty, punkty usunięte, same miejsca): ich
    * zdjęcia, których żadna scena nie ma w swojej puli, idą do wyboru jako „spoza planu” (`spare`).
@@ -498,17 +546,17 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     return shown;
   };
   const outroImages = chosenFor('outro', journalImages(loose));
-  // Wybór zdjęć wstępu zastępuje jego kolaże: wybrane zdjęcia lecą po kolei jak w dniu.
-  const introChosen = input.photos?.intro !== undefined;
+  // Wybrane zdjęcia wstępu lecą po kolażach; kolaże i mapy włącza się osobno (`introParts`).
+  const parts = input.introParts ?? introParts(undefined, input.kind);
   const introImages = chosenFor('intro', []);
   const aboutImages = chosenFor('about', []);
   // Zdjęcie z opisu miejsca wybrane na koniec, którego żaden dzień nie pokazuje, też dostaje podziękowanie.
   const endGuide = input.endPhoto ? guideImages.get(input.endPhoto) : undefined;
   if (endGuide !== undefined) usedImages.set(endGuide.url, endGuide);
-  const collage = introChosen ? [] : collageOf(dayScenes);
+  const collage = parts.collage ? collageOf(dayScenes) : [];
   // Film zaczyna się bez mapy: zamiast niej kolaż ze zdjęć opisów miejsc (najpierw tych, których dni nie pokazują).
   const guideCollage: ShowImage[] = [];
-  if (after && !introChosen) {
+  if (after && parts.guideCollage) {
     const sights = dayItems.flat().filter((item) => isSight(item) && !approachRefs.has(item.ref) && !skipped.has(item.ref));
     const candidates = sights.flatMap((item) => {
       const image = input.guideOf(item)?.images[0];
@@ -541,6 +589,15 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
   const backCard = approachCard(doc, back, 'Powrót');
   const localRoute = stats.routeRefs.filter((ref) => !approachRefs.has(ref));
   if (outboundCard) intro.push(`Dojazd: ${outboundCard.title}${outboundCard.facts ? ` (${outboundCard.facts})` : ''}`);
+  // Bez mapy trasy i dojazdu wstęp zaczyna się planszą z tytułem (jak dotąd w filmie).
+  const approachShown = parts.approach && outboundCard !== undefined;
+  const introMapless = !parts.route && !approachShown;
+  const plan = parts.plan
+    ? {
+        people: doc.travelers.map((traveler) => traveler.name).filter((name) => name.trim() !== ''),
+        days: days.map((day, index) => `${index + 1}. ${clip(day.title?.trim() || capitalized(dayLabel(day.date)), 48)}`),
+      }
+    : undefined;
 
   const scenes: ShowScene[] = [
     {
@@ -550,15 +607,18 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       subheading: `${dayLabel(doc.trip.startDate)} – ${dayLabel(doc.trip.endDate)}`,
       routeRefs: localRoute,
       images: introImages,
-      ...(introChosen ? { chosen: true as const } : {}),
+      ...(input.photos?.intro !== undefined ? { chosen: true as const } : {}),
       ...(collage.length > 0 ? { collage } : {}),
-      ...(after ? { mapless: true as const } : {}),
+      ...(introMapless ? { mapless: true as const } : {}),
+      ...(!parts.route && approachShown ? { noOverview: true as const } : {}),
       ...(guideCollage.length > 0 ? { guideCollage } : {}),
+      intro: parts,
+      ...(plan ? { plan } : {}),
       stats: [plural(stats.days, ['dzień', 'dni', 'dni']), ...numbers],
       points: [],
       walks: [],
-      // Wstęp filmu nie ma mapy, więc i mapy dojazdu (opis dojazdu zostaje w faktach dla lektora).
-      ...(outboundCard && !after ? { approach: outboundCard } : {}),
+      // Karta dojazdu zawsze (pole „mapa dojazdu” w edycji); gra tylko przy `intro.approach`.
+      ...(outboundCard ? { approach: outboundCard } : {}),
       facts: intro,
     },
     {

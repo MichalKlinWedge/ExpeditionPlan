@@ -1,12 +1,12 @@
 "use client";
 
-import { MUSIC_MAX_BYTES, plural, type ShowKind, showMusicFile } from "@expeditionplan/core";
+import { type IntroParts, MUSIC_MAX_BYTES, plural, type ShowKind, showMusicFile } from "@expeditionplan/core";
 import { dbErrorMessage } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, useOptimistic, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { draftShow, recordShowScene, saveShowText, setShowTextLock, setShowMusic, setShowEndPhoto, setShowScenePhotos, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
+import { draftShow, recordShowScene, saveShowText, setShowTextLock, setShowMusic, setShowEndPhoto, setShowIntro, setShowScenePhotos, setShowMusicSettings, setShowRoutes, setShowVoice, voiceSample } from "@/app/show-actions";
 import { IconAction } from "@/components/icon-action";
 import { MicIcon, SpeakerIcon } from "@/components/icons";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -32,7 +32,10 @@ export type EditorPhoto = { key: string; url: string; caption: string };
  */
 export type ScenePhotoChoice = { auto: boolean; shown: EditorPhoto[]; groups: { heading: string; own: boolean; photos: EditorPhoto[] }[] };
 
-export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number; photos?: ScenePhotoChoice };
+/** Pola „pokaż” wstępu: stan, opis dojazdu („A → B · samolot”, gdy plan go ma) i czy to film (kolaż z opisów miejsc). */
+export type IntroChoice = { parts: IntroParts; approach?: string; film: boolean };
+
+export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number; photos?: ScenePhotoChoice; intro?: IntroChoice };
 
 /** Na żywo w trakcie nagrywania, zanim strona się odświeży: ta scena się nagrywa albo właśnie się nagrała. */
 type Live = "recording" | { seconds: number };
@@ -161,10 +164,54 @@ function SceneText({ tripId, kind, scene, live }: { tripId: string; kind: ShowKi
           {!changed && result?.ok && <span className="msg-ok">{result.ok}</span>}
         </div>
       )}
+      {scene.intro && <IntroOptions tripId={tripId} kind={kind} choice={scene.intro} />}
       {scene.photos && (
         <ScenePhotos key={`${scene.photos.auto}:${scene.photos.shown.map((photo) => photo.key).join("|")}`} tripId={tripId} kind={kind} sceneKey={scene.key} choice={scene.photos} />
       )}
     </li>
+  );
+}
+
+/**
+ * Co pokazuje pierwsza scena, po kolei: mapa dojazdu, mapa całej trasy, kolaże, wybrane zdjęcia (niżej), plansza
+ * „Kto jedzie i plan”. Każde pole zapisuje się od razu (`setShowIntro`); bez mapy trasy i dojazdu wstęp zaczyna się
+ * planszą z tytułem.
+ */
+function IntroOptions({ tripId, kind, choice }: { tripId: string; kind: ShowKind; choice: IntroChoice }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [parts, setParts] = useOptimistic(choice.parts);
+  const [error, setError] = useState<string | null>(null);
+  const change = (part: keyof IntroParts, on: boolean) =>
+    start(async () => {
+      setError(null);
+      setParts({ ...parts, [part]: on });
+      const answer = await setShowIntro(tripId, kind, { [part]: on });
+      if (answer.error) setError(answer.error);
+      else router.refresh();
+    });
+  const options: { part: keyof IntroParts; label: string; note?: string }[] = [
+    ...(choice.approach ? [{ part: "approach" as const, label: "mapa dojazdu", note: choice.approach }] : []),
+    { part: "route", label: "mapa całej trasy", note: "z liczbami wyjazdu" },
+    { part: "collage", label: "kolaż zdjęć dni" },
+    ...(choice.film ? [{ part: "guideCollage" as const, label: "kolaż z opisów miejsc" }] : []),
+    { part: "plan", label: "plansza „Kto jedzie i plan”", note: "imiona i dni w skrócie" },
+  ];
+  return (
+    <div className="flex flex-col gap-1 text-sm">
+      <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Pokaż we wstępie (po kolei)</span>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {options.map((option) => (
+          <label key={option.part} className="flex items-center gap-1.5" title={option.note}>
+            <input type="checkbox" checked={parts[option.part]} disabled={pending} onChange={(event) => change(option.part, event.target.checked)} />
+            {option.label}
+            {option.note && <span className="text-xs text-zinc-500">({option.note})</span>}
+          </label>
+        ))}
+      </div>
+      {!parts.route && !(parts.approach && choice.approach) && <span className="text-xs text-zinc-500">Bez mapy wstęp zaczyna się planszą z tytułem, terminem i liczbami.</span>}
+      {error && <p className="msg-error">{error}</p>}
+    </div>
   );
 }
 
@@ -519,7 +566,7 @@ export function ShowRouteOptions({ tripId, kind, approach, back }: { tripId: str
     });
   return (
     <section className="card flex flex-col gap-2 p-4 text-sm">
-      <h2 className="card-title">Dojazd i powrót</h2>
+      <h2 className="card-title">{approach ? "Dojazd i powrót" : "Powrót"}</h2>
       {approach && (
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={approach.on} disabled={pending} onChange={(event) => change({ showApproach: event.target.checked })} /> mapa dojazdu na początku
