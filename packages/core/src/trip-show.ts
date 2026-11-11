@@ -70,6 +70,7 @@ export const ShowIntro = z.object({
   approach: z.boolean().optional(),
   route: z.boolean().optional(),
   collage: z.boolean().optional(),
+  /** Dawne pole (osobny kolaż z opisów miejsc w filmie): już bez znaczenia, zostaje dla starszych scenariuszy. */
   guideCollage: z.boolean().optional(),
   plan: z.boolean().optional(),
 });
@@ -103,9 +104,12 @@ export const isShowKind = (value: unknown): value is ShowKind => SHOW_KINDS.incl
 
 export type ShowAudio = z.infer<typeof ShowAudio>;
 export type ShowIntro = z.infer<typeof ShowIntro>;
-/** Elementy pierwszej sceny: mapa dojazdu, mapa całej trasy, kolaż zdjęć dni, kolaż z opisów miejsc (film), plansza planu. */
-export type IntroParts = { approach: boolean; route: boolean; collage: boolean; guideCollage: boolean; plan: boolean };
-export const INTRO_PARTS = ['approach', 'route', 'collage', 'guideCollage', 'plan'] as const;
+/**
+ * Elementy pierwszej sceny: mapa dojazdu, mapa całej trasy, zdjęcia wstępu jako kolaż (`collage`) albo po kolei
+ * (`false`), plansza planu.
+ */
+export type IntroParts = { approach: boolean; route: boolean; collage: boolean; plan: boolean };
+export const INTRO_PARTS = ['approach', 'route', 'collage', 'plan'] as const;
 
 /**
  * Elementy wstępu z wyborem w scenariuszu, a bez niego jak dotąd: zapowiedź z mapą trasy i dojazdu (`showApproach`),
@@ -118,7 +122,6 @@ export function introParts(script: { intro?: ShowIntro | undefined; showApproach
     approach: set.approach ?? (film ? false : (script?.showApproach ?? true)),
     route: set.route ?? !film,
     collage: set.collage ?? true,
-    guideCollage: set.guideCollage ?? true,
     plan: set.plan ?? false,
   };
 }
@@ -167,10 +170,8 @@ export type ShowScene = {
   approach?: ShowApproach;
   /** Kolaż we wstępie: po jednym zdjęciu z kolejnych dni (do 6), zapowiedź tego, co będzie w filmie. */
   collage?: ShowImage[];
-  /** Film: wstęp bez mapy — plansza z tekstem, kolaż ze zdjęć opisów miejsc (`guideCollage`) i kolaż z dziennika. */
+  /** Scena bez mapy: plansza z tekstem (wstęp bez map, „Dokąd jedziemy”), potem kolaż i zdjęcia. */
   mapless?: true;
-  /** Kolaż ze zdjęć opisów miejsc (wstęp filmu): pierwsze zdjęcia kolejnych miejsc, najpierw te, których dni nie pokazują. */
-  guideCollage?: ShowImage[];
   /** Wstęp: które elementy pokazuje (`introParts`); mapa dojazdu gra tylko przy `approach`. */
   intro?: IntroParts;
   /** Wstęp z mapą dojazdu, ale bez mapy całej trasy. */
@@ -354,6 +355,8 @@ export function setScenePhotos(script: ShowScript, sceneKey: string, keys: reado
 }
 
 const COLLAGE_MAX = 6;
+/** Kolaż wstępu z wybranych zdjęć: najwyżej 3 × 3. */
+export const INTRO_COLLAGE_MAX = 9;
 
 /** Kolaż: pierwsze zdjęcia kolejnych dni, potem drugie itd., do `COLLAGE_MAX`; mniej niż 2 zdjęcia to nie kolaż. */
 function collageOf(days: readonly ShowScene[]): ShowImage[] {
@@ -546,17 +549,15 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     return shown;
   };
   const outroImages = chosenFor('outro', journalImages(loose));
-  // Wybrane zdjęcia wstępu lecą po kolażach; kolaże i mapy włącza się osobno (`introParts`).
   const parts = input.introParts ?? introParts(undefined, input.kind);
-  const introImages = chosenFor('intro', []);
   const aboutImages = chosenFor('about', []);
   // Zdjęcie z opisu miejsca wybrane na koniec, którego żaden dzień nie pokazuje, też dostaje podziękowanie.
   const endGuide = input.endPhoto ? guideImages.get(input.endPhoto) : undefined;
   if (endGuide !== undefined) usedImages.set(endGuide.url, endGuide);
-  const collage = parts.collage ? collageOf(dayScenes) : [];
-  // Film zaczyna się bez mapy: zamiast niej kolaż ze zdjęć opisów miejsc (najpierw tych, których dni nie pokazują).
-  const guideCollage: ShowImage[] = [];
-  if (after && parts.guideCollage) {
+  // Zdjęcia wstępu: wybrane pod jego tekstem, a bez wyboru po jednym z kolejnych dni (do 6); w filmie, gdy dni dają
+  // mniej, dochodzą zdjęcia opisów miejsc, najpierw tych, których dni nie pokazują. Grają jako kolaż albo po kolei.
+  const autoIntro = [...collageOf(dayScenes)];
+  if (after && autoIntro.length < COLLAGE_MAX) {
     const sights = dayItems.flat().filter((item) => isSight(item) && !approachRefs.has(item.ref) && !skipped.has(item.ref));
     const candidates = sights.flatMap((item) => {
       const image = input.guideOf(item)?.images[0];
@@ -564,13 +565,15 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
     });
     const unseen = candidates.filter(({ image }) => !seenUrls.has(image.url));
     for (const { item, image } of [...unseen, ...candidates.filter((each) => !unseen.includes(each))]) {
-      if (guideCollage.length >= COLLAGE_MAX) break;
-      if (guideCollage.some((each) => each.key === image.url)) continue;
-      usedImages.set(image.url, image);
-      guideCollage.push({ url: image.thumbUrl, caption: item.title, key: image.url, ...(image.author ? { credit: image.author } : {}) });
+      if (autoIntro.length >= COLLAGE_MAX) break;
+      if (autoIntro.some((each) => showImageKey(each) === image.url)) continue;
+      autoIntro.push({ url: image.thumbUrl, caption: item.title, key: image.url, ...(image.author ? { credit: image.author } : {}) });
     }
-    if (guideCollage.length < 2) guideCollage.length = 0;
   }
+  const introPhotos = chosenFor('intro', autoIntro.length >= 2 ? autoIntro : []);
+  // Kolaż albo pokaz po kolei — jedno albo drugie; jedno zdjęcie to zawsze zwykłe zdjęcie.
+  const collage = parts.collage && introPhotos.length >= 2 ? introPhotos.slice(0, INTRO_COLLAGE_MAX) : [];
+  const introImages = collage.length > 0 ? [] : introPhotos;
   // Scena o celu: AI dostaje miejsca noclegów i najważniejsze punkty, a kraj i miejsca z briefu dokłada `showBrief`.
   const bases = days
     .map((day) => doc.places.find((place) => place.ref === day.baseRef)?.name ?? dayLodging(doc, day.ref)?.name)
@@ -611,7 +614,6 @@ export function showScenes(doc: Doc, input: ShowInput): { scenes: ShowScene[]; c
       ...(collage.length > 0 ? { collage } : {}),
       ...(introMapless ? { mapless: true as const } : {}),
       ...(!parts.route && approachShown ? { noOverview: true as const } : {}),
-      ...(guideCollage.length > 0 ? { guideCollage } : {}),
       intro: parts,
       ...(plan ? { plan } : {}),
       stats: [plural(stats.days, ['dzień', 'dni', 'dni']), ...numbers],

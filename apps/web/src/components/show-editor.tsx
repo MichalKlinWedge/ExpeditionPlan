@@ -1,6 +1,6 @@
 "use client";
 
-import { type IntroParts, MUSIC_MAX_BYTES, plural, type ShowKind, showMusicFile } from "@expeditionplan/core";
+import { INTRO_COLLAGE_MAX, type IntroParts, MUSIC_MAX_BYTES, plural, type ShowKind, showMusicFile } from "@expeditionplan/core";
 import { dbErrorMessage } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, useOptimistic, useRef, useState, useTransition } from "react";
@@ -32,8 +32,8 @@ export type EditorPhoto = { key: string; url: string; caption: string };
  */
 export type ScenePhotoChoice = { auto: boolean; shown: EditorPhoto[]; groups: { heading: string; own: boolean; photos: EditorPhoto[] }[] };
 
-/** Pola „pokaż” wstępu: stan, opis dojazdu („A → B · samolot”, gdy plan go ma) i czy to film (kolaż z opisów miejsc). */
-export type IntroChoice = { parts: IntroParts; approach?: string; film: boolean };
+/** Pola „pokaż” wstępu: stan i opis dojazdu („A → B · samolot”, gdy plan go ma). */
+export type IntroChoice = { parts: IntroParts; approach?: string };
 
 export type EditorScene = { key: string; heading: string; subheading?: string; text: string; edited: boolean; status: RecordingStatus; seconds?: number; photos?: ScenePhotoChoice; intro?: IntroChoice };
 
@@ -193,8 +193,6 @@ function IntroOptions({ tripId, kind, choice }: { tripId: string; kind: ShowKind
   const options: { part: keyof IntroParts; label: string; note?: string }[] = [
     ...(choice.approach ? [{ part: "approach" as const, label: "mapa dojazdu", note: choice.approach }] : []),
     { part: "route", label: "mapa całej trasy", note: "z liczbami wyjazdu" },
-    { part: "collage", label: "kolaż zdjęć dni" },
-    ...(choice.film ? [{ part: "guideCollage" as const, label: "kolaż z opisów miejsc" }] : []),
     { part: "plan", label: "plansza „Kto jedzie i plan”", note: "imiona i dni w skrócie" },
   ];
   return (
@@ -208,6 +206,17 @@ function IntroOptions({ tripId, kind, choice }: { tripId: string; kind: ShowKind
             {option.note && <span className="text-xs text-zinc-500">({option.note})</span>}
           </label>
         ))}
+      </div>
+      {/* Zdjęcia wstępu (lista niżej): jedno albo drugie, nigdy oba naraz. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-zinc-600 dark:text-zinc-400">Zdjęcia wstępu</span>
+        <button type="button" onClick={() => change("collage", true)} disabled={pending || parts.collage} aria-pressed={parts.collage} className="toggle-chip">
+          kolaż
+        </button>
+        <button type="button" onClick={() => change("collage", false)} disabled={pending || !parts.collage} aria-pressed={!parts.collage} className="toggle-chip">
+          pokaz po kolei
+        </button>
+        <span className="text-xs text-zinc-500">{parts.collage ? `jedna plansza z wybranymi zdjęciami (najwyżej ${INTRO_COLLAGE_MAX})` : "każde zdjęcie osobno"}</span>
       </div>
       {!parts.route && !(parts.approach && choice.approach) && <span className="text-xs text-zinc-500">Bez mapy wstęp zaczyna się planszą z tytułem, terminem i liczbami.</span>}
       {error && <p className="msg-error">{error}</p>}

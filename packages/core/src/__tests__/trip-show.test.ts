@@ -178,34 +178,37 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(single.collage).toBeUndefined();
   });
 
-  it('film: wstęp bez mapy i bez mapy dojazdu, z kolażem ze zdjęć opisów miejsc; zapowiedź zostaje z mapą', () => {
+  it('film: wstęp bez mapy i bez mapy dojazdu, z kolażem zdjęć; zapowiedź zostaje z mapą', () => {
     const doc = fixture('maroko');
     const guideOf = (item: { ref: string; title: string }) => guide(item.title, `foto-${item.ref}`);
     const film = showScenes(doc, { ...base, kind: 'film', guideOf }).scenes[0]!;
     expect(film.mapless).toBe(true);
     // Karta dojazdu jest (do pola „mapa dojazdu”), ale domyślnie w filmie nie gra.
-    expect(film.intro).toMatchObject({ approach: false, route: false, collage: true, guideCollage: true, plan: false });
+    expect(film.intro).toMatchObject({ approach: false, route: false, collage: true, plan: false });
     expect(film.noOverview).toBeUndefined();
-    expect(film.guideCollage?.length).toBeGreaterThanOrEqual(2);
-    expect(film.guideCollage!.length).toBeLessThanOrEqual(6);
-    expect(new Set(film.guideCollage!.map((image) => image.key)).size).toBe(film.guideCollage!.length);
+    // Kolaż albo pokaz: przy kolażu zdjęcia wstępu nie grają osobno.
+    expect(film.collage?.length).toBeGreaterThanOrEqual(2);
+    expect(film.collage!.length).toBeLessThanOrEqual(6);
+    expect(new Set(film.collage!.map((image) => image.key)).size).toBe(film.collage!.length);
+    expect(film.images).toEqual([]);
     expect(film.facts.some((fact) => fact.startsWith('Dojazd:'))).toBe(true);
     const preview = showScenes(doc, { ...base, guideOf }).scenes[0]!;
     expect(preview.mapless).toBeUndefined();
-    expect(preview.guideCollage).toBeUndefined();
     expect(preview.approach?.label).toBe('Dojazd');
     expect(preview.intro).toMatchObject({ approach: true, route: true, collage: true, plan: false });
   });
 
-  it('wstęp: pola „pokaż” — mapa dojazdu bez mapy trasy, bez kolaży, plansza „Kto jedzie i plan”', () => {
+  it('wstęp: pola „pokaż” — mapa dojazdu bez mapy trasy, zdjęcia po kolei zamiast kolażu, plansza „Kto jedzie i plan”', () => {
     const doc = fixture('maroko');
     const guideOf = (item: { ref: string; title: string }) => guide(item.title, `foto-${item.ref}`);
     const only = (parts: Partial<IntroParts>) => introParts({ intro: parts }, 'film');
-    const approachOnly = showScenes(doc, { ...base, kind: 'film', guideOf, introParts: only({ approach: true, collage: false, guideCollage: false }) }).scenes[0]!;
+    const collaged = showScenes(doc, { ...base, kind: 'film', guideOf }).scenes[0]!;
+    const approachOnly = showScenes(doc, { ...base, kind: 'film', guideOf, introParts: only({ approach: true, collage: false }) }).scenes[0]!;
     expect(approachOnly.mapless).toBeUndefined();
     expect(approachOnly.noOverview).toBe(true);
     expect(approachOnly.collage).toBeUndefined();
-    expect(approachOnly.guideCollage).toBeUndefined();
+    // Te same zdjęcia, tylko po kolei.
+    expect(approachOnly.images.map((image) => image.key)).toEqual(collaged.collage!.map((image) => image.key));
     const planned = showScenes(doc, { ...base, kind: 'preview', guideOf, introParts: introParts({ intro: { plan: true, route: false, approach: false } }, 'preview') }).scenes[0]!;
     expect(planned.mapless).toBe(true);
     expect(planned.plan?.days).toHaveLength(doc.days.length);
@@ -267,10 +270,12 @@ describe('dojazd i zdjęcia we wstępie', () => {
     expect(outside.scenes.find((each) => each.key === other)!.images.map((image) => image.key)).toEqual(['https://upload.wikimedia.org/Poza.jpg']);
     expect(outside.credits.images.some((image) => image.title === 'File:Poza.jpg')).toBe(true);
     expect(showScenes(doc, { ...base, kind: 'film', journal, guideOf, allGuides: [{ title: 'x', images: loose.images }] }).credits.images.some((image) => image.title === 'File:Poza.jpg')).toBe(false);
-    // Wstęp i „Dokąd jedziemy” też dostają wybrane zdjęcia; kolaże wstępu zostają (włącza się je osobno).
+    // Wstęp i „Dokąd jedziemy” też dostają wybrane zdjęcia.
     const opening = showScenes(doc, { ...base, kind: 'film', journal, guideOf, photos: { intro: ['p/2.jpg', 'p/1.jpg'], about: ['p/3.jpg'] } }).scenes;
     expect(opening[0]).toMatchObject({ key: 'intro', chosen: true });
-    expect(opening[0]!.images.map((image) => image.key)).toEqual(['p/2.jpg', 'p/1.jpg']);
+    // Kolaż wstępu (domyślnie) robi się z wybranych zdjęć, w podanej kolejności; same zdjęcia wtedy nie grają osobno.
+    expect(opening[0]!.collage!.map((image) => image.key)).toEqual(['p/2.jpg', 'p/1.jpg']);
+    expect(opening[0]!.images).toEqual([]);
     expect(opening[1]).toMatchObject({ key: 'about', chosen: true, mapless: true });
     expect(opening[1]!.images.map((image) => image.key)).toEqual(['p/3.jpg']);
     expect(showScenes(doc, { ...base, kind: 'film', journal, guideOf }).scenes[1]!.images).toEqual([]);

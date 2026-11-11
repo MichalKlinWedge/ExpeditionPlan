@@ -123,7 +123,6 @@ export async function playerScenes(supabase: Supabase, doc: TripDocument, scenes
       images: scene.images,
       ...(scene.chosen ? { chosen: true } : {}),
       ...(scene.collage ? { collage: scene.collage } : {}),
-      ...(scene.guideCollage ? { guideCollage: scene.guideCollage } : {}),
       ...(scene.mapless ? { mapless: true } : {}),
       map: map.data,
       stats: scene.stats,

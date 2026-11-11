@@ -63,7 +63,7 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
       ...(fits ? { seconds: Math.round(told.audio.durationMs / 1000) } : {}),
       // Pierwsza scena: pola „pokaż” (mapa dojazdu tylko, gdy plan ma dojazd).
       ...(scene.kind === "intro" && scene.intro
-        ? { intro: { parts: scene.intro, film: kind === "film", ...(scene.approach ? { approach: `${scene.approach.title}${scene.approach.facts ? ` · ${scene.approach.facts}` : ""}` } : {}) } }
+        ? { intro: { parts: scene.intro, ...(scene.approach ? { approach: `${scene.approach.title}${scene.approach.facts ? ` · ${scene.approach.facts}` : ""}` } : {}) } }
         : {}),
       // Każda scena wybiera spośród zdjęć całego wyjazdu: najpierw własne, potem innych scen w kolejności filmu.
       // Automatyczne zdjęcia wstępu to jego kolaże: pierwsza zmiana zaczyna od nich.
@@ -71,7 +71,8 @@ export async function ShowView({ params, kind }: { params: Promise<{ id: string 
         ? {
             photos: {
               auto: scene.chosen !== true,
-              shown: (scene.chosen ? scene.images : [...(scene.guideCollage ?? []), ...(scene.collage ?? []), ...scene.images]).map(asPhoto),
+              // Wstęp gra swoje zdjęcia jako kolaż albo po kolei: lista to jedne i drugie.
+              shown: [...(scene.collage ?? []), ...scene.images].map(asPhoto),
               groups: [...photoSources.filter((source) => source.key === scene.key), ...photoSources.filter((source) => source.key !== scene.key)].map((source) => ({
                 heading: source.key === scene.key ? "Z tej sceny" : source.heading,
                 own: source.key === scene.key,
