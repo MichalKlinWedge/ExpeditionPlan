@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, dayLabel, dayLodging, type DaySchedule, daySunMarks, type DayWeather, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -787,7 +787,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
   const lodgingPlace = lodging?.placeRef === undefined ? undefined : doc.places.find((each) => each.ref === lodging.placeRef);
   const sun = schedule?.facts.sun;
   // Wschód i zachód w godzinach planu: linia między kartami w miejscu tej godziny.
-  const sunMarks = schedule ? daySunMarks(schedule) : [];
+  // Wschód, zachód i wolny czas między punktami, po kolei godzin.
+  const marks = schedule ? [...daySunMarks(schedule), ...dayGaps(schedule)].sort((a, b) => a.at - b.at) : [];
   // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu” (lista pod dniem).
   const extras = itemExtras(doc, dayRef);
   const slack = schedule?.slack ? SLACK[schedule.slack] : undefined;
@@ -974,11 +975,11 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
               </View>
             )}
           </ThemedView>
-          {sunMarks
+          {marks
             .filter((mark) => mark.afterItemRef === item.ref)
-            .map((mark) => (
-              <SunLine key={mark.kind} kind={mark.kind} time={mark.time} />
-            ))}
+            .map((mark) =>
+              mark.kind === 'gap' ? <GapLine key={`gap-${mark.at}`} from={mark.from} to={mark.to} minutes={mark.minutes} /> : <SunLine key={mark.kind} kind={mark.kind} time={mark.time} />,
+            )}
           </Fragment>
         );
       })}
@@ -1112,6 +1113,18 @@ function SunLine({ kind, time }: { kind: 'sunrise' | 'sunset'; time: string }) {
   );
 }
 
+/** Wolny czas między kartami planu (`dayGaps`): bufor albo czas do zaplanowania. */
+function GapLine({ from, to, minutes }: { from: string; to: string; minutes: number }) {
+  return (
+    <View accessible accessibilityLabel={`${from}–${to} wolne ${formatMinutes(minutes)}`} style={styles.sunLine}>
+      <ThemedText type="small" style={styles.sunText}>
+        {from}–{to} · wolne {formatMinutes(minutes)}
+      </ThemedText>
+      <View style={[styles.sunRule, styles.gapRule]} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   start: { alignSelf: 'flex-start' },
@@ -1147,4 +1160,5 @@ const styles = StyleSheet.create({
   sunLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.two },
   sunText: { color: SOFT, fontVariant: ['tabular-nums'] },
   sunRule: { flex: 1, height: 1, backgroundColor: SOFT, opacity: 0.5 },
+  gapRule: { height: 0, backgroundColor: 'transparent', borderTopWidth: 1, borderStyle: 'dashed', borderColor: SOFT },
 });

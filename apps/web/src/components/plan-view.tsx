@@ -1,6 +1,6 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeLinkSite, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, dayGaps, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeLinkSite, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Image from "next/image";
 import Link from "next/link";
@@ -628,6 +628,20 @@ function SunLine({ kind, time }: { kind: "sunrise" | "sunset"; time: string }) {
   );
 }
 
+/** Wolny czas między punktami (`dayGaps`): bufor albo czas do zaplanowania, zwykle przed stałą godziną. */
+function GapLine({ from, to, minutes }: { from: string; to: string; minutes: number }) {
+  return (
+    <li aria-label={`${from}–${to} wolne ${formatMinutes(minutes)}`} className="relative flex items-center gap-3 border-l-2 border-dashed border-zinc-300 py-1 pl-4 text-xs text-zinc-500 dark:border-zinc-700">
+      <span aria-hidden="true" className="w-28 shrink-0 tabular-nums">
+        {from}–{to}
+      </span>
+      <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">wolne {formatMinutes(minutes)}</span>
+      <span aria-hidden="true" className="shrink-0">bufor albo czas do zaplanowania</span>
+      <span aria-hidden="true" className="h-px flex-1 border-t border-dashed border-zinc-300 dark:border-zinc-700" />
+    </li>
+  );
+}
+
 function DragHandle({ onStart, onEnd }: { onStart: (event: React.DragEvent<HTMLElement>) => void; onEnd: () => void }) {
   return (
     <span
@@ -953,7 +967,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
   const lodging = dayLodging(doc, dayRef);
   const sun = schedule?.facts.sun;
   // Wschód i zachód w godzinach planu: linia między punktami w miejscu tej godziny.
-  const sunMarks = schedule ? daySunMarks(schedule) : [];
+  // Do tego wolny czas między punktami; oba znaczniki po kolei godzin.
+  const marks = schedule ? [...daySunMarks(schedule), ...dayGaps(schedule)].sort((a, b) => a.at - b.at) : [];
   // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu”.
   const extras = itemExtras(doc, dayRef);
   const showExtras = () => {
@@ -1214,11 +1229,11 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                   </>
                 )}
               </li>
-              {sunMarks
+              {marks
                 .filter((mark) => mark.afterItemRef === item.ref)
-                .map((mark) => (
-                  <SunLine key={mark.kind} kind={mark.kind} time={mark.time} />
-                ))}
+                .map((mark) =>
+                  mark.kind === "gap" ? <GapLine key={`gap-${mark.at}`} from={mark.from} to={mark.to} minutes={mark.minutes} /> : <SunLine key={mark.kind} kind={mark.kind} time={mark.time} />,
+                )}
               </Fragment>
             );
           })}
