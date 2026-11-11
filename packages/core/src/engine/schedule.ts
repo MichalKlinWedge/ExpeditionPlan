@@ -297,12 +297,16 @@ export function scheduleDay(doc: Doc, dayRef: string, options: ScheduleOptions =
     .slice(0, Math.max(firstIndex, 0))
     .filter((item) => parentOf(item) === undefined && (item.participantRefs ?? []).length === 0)
     .reduce((sum, item) => sum + durationOf(item, scenario) + stopsOf(item).reduce((all, stop) => all + durationOf(stop, scenario), 0) + (item.bufferAfterMin ?? 0), 0);
+  const fromFirst = firstStart === undefined ? undefined : firstStart - leadMin * MINUTE;
+  // Stała godzina (dokładna, „dokładnie do”, `isFixed`) wcześniejsza niż planowany początek dnia przesuwa początek
+  // dnia, a nie siebie: wyjazd o 05:00 nie czeka do 08:00 z planu (`dayStart` to tylko „wyjście z noclegu”).
+  const firstHeld = firstTimed !== undefined && (firstTimed.isFixed === true || firstTimed.time?.precision === 'exact' || firstTimed.time?.precision === 'by');
   const startOfDay =
     day.dayStart !== undefined
-      ? at(day.dayStart)
-      : firstStart !== undefined
-        ? firstStart - leadMin * MINUTE
-        : at(DEFAULT_DAY_START);
+      ? firstHeld && fromFirst !== undefined
+        ? Math.min(at(day.dayStart), fromFirst)
+        : at(day.dayStart)
+      : (fromFirst ?? at(DEFAULT_DAY_START));
   let cursor = startOfDay;
   let previous: ScheduledItem | undefined;
   const result: ScheduledItem[] = [];

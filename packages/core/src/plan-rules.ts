@@ -269,6 +269,19 @@ export function removeConstraint(doc: Doc, ref: string): RulesEdit | null {
   };
 }
 
+// --- Początek dnia ----------------------------------------------------------------------------
+
+/**
+ * Planowany początek dnia (wyjście z noclegu): punkty bez stałej godziny nie zaczynają się wcześniej; stała godzina
+ * pierwszego punktu wcześniejsza od niego zaczyna dzień wcześniej. Brak = od pierwszej godziny planu albo 08:00.
+ */
+export function setDayStart(doc: Doc, dayRef: string, dayStart: string | undefined): RulesEdit | null {
+  const day = doc.days.find((each) => each.ref === dayRef);
+  if (day === undefined || (day.dayStart ?? '') === (dayStart ?? '')) return null;
+  const next = clean({ ...day, dayStart });
+  return { doc: { ...doc, days: swap(doc.days, [next]) }, writes: [{ collection: 'days', element: next, op: 'update' }], changed: [] };
+}
+
 // --- Koniec dnia ------------------------------------------------------------------------------
 
 /** Planowany koniec dnia: późniejszy koniec ostatniego punktu daje ostrzeżenie, a brak godziny je wyłącza. */

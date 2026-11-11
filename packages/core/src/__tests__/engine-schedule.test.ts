@@ -259,6 +259,27 @@ describe('proposeCuts', () => {
   });
 });
 
+describe('scheduleDay — planowany początek dnia', () => {
+  const day = (items: TripDocumentInput['items']) => doc(items, { days: [{ ref: 'd1', date: '2026-12-27', tz: 'Africa/Casablanca', dayStart: '08:00', dayEnd: '22:00' }] });
+
+  it('stała godzina przed początkiem dnia przesuwa początek dnia, a nie siebie', () => {
+    const schedule = scheduleDay(
+      day([
+        { ref: 'wyjazd', dayRef: 'd1', sortKey: '0010', kind: 'transport', title: 'Wyjazd', time: { precision: 'exact', start: '05:00' }, isFixed: true, leg: { mode: 'car', durationMin: 120 } },
+        { ref: 'kawa', dayRef: 'd1', sortKey: '0020', kind: 'free', title: 'Kawa', durationMin: 30 },
+      ]),
+      'd1',
+    );
+    expect(times(schedule)).toEqual({ wyjazd: '05:00–07:00', kawa: '07:00–07:30' });
+    expect(schedule.warnings.filter((each) => each.kind === 'late')).toEqual([]);
+  });
+
+  it('godzina „około” przed początkiem dnia czeka do niego, jak dotąd', () => {
+    const schedule = scheduleDay(day([{ ref: 'spacer', dayRef: 'd1', sortKey: '0010', kind: 'free', title: 'Spacer', time: { precision: 'approx', start: '06:00' }, durationMin: 60 }]), 'd1');
+    expect(times(schedule)).toEqual({ spacer: '08:00–09:00' });
+  });
+});
+
 describe('scheduleDay — „dokładnie do”', () => {
   it('przejazd na lotnisko na 11:00 rusza wstecz o czas jazdy z postojami, a punkt przed nim liczy się od niego', () => {
     const schedule = scheduleDay(

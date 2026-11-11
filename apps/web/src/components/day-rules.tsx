@@ -20,6 +20,7 @@ import {
   type RulesEdit,
   type ScheduleWarning,
   setDayEnd,
+  setDayStart,
   setDayScenarios,
   setItemVariants,
   type TripDocument,
@@ -461,6 +462,32 @@ function ItemVariantPicker({ doc, group, itemRef, onRules }: { doc: Doc; group: 
         </span>
       )}
     </span>
+  );
+}
+
+// --- Początek dnia ----------------------------------------------------------------------------
+
+/** Planowany początek dnia (wyjście z noclegu); zapis po wyjściu z pola, puste = od pierwszej godziny planu. */
+export function DayStartField({ dayRef, value, onRules }: { dayRef: string; value: string | undefined; onRules: OnRules | null }) {
+  if (onRules === null) return null;
+  return (
+    <label className="flex flex-wrap items-center gap-2 self-start text-xs text-zinc-500">
+      Planowany początek dnia
+      <input
+        key={value ?? ""}
+        type="time"
+        defaultValue={value ?? ""}
+        className={input}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+        onBlur={(event) => {
+          if (event.target.validity.badInput) event.target.value = value ?? "";
+          else onRules((doc) => setDayStart(doc, dayRef, event.target.value || undefined));
+        }}
+      />
+      <span>punkty bez stałej godziny nie ruszą wcześniej; stała godzina przed nim zaczyna dzień wcześniej; puste pole = od pierwszej godziny planu</span>
+    </label>
   );
 }
 

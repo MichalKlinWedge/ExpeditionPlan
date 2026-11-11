@@ -10,7 +10,7 @@ import { BookingDialog } from "@/components/booking-dialog";
 import { DayExtras } from "@/components/day-extras";
 import { ArticleIcon, InfoIcon, RouteIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { PlaceLink } from "@/components/place-pin";
-import { DayConstraints, DayEndField, DayNotes, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
+import { DayConstraints, DayEndField, DayNotes, DayStartField, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
 import { ItemPlaceEditor } from "@/components/item-place";
@@ -1280,6 +1280,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
           </p>
         ))}
 
+      <DayStartField dayRef={dayRef} value={day.dayStart} onRules={onRules} />
       <DayEndField dayRef={dayRef} value={day.dayEnd} onRules={onRules} />
       <DayScenariosField dayRef={dayRef} on={hasScenarios(day)} onRules={onRules} />
 
