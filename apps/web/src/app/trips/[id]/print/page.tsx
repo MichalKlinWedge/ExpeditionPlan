@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PrintButton } from "@/components/print-button";
+import { itemRouteLinks, RouteSiteLink } from "@/components/route-site-link";
 import { Loading } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
@@ -148,6 +149,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
                       <td className="w-6 py-0.5">{item ? itemIcon(doc, item) : ""}</td>
                       <td className={`py-0.5 ${row.routeStop ? "pl-4" : ""}`}>
                         <strong className="font-semibold">{row.title}</strong>
+                        {item && itemRouteLinks(doc, item).map(({ url, label }) => <RouteSiteLink key={url} url={url} label={label} className="ml-1.5" />)}
                         {extra && <span className="text-zinc-600"> · {extra}</span>}
                         {guide && (
                           <div className="mt-0.5 mb-1 border-l-2 border-zinc-300 pl-2 text-xs text-zinc-700">
