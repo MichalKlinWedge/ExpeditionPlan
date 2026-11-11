@@ -119,3 +119,53 @@ export const LEG_MODE: Record<string, string> = {
   flight: 'samolot',
   bike: 'rower',
 };
+
+/** Brief wyjazdu: charakter (`TripProfile`). */
+export const BRIEF_PROFILE: Record<string, string> = {
+  sightseeing: 'zwiedzanie',
+  relax: 'odpoczynek',
+  trekking: 'trekking i góry',
+  food_culture: 'jedzenie i kultura',
+  photo: 'fotografia',
+  sport: 'sport',
+  family: 'z dziećmi',
+  road_trip: 'road trip',
+};
+
+/** Brief wyjazdu: transport (`TransportMode`). */
+export const BRIEF_TRANSPORT: Record<string, string> = {
+  flight: 'samolot',
+  own_car: 'własne auto',
+  rental_car: 'wynajęte auto',
+  hired_driver: 'kierowca na miejscu',
+  public: 'komunikacja publiczna',
+  taxi: 'taksówki',
+  bike: 'rower',
+  walk: 'pieszo',
+};
+
+/** Brief wyjazdu: rodzaj miejsca (`BriefLocation.kind`). */
+export const BRIEF_LOCATION: Record<string, string> = {
+  city: 'miasto',
+  region: 'region',
+  route: 'trasa przez kilka miejsc',
+  base_camps: 'kilka baz noclegowych',
+  outdoor: 'w terenie (szlak, chatka)',
+};
+
+/** Brief wyjazdu: rodzaj elementu już ustalonego (`BriefFixed.kind`). */
+export const BRIEF_FIXED_KIND: Record<string, string> = {
+  flight: 'lot',
+  train: 'pociąg',
+  lodging: 'nocleg',
+  car_rental: 'wynajem auta',
+  event: 'wydarzenie (mecz, koncert)',
+  activity: 'aktywność',
+  package: 'pakiet',
+  ticket: 'bilet',
+  other: 'inne',
+};
+
+/** Brief wyjazdu: poziom budżetu i tempo. */
+export const BRIEF_BUDGET: Record<string, string> = { low: 'oszczędny', medium: 'średni', premium: 'wygodny' };
+export const BRIEF_PACE: Record<string, string> = { calm: 'spokojne', normal: 'normalne', intense: 'intensywne' };

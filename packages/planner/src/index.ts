@@ -15,6 +15,7 @@ export * from './review.ts';
 export * from './receipt.ts';
 export * from './lodging.ts';
 export * from './booking.ts';
+export * from './brief-document.ts';
 export * from './transit.ts';
 export * from './transit-osm.ts';
 export * from './track-osm.ts';

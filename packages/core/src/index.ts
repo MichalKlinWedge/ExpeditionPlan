@@ -71,6 +71,8 @@ export * from './trip-reschedule.ts';
 export * from './traveler-presence.ts';
 export * from './lodging-info.ts';
 export * from './booking-import.ts';
+export * from './brief-import.ts';
+export * from './doc-text.ts';
 export * from './votes.ts';
 export * from './transit-info.ts';
 export * from './transit-shape.ts';

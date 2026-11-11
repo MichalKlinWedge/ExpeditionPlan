@@ -89,6 +89,7 @@ async function Brief({ params }: { params: Promise<{ id: string }> }) {
           tripTz={trip.data.primary_tz!}
           initial={initial}
           travelers={travelers.count ?? 0}
+          ai={aiDenied === null}
           term={{ startDate: trip.data.start_date!, endDate: trip.data.end_date!, today: instantToZoned(new Date().getTime(), trip.data.primary_tz!).date, climate: pulled.payload ? climateSource(pulled.payload) : { place: null, query: null } }}
         />
       ) : (

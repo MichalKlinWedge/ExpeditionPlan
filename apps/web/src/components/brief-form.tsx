@@ -1,8 +1,10 @@
 "use client";
 
+import { BRIEF_FIXED_KIND, BRIEF_LOCATION, BRIEF_PROFILE, BRIEF_TRANSPORT, type BriefDraft, type BriefDraftFixed } from "@expeditionplan/core";
 import { useActionState, useState } from "react";
 
 import { type FormState, saveBrief } from "@/app/actions";
+import { BriefImport } from "@/components/brief-import";
 import { FlagIcon, ListIcon, RouteIcon, ShieldIcon, TicketIcon } from "@/components/icons";
 import { ClimateHint } from "@/components/climate-hint";
 import type { ClimateSource } from "@/lib/climate-place";
@@ -14,83 +16,13 @@ import { IconAction } from "@/components/icon-action";
  * Pola wieloelementowe (miejsca, dieta, „koniecznie”) są tekstem: jedna pozycja w linii.
  */
 
-type Fixed = {
-  kind: string;
-  title: string;
-  status?: string;
-  reference?: string;
-  startLocal?: string;
-  startTz?: string;
-  endLocal?: string;
-  from?: string;
-  to?: string;
-  note?: string;
-};
+type Fixed = BriefDraftFixed;
+export type { BriefDraft };
 
-export type BriefDraft = {
-  goal: string;
-  location: { kind: string; countries: string[]; places: string[] };
-  profiles: string[];
-  transport: string[];
-  budget: { level: string; currency: string; capMinor?: number };
-  constraints: {
-    pace: string;
-    dayStart?: string;
-    dayEnd?: string;
-    maxDrivingMinPerDay?: number;
-    noDrivingAfterDark: boolean;
-    diet: string[];
-    allergies: string[];
-    accessibility: string[];
-    notes: string[];
-  };
-  fixed: Fixed[];
-  mustSee: string[];
-  avoid: string[];
-  notes: string[];
-};
-
-const PROFILES: Record<string, string> = {
-  sightseeing: "zwiedzanie",
-  relax: "odpoczynek",
-  trekking: "trekking i góry",
-  food_culture: "jedzenie i kultura",
-  photo: "fotografia",
-  sport: "sport",
-  family: "z dziećmi",
-  road_trip: "road trip",
-};
-
-const TRANSPORT: Record<string, string> = {
-  flight: "samolot",
-  own_car: "własne auto",
-  rental_car: "wynajęte auto",
-  hired_driver: "kierowca na miejscu",
-  public: "komunikacja publiczna",
-  taxi: "taksówki",
-  bike: "rower",
-  walk: "pieszo",
-};
-
-const LOCATION: Record<string, string> = {
-  city: "miasto",
-  region: "region",
-  route: "trasa przez kilka miejsc",
-  base_camps: "kilka baz noclegowych",
-  outdoor: "w terenie (szlak, chatka)",
-};
-
-const FIXED_KIND: Record<string, string> = {
-  flight: "lot",
-  train: "pociąg",
-  lodging: "nocleg",
-  car_rental: "wynajem auta",
-  event: "wydarzenie (mecz, koncert)",
-  activity: "aktywność",
-  package: "pakiet",
-  ticket: "bilet",
-  other: "inne",
-};
+const PROFILES = BRIEF_PROFILE;
+const TRANSPORT = BRIEF_TRANSPORT;
+const LOCATION = BRIEF_LOCATION;
+const FIXED_KIND = BRIEF_FIXED_KIND;
 
 const STEPS = ["Cel i miejsce", "Styl i transport", "Ograniczenia", "Już ustalone", "Podsumowanie"];
 const STEP_ICONS = [FlagIcon, RouteIcon, ShieldIcon, TicketIcon, ListIcon];
@@ -142,9 +74,11 @@ function Lines({ title, hint, value, onChange }: { title: string; hint?: string;
   );
 }
 
-export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId: string; tripTz: string; initial: BriefDraft; travelers: number; term: { startDate: string; endDate: string; today: string; climate: ClimateSource } }) {
+export function BriefForm({ tripId, tripTz, initial, travelers, term, ai = false }: { tripId: string; tripTz: string; initial: BriefDraft; travelers: number; term: { startDate: string; endDate: string; today: string; climate: ClimateSource }; ai?: boolean }) {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<BriefDraft>(initial);
+  // Pola z własnym stanem (listy, `defaultValue`) biorą wartości przy montowaniu: po wstawieniu z dokumentu montują się od nowa.
+  const [version, setVersion] = useState(0);
   const [state, action, pending] = useActionState(saveBrief.bind(null, tripId), {} as FormState);
   const update = (patch: Partial<BriefDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const constraints = (patch: Partial<BriefDraft["constraints"]>) => update({ constraints: { ...draft.constraints, ...patch } });
@@ -160,6 +94,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId
   return (
     <form action={action} className="flex flex-col gap-6">
       <input type="hidden" name="brief" value={payload} />
+      {ai && <BriefImport tripId={tripId} tripTz={tripTz} draft={draft} onApply={(next) => (setDraft(next), setVersion((each) => each + 1))} />}
       {/* Kroki jako mini kafelki w jednym rzędzie — przejście do dowolnego kroku jednym dotknięciem. */}
       <nav aria-label="Kroki briefu" className="-mx-1 overflow-x-auto px-1">
         <ol className="flex gap-2">
@@ -185,7 +120,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId
       </nav>
 
       {step === 0 && (
-        <div className="flex flex-col gap-4">
+        <div key={version} className="flex flex-col gap-4">
           <label className={label}>
             Po co ten wyjazd i co jest w nim najważniejsze
             <textarea rows={3} className={input} value={draft.goal} onChange={(event) => update({ goal: event.target.value })} placeholder="Pustynia i medyna z dziećmi, bez jazdy po zmroku, jeden dzień nad oceanem." />
@@ -214,7 +149,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId
       )}
 
       {step === 1 && (
-        <div className="flex flex-col gap-4">
+        <div key={version} className="flex flex-col gap-4">
           <div className={label}>
             Charakter wyjazdu
             <Choices options={PROFILES} value={draft.profiles} onChange={(profiles) => update({ profiles })} />
@@ -253,7 +188,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId
       )}
 
       {step === 2 && (
-        <div className="flex flex-col gap-4">
+        <div key={version} className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-3">
             <label className={label}>
               Tempo
@@ -290,7 +225,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId
       )}
 
       {step === 3 && (
-        <div className="flex flex-col gap-4">
+        <div key={version} className="flex flex-col gap-4">
           <p className="text-sm text-zinc-500">Kupione loty, noclegi, bilety — AI zaplanuje wokół nich, nie zamiast nich.</p>
           {draft.fixed.map((each, index) => (
             <fieldset key={index} className="grid grid-cols-2 gap-3 panel p-3">
@@ -338,7 +273,7 @@ export function BriefForm({ tripId, tripTz, initial, travelers, term }: { tripId
       )}
 
       {step === 4 && (
-        <div className="flex flex-col gap-3 text-sm">
+        <div key={version} className="flex flex-col gap-3 text-sm">
           <Lines title="Wszystko inne, co AI powinno wiedzieć" value={draft.notes} onChange={(notes) => update({ notes })} />
           <ul className="flex flex-col gap-1 text-zinc-600 dark:text-zinc-400">
             <li>Cel: {draft.goal || "—"}</li>
