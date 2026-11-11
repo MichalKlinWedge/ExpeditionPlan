@@ -127,11 +127,10 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             {day ? ` · Dzień ${dayIndex + 1}, ${dayLabel(day.date)}` : " · w puli (poza dniami)"}
             {time ? ` · ${time}` : ""}
           </>
-        }>
-        {editing && <ItemHeaderEditor tripId={id} doc={doc} ids={ids} itemRef={item.ref} />}
-      </PageHeader>
+        }
+      />
 
-      <ItemPlanNav tripId={id} doc={doc} inputs={inputs} itemRef={item.ref} />
+      <ItemPlanNav tripId={id} doc={doc} inputs={inputs} itemRef={item.ref} {...(editing ? { editor: <ItemHeaderEditor tripId={id} doc={doc} ids={ids} itemRef={item.ref} /> } : {})} />
 
       {hasInfo && (
       <section className="card flex flex-col gap-2 p-4 text-sm">

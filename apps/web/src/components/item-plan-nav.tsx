@@ -3,19 +3,21 @@
 import { itemInPlan, itemPlanFacts, type PlanStep, type TripDocument, variantsForItem } from "@expeditionplan/core";
 import type { TripState } from "@expeditionplan/sync";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { PlaceLink } from "@/components/place-pin";
 import { readChosenVariants } from "@/lib/plan-variants";
 import { useHydrated } from "@/lib/use-hydrated";
 
-type Props = { tripId: string; doc: TripDocument; inputs: TripState["inputs"]; itemRef: string };
+type Props = { tripId: string; doc: TripDocument; inputs: TripState["inputs"]; itemRef: string; editor?: ReactNode };
 
 /**
  * „W planie” na karcie punktu: godziny z silnika dla wariantów wybranych w widoku planu (ta sama
  * pamięć karty przeglądarki), szczegóły z planu i przejście do poprzedniego i następnego punktu.
  * Godziny i sąsiedzi liczą się dopiero w przeglądarce — wybór wariantu jest tylko tam.
+ * W trybie edycji zamiast szczegółów stoi formularz nagłówka punktu (`editor`).
  */
-export function ItemPlanNav({ tripId, doc, inputs, itemRef }: Props) {
+export function ItemPlanNav({ tripId, doc, inputs, itemRef, editor }: Props) {
   const hydrated = useHydrated();
   const item = doc.items.find((each) => each.ref === itemRef);
   if (item === undefined) return null;
@@ -41,7 +43,7 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef }: Props) {
     ...(own.length > 0 ? [{ label: "Miejsce", list: own }] : []),
   ];
   // Punkt w puli bez szczegółów: nie ma czego pokazać.
-  if (item.dayRef === undefined && facts.length === 0) return null;
+  if (item.dayRef === undefined && facts.length === 0 && editor === undefined) return null;
   const neighbour = (step: PlanStep, arrow: "prev" | "next") => {
     const other = step.dayRef !== item.dayRef ? `Dzień ${dayNumber(step.dayRef)}: ` : "";
     return (
@@ -71,7 +73,7 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef }: Props) {
           {warning.message}
         </p>
       ))}
-      {(places.length > 0 || facts.length > 0) && (
+      {editor ?? ((places.length > 0 || facts.length > 0) && (
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
           {places.map(({ label, list }) => (
             <div key={label} className="contents">
@@ -113,7 +115,7 @@ export function ItemPlanNav({ tripId, doc, inputs, itemRef }: Props) {
             </div>
           ))}
         </dl>
-      )}
+      ))}
       {(plan?.previous || plan?.next) && (
         <nav aria-label="Sąsiednie punkty planu" className="flex flex-wrap items-center justify-between gap-2 pt-1">
           {plan.previous ? neighbour(plan.previous, "prev") : <span />}

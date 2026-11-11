@@ -13,11 +13,13 @@ import { createClient } from "@/lib/supabase/client";
 /**
  * Edycja nagłówka punktu na jego karcie (nazwa, rodzaj, godzina, czas trwania, bufor, priorytet) —
  * ten sam formularz i ta sama droga zapisu co w planie (`updateItem` → `savePlanEdit`, `user_locked`).
- * Widoczna w trybie edycji (wspólny, `lib/edit-mode.ts`) dla organizatora i edytora.
+ * W trybie edycji (wspólny, `lib/edit-mode.ts`) stoi od razu otwarta w boksie „W planie” zamiast jego danych;
+ * „Anuluj” wraca do zapisanych wartości.
  */
 export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string; doc: TripDocument; ids: Record<string, string>; itemRef: string }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  // Nowy klucz formularza = szkic od nowa z zapisanego punktu.
+  const [version, setVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const item = doc.items.find((each) => each.ref === itemRef);
@@ -39,20 +41,17 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
     });
   };
 
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} className="btn-secondary btn-sm self-start">
-        Edytuj nagłówek punktu
-      </button>
-    );
-  }
   return (
     <div className="flex flex-col gap-1">
       <ItemEditor
+        key={version}
         item={item}
         transitNow={isTransit(doc, item)}
-        onCancel={() => setOpen(false)}
-        onSave={(patch) => save(updateItem(doc, itemRef, patch), () => setOpen(false))}
+        onCancel={() => {
+          setError(null);
+          setVersion((each) => each + 1);
+        }}
+        onSave={(patch) => save(updateItem(doc, itemRef, patch))}
       />
       {item.kind === "transport" ? (
         <ItemLegEditor tripId={tripId} doc={doc} item={item} onEdit={save} disabled={pending} />
