@@ -95,9 +95,9 @@ function GuideRowCard({ tripId, guide, canEdit, startOpen }: { tripId: string; g
             </button>
           </div>
           {guide.placeRef !== undefined ? (
-            <PlaceGuideButtons tripId={tripId} placeRef={guide.placeRef} guideId={guide.rowId} label="Przygotuj od nowa (AI)" which={content.hint} confirmRegenerate={confirm} />
+            <PlaceGuideButtons tripId={tripId} placeRef={guide.placeRef} name={guide.title} guideId={guide.rowId} label="Przygotuj od nowa (AI)" which={content.hint} confirmRegenerate={confirm} />
           ) : guide.itemRef !== undefined ? (
-            <GuideButtons tripId={tripId} itemRef={guide.itemRef} guideId={guide.rowId} hint={content.hint} label="Przygotuj od nowa (AI)" confirmRegenerate={confirm} />
+            <GuideButtons tripId={tripId} itemRef={guide.itemRef} name={guide.title} guideId={guide.rowId} hint={content.hint} label="Przygotuj od nowa (AI)" confirmRegenerate={confirm} />
           ) : (
             <OrphanGuide tripId={tripId} guideId={guide.rowId} />
           )}
@@ -134,7 +134,7 @@ function MissingRow({ tripId, item, canEdit }: { tripId: string; item: { ref: st
           </button>
         )}
       </div>
-      {open && <GuideButtons tripId={tripId} itemRef={item.ref} guideId={null} />}
+      {open && <GuideButtons tripId={tripId} itemRef={item.ref} name={item.title} guideId={null} />}
     </li>
   );
 }

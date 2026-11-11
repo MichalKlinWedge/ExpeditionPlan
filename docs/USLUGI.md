@@ -350,6 +350,8 @@ Bez API i bez klucza: `apps/web/src/lib/venue-site.ts` pobiera stronę samego lo
 
 Na tych samych warunkach działa strona wskazana przez użytkownika jako źródło opisu miejsca (`describeFromSource`), bez podstron. Zapisujemy tylko streszczenie AI własnymi słowami i link do strony; bez licencji CC BY-SA, bez zdjęć z tej strony, a pobrany albo wklejony tekst nie trafia do bazy. Streszczenie jest widoczne także na publicznym linku, więc za wybór źródła odpowiada użytkownik.
 
+Przy tym formularzu jest link „Szukaj … na Tripadvisor” (`tripadvisorSearchUrl` w `apps/web/src/components/guide-button.tsx`): sam adres wyszukiwania, nic z Tripadvisora nie pobieramy. Jego tekst może tu trafić tylko wklejony przez użytkownika, jak każdy inny.
+
 ### Booking.com (nocleg, 5.11.2026)
 
 Kod nie pobiera stron Booking.com ani nie czyta ich automatycznie: warunki serwisu zabraniają automatycznego odczytu, a API partnerskie jest dla nas niedostępne (SPECYFIKACJA W1). Jedyne, co robi: link do wyszukiwania w serwisie (`planner/src/logistics.ts`, „Szukaj w Booking.com”) i link do obiektu wklejony przez użytkownika (`core/lodging-info.ts`). Dane noclegu pochodzą z tekstu, który użytkownik sam wkleił (`planner/src/lodging.ts`), po podglądzie zmian.

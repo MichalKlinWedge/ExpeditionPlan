@@ -292,11 +292,11 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             Brak opisu.
             {canEdit ? " Opis powstaje z artykułu w Wikipedii albo Wikivoyage o tym miejscu (ciekawostki, historia, zdjęcia)." : " Organizator może go przygotować na webie."}
           </p>
-          {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} />}
+          {canEdit && <GuideButtons tripId={id} itemRef={item.ref} name={place?.name ?? item.title} guideId={guideRow?.id ?? null} />}
         </section>
       ) : (
         <GuideArticle guide={guide} title={guide.title} heading="Opis miejsca" targets={guideLinkTargets(doc, rows, ids, item.ref)} itemBase={`/trips/${id}/item/`}>
-          {canEdit && <GuideButtons tripId={id} itemRef={item.ref} guideId={guideRow?.id ?? null} hint={guideRow?.place_id === null ? guide.hint : undefined} />}
+          {canEdit && <GuideButtons tripId={id} itemRef={item.ref} name={place?.name ?? item.title} guideId={guideRow?.id ?? null} hint={guideRow?.place_id === null ? guide.hint : undefined} />}
         </GuideArticle>
       )
       )}

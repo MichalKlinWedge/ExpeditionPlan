@@ -8,7 +8,13 @@ import { IconAction } from "@/components/icon-action";
 import { SparkIcon } from "@/components/icons";
 
 /** Własne źródło opisu, gdy automat nic nie znalazł albo trafił w inne miejsce: link albo tekst wklejony ze strony. */
-function GuideSourceForm({ tripId, target, confirmRegenerate }: { tripId: string; target: { itemRef?: string; placeRef?: string }; confirmRegenerate?: string | undefined }) {
+/**
+ * Wyszukiwanie miejsca na Tripadvisorze: sam link, nic stamtąd nie pobieramy (warunki serwisu, docs/USLUGI.md §13).
+ * Tekst skopiowany przez użytkownika wkleja się niżej jako źródło opisu.
+ */
+const tripadvisorSearchUrl = (name: string) => `https://www.tripadvisor.com/Search?q=${encodeURIComponent(name)}`;
+
+function GuideSourceForm({ tripId, target, name, confirmRegenerate }: { tripId: string; target: { itemRef?: string; placeRef?: string }; name?: string | undefined; confirmRegenerate?: string | undefined }) {
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const [state, setState] = useState<FormState>({});
@@ -17,6 +23,14 @@ function GuideSourceForm({ tripId, target, confirmRegenerate }: { tripId: string
     <details className="text-xs text-zinc-500">
       <summary className="cursor-pointer hover:text-sea">Nie ma w Wikipedii? Podaj stronę o tym miejscu</summary>
       <div className="mt-2 flex flex-col gap-2">
+        {name !== undefined && name.trim() !== "" && (
+          <p>
+            <a href={tripadvisorSearchUrl(name)} target="_blank" rel="noreferrer" className="underline">
+              Szukaj „{name}” na Tripadvisor ↗
+            </a>{" "}
+            — tej strony nie czytamy automatycznie: wklej jej adres i skopiowany tekst poniżej.
+          </p>
+        )}
         <label className="flex flex-col gap-1">
           Adres strony (lokalna turystyka, strona obiektu, artykuł w Wikipedii w dowolnym języku)
           <input type="url" value={url} onChange={(event) => setUrl(event.target.value)} disabled={pending} placeholder="https://" className="field w-full px-2 py-1 text-sm" />
@@ -44,7 +58,7 @@ function GuideSourceForm({ tripId, target, confirmRegenerate }: { tripId: string
  * Opis miejsca na stronie „Miejsca”: nowy albo odświeżony; `guideId` to własny opis miejsca, nie opis punktu.
  * Pole „O które dokładnie miejsce chodzi” rozstrzyga, gdy wiele miejsc nosi tę samą nazwę.
  */
-export function PlaceGuideButtons({ tripId, placeRef, guideId, label, which: saved = "", confirmRegenerate }: { tripId: string; placeRef: string; guideId: string | null; label: string; which?: string | undefined; confirmRegenerate?: string }) {
+export function PlaceGuideButtons({ tripId, placeRef, name, guideId, label, which: saved = "", confirmRegenerate }: { tripId: string; placeRef: string; name?: string; guideId: string | null; label: string; which?: string | undefined; confirmRegenerate?: string }) {
   const [state, setState] = useState<FormState>({});
   const [pending, start] = useTransition();
   const [which, setWhich] = useState(saved);
@@ -65,7 +79,7 @@ export function PlaceGuideButtons({ tripId, placeRef, guideId, label, which: sav
       </div>
       {state.error && <p className="text-xs msg-error">{state.error}</p>}
       {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
-      <GuideSourceForm tripId={tripId} target={{ placeRef }} confirmRegenerate={confirmRegenerate} />
+      <GuideSourceForm tripId={tripId} target={{ placeRef }} name={name} confirmRegenerate={confirmRegenerate} />
     </div>
   );
 }
@@ -74,7 +88,7 @@ export function PlaceGuideButtons({ tripId, placeRef, guideId, label, which: sav
  * „Przygotuj opis z Wikipedii” / „Odśwież” i „Usuń opis” — akcje serwera z wynikiem pod spodem.
  * Pole „O czym ma być opis” naprowadza AI (wybór artykułu i treść), np. przejazd A7 → opłaty i bramki.
  */
-export function GuideButtons({ tripId, itemRef, guideId, hint: saved = "", label, confirmRegenerate }: { tripId: string; itemRef: string; guideId: string | null; hint?: string | undefined; label?: string; confirmRegenerate?: string }) {
+export function GuideButtons({ tripId, itemRef, name, guideId, hint: saved = "", label, confirmRegenerate }: { tripId: string; itemRef: string; name?: string; guideId: string | null; hint?: string | undefined; label?: string; confirmRegenerate?: string }) {
   const [state, setState] = useState<FormState>({});
   const [pending, start] = useTransition();
   const [hint, setHint] = useState(saved);
@@ -103,7 +117,7 @@ export function GuideButtons({ tripId, itemRef, guideId, hint: saved = "", label
       </div>
       {state.error && <p className="text-xs msg-error">{state.error}</p>}
       {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
-      <GuideSourceForm tripId={tripId} target={{ itemRef }} confirmRegenerate={confirmRegenerate} />
+      <GuideSourceForm tripId={tripId} target={{ itemRef }} name={name} confirmRegenerate={confirmRegenerate} />
     </div>
   );
 }
