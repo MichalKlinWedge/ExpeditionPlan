@@ -331,6 +331,17 @@ function approaches(doc: Doc, firstDay: readonly Item[], lastDay: readonly Item[
   };
 }
 
+/**
+ * Dojazd i powrót całego wyjazdu jako karty z punktami do mapy (`dayMap(doc, refs)`); `dayItems` = punkty kolejnych dni
+ * (bez podpunktów poza postojami w trasie), jak w `showScenes`. Też dla pamiątki z wyjazdu.
+ */
+export function tripApproaches(doc: Doc, dayItems: readonly (readonly Item[])[]): { outbound?: ShowApproach; back?: ShowApproach } {
+  const { outbound, back } = approaches(doc, dayItems[0] ?? [], dayItems.at(-1) ?? [], dayItems.flat());
+  const outboundCard = approachCard(doc, outbound, 'Dojazd');
+  const backCard = approachCard(doc, back, 'Powrót');
+  return { ...(outboundCard ? { outbound: outboundCard } : {}), ...(backCard ? { back: backCard } : {}) };
+}
+
 /** „Wrocław → Parking …” i „autem 130 km” dla karty dojazdu albo powrotu. */
 function approachCard(doc: Doc, items: readonly Item[], label: ShowApproach['label']): ShowApproach | undefined {
   if (items.length === 0) return undefined;

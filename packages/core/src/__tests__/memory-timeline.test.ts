@@ -31,6 +31,21 @@ describe('pamiątka jako oś czasu', () => {
     }
   });
 
+  it('dojazd na początku i powrót na końcu mają własne mapy, mapy dni zaczynają się na miejscu', () => {
+    for (const slug of ['barcelona', 'chatka', 'dinara', 'gruzja', 'maroko']) {
+      const doc = fixture(slug);
+      const timeline = memoryTimeline(doc, { done: [], skipRefs: [], guideOf: () => null, journal: [] });
+      const approach = [...(timeline.outbound?.refs ?? []), ...(timeline.back?.refs ?? [])];
+      for (const day of timeline.days) expect(day.routeRefs.filter((ref) => approach.includes(ref))).toEqual([]);
+      // Punkty dojazdu zostają na liście swojego dnia.
+      const listed = timeline.days.flatMap((day) => day.entries.map((entry) => (entry.kind === 'point' ? entry.ref : '')));
+      for (const ref of approach) if (doc.items.find((item) => item.ref === ref)?.kind !== 'lodging') expect(listed).toContain(ref);
+    }
+    const maroko = memoryTimeline(fixture('maroko'), { done: [], skipRefs: [], guideOf: () => null, journal: [] });
+    expect(maroko.outbound?.label).toBe('Dojazd');
+    expect(maroko.back?.label).toBe('Powrót');
+  });
+
   it('najważniejszy punkt ma skrót opisu i zdjęcie, wpisy dziennika: przy punkcie, po godzinie i bez dnia', () => {
     const doc = fixture('maroko');
     const first = memoryTimeline(doc, { done: [], skipRefs: [], guideOf: () => null, journal: [] });

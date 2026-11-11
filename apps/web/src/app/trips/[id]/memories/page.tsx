@@ -9,6 +9,7 @@ import {
   guideFor,
   type GuideRow,
   memoryTimeline,
+  type ShowApproach,
   type TimelineEntry,
   type TimelineJournal,
   type TimelinePoint,
@@ -77,6 +78,28 @@ function RouteTrace({ map, height = 380 }: { map: DayMap; height?: number }) {
         <circle key={pin.placeRef} cx={x(pin.lng)} cy={y(pin.lat)} r="4" fill="#E2622B" />
       ))}
     </svg>
+  );
+}
+
+/** Mapa dojazdu albo powrotu: cała, z lotem i lotniskiem w domu (tu dojazd jest tematem, nie tło). */
+function approachMap(map: DayMap): DayMap {
+  return { ...map, lines: map.lines.map((line) => ({ ...line, transit: false })), pins: map.pins.map((pin) => ({ ...pin, transit: false })) };
+}
+
+/** Początek i koniec osi: karta „Dojazd” / „Powrót” z trasą i jej mapą. */
+function ApproachMap({ doc, approach }: { doc: TripDocument; approach: ShowApproach | undefined }) {
+  if (approach === undefined) return null;
+  const map = approachMap(dayMap(doc, approach.refs));
+  if (map.pins.length === 0) return null;
+  return (
+    <>
+      <p className="text-sm">
+        <span className="font-semibold">{approach.label}:</span> {approach.title}
+        {approach.facts && <span className="text-zinc-500"> · {approach.facts}</span>}
+      </p>
+      <MemoryDayMap map={map} />
+      <RouteTrace map={map} height={220} />
+    </>
   );
 }
 
@@ -348,6 +371,7 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
           <Node mark="▶" accent>
             <h2 className="text-lg font-semibold">Wyjazd · {dayLabel(doc.trip.startDate)}</h2>
             {(doc.trip.goal || doc.trip.summary) && <p className="text-sm text-zinc-600 dark:text-zinc-400">{doc.trip.summary ?? doc.trip.goal}</p>}
+            <ApproachMap doc={doc} approach={timeline.outbound} />
           </Node>
           {timeline.days.map((day) => {
             const dayPins = dayMap(doc, day.routeRefs);
@@ -403,6 +427,7 @@ async function Memories({ params }: { params: Promise<{ id: string }> }) {
                 .filter(Boolean)
                 .join(" · ")}
             </p>
+            <ApproachMap doc={doc} approach={timeline.back} />
           </Node>
         </ol>
       </section>

@@ -8,7 +8,7 @@ import { dayLodging } from './plan-info.ts';
 import { isRouteStop } from './route-stops.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { profileSketch, trackProfile } from './track-profile.ts';
-import { dayStats, isShowWalk, walkFacts } from './trip-show.ts';
+import { dayStats, isShowWalk, type ShowApproach, tripApproaches, walkFacts } from './trip-show.ts';
 
 /**
  * Pamiątka jako oś czasu (`/trips/[id]/memories`): dzień po dniu, z góry na dół — mapa dnia, liczby, najważniejsze
@@ -17,6 +17,8 @@ import { dayStats, isShowWalk, walkFacts } from './trip-show.ts';
  * Godziny punktów to godziny planu z silnika (te same warianty co reszta pamiątki); pominięte w terenie zostają skreślone.
  * Trekking (ślad GPX, trasa `hike`, aktywność z km albo podejściem) to zawsze duża karta z własną mapą trasy, a ślad
  * z wysokościami daje też profil (`walk.profile`); wejście i zejście tym samym śladem mają profil tylko przy pierwszym.
+ * Oś zaczyna mapa dojazdu, a kończy mapa powrotu (`outbound`, `back`; te same co w filmie, `tripApproaches`): mapy dni
+ * zaczynają się wtedy na miejscu, a punkty dojazdu zostają na liście swojego dnia.
  */
 
 type Doc = TripDocument;
@@ -58,13 +60,13 @@ export type TimelineDay = {
   title?: string;
   summary?: string;
   stats: string[];
-  /** Punkty dnia do `dayMap` (bez pominiętych). */
+  /** Punkty dnia do `dayMap` (bez pominiętych i bez dojazdu i powrotu, które mają własne mapy). */
   routeRefs: string[];
   entries: TimelineEntry[];
   lodging?: string;
 };
 
-export type MemoryTimeline = { days: TimelineDay[]; loose: TimelineJournal[] };
+export type MemoryTimeline = { days: TimelineDay[]; loose: TimelineJournal[]; outbound?: ShowApproach; back?: ShowApproach };
 
 export type TimelineInput = Pick<ScheduleOptions, 'activeVariants' | 'pulled'> & {
   done: readonly { itemRef: string }[];
@@ -106,9 +108,16 @@ export function memoryTimeline(doc: Doc, input: TimelineInput): MemoryTimeline {
   const placed = new Set<string>();
   const seenTracks = new Set<string>();
   const tracks = new Map(doc.tracks.map((track) => [track.ref, track]));
+  const dayItems = dates.map((day) => itemsForDay(doc, day.ref, schedule).filter((item) => item.parentRef === undefined || isRouteStop(doc, item)));
+  // Dojazd i powrót bez pominiętych punktów: mapa pokazuje, którędy naprawdę jechaliśmy.
+  const { outbound, back } = tripApproaches(
+    doc,
+    dayItems.map((items) => items.filter((item) => !skipped.has(item.ref))),
+  );
+  const approachRefs = new Set([...(outbound?.refs ?? []), ...(back?.refs ?? [])]);
 
   const days = dates.map((day, index): TimelineDay => {
-    const items = itemsForDay(doc, day.ref, schedule).filter((item) => item.parentRef === undefined || isRouteStop(doc, item));
+    const items = dayItems[index]!;
     const times = new Map(scheduleDay(doc, day.ref, schedule).items.map((each) => [each.ref, each.startLocal]));
     const ofDay = input.journal.filter((entry) => entry.dayRef === day.ref);
 
@@ -171,11 +180,16 @@ export function memoryTimeline(doc: Doc, input: TimelineInput): MemoryTimeline {
       ...(day.title ? { title: day.title } : {}),
       ...(day.summary ? { summary: shortText(day.summary, DAY_SUMMARY_CHARS) } : {}),
       stats: dayStats(doc, counted),
-      routeRefs: counted.map((item) => item.ref),
+      routeRefs: counted.filter((item) => !approachRefs.has(item.ref)).map((item) => item.ref),
       entries,
       ...(lodging !== null ? { lodging: lodging.name } : {}),
     };
   });
 
-  return { days, loose: input.journal.filter((entry) => !placed.has(entry.id) && (entry.dayRef === undefined || !dayRefs.has(entry.dayRef))) };
+  return {
+    days,
+    loose: input.journal.filter((entry) => !placed.has(entry.id) && (entry.dayRef === undefined || !dayRefs.has(entry.dayRef))),
+    ...(outbound ? { outbound } : {}),
+    ...(back ? { back } : {}),
+  };
 }
