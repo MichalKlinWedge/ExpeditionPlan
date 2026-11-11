@@ -1,20 +1,20 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, dayGaps, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeLinkSite, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, dayGaps, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, legRouteLink, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeLinkLabel, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
-import Image from "next/image";
 import Link from "next/link";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
 import { DayExtras } from "@/components/day-extras";
-import { ArticleIcon, InfoIcon, RouteIcon, SparkIcon, TicketIcon } from "@/components/icons";
+import { ArticleIcon, InfoIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { PlaceLink } from "@/components/place-pin";
 import { DayConstraints, DayEndField, DayNotes, DayStartField, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
 import { ItemPlaceEditor } from "@/components/item-place";
 import { highlightRoute, type LatLng, PlanMap } from "@/components/plan-map";
+import { RouteSiteLink } from "@/components/route-site-link";
 import { IconAction } from "@/components/icon-action";
 import { readChosenVariants, saveChosenVariants, shareChosenVariants } from "@/lib/plan-variants";
 import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
@@ -832,9 +832,6 @@ const routeHover = (ref: string) => ({
   onBlur: () => highlightRoute(null),
 });
 
-/** Ikona serwisu przy linku trasy (favikony zapisane w `public/route-icons`, strona nie łączy się z serwisem). */
-const ROUTE_SITE_ICON = { mapy: "/route-icons/mapy.png", google: "/route-icons/google-maps.png" } as const;
-
 /**
  * Linki do trasy przy tytule punktu, jako ikony serwisu: zapisany przy śladzie (mapy.com, Google) i wyliczony
  * z przejazdu albo spaceru (`legRouteLink`: własny link przejazdu, Mapy Google autem i komunikacją, mapy.com pieszo).
@@ -843,14 +840,7 @@ function RouteLink({ doc, item }: { doc: TripDocument; item: Item }) {
   const track = doc.tracks.find((each) => each.ref === item.activity?.trackRef)?.url;
   const computed = legRouteLink(doc, item);
   const links = [...(track !== undefined && /^https?:\/\//i.test(track) ? [{ url: track, label: routeLinkLabel(track) }] : []), ...(computed !== null && computed.url !== track ? [computed] : [])];
-  return links.map(({ url, label }) => {
-    const site = routeLinkSite(url);
-    return (
-      <a key={url} href={url} target="_blank" rel="noreferrer" title={label} aria-label={label} {...routeHover(item.ref)} className="btn-mini btn-icon ml-1.5">
-        {site === null ? <RouteIcon className="size-3.5" /> : <Image src={ROUTE_SITE_ICON[site]} alt="" width={14} height={14} unoptimized className="size-3.5" />}
-      </a>
-    );
-  });
+  return links.map(({ url, label }) => <RouteSiteLink key={url} url={url} label={label} {...routeHover(item.ref)} className="ml-1.5" />);
 }
 
 /** Grupowanie, opis (wszystkie / z opisem / bez), filtry z licznikami i szukanie; „wyczyść” wraca do całej puli. */

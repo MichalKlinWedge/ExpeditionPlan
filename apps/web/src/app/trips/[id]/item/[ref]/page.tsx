@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, routeLinkLabel, stopsLabel, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, stopsLabel, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
 import { bookingDetails, itemBookingRef, localToday, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload, type TripState } from "@expeditionplan/sync";
 import Link from "next/link";
@@ -21,6 +21,7 @@ import { journalCards } from "@/lib/journal";
 import { ItemTexts } from "@/components/item-texts";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
+import { RouteSiteLink } from "@/components/route-site-link";
 import { TrackProfile } from "@/components/track-profile";
 import { TrackUpload } from "@/components/track-upload";
 import { TransitDetails, TransitEditor } from "@/components/transit-editor";
@@ -149,12 +150,10 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             )}
           </p>
         )}
-        {leg && <p>{leg}</p>}
-        {route && (
+        {(leg || route) && (
           <p>
-            <a href={route.url} target="_blank" rel="noreferrer" className="underline">
-              {route.label}
-            </a>
+            {leg}
+            {route && <RouteSiteLink url={route.url} label={route.label} className={leg ? "ml-1.5" : ""} />}
           </p>
         )}
         {flight && <p>✈ {flightLine(flight)}</p>}
@@ -197,12 +196,8 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
               {track.ascentM !== undefined ? ` · ↑ ${track.ascentM} m` : ""}
               {track.descentM !== undefined ? ` ↓ ${track.descentM} m` : ""}
               {track.durationMin !== undefined ? ` · ok. ${formatMinutes(track.durationMin)}` : ""}
+              {track.url !== undefined && /^https?:\/\//i.test(track.url) && <RouteSiteLink url={track.url} className="ml-1.5" />}
             </p>
-          )}
-          {track?.url !== undefined && /^https?:\/\//i.test(track.url) && (
-            <a href={track.url} target="_blank" rel="noreferrer" className="self-start text-sea underline">
-              🗺 {routeLinkLabel(track.url)}
-            </a>
           )}
           {track?.geojson !== undefined ? (
             <>
