@@ -79,6 +79,27 @@ export async function saveItemCarRoute(tripId: string, itemRef: string): Promise
   });
 }
 
+/** Przejazdy autem z planu do „Tras” naraz (sekcja „Przejazdy autem z planu”); już zapisane i bez przebiegu są pomijane. */
+export async function saveCarRoutes(tripId: string, itemRefs: string[]): Promise<FormState> {
+  const refs = z.array(z.string().max(80)).min(1).max(200).safeParse(itemRefs);
+  if (!refs.success) return { error: "Nie wybrano przejazdów." };
+  return commit(tripId, `/trips/${tripId}/routes`, (doc) => {
+    let next = doc;
+    const writes: ElementWrite[] = [];
+    const items: string[] = [];
+    for (const ref of refs.data) {
+      if (next.items.find((item) => item.ref === ref)?.leg?.trackRef !== undefined) continue;
+      const saved = carRouteFromItem(next, ref, `id-${uuidv7()}`);
+      if (saved === null) continue;
+      next = saved.doc;
+      writes.push({ collection: "tracks", element: saved.track, op: saved.created ? "insert" : "update" });
+      items.push(ref);
+    }
+    if (items.length === 0) return "Nie ma czego zapisać — odśwież stronę.";
+    return { doc: next, writes, items, ok: `Zapisano w „Trasach”: ${plural(items.length, ["przejazd", "przejazdy", "przejazdów"])}.` };
+  });
+}
+
 const Name = z.string().trim().min(1, "Trasa musi mieć nazwę.").max(120, "Nazwa jest za długa.");
 
 export async function renameRoute(tripId: string, trackRef: string, name: string): Promise<FormState> {

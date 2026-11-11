@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { encodePolyline, type LngLat } from '../polyline.ts';
-import { attachRoute, carRouteFromItem, detachRoute, editRoute, newRoute, removeRoute, routeMap, routeChoices, routeGroups, routeKindFor, routeUsers } from '../route-library.ts';
+import { attachRoute, carRouteFromItem, detachRoute, editRoute, newRoute, removeRoute, routeMap, routeChoices, routeGroups, routeKindFor, routeUsers, unsavedCarRoutes } from '../route-library.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const road: LngLat[] = [
@@ -120,6 +120,8 @@ describe('Trasy wyjazdu', () => {
     expect(relined.track.route).toEqual({ mode: 'foot', from: { name: 'Śnieżnik', lat: 50.2, lng: 16.85 } });
     expect(editRoute(doc, 'slad', { geojson: null }, { updateUsers: false, ids: () => ids })).toBe('Trasa musi mieć linię z pliku GPX, link albo skąd i dokąd.');
     expect(editRoute(doc, 'slad', { name: ' ' }, { updateUsers: false, ids: () => ids })).toBe('Trasa musi mieć nazwę.');
+    expect(unsavedCarRoutes(doc).map((item) => item.ref)).toEqual(['jazda']);
+    expect(unsavedCarRoutes(carRouteFromItem(doc, 'jazda', 'id-r1')!.doc)).toEqual([]);
     expect(routeMap(doc.tracks[0]!)).toMatchObject({ pins: [{ placeRef: 'trasa-start' }, { placeRef: 'trasa-koniec' }], lines: [{ track: true }] });
   });
 });

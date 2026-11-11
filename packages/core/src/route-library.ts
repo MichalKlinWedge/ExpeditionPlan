@@ -420,3 +420,13 @@ export function routeMap(track: Track): DayMap {
     numbers: {},
   };
 }
+
+/**
+ * Przejazdy autem z planu, których przebiegu (linia, „Jedź przez”, własny link) nie ma jeszcze w „Trasach” — do zapisania
+ * jednym kliknięciem. W kolejności planu, pula na końcu.
+ */
+export function unsavedCarRoutes(doc: Doc): Item[] {
+  return doc.items
+    .filter((item) => routeKindFor(item) === 'car' && item.leg!.trackRef === undefined && carRouteFromItem(doc, item.ref, 'id-sprawdz') !== null)
+    .sort(planOrder(dayOrder(doc)));
+}

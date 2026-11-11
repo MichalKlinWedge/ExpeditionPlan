@@ -1,4 +1,4 @@
-import { dayChip, itemRouteRef, plural, ROUTE_ICON, ROUTE_KIND, routeFacts, routeGroups, routeKindFor, routeLine, routeUsers, type TripDocument } from "@expeditionplan/core";
+import { dayChip, itemRouteRef, legLabel, plural, ROUTE_ICON, ROUTE_KIND, routeFacts, routeGroups, routeKindFor, routeLine, routeUsers, type TripDocument, unsavedCarRoutes } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -9,6 +9,7 @@ import { NewRoute } from "@/components/new-route";
 import { PageHeader } from "@/components/page-header";
 import { RouteCard, type RouteUseView, type RouteView } from "@/components/route-library";
 import { Loading, Shell } from "@/components/shell";
+import { UnsavedCarRoutes } from "@/components/unsaved-car-routes";
 import { requireUser } from "@/lib/auth";
 import { editMode } from "@/lib/edit-mode";
 
@@ -69,6 +70,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const editing = mayEdit && (await editMode());
   const groups = routeGroups(doc);
+  const unsaved = unsavedCarRoutes(doc);
   const view = (track: Doc["tracks"][number], kind: keyof typeof ROUTE_KIND): RouteView => {
     const ends = track.route?.from !== undefined && track.route.to !== undefined ? `${track.route.from.name} → ${track.route.to.name}` : undefined;
     const line = sketch(routeLine(track));
@@ -98,6 +100,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
           </>
         }
       />
+      {unsaved.length > 0 && <UnsavedCarRoutes tripId={id} editing={editing} routes={unsaved.map((item) => ({ ...itemView(doc, item), facts: legLabel(item) ?? "" }))} />}
       {editing && <NewRoute tripId={id} places={doc.places.filter((place) => place.lat !== undefined && place.lng !== undefined).map((place) => ({ ref: place.ref, name: place.name })).sort((a, b) => a.name.localeCompare(b.name, "pl"))} />}
       {groups.length === 0 ? (
         <section className="card p-4 text-sm">
