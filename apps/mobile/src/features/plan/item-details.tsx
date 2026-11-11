@@ -29,6 +29,7 @@ import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-n
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
+import { RouteSiteButton } from '@/components/route-site-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -234,11 +235,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
             {line}
           </ThemedText>
         ))}
-        {route && (
-          <View style={{ alignSelf: 'flex-start' }}>
-            <Button small label={route.label} onPress={() => open(route.url)} />
-          </View>
-        )}
+        {route && <RouteSiteButton url={route.url} label={route.label} />}
         {flight && <ThemedText type="smallBold">✈ {flightLine(flight)}</ThemedText>}
         {item.description && <ThemedText>{item.description}</ThemedText>}
         {item.kind === 'lodging' &&

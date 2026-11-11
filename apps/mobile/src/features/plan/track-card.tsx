@@ -1,9 +1,10 @@
-import { formatKm, formatMinutes, type PlanItem, routeLinkLabel, trackPosition, type TrackPosition, type TripDocument } from '@expeditionplan/core';
+import { formatKm, formatMinutes, type PlanItem, trackPosition, type TrackPosition, type TripDocument } from '@expeditionplan/core';
 import * as Location from 'expo-location';
 import { useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { RouteSiteButton } from '@/components/route-site-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -71,7 +72,7 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
         </ThemedText>
       )}
       <View style={styles.buttons}>
-        {url !== undefined && <Button small label={`🗺 ${routeLinkLabel(url)}`} onPress={() => void Linking.openURL(url)} />}
+        {url !== undefined && <RouteSiteButton url={url} />}
         {line !== undefined && <Button small variant="primary" label="📍 Gdzie jestem na śladzie" onPress={() => void locate()} />}
         {start !== undefined && <Button small label="Do startu" onPress={() => navigate({ lat: start[1]!, lng: start[0]!, name: 'Start trasy' }, 'walking')} />}
       </View>
