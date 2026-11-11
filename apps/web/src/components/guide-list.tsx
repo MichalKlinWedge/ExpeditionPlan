@@ -3,7 +3,7 @@
 import { GUIDE_PHOTO_BUCKET, type GuideImage, guidePhotoPath, MAX_GUIDE_IMAGES, type TripGuide } from "@expeditionplan/core";
 import { dbErrorMessage, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
-import { type FormEvent, useEffect, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { addOwnGuideImage, dropGuideImage, findGuideImages, pickGuideImage, pickGuideImages, removeGuide, reorderGuideImage, saveGuideText } from "@/app/guide-actions";
@@ -250,15 +250,21 @@ async function ownPhotoJpeg(file: File): Promise<Blob | string> {
   }
 }
 
-/** Własne zdjęcie z dysku: plik idzie z przeglądarki do publicznego `guide_photos`, potem do opisu. */
+/**
+ * Własne zdjęcie z dysku: plik idzie z przeglądarki do publicznego `guide_photos`, potem do opisu. Przy dodawaniu
+ * formularz zostaje otwarty (czysty wybór pliku, opis i autor zostają) na kolejne zdjęcie; wymiana go zamyka.
+ */
 function OwnPhotoUpload({ tripId, guideId, title, replaceUrl, onDone, onState }: { tripId: string; guideId: string; title: string; replaceUrl?: string; onDone: () => void; onState: (state: FormState) => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState(title);
   const [author, setAuthor] = useState("");
+  const [added, setAdded] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const picker = useRef<HTMLInputElement>(null);
   const upload = (event: FormEvent) => {
     event.preventDefault();
     if (file === null) return;
+    setAdded(null);
     start(async () => {
       const jpeg = await ownPhotoJpeg(file);
       if (typeof jpeg === "string") return onState({ error: jpeg });
@@ -267,20 +273,36 @@ function OwnPhotoUpload({ tripId, guideId, title, replaceUrl, onDone, onState }:
       if (sent.error) return onState({ error: dbErrorMessage(sent.error, "Nie wgrano zdjęcia. Spróbuj jeszcze raz.") });
       const result = await addOwnGuideImage(tripId, guideId, id, { title: caption, author }, replaceUrl);
       onState(result);
-      if (result.ok) onDone();
+      if (!result.ok) return;
+      if (replaceUrl !== undefined) return onDone();
+      setAdded(`Dodano „${file.name}”. Możesz wgrać kolejne.`);
+      setFile(null);
+      if (picker.current) picker.current.value = "";
     });
   };
   return (
     <form onSubmit={upload} className="flex flex-col gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
       <h3 className="text-xs font-semibold">{replaceUrl ? "Wymień na własne zdjęcie" : "Własne zdjęcie z dysku"}</h3>
       <div className="flex flex-wrap items-center gap-2">
-        <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" disabled={pending} onChange={(event) => setFile(event.target.files?.[0] ?? null)} aria-label="Plik zdjęcia" className="text-xs" />
+        <input
+          ref={picker}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          disabled={pending}
+          onChange={(event) => {
+            setFile(event.target.files?.[0] ?? null);
+            setAdded(null);
+          }}
+          aria-label="Plik zdjęcia"
+          className="text-xs"
+        />
         <input value={caption} onChange={(event) => setCaption(event.target.value)} disabled={pending} placeholder="Opis zdjęcia" aria-label="Opis zdjęcia" className="field min-w-40 flex-1 p-2 text-sm" />
         <input value={author} onChange={(event) => setAuthor(event.target.value)} disabled={pending} placeholder="Autor (domyślnie Ty)" aria-label="Autor zdjęcia" className="field w-44 p-2 text-sm" />
         <button disabled={pending || file === null} className="btn-secondary btn-sm">
           {pending ? "Wgrywam…" : "Wgraj"}
         </button>
       </div>
+      {added && <p className="text-xs msg-ok">{added}</p>}
       <p className="text-xs text-zinc-500">Zdjęcie zmniejszamy do {OWN_PHOTO_PX} px i bez danych z aparatu (także położenia). Będzie widać je wszędzie, gdzie ten opis: w planie, w telefonie, w pokazie i pod publicznym linkiem wyjazdu. Wgrywaj tylko zdjęcia, do których masz prawa.</p>
     </form>
   );
