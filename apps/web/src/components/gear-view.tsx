@@ -96,24 +96,6 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
 
   return (
     <>
-      {canEdit && editing !== "new" && (
-        <button type="button" onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
-          + Dodaj rzecz
-        </button>
-      )}
-      {canEdit && editing === "new" && (
-        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
-          <h2 className="card-title">Nowa rzecz</h2>
-          <GearForm tripId={tripId} doc={doc} categories={categories} onDone={() => setEditing(null)} />
-        </section>
-      )}
-      {canEdit && edited !== undefined && (
-        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
-          <h2 className="card-title">Edycja: {edited.title}</h2>
-          <GearForm key={edited.ref} tripId={tripId} doc={doc} item={edited} itemId={ids[edited.ref]} categories={categories} onDone={() => setEditing(null)} />
-        </section>
-      )}
-
       {doc.travelers.length > 0 && gear.length > 0 && (
         <section className="flex flex-col gap-2 card p-4 text-sm">
           <h2 className="card-title">Kto ile niesie</h2>
@@ -140,6 +122,25 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
             })}
           </ul>
           {over.length > 0 && <p className="text-xs text-red-700 dark:text-red-400">Dublujecie: {over.map((item) => item.title).join(", ")}</p>}
+        </section>
+      )}
+
+      {/* Dodawanie i formularze między „Kto ile niesie” a filtrami listy. */}
+      {canEdit && editing !== "new" && (
+        <button type="button" onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
+          + Dodaj rzecz
+        </button>
+      )}
+      {canEdit && editing === "new" && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Nowa rzecz</h2>
+          <GearForm tripId={tripId} doc={doc} categories={categories} onDone={() => setEditing(null)} />
+        </section>
+      )}
+      {canEdit && edited !== undefined && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Edycja: {edited.title}</h2>
+          <GearForm key={edited.ref} tripId={tripId} doc={doc} item={edited} itemId={ids[edited.ref]} categories={categories} onDone={() => setEditing(null)} />
         </section>
       )}
 
