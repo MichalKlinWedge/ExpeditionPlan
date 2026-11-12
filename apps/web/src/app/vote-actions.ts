@@ -112,7 +112,8 @@ export async function createPoll(tripId: string, _prev: FormState, form: FormDat
     ...(note ? { conditionText: note } : {}),
     ...(form.get("open") === "on" ? { votingOpen: true } : {}),
   };
-  const variants = options.map((label) => ({ ref: `id-${uuidv7()}`, groupRef: group.ref, label, pros: [], cons: [] }));
+  // Pełne pola tablicowe: baza nie przyjmuje `null` w `excludes_item_ids`, `pros`, `cons`.
+  const variants = options.map((label) => ({ ref: `id-${uuidv7()}`, groupRef: group.ref, label, pros: [], cons: [], excludesRefs: [] }));
   const checked = TripDocument.safeParse({ ...doc, variantGroups: [...doc.variantGroups, group], variants: [...doc.variants, ...variants] });
   if (!checked.success) return { error: validationError(checked.error) };
   const writes: ElementWrite[] = [
