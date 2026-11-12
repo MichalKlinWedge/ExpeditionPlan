@@ -42,6 +42,7 @@ import { ItemPhotos } from '@/features/trip/journal-view';
 import { TrackCard } from '@/features/plan/track-card';
 import { TrackProfileCard } from '@/features/plan/track-profile';
 import { guideImageUri } from '@/features/plan/guide-images';
+import { ItemMap } from '@/features/plan/item-map';
 import { navigate, travelMode } from '@/lib/navigate';
 
 /**
@@ -237,6 +238,8 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         ))}
         {route && <RouteSiteButton url={route.url} label={route.label} />}
         {flight && <ThemedText type="smallBold">✈ {flightLine(flight)}</ThemedText>}
+        {/* Mapa punktu: miejsce albo start, cel, postoje i trasa (offline z pobranych obszarów). */}
+        <ItemMap doc={doc} item={item} />
         {item.description && <ThemedText>{item.description}</ThemedText>}
         {item.kind === 'lodging' &&
           lodgingDetails(doc, item).map((line) => (

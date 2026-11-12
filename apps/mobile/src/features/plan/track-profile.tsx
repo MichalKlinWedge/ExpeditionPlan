@@ -1,4 +1,4 @@
-import { formatMinutes, instantToZoned, itemTrackWalk, MINUTE, minutesToKm, type PlanItem, profileSketch, TRACK_POI_TYPE, type TrackLine, type TrackPoi, trackProfile, type TripDocument, variantsForItem } from '@expeditionplan/core';
+import { formatMinutes, instantToZoned, itemTrackWalk, MINUTE, minutesToKm, type PlanItem, TRACK_POI_TYPE, type TrackPoi, variantsForItem } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
@@ -155,56 +155,8 @@ export function TrackProfileCard({ trip, item, plan }: { trip: CachedTrip; item:
   );
 }
 
-const MINI_BARS = 32;
-
-/**
- * Widok dnia: skrócony profil wysokości każdej trasy ze śladem GPX z wysokościami (kolejność dnia), pod mapą dnia.
- * Stuknięcie otwiera szczegóły punktu z pełnym profilem, odcinkami i słońcem.
- */
-export function DayTrackProfiles({ doc, refs, onOpen }: { doc: TripDocument; refs: readonly string[]; onOpen?: (item: PlanItem) => void }) {
-  const theme = useTheme();
-  const walks = refs.flatMap((ref) => {
-    const item = doc.items.find((each) => each.ref === ref);
-    const line = doc.tracks.find((track) => track.ref === item?.activity?.trackRef)?.geojson as TrackLine | undefined;
-    if (item === undefined || line === undefined) return [];
-    const sketch = profileSketch(trackProfile(line), MINI_BARS);
-    return sketch === null ? [] : [{ item, sketch }];
-  });
-  if (walks.length === 0) return null;
-  return (
-    <View style={styles.block}>
-      {walks.map(({ item, sketch }) => {
-        const heights = sketch.map((point) => point.ele);
-        const [lo, hi] = [Math.min(...heights), Math.max(...heights)];
-        const span = Math.max(hi - lo, 50);
-        const length = sketch.at(-1)!.km;
-        return (
-          <Pressable key={item.ref} onPress={onOpen === undefined ? undefined : () => onOpen(item)} accessibilityRole="button" accessibilityLabel={`Profil trasy ${item.title}: ${lo}–${hi} m n.p.m. na ${km(length)}`}>
-            <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.backgroundSelected, borderWidth: 1 }]}>
-              <ThemedText type="smallBold" numberOfLines={1}>
-                ⛰ {item.title}
-              </ThemedText>
-              <View style={[styles.chart, styles.mini]}>
-                {sketch.map((point, i) => (
-                  <View key={i} style={[styles.bar, { height: `${8 + ((point.ele - lo) / span) * 92}%`, backgroundColor: theme.accent }]} />
-                ))}
-              </View>
-              <ThemedText type="small" themeColor="textSecondary">
-                {lo}–{hi} m n.p.m. · {km(length)}
-                {item.activity?.ascentM ? ` · ↑ ${item.activity.ascentM} m` : ''}
-                {onOpen ? ' · szczegóły →' : ''}
-              </ThemedText>
-            </ThemedView>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.one },
-  mini: { height: 48 },
   icons: { flexDirection: 'row', height: 16 },
   icon: { flex: 1, fontSize: 9, lineHeight: 14, textAlign: 'center' },
   chart: { flexDirection: 'row', alignItems: 'flex-end', height: 90, gap: 1 },
