@@ -174,6 +174,14 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
     <>
       <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Rezerwacje i budżet" actions={mayEdit && <EditToggle editing={canEdit} />} />
 
+      {/* Waluta wyjazdu i kursy: zwijane, rzadko zmieniane (stan pamięta przeglądarka). Brak kursu otwiera kartę. */}
+      <details className={card} open={missingFx.length > 0 || undefined}>
+        <summary className={`${heading} cursor-pointer`}>Ustawienia</summary>
+        <TripCurrency tripId={id} base={doc.trip.baseCurrency} known={tripCurrencies(doc)} canEdit={canEdit} />
+        {/* Klucz: wiersze edytora biorą kursy tylko przy montowaniu, a zmiana waluty podaje nowe. */}
+        <FxEditor key={doc.trip.baseCurrency} tripId={id} fx={doc.trip.fx} base={doc.trip.baseCurrency} missing={missingFx} canEdit={canEdit} />
+      </details>
+
       {/* „+ Dodaj pozycję budżetu” nad sekcją, nowa pozycja i edycja w osobnej karcie (`BudgetEditor`). */}
       <BudgetEditor tripId={id} lines={doc.budgetLines} currency={doc.budgetLines.length === 0 ? doc.trip.baseCurrency : budget.currency} people={choices.travelers} cars={cars} canEdit={canEdit}>
       <section className={card}>
@@ -213,9 +221,6 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
           </>
         )}
         {canEdit && <BudgetSuggestions tripId={id} suggestions={suggestions} />}
-        <TripCurrency tripId={id} base={doc.trip.baseCurrency} known={tripCurrencies(doc)} canEdit={canEdit} />
-        {/* Klucz: wiersze edytora biorą kursy tylko przy montowaniu, a zmiana waluty podaje nowe. */}
-        <FxEditor key={doc.trip.baseCurrency} tripId={id} fx={doc.trip.fx} base={doc.trip.baseCurrency} missing={missingFx} canEdit={canEdit} />
         <p className="text-sm">
           Portfel — wydane na miejscu: <span className="font-medium">{money(wallet.spentMinor)}</span>
           <span className="text-zinc-500"> ({wallet.count} wydatków z telefonu)</span>
