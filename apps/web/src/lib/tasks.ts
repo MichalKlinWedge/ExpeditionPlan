@@ -1,4 +1,4 @@
-import { shortDate } from "@expeditionplan/core";
+import { shortDate, taskOverdue } from "@expeditionplan/core";
 import type { TripDocument } from "@expeditionplan/core";
 
 import type { Choices, TaskColumns } from "@/components/logistics-editors";
@@ -33,12 +33,21 @@ function due(task: Task, doc: Doc): string | null {
   }
 }
 
-/** Termin i osoby każdego zadania do kolumn tabeli („3 dni przed wyjazdem”, „Ania, Tomek”). */
+/**
+ * Termin, przypomnienie i osoby każdego zadania do kolumn tabeli („3 dni przed wyjazdem · najpóźniej 2 gru”,
+ * „Ania, Tomek”) i czy jest po terminie — dzisiejsza data w strefie domowej wyjazdu (serwer liczy w UTC).
+ */
 export function taskColumns(doc: Doc): Record<string, TaskColumns> {
+  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: doc.trip.homeTz }).format(new Date());
   return Object.fromEntries(
     doc.tasks.map((task) => [
       task.ref,
-      { due: due(task, doc) ?? "", remind: task.remindAt ? `${shortDate(task.remindAt.date)} ${task.remindAt.time}` : "", who: task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", ") },
+      {
+        due: [due(task, doc), task.deadline ? `najpóźniej ${shortDate(task.deadline)}` : null].filter(Boolean).join(" · "),
+        overdue: taskOverdue(doc, task, today),
+        remind: task.remindAt ? `${shortDate(task.remindAt.date)} ${task.remindAt.time}` : "",
+        who: task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", "),
+      },
     ]),
   );
 }

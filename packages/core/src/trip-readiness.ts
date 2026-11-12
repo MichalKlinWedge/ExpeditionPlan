@@ -1,7 +1,7 @@
-import { addDays } from './engine/time.ts';
 import { type GearCarry, gearGaps } from './gear.ts';
 import { dayLodging, missingOnMap } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
+import { taskDueDate, taskOverdue } from './task-due.ts';
 import { documentWarnings } from './travel-documents.ts';
 
 /**
@@ -45,26 +45,10 @@ export const READINESS_ORDER: ReadinessGroup[] = ['book', 'documents', 'decide',
 const OPEN_BOOKING = new Set(['idea', 'candidate', 'to_book', 'unknown']);
 const DONE_BOOKING = new Set(['booked', 'paid']);
 
-/** Termin zadania jako data (zadania „w trakcie” — bez terminu przed wyjazdem). */
+/** Data zadania na liście: wcześniejsza z terminu i ostatecznego terminu wykonania (zadania „w trakcie” tu nie trafiają). */
 function taskDate(doc: Doc, task: Doc['tasks'][number]): string | undefined {
-  const due = task.due;
-  switch (due?.kind) {
-    case 'absolute':
-      return due.date;
-    case 'before_trip':
-      return addDays(doc.trip.startDate, -due.days);
-    case 'before_item': {
-      const dayRef = doc.items.find((item) => item.ref === due.itemRef)?.dayRef;
-      const day = doc.days.find((each) => each.ref === dayRef);
-      return day === undefined ? undefined : addDays(day.date, -due.days);
-    }
-    case 'before_booking': {
-      const start = doc.bookings.find((booking) => booking.ref === due.bookingRef)?.start;
-      return start === undefined ? undefined : addDays(start.date, -1);
-    }
-    default:
-      return undefined;
-  }
+  const dates = [taskDueDate(doc, task), task.deadline].filter((date): date is string => date !== undefined).sort();
+  return dates[0];
 }
 
 /**
@@ -116,7 +100,7 @@ export function tripReadiness(doc: Doc, today: string, vaultBookingRefs?: Readon
     if (task.status !== 'open' || task.due?.kind === 'on_trip') continue;
     const date = taskDate(doc, task);
     if (date !== undefined && date > doc.trip.endDate) continue;
-    out.push({ group: 'task', ref: task.ref, title: task.title, ...(date ? { date } : {}), ...(date !== undefined && date < today ? { overdue: true as const } : {}) });
+    out.push({ group: 'task', ref: task.ref, title: task.title, ...(date ? { date } : {}), ...(taskOverdue(doc, task, today) ? { overdue: true as const } : {}) });
   }
 
   // Nowy paszport to tygodnie: ostrzeżenie od razu, nieważny lub tracący ważność w trakcie — jako zaległy.

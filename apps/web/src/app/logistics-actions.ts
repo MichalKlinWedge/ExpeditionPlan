@@ -219,6 +219,8 @@ export async function saveTask(tripId: string, ref: string | null, _prev: FormSt
   const [remindDate = "", remindTime = ""] = remind.split("T");
   if (remind !== "" && (!DATE.test(remindDate) || !TIME.test(remindTime.slice(0, 5)))) return { error: "Przypomnienie: podaj datę i godzinę." };
   const remindAt = remind === "" ? undefined : { date: remindDate, time: remindTime.slice(0, 5) };
+  const deadline = text(form, "deadline");
+  if (deadline !== "" && !DATE.test(deadline)) return { error: "Termin wykonania: podaj datę." };
   return change(tripId, "tasks", ref, (_doc, current) => ({
     ...(current ?? { ref: `id-${uuidv7()}`, status: "open" }),
     title,
@@ -228,6 +230,7 @@ export async function saveTask(tripId: string, ref: string | null, _prev: FormSt
     answer: optional(text(form, "answer")),
     due,
     remindAt,
+    deadline: optional(deadline),
     assigneeRefs: form.getAll("assignee").map(String),
     bookingRef: optional(text(form, "bookingRef")),
     itemRef: optional(text(form, "itemRef")),

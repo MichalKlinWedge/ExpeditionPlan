@@ -419,6 +419,11 @@ export function TaskForm({ tripId, task, choices, onDone, itemRef }: { tripId: s
           </select>
         )}
         {(dueKind === "absolute" || dueKind === "on_trip") && <input name="dueTime" type="time" defaultValue={dueTime} className={input} aria-label="Godzina" />}
+        {/* Ostateczny termin wykonania obok terminu: po którymkolwiek otwarte zadanie jest na czerwono. */}
+        <label className="flex items-center gap-2 text-xs text-zinc-500">
+          wykonać najpóźniej
+          <input name="deadline" type="date" defaultValue={task?.deadline ?? ""} className={input} aria-label="Ostateczny termin wykonania" />
+        </label>
       </div>
       {/* Własna data i godzina przypomnienia (przed wyjazdem albo w trakcie), zamiast domyślnej z terminu. */}
       <label className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
@@ -482,7 +487,8 @@ export function TaskForm({ tripId, task, choices, onDone, itemRef }: { tripId: s
   );
 }
 /** Kolumny wiersza zadania, liczone na stronie, bo potrzebują całego planu. */
-export type TaskColumns = { due: string; remind: string; who: string };
+/** `overdue` — otwarte zadanie po terminie albo po ostatecznym terminie wykonania (`taskOverdue`). */
+export type TaskColumns = { due: string; overdue: boolean; remind: string; who: string };
 
 /** Tabela zadań, jak budżet i rezerwacje. `checkable` — zadania do odhaczenia także w podglądzie (organizator, edytor, widz przy swoich). */
 export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable = [] }: { tripId: string; tasks: Task[]; columns: Record<string, TaskColumns>; choices: Choices; canEdit: boolean; checkable?: string[] }) {
@@ -526,9 +532,9 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
         </tr>
       );
     }
-    const { due, remind, who } = columns[task.ref] ?? { due: "", remind: "", who: "" };
-    const muted = task.status !== "open" ? "text-zinc-400 line-through" : "";
-    const lit = focused(task) ? "bg-signal/10" : "";
+    const { due, overdue, remind, who } = columns[task.ref] ?? { due: "", overdue: false, remind: "", who: "" };
+    const muted = task.status !== "open" ? "text-zinc-400 line-through" : overdue ? "text-red-700 dark:text-red-400" : "";
+    const lit = focused(task) ? "bg-signal/10" : overdue ? "bg-red-50 dark:bg-red-950/30" : "";
     return (
       <Fragment key={task.ref}>
         <tr data-task-focus={focused(task) ? "" : undefined} className={`border-t border-zinc-100 dark:border-zinc-900 ${lit}`}>
@@ -552,11 +558,12 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
               {task.title}
             </span>
             {/* Na telefonie rodzaj, termin, osoby i działania pod nazwą: tyle kolumn się nie mieści. */}
+            {overdue && <span className="block text-xs font-semibold text-red-700 dark:text-red-400">po terminie</span>}
             <span className="block text-xs text-zinc-500 sm:hidden">{[TASK_KIND[task.kind], due, remind ? `🔔 ${remind}` : "", who].filter(Boolean).join(" · ")}</span>
             {canEdit && <span className="mt-1 flex gap-1 sm:hidden">{buttons(task)}</span>}
           </td>
           <td className="hidden py-1 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{TASK_KIND[task.kind]}</td>
-          <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{due}</td>
+          <td className={`hidden py-1 pr-3 align-top sm:table-cell ${overdue ? "text-red-700 dark:text-red-400" : "text-zinc-500"}`}>{due}</td>
           <td className="hidden py-1 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{remind && `🔔 ${remind}`}</td>
           <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{who}</td>
           {canEdit && (

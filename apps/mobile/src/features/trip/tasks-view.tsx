@@ -1,3 +1,4 @@
+import { localToday, taskOverdue } from '@expeditionplan/core';
 import { type CachedTrip, setTaskDone } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -33,7 +34,8 @@ const KIND: Record<Task['kind'], string> = { todo: '', question: 'pytanie', deci
 function dueLabel(task: Task, doc: CachedTrip['state']['doc']): string {
   // Własne przypomnienie (`remindAt`) obok terminu.
   const remind = task.remindAt === undefined ? '' : `🔔 ${task.remindAt.date.slice(8)}.${task.remindAt.date.slice(5, 7)} ${task.remindAt.time}`;
-  return [dueText(task, doc), remind].filter(Boolean).join(' · ');
+  const deadline = task.deadline === undefined ? '' : `najpóźniej ${task.deadline.slice(8)}.${task.deadline.slice(5, 7)}`;
+  return [dueText(task, doc), deadline, remind].filter(Boolean).join(' · ');
 }
 
 function dueText(task: Task, doc: CachedTrip['state']['doc']): string {
@@ -73,11 +75,13 @@ export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }:
       Alert.alert('Nie zapisano', e instanceof Error ? e.message : String(e));
     }
   };
+  const today = localToday();
   const row = (task: Task) => (
     <TaskRow
       key={task.ref}
       task={task}
       due={dueLabel(task, doc)}
+      overdue={taskOverdue(doc, task, today)}
       who={(task.assigneeRefs ?? []).map((ref) => names.get(ref) ?? ref).join(', ')}
       canCheck={canCheck(task)}
       onToggle={() => toggle(task)}
@@ -124,14 +128,15 @@ export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }:
 }
 
 /** Zadanie z polem do odhaczenia; bez prawa do zmiany — sam tekst (widz, cudze zadanie, bez logowania). */
-function TaskRow({ task, due, who, canCheck, onToggle }: { task: Task; due: string; who: string; canCheck: boolean; onToggle: () => void }) {
+function TaskRow({ task, due, overdue, who, canCheck, onToggle }: { task: Task; due: string; overdue: boolean; who: string; canCheck: boolean; onToggle: () => void }) {
   const done = task.status === 'done';
   const meta = [KIND[task.kind], due, who].filter(Boolean).join(' · ');
   const body = (
     <View style={styles.grow}>
-      <ThemedText type="small" style={done && styles.done}>
+      <ThemedText type="small" style={done ? styles.done : overdue ? styles.overdue : undefined}>
         {task.priority === 'high' ? '! ' : ''}
         {task.title}
+        {overdue ? ' — po terminie' : ''}
       </ThemedText>
       {meta !== '' && (
         <ThemedText type="small" themeColor="textSecondary">
@@ -163,4 +168,6 @@ const styles = StyleSheet.create({
   task: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 40 },
   grow: { flex: 1 },
   done: { textDecorationLine: 'line-through', opacity: 0.6 },
+  // Otwarte zadanie po terminie albo po „najpóźniej” (`taskOverdue`).
+  overdue: { color: '#dc2626', fontWeight: '600' },
 });

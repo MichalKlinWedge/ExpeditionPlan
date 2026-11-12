@@ -705,6 +705,8 @@ export const DocTask = z.object({
    * dnia wyjazdu z tą datą, inaczej domowej (`core/reminders.ts`). Przesuwa się ze zmianą terminu wyjazdu.
    */
   remindAt: z.object({ date: IsoDate, time: LocalTime }).optional(),
+  /** Ostateczny termin wykonania, obok terminu `due`; po którymkolwiek otwarte zadanie jest „po terminie” (`core/task-due.ts`). */
+  deadline: IsoDate.optional(),
   assigneeRefs: z.array(Ref).default([]),
   bookingRef: Ref.optional(),
   itemRef: Ref.optional(),
