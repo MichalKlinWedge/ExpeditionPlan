@@ -38,7 +38,8 @@ import { PlacePin } from '@/features/plan/place-pin';
 import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, type PlaceChange } from '@/features/plan/item-editor';
 import { PoolView } from '@/features/plan/pool-view';
-import { VariantChoice, type Voting } from '@/features/plan/variant-choice';
+import { ChoicesSection } from '@/features/plan/choices-section';
+import { type Voting } from '@/features/plan/variant-choice';
 import { TripNewsBanner } from '@/features/plan/trip-news';
 import { type LastEvent, NowCard } from '@/features/plan/now-card';
 import { onBackgroundSync } from '@/features/sync/sync-loop';
@@ -873,9 +874,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
         </ThemedText>
       ) : null}
 
-      {groups.map((group) => (
-        <VariantChoice key={group.ref} doc={doc} group={group} active={active} onChoose={onChoose} voting={voting} />
-      ))}
+      {/* Wybory wariantów dnia — zwijana sekcja „Wybory”. */}
+      <ChoicesSection doc={doc} groups={groups} active={active} onChoose={onChoose} voting={voting} />
 
       {schedule && top?.(schedule)}
 
