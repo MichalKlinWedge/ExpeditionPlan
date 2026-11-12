@@ -13,7 +13,7 @@ import { navigate } from '@/lib/navigate';
 
 /**
  * Trasa punktu w szczegółach: długość, przewyższenie, czas, link do trasy (mapy.com, wymaga internetu),
- * a przy śladzie GPX „Gdzie jestem na śladzie” — pozycja z GPS telefonu (działa bez internetu) rzutowana
+ * a przy śladzie GPX „Gdzie jestem” — pozycja z GPS telefonu (działa bez internetu) rzutowana
  * na linię z planu: odległość od śladu, przebyte i pozostałe km, podejścia przed wami.
  */
 
@@ -73,7 +73,7 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
       )}
       <View style={styles.buttons}>
         {url !== undefined && <RouteSiteButton url={url} />}
-        {line !== undefined && <Button small variant="primary" label="📍 Gdzie jestem na śladzie" onPress={() => void locate()} />}
+        {line !== undefined && <Button small variant="primary" label="📍 Gdzie jestem" onPress={() => void locate()} />}
         {start !== undefined && <Button small label="Do startu" onPress={() => navigate({ lat: start[1]!, lng: start[0]!, name: 'Start trasy' }, 'walking')} />}
       </View>
     </ThemedView>
@@ -83,5 +83,6 @@ export function TrackCard({ doc, item }: { doc: TripDocument; item: PlanItem }) 
 const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.one },
   result: { gap: Spacing.half, marginTop: Spacing.one },
-  buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.one },
+  // Link do mapy (ikona), „Gdzie jestem” i „Do startu” w jednym wierszu.
+  buttons: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
 });

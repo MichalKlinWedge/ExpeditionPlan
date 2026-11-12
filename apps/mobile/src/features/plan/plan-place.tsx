@@ -15,7 +15,7 @@ export type PlanChoice = { scenario?: Scenario; variants?: Record<string, string
  * Punkt w planie (szczegóły punktu): dzień i godziny z silnika — te same co w planie, dla wybranego
  * wariantu (punkt innego wariantu liczy się z jego wariantem) — ostrzeżenia i przejście do
  * poprzedniego i następnego punktu w kolejności planu, także przez dni (`core/item-plan.ts`) — duże
- * przyciski na dole karty („‹ Poprzedni” / „Następny ›” z nazwą punktu). W prawym górnym rogu, na wysokości
+ * przyciski na dole karty (strzałka i nazwa punktu). W prawym górnym rogu, na wysokości
  * godziny, „🎫 Rezerwacja” punktu (własna, bilet odcinka albo nocleg tej nocy — `itemBookingRef`), jak w planie dnia.
  */
 export function PlanPlace({ trip, item, plan, onJump, onBooking }: { trip: CachedTrip; item: Item; plan?: PlanChoice; onJump: (ref: string) => void; onBooking?: (bookingRef: string) => void }) {
@@ -81,7 +81,7 @@ export function PlanPlace({ trip, item, plan, onJump, onBooking }: { trip: Cache
   );
 }
 
-/** Przejście do sąsiedniego punktu planu: wypełniony przycisk ≥ 48 dp ze strzałką i nazwą punktu (do 2 linii). */
+/** Przejście do sąsiedniego punktu planu: wypełniony przycisk ≥ 48 dp — sama strzałka i nazwa punktu (do 2 linii). */
 function Step({ direction, title, onPress }: { direction: 'previous' | 'next'; title: string; onPress: () => void }) {
   const theme = useTheme();
   const next = direction === 'next';
@@ -92,12 +92,11 @@ function Step({ direction, title, onPress }: { direction: 'previous' | 'next'; t
       accessibilityRole="button"
       accessibilityLabel={`${next ? 'Następny' : 'Poprzedni'} punkt: ${title}`}
       style={({ pressed }) => [styles.step, styles.stepButton, { backgroundColor: theme.accent }, pressed && styles.pressed]}>
-      <ThemedText type="smallBold" style={[styles.stepLabel, { color: theme.onPrimary }, next && styles.right]}>
-        {next ? 'Następny ›' : '‹ Poprzedni'}
-      </ThemedText>
-      <ThemedText type="small" numberOfLines={2} style={[{ color: theme.onPrimary }, next && styles.right]}>
+      {!next && <ThemedText style={[styles.arrow, { color: theme.onPrimary }]}>‹</ThemedText>}
+      <ThemedText type="smallBold" numberOfLines={2} style={[styles.stepTitle, { color: theme.onPrimary }, next && styles.right]}>
         {title}
       </ThemedText>
+      {next && <ThemedText style={[styles.arrow, { color: theme.onPrimary }]}>›</ThemedText>}
     </Pressable>
   );
 }
@@ -108,8 +107,9 @@ const styles = StyleSheet.create({
   grow: { flex: 1, gap: Spacing.one },
   steps: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.two },
   step: { flex: 1 },
-  stepButton: { minHeight: 56, borderRadius: 12, paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, justifyContent: 'center', elevation: 3 },
-  stepLabel: { fontSize: 15 },
+  stepButton: { minHeight: 56, borderRadius: 12, paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, elevation: 3 },
+  stepTitle: { flex: 1 },
+  arrow: { fontSize: 28, lineHeight: 32, fontWeight: 800 },
   right: { textAlign: 'right' },
   pressed: { opacity: 0.85 },
   hard: { color: '#dc2626' },
