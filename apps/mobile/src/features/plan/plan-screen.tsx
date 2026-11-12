@@ -895,11 +895,15 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
             style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: KIND_COLOR[item.kind] ?? theme.textSecondary }, item.child && styles.child]}>
             {/* Karta prowadzi na mapę, a nazwa — do szczegółów. */}
             <Pressable accessible={false} disabled={!pinOf.has(item.ref)} onPress={() => showOnMap(item.ref)} style={styles.itemBody}>
-              <ThemedText style={[styles.time, { color: theme.text }]}>
-                {item.routeStop ? routeStopTime(item.durationMin) : `${item.startLocal}–${item.endLocal}${item.endDate !== day.date ? ' +1' : ''}`}
-                {item.done ? '  ✓ zrobione' : ''}
-                {inputs.pulled.some((each) => each.itemRef === item.ref) ? '  · z puli' : ''}
-              </ThemedText>
+              {/* Godziny, a w prawym górnym rogu — rezerwacja punktu. */}
+              <View style={styles.timeRow}>
+                <ThemedText style={[styles.time, styles.timeText, { color: theme.text }]}>
+                  {item.routeStop ? routeStopTime(item.durationMin) : `${item.startLocal}–${item.endLocal}${item.endDate !== day.date ? ' +1' : ''}`}
+                  {item.done ? '  ✓ zrobione' : ''}
+                  {inputs.pulled.some((each) => each.itemRef === item.ref) ? '  · z puli' : ''}
+                </ThemedText>
+                {hasBooking && onBooking && <AppButton label="🎫 Rezerwacja" small onPress={() => onBooking(bookingRef!)} />}
+              </View>
               <View style={styles.titleRow}>
                 {stopNumber(item.ref)}
                 <Pressable disabled={source === undefined || onOpen === undefined} onPress={() => source && onOpen?.(source)} hitSlop={4} style={styles.titleText}>
@@ -952,7 +956,6 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
               )}
               <Warnings list={schedule!.warnings.filter((warning) => warning.itemRef === item.ref)} />
             </Pressable>
-            {hasBooking && onBooking && <AppButton label="🎫 Rezerwacja" small onPress={() => onBooking(bookingRef!)} style={styles.start} />}
             {actions && source && (
               <View style={styles.edit}>
                 <EditButton label="↑" onPress={() => actions.move(item.ref, -1)} />
@@ -988,7 +991,12 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
           onLayout={(event) => cardTops.current.set(LODGING_STOP, event.nativeEvent.layout.y)}
           style={[styles.item, { borderColor: theme.backgroundSelected, borderLeftColor: LODGING }]}>
           <Pressable accessible={false} disabled={!pinOf.has(LODGING_STOP)} onPress={() => showOnMap(LODGING_STOP)} style={styles.itemBody}>
-            {lodging.booking?.checkInFrom ? <ThemedText style={[styles.time, { color: theme.text }]}>od {lodging.booking.checkInFrom}</ThemedText> : null}
+            {(lodging.booking?.checkInFrom || (lodging.booking && onBooking)) && (
+              <View style={styles.timeRow}>
+                <ThemedText style={[styles.time, styles.timeText, { color: theme.text }]}>{lodging.booking?.checkInFrom ? `od ${lodging.booking.checkInFrom}` : ''}</ThemedText>
+                {lodging.booking && onBooking && <AppButton label="🎫 Rezerwacja" small onPress={() => onBooking(lodging.booking!.ref)} />}
+              </View>
+            )}
             <View style={styles.titleRow}>
               {stopNumber(LODGING_STOP)}
               <ThemedText type="smallBold" style={[styles.itemTitle, styles.titleText]}>
@@ -1006,11 +1014,10 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
               brak na mapie (miejsce bez współrzędnych)
             </ThemedText>
           )}
-          {(lodgingPlace !== undefined || (lodging.booking && onBooking)) && (
-            // Pinezka (miejsce noclegu w Mapach Google) ma wysokość przycisku rezerwacji obok.
+          {lodgingPlace !== undefined && (
+            // Pinezka: miejsce noclegu w Mapach Google.
             <View style={styles.lodgingActions}>
-              {lodging.booking && onBooking && <AppButton label="🎫 Rezerwacja" small onPress={() => onBooking(lodging.booking!.ref)} />}
-              {lodgingPlace !== undefined && <PlacePin place={lodgingPlace} />}
+              <PlacePin place={lodgingPlace} />
             </View>
           )}
           {/* Gospodarz i inne kontakty rezerwacji tej nocy — jedno dotknięcie = połączenie. */}
@@ -1124,7 +1131,6 @@ function GapLine({ from, to, minutes }: { from: string; to: string; minutes: num
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  start: { alignSelf: 'flex-start' },
   lodgingActions: { flexDirection: 'row', alignItems: 'stretch', alignSelf: 'flex-start', gap: Spacing.two },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   title: { flex: 1, textAlign: 'center' },
@@ -1142,6 +1148,8 @@ const styles = StyleSheet.create({
   group: { gap: Spacing.one },
   item: { padding: Spacing.three, borderRadius: 14, gap: 2, borderWidth: 1, borderLeftWidth: 5 },
   time: { fontSize: 15, lineHeight: 20, fontWeight: 800, fontVariant: ['tabular-nums'] },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  timeText: { flex: 1 },
   itemTitle: { fontSize: 16, lineHeight: 22 },
   itemBody: { gap: 2 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
