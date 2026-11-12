@@ -15,11 +15,15 @@ export function shoppingItems(doc: TripDocument, tables: Record<string, Row[] | 
 export function Shopping({ tripId, doc, tables, ids, canEdit }: { tripId: string; doc: TripDocument; tables: Record<string, Row[] | undefined>; ids: Record<string, string>; canEdit: boolean }) {
   const items = shoppingItems(doc, tables, ids);
   return (
-    <div className="flex flex-col gap-3 text-sm">
-      <p className="text-zinc-600 dark:text-zinc-400">
-        Kupione: <strong>{items.filter((item) => item.bought).length}</strong> z {items.length}. Odhacza się na telefonie (zakładka Sprzęt, lista Zakupy), także bez internetu.
-      </p>
-      <ShoppingList tripId={tripId} items={items} canEdit={canEdit} />
-    </div>
+    <ShoppingList
+      tripId={tripId}
+      items={items}
+      canEdit={canEdit}
+      intro={
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Kupione: <strong>{items.filter((item) => item.bought).length}</strong> z {items.length}. Odhacza się na telefonie (zakładka Sprzęt, lista Zakupy), także bez internetu.
+        </p>
+      }
+    />
   );
 }

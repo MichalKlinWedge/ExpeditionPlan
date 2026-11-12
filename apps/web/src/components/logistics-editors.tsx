@@ -1521,20 +1521,45 @@ export function SelfCookedToggle({ tripId, itemRef, value }: { tripId: string; i
   );
 }
 
-export function ShoppingList({ tripId, items, canEdit }: { tripId: string; items: Shopping[]; canEdit: boolean }) {
+/**
+ * Strona „Lista zakupów”: „+ Dodaj do zakupów” na górze, nowa pozycja i edycja w osobnej karcie nad listą
+ * (przewinięcie do niej), pod nimi karta „Do kupienia” (`intro` — tekst pod jej tytułem).
+ */
+export function ShoppingList({ tripId, items, canEdit, intro }: { tripId: string; items: Shopping[]; canEdit: boolean; intro?: ReactNode }) {
+  // „new” = nowa pozycja; inaczej ref edytowanej.
   const [editing, setEditing] = useState<string | null>(null);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (editing !== null) box.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editing]);
+  const edited = editing === null || editing === "new" ? undefined : items.find((item) => item.ref === editing);
   const remove = useAction();
   return (
-    <div className="flex flex-col gap-2">
+    <>
+      {canEdit && editing !== "new" && (
+        <button onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
+          + Dodaj do zakupów
+        </button>
+      )}
+      {canEdit && editing === "new" && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Nowa pozycja</h2>
+          <ShoppingForm tripId={tripId} onDone={() => setEditing(null)} />
+        </section>
+      )}
+      {canEdit && edited !== undefined && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Edycja: {edited.title}</h2>
+          <ShoppingForm key={edited.ref} tripId={tripId} item={edited} onDone={() => setEditing(null)} />
+        </section>
+      )}
+    <section className="card flex flex-col gap-3 p-4 text-sm">
+      <h2 className="card-title">Do kupienia</h2>
+      {intro}
       {items.length === 0 && <p className="text-zinc-500">Lista jest pusta.{canEdit ? " Dodaj, co kupić na wyjazd — na telefonie odhaczycie to w sklepie." : ""}</p>}
       <ul className="flex flex-col gap-1">
-        {items.map((item) =>
-          editing === item.ref ? (
-            <li key={item.ref}>
-              <ShoppingForm tripId={tripId} item={item} onDone={() => setEditing(null)} />
-            </li>
-          ) : (
-            <li key={item.ref} className="flex flex-wrap items-baseline gap-x-2">
+        {items.map((item) => (
+            <li key={item.ref} className={`flex flex-wrap items-baseline gap-x-2 rounded ${editing === item.ref ? "bg-signal/10" : ""}`}>
               <span aria-label={item.bought ? "kupione" : "do kupienia"}>{item.bought ? "☑" : "☐"}</span>
               <span className={item.bought ? "text-zinc-500 line-through" : "font-medium"}>{item.title}</span>
               {item.quantity && (
@@ -1551,18 +1576,10 @@ export function ShoppingList({ tripId, items, canEdit }: { tripId: string; items
                 </span>
               )}
             </li>
-          ),
-        )}
+        ))}
       </ul>
       <Status state={remove.state} />
-      {canEdit &&
-        (editing === "new" ? (
-          <ShoppingForm tripId={tripId} onDone={() => setEditing(null)} />
-        ) : (
-          <button onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
-            + Dodaj do zakupów
-          </button>
-        ))}
-    </div>
+    </section>
+    </>
   );
 }

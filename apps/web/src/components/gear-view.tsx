@@ -1,7 +1,7 @@
 "use client";
 
 import { defaultTake, formatWeight, type GearCarry, gearLoads, gearShare, type GearShare, isGear, type TripDocument } from "@expeditionplan/core";
-import { type ReactNode, useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { removeGearItem, saveGearItem, setGearCarrier } from "@/app/logistics-actions";
@@ -63,8 +63,14 @@ export type GearViewProps = {
 
 export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, canEdit }: GearViewProps) {
   const [filter, setFilter] = useState<Filter>("all");
+  // „new” = nowa rzecz; inaczej ref edytowanej. Formularz w osobnej karcie na górze, z przewinięciem do niej.
   const [editing, setEditing] = useState<string | null>(null);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (editing !== null) box.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editing]);
   const gear = doc.packing.filter(isGear);
+  const edited = editing === null || editing === "new" ? undefined : gear.find((item) => item.ref === editing);
   const shared = gear.filter((item) => item.scope === "shared");
   const loads = gearLoads(doc, carries);
   const open = shared.filter((item) => gearShare(item, carries).left > 0);
@@ -90,6 +96,24 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
 
   return (
     <>
+      {canEdit && editing !== "new" && (
+        <button type="button" onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
+          + Dodaj rzecz
+        </button>
+      )}
+      {canEdit && editing === "new" && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Nowa rzecz</h2>
+          <GearForm tripId={tripId} doc={doc} categories={categories} onDone={() => setEditing(null)} />
+        </section>
+      )}
+      {canEdit && edited !== undefined && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Edycja: {edited.title}</h2>
+          <GearForm key={edited.ref} tripId={tripId} doc={doc} item={edited} itemId={ids[edited.ref]} categories={categories} onDone={() => setEditing(null)} />
+        </section>
+      )}
+
       {doc.travelers.length > 0 && gear.length > 0 && (
         <section className="flex flex-col gap-2 card p-4 text-sm">
           <h2 className="card-title">Kto ile niesie</h2>
@@ -155,15 +179,9 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
             {byCategory(shownShared).map(([category, items]) => (
               <tbody key={category}>
                 <CategoryRow category={category} span={sharedSpan} />
-                {items.map((item) =>
-                  editing === item.ref ? (
-                    <FormRow key={item.ref} span={sharedSpan}>
-                      <GearForm tripId={tripId} doc={doc} item={item} itemId={ids[item.ref]} categories={categories} onDone={() => setEditing(null)} />
-                    </FormRow>
-                  ) : (
-                    <SharedRow key={item.ref} tripId={tripId} item={item} itemId={ids[item.ref] ?? ""} share={gearShare(item, carries)} ids={ids} allowed={allowed} me={mine[0]} tentative={tentative} nameOf={nameOf} weights={weights} canEdit={canEdit} onEdit={() => setEditing(item.ref)} />
-                  ),
-                )}
+                {items.map((item) => (
+                  <SharedRow key={item.ref} tripId={tripId} item={item} itemId={ids[item.ref] ?? ""} share={gearShare(item, carries)} ids={ids} allowed={allowed} me={mine[0]} tentative={tentative} nameOf={nameOf} weights={weights} canEdit={canEdit} onEdit={() => setEditing(item.ref)} />
+                ))}
               </tbody>
             ))}
           </table>
@@ -198,16 +216,9 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
                 <tbody key={category}>
                   <CategoryRow category={category} span={personalSpan} />
                   {items.map((item) => {
-                    if (editing === item.ref) {
-                      return (
-                        <FormRow key={item.ref} span={personalSpan}>
-                          <GearForm tripId={tripId} doc={doc} item={item} itemId={ids[item.ref]} categories={categories} onDone={() => setEditing(null)} />
-                        </FormRow>
-                      );
-                    }
                     const isPacked = person !== undefined && packedSet.has(`${item.ref}|${person.travelerRef}`);
                     return (
-                      <tr key={item.ref} className={row}>
+                      <tr key={item.ref} className={`${row} ${editing === item.ref ? "bg-signal/10" : ""}`}>
                         {person !== undefined && (
                           <td className="py-1.5 pr-2 align-top" aria-label={isPacked ? "spakowane" : "do spakowania"}>
                             {isPacked ? "☑" : "☐"}
@@ -225,17 +236,6 @@ export function GearView({ tripId, doc, carries, packed, ids, mine, mayEdit, can
           )}
         </section>
       )}
-
-      {canEdit &&
-        (editing === "new" ? (
-          <section className="card p-4">
-            <GearForm tripId={tripId} doc={doc} categories={categories} onDone={() => setEditing(null)} />
-          </section>
-        ) : (
-          <button type="button" onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
-            + Dodaj rzecz
-          </button>
-        ))}
     </>
   );
 }
@@ -246,16 +246,6 @@ function CategoryRow({ category, span }: { category: string; span: number }) {
       <th colSpan={span} scope="colgroup" className="pt-3 pb-1 text-xs font-medium tracking-wide text-zinc-500 uppercase">
         {category}
       </th>
-    </tr>
-  );
-}
-
-function FormRow({ span, children }: { span: number; children: ReactNode }) {
-  return (
-    <tr className={row}>
-      <td colSpan={span} className="py-2">
-        {children}
-      </td>
     </tr>
   );
 }

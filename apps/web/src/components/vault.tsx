@@ -121,7 +121,17 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
               )}
             </span>
           </div>
-          <ul className="flex flex-col gap-2">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-zinc-500">
+              <tr>
+                <th className="py-1 font-normal">Dokument</th>
+                <th className="hidden py-1 font-normal sm:table-cell">
+                  <span className="sr-only">Kod i plik</span>
+                </th>
+                {editing && <th className="py-1" />}
+              </tr>
+            </thead>
+            <tbody>
             {group.docs.map((document) => (
               <DocumentRow
                 key={document.id}
@@ -136,7 +146,8 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
                 onShow={() => setShown({ title: document.fileName, payload: document.codePayload!, format: document.codeFormat })}
               />
             ))}
-          </ul>
+            </tbody>
+          </table>
         </section>
       ))}
       {shown && <CodeScreen {...shown} onClose={() => setShown(null)} />}
@@ -144,7 +155,10 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
   );
 }
 
-/** Dokument na liście; zmiana jego danych otwiera się w karcie nad listą (`Vault`). */
+/**
+ * Dokument jako wiersz tabeli: nazwa z opisem, kod i plik, a po prawej (w edycji) ołówek i kosz; na telefonie kod i plik
+ * pod nazwą. Zmiana danych otwiera się w karcie nad listą (`Vault`).
+ */
 function DocumentRow({ document, names, editing, changing, onChange, onShow }: { document: VaultDocument; names: Map<string, string>; editing: boolean; changing: boolean; onChange: () => void; onShow: () => void }) {
   const router = useRouter();
   const [problem, setProblem] = useState<string | null>(null);
@@ -168,33 +182,41 @@ function DocumentRow({ document, names, editing, changing, onChange, onShow }: {
       router.refresh();
     });
 
+  const buttons = (
+    <div className="flex flex-wrap items-center gap-2">
+      {document.codePayload && (
+        <button onClick={onShow} className="btn-primary btn-sm">
+          Pokaż {codeLabel(document.codeFormat)}
+        </button>
+      )}
+      <button disabled={pending} onClick={open} className={small}>
+        otwórz plik
+      </button>
+    </div>
+  );
   return (
-    <li className={`flex flex-col gap-1 rounded text-sm ${changing ? "bg-signal/10" : ""}`}>
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span aria-hidden="true">{document.mime === "application/pdf" ? "📄" : "🖼️"}</span>
-        <span className="font-medium break-all">{document.fileName}</span>
-        <span className="text-xs text-zinc-500">
+    <tr className={`border-t border-zinc-100 dark:border-zinc-900 ${changing ? "bg-signal/10" : ""}`}>
+      <td className="py-2 pr-3 align-top">
+        <span className="flex items-baseline gap-2">
+          <span aria-hidden="true">{document.mime === "application/pdf" ? "📄" : "🖼️"}</span>
+          <span className="font-medium break-all">{document.fileName}</span>
+        </span>
+        <span className="block text-xs text-zinc-500">
           {[formatBytes(document.size), visibility, document.offline ? "offline w telefonie" : "tylko z internetem"].filter(Boolean).join(" · ")}
         </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {document.codePayload && (
-          <button onClick={onShow} className="btn-primary btn-sm">
-            Pokaż {codeLabel(document.codeFormat)}
-          </button>
-        )}
-        <button disabled={pending} onClick={open} className={small}>
-          otwórz plik
-        </button>
-        {editing && (
-          <>
-            <IconAction kind={changing ? "close" : "change"} onClick={onChange} />
+        <span className="mt-1 block sm:hidden">{buttons}</span>
+        {problem && <span className="block text-xs msg-error">{problem}</span>}
+      </td>
+      <td className="hidden py-2 pr-3 align-top sm:table-cell">{buttons}</td>
+      {editing && (
+        <td className="py-2 align-top">
+          <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+            <IconAction kind={changing ? "close" : "edit"} onClick={onChange} />
             <IconAction kind="remove" disabled={pending} onClick={remove} />
-          </>
-        )}
-      </div>
-      {problem && <p className="text-xs msg-error">{problem}</p>}
-    </li>
+          </div>
+        </td>
+      )}
+    </tr>
   );
 }
 

@@ -48,10 +48,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Lista zakupów" actions={mayEdit && <EditToggle editing={canEdit} />} />
-      <section className="flex flex-col gap-3 card p-4">
-        <h2 className="card-title">Do kupienia</h2>
-        <Shopping tripId={id} doc={doc} tables={payload.tables as unknown as Parameters<typeof Shopping>[0]["tables"]} ids={refIndex(payload.tables)} canEdit={canEdit} />
-      </section>
+      <Shopping tripId={id} doc={doc} tables={payload.tables as unknown as Parameters<typeof Shopping>[0]["tables"]} ids={refIndex(payload.tables)} canEdit={canEdit} />
     </>
   );
 }
