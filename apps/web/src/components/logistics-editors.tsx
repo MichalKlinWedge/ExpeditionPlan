@@ -2,7 +2,7 @@
 
 import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestion, CONTACT_ROLE, formatMoney, formatMoneyRange, fxLine, lineTravelerNames, moneyToInput, PRICE_BASIS, type TripDocument } from "@expeditionplan/core";
 import Link from "next/link";
-import { Fragment, type ReactNode, startTransition, useActionState, useEffect, useState, useTransition } from "react";
+import { Fragment, type ReactNode, startTransition, useActionState, useEffect, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { PlacePin } from "@/components/place-pin";
@@ -491,8 +491,13 @@ export function TaskForm({ tripId, task, choices, onDone, itemRef }: { tripId: s
 export type TaskColumns = { due: string; overdue: boolean; remind: string; who: string };
 
 /** Tabela zadań, jak budżet i rezerwacje. `checkable` — zadania do odhaczenia także w podglądzie (organizator, edytor, widz przy swoich). */
-export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable = [] }: { tripId: string; tasks: Task[]; columns: Record<string, TaskColumns>; choices: Choices; canEdit: boolean; checkable?: string[] }) {
+/**
+ * Strona „Zadania”: „+ Dodaj zadanie” na górze, nowe zadanie i edycja w osobnej karcie nad listą, lista otwartych
+ * w karcie „Do zrobienia” (`notes` — uwagi pod jej tytułem), a „Pokaż zamknięte” pod nią otwiera ich osobną kartę.
+ */
+export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable = [], notes }: { tripId: string; tasks: Task[]; columns: Record<string, TaskColumns>; choices: Choices; canEdit: boolean; checkable?: string[]; notes?: ReactNode }) {
   const [editing, setEditing] = useState<string | null>(null);
+  const formBox = useRef<HTMLElement>(null);
   const [adding, setAdding] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
   // Wejście z planu (`#zadania-punktu-…`): zadania tego punktu podświetlone, zamknięte rozwinięte, pierwsze przewinięte.
@@ -516,25 +521,27 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
   }, [focusItem, showClosed]);
   const checkColumn = canEdit || checkable.length > 0;
   const span = 5 + (checkColumn ? 1 : 0) + (canEdit ? 1 : 0);
+  // Otwarta karta formularza (nowe zadanie albo edycja) jest nad listą: przewinięcie do niej.
+  useEffect(() => {
+    if (adding || editing !== null) formBox.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [adding, editing]);
+  const edited = editing === null ? undefined : tasks.find((task) => task.ref === editing);
   const buttons = (task: Task) => (
     <>
-      <IconAction kind="edit" onClick={() => setEditing(task.ref)} />
+      <IconAction
+        kind="edit"
+        onClick={() => {
+          setAdding(false);
+          setEditing(task.ref);
+        }}
+      />
       <IconAction kind="remove" disabled={action.pending} onClick={() => action.run(() => removeTask(tripId, task.ref), `Usunąć zadanie „${task.title}”?`)} />
     </>
   );
   const row = (task: Task) => {
-    if (editing === task.ref) {
-      return (
-        <tr key={task.ref} className="border-t border-zinc-100 dark:border-zinc-900">
-          <td colSpan={span} className="py-2">
-            <TaskForm tripId={tripId} task={task} choices={choices} onDone={() => setEditing(null)} />
-          </td>
-        </tr>
-      );
-    }
     const { due, overdue, remind, who } = columns[task.ref] ?? { due: "", overdue: false, remind: "", who: "" };
     const muted = task.status !== "open" ? "text-zinc-400 line-through" : overdue ? "text-red-700 dark:text-red-400" : "";
-    const lit = focused(task) ? "bg-signal/10" : overdue ? "bg-red-50 dark:bg-red-950/30" : "";
+    const lit = focused(task) || editing === task.ref ? "bg-signal/10" : overdue ? "bg-red-50 dark:bg-red-950/30" : "";
     return (
       <Fragment key={task.ref}>
         <tr data-task-focus={focused(task) ? "" : undefined} className={`border-t border-zinc-100 dark:border-zinc-900 ${lit}`}>
@@ -602,24 +609,49 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
     </table>
   );
   return (
-    <div className="flex flex-col gap-3 text-sm">
-      {open.length > 0 && table(open)}
-      <Status state={action.state} />
-      {canEdit &&
-        (adding ? (
+    <>
+      {canEdit && !adding && (
+        <button
+          onClick={() => {
+            setEditing(null);
+            setAdding(true);
+          }}
+          className="btn-secondary btn-sm self-start">
+          + Dodaj zadanie
+        </button>
+      )}
+      {canEdit && adding && (
+        <section ref={formBox} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Nowe zadanie</h2>
           <TaskForm tripId={tripId} choices={choices} onDone={() => setAdding(false)} />
-        ) : (
-          <button onClick={() => setAdding(true)} className="btn-secondary btn-sm self-start">
-            + Dodaj zadanie
-          </button>
-        ))}
+        </section>
+      )}
+      {canEdit && edited !== undefined && (
+        <section ref={formBox} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Edycja zadania: {edited.title}</h2>
+          <TaskForm key={edited.ref} tripId={tripId} task={edited} choices={choices} onDone={() => setEditing(null)} />
+        </section>
+      )}
+
+      <section className="card flex flex-col gap-3 p-4 text-sm">
+        <h2 className="card-title">Do zrobienia: {open.length}</h2>
+        {notes}
+        {open.length > 0 ? table(open) : tasks.length > 0 && <p className="text-zinc-500">Wszystko zrobione.</p>}
+        <Status state={action.state} />
+      </section>
+
       {closed.length > 0 && (
         <button onClick={() => setShowClosed(!showClosed)} className="btn-mini self-start">
           {showClosed ? "Ukryj zamknięte" : `Pokaż zamknięte (${closed.length})`}
         </button>
       )}
-      {showClosed && table(closed)}
-    </div>
+      {showClosed && closed.length > 0 && (
+        <section className="card flex flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Zamknięte: {closed.length}</h2>
+          {table(closed)}
+        </section>
+      )}
+    </>
   );
 }
 

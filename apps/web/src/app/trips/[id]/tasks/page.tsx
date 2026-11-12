@@ -49,23 +49,26 @@ async function Tasks({ params }: { params: Promise<{ id: string }> }) {
   }
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const canEdit = mayEdit && wantsEdit;
-  const open = doc.tasks.filter((task) => task.status === "open");
-  const closed = doc.tasks.length - open.length;
   const checkable = mayEdit ? doc.tasks.map((task) => task.ref) : checkableTasks(doc, payload.tables.travelers ?? [], userId);
 
   return (
     <>
       <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Zadania" actions={mayEdit && <EditToggle editing={canEdit} />} />
 
-      <section className="flex flex-col gap-3 card p-4">
-        <h2 className="card-title">
-          Do zrobienia: {open.length}
-          {closed > 0 ? <span className="text-sm font-normal text-zinc-500"> (zamknięte: {closed})</span> : null}
-        </h2>
-        {doc.tasks.length === 0 && <p className="text-sm text-zinc-500">Plan nie ma zadań.{mayEdit ? " Dodasz je po „Edytuj”." : ""}</p>}
-        {!mayEdit && doc.tasks.length > 0 && <p className="text-xs text-zinc-500">Odhaczasz zadania przypisane do siebie — resztę widzisz bez zmiany.</p>}
-        <TaskList tripId={id} tasks={doc.tasks} columns={taskColumns(doc)} choices={planChoices(doc)} canEdit={canEdit} checkable={checkable} />
-      </section>
+      <TaskList
+        tripId={id}
+        tasks={doc.tasks}
+        columns={taskColumns(doc)}
+        choices={planChoices(doc)}
+        canEdit={canEdit}
+        checkable={checkable}
+        notes={
+          <>
+            {doc.tasks.length === 0 && <p className="text-sm text-zinc-500">Plan nie ma zadań.{mayEdit && !canEdit ? " Dodasz je po „Edytuj”." : ""}</p>}
+            {!mayEdit && doc.tasks.length > 0 && <p className="text-xs text-zinc-500">Odhaczasz zadania przypisane do siebie — resztę widzisz bez zmiany.</p>}
+          </>
+        }
+      />
     </>
   );
 }
