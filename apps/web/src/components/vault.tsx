@@ -4,7 +4,7 @@ import { CODE_FORMATS, codeLabel, DOCUMENT_MIME, type DocumentVisibility, format
 import { dbErrorMessage } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { codeSvg, type DetectedCode, detectCode } from "@/lib/barcode";
 import { createClient } from "@/lib/supabase/client";
@@ -39,9 +39,20 @@ const label = "flex min-w-0 flex-col gap-1 text-xs text-zinc-500";
 const small = "btn-mini";
 const BUCKET = VAULT_BUCKET;
 
+/**
+ * Sejf: „+ Dodaj dokument” na górze, nowy dokument i zmiana danych dokumentu w osobnej karcie nad listą
+ * (przewinięcie do niej), pod nimi grupy dokumentów (rezerwacje, punkty, inne).
+ */
 export function Vault({ tripId, documents, bookings, items, people, userId, owner, editing }: Props) {
+  const router = useRouter();
   const [shown, setShown] = useState<{ title: string; payload: string; format: string | null; plain?: boolean } | null>(null);
   const [adding, setAdding] = useState(false);
+  const [changing, setChanging] = useState<string | null>(null);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (adding || changing !== null) box.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [adding, changing]);
+  const changed = changing === null ? undefined : documents.find((each) => each.id === changing);
   const groups = [
     ...bookings.map((booking) => ({ key: booking.id, title: booking.title, code: booking.code, href: booking.href ?? null, docs: documents.filter((each) => each.bookingId === booking.id) })),
     ...items.filter((item) => !item.booking).map((item) => ({ key: item.id, title: item.title, code: null, href: null, docs: documents.filter((each) => each.itemId === item.id && each.bookingId === null) })),
@@ -51,6 +62,47 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
 
   return (
     <div className="flex flex-col gap-4">
+      {editing && !adding && (
+        <button
+          onClick={() => {
+            setChanging(null);
+            setAdding(true);
+          }}
+          className="btn-secondary btn-sm self-start">
+          + Dodaj dokument
+        </button>
+      )}
+      {editing && adding && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Nowy dokument</h2>
+          <UploadForm tripId={tripId} bookings={bookings} items={items} people={people} userId={userId} owner={owner} onDone={() => setAdding(false)} />
+        </section>
+      )}
+      {editing && changed !== undefined && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title break-all">Zmiana dokumentu: {changed.fileName}</h2>
+          <DocumentFields
+            key={changed.id}
+            tripId={tripId}
+            initial={changed}
+            bookings={bookings}
+            items={items}
+            people={people}
+            userId={userId}
+            owner={owner}
+            submit="Zapisz"
+            onCancel={() => setChanging(null)}
+            onSave={async (fields) => {
+              const { data, error } = await createClient().from("documents").update(fields).eq("id", changed.id).select("id");
+              if (error) return dbErrorMessage(error);
+              if ((data ?? []).length === 0) return "Brak uprawnień do tej zmiany.";
+              setChanging(null);
+              router.refresh();
+              return null;
+            }}
+          />
+        </section>
+      )}
       {groups.length === 0 && <p className="text-sm text-zinc-500">W sejfie nie ma jeszcze dokumentów{editing ? "." : " — dodasz je po „Edytuj”."}</p>}
       {groups.map((group) => (
         <section key={group.key} className="card flex flex-col gap-2 p-4">
@@ -73,37 +125,28 @@ export function Vault({ tripId, documents, bookings, items, people, userId, owne
             {group.docs.map((document) => (
               <DocumentRow
                 key={document.id}
-                tripId={tripId}
                 document={document}
                 names={names}
                 editing={editing}
-                bookings={bookings}
-                items={items}
-                people={people}
-                userId={userId}
-                owner={owner}
+                changing={changing === document.id}
+                onChange={() => {
+                  setAdding(false);
+                  setChanging(changing === document.id ? null : document.id);
+                }}
                 onShow={() => setShown({ title: document.fileName, payload: document.codePayload!, format: document.codeFormat })}
               />
             ))}
           </ul>
         </section>
       ))}
-      {editing &&
-        (adding ? (
-          <UploadForm tripId={tripId} bookings={bookings} items={items} people={people} userId={userId} owner={owner} onDone={() => setAdding(false)} />
-        ) : (
-          <button onClick={() => setAdding(true)} className="btn-secondary btn-sm self-start">
-            + Dodaj dokument
-          </button>
-        ))}
       {shown && <CodeScreen {...shown} onClose={() => setShown(null)} />}
     </div>
   );
 }
 
-function DocumentRow({ tripId, document, names, editing, bookings, items, people, userId, owner, onShow }: { tripId: string; document: VaultDocument; names: Map<string, string>; editing: boolean; bookings: Ref[]; items: PlanRef[]; people: Person[]; userId: string; owner: boolean; onShow: () => void }) {
+/** Dokument na liście; zmiana jego danych otwiera się w karcie nad listą (`Vault`). */
+function DocumentRow({ document, names, editing, changing, onChange, onShow }: { document: VaultDocument; names: Map<string, string>; editing: boolean; changing: boolean; onChange: () => void; onShow: () => void }) {
   const router = useRouter();
-  const [changing, setChanging] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const visibility = document.visibility === "members" ? `${VISIBILITY_LABEL.members}: ${document.visibleTo.map((id) => names.get(id) ?? "?").join(", ")}` : VISIBILITY_LABEL[document.visibility];
@@ -126,7 +169,7 @@ function DocumentRow({ tripId, document, names, editing, bookings, items, people
     });
 
   return (
-    <li className="flex flex-col gap-1 text-sm">
+    <li className={`flex flex-col gap-1 rounded text-sm ${changing ? "bg-signal/10" : ""}`}>
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span aria-hidden="true">{document.mime === "application/pdf" ? "📄" : "🖼️"}</span>
         <span className="font-medium break-all">{document.fileName}</span>
@@ -145,33 +188,12 @@ function DocumentRow({ tripId, document, names, editing, bookings, items, people
         </button>
         {editing && (
           <>
-            <IconAction kind={changing ? "close" : "change"} onClick={() => setChanging(!changing)} />
+            <IconAction kind={changing ? "close" : "change"} onClick={onChange} />
             <IconAction kind="remove" disabled={pending} onClick={remove} />
           </>
         )}
       </div>
       {problem && <p className="text-xs msg-error">{problem}</p>}
-      {changing && (
-        <DocumentFields
-          tripId={tripId}
-          initial={document}
-          bookings={bookings}
-          items={items}
-          people={people}
-          userId={userId}
-          owner={owner}
-          submit="Zapisz"
-          onCancel={() => setChanging(false)}
-          onSave={async (fields) => {
-            const { data, error } = await createClient().from("documents").update(fields).eq("id", document.id).select("id");
-            if (error) return dbErrorMessage(error);
-            if ((data ?? []).length === 0) return "Brak uprawnień do tej zmiany.";
-            setChanging(false);
-            router.refresh();
-            return null;
-          }}
-        />
-      )}
     </li>
   );
 }
