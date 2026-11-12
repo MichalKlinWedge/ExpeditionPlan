@@ -7,7 +7,8 @@ import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
 import { DayExtras } from "@/components/day-extras";
-import { ArticleIcon, InfoIcon, SparkIcon, TicketIcon } from "@/components/icons";
+import { ArticleIcon, InfoIcon, ListIcon, SparkIcon, TicketIcon } from "@/components/icons";
+import { itemTasksHref, tasksByItem } from "@/lib/task-link";
 import { PlaceLink } from "@/components/place-pin";
 import { DayConstraints, DayEndField, DayNotes, DayStartField, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
@@ -961,6 +962,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
   const marks = schedule ? [...daySunMarks(schedule), ...dayGaps(schedule)].sort((a, b) => a.at - b.at) : [];
   // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu”.
   const extras = itemExtras(doc, dayRef);
+  // Zadania dotyczące punktów (ikona prowadzi na „Zadania” i je tam zaznacza; bez linku publicznego).
+  const itemTasks = tripId === undefined ? new Map<string, TripDocument["tasks"]>() : tasksByItem(doc.tasks);
   const showExtras = () => {
     const box = document.getElementById(`extras-${dayRef}`);
     if (box instanceof HTMLDetailsElement) box.open = true;
@@ -1146,6 +1149,21 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                             </button>
                           )}
                         </>
+                      );
+                    })()}
+                    {(() => {
+                      const tasks = itemTasks.get(item.ref);
+                      if (tasks === undefined || tripId === undefined) return null;
+                      const open = tasks.filter((task) => task.status === "open").length;
+                      return (
+                        <Link
+                          href={itemTasksHref(tripId, item.ref)}
+                          title={`Zadania: ${tasks.map((task) => `${task.title}${task.status === "done" ? " ✓" : ""}`).join(", ")}`}
+                          aria-label={`Zadania punktu (${tasks.length})`}
+                          className="btn-mini ml-1.5 align-middle">
+                          <ListIcon className="size-3.5" />
+                          {open > 0 ? open : "✓"}
+                        </Link>
                       );
                     })()}
                   </span>

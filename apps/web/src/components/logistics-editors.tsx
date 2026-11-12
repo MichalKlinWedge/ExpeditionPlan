@@ -8,6 +8,7 @@ import type { FormState } from "@/app/actions";
 import { PlacePin } from "@/components/place-pin";
 import { IconAction } from "@/components/icon-action";
 import { bookingAnchor, contactAnchor } from "@/lib/booking-link";
+import { itemFromTasksHash, taskItemRefs } from "@/lib/task-link";
 import {
   addSuggestedBudgetLine,
   removeBudgetLine,
@@ -481,9 +482,25 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
+  // Wejście z planu (`#zadania-punktu-…`): zadania tego punktu podświetlone, zamknięte rozwinięte, pierwsze przewinięte.
+  const [focusItem, setFocusItem] = useState<string | null>(null);
   const action = useAction();
   const open = tasks.filter((task) => task.status === "open");
   const closed = tasks.filter((task) => task.status !== "open");
+  const focused = (task: Task) => focusItem !== null && taskItemRefs(task).includes(focusItem);
+  useEffect(() => {
+    const read = () => setFocusItem(itemFromTasksHash(window.location.hash));
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, []);
+  const closedFocused = closed.some(focused);
+  useEffect(() => {
+    if (closedFocused) setShowClosed(true);
+  }, [closedFocused]);
+  useEffect(() => {
+    if (focusItem !== null) document.querySelector("[data-task-focus]")?.scrollIntoView({ block: "center" });
+  }, [focusItem, showClosed]);
   const checkColumn = canEdit || checkable.length > 0;
   const span = 4 + (checkColumn ? 1 : 0) + (canEdit ? 1 : 0);
   const buttons = (task: Task) => (
@@ -504,9 +521,10 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
     }
     const { due, who } = columns[task.ref] ?? { due: "", who: "" };
     const muted = task.status !== "open" ? "text-zinc-400 line-through" : "";
+    const lit = focused(task) ? "bg-signal/10" : "";
     return (
       <Fragment key={task.ref}>
-        <tr className="border-t border-zinc-100 dark:border-zinc-900">
+        <tr data-task-focus={focused(task) ? "" : undefined} className={`border-t border-zinc-100 dark:border-zinc-900 ${lit}`}>
           {checkColumn && (
             <td className="w-6 py-1 pr-2 align-top">
               {(canEdit || checkable.includes(task.ref)) && (
@@ -541,7 +559,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
         </tr>
         {/* Opis i odpowiedź na całą szerokość tabeli, żeby nie ściskały kolumny z nazwą. */}
         {(task.body || task.answer) && (
-          <tr>
+          <tr className={lit}>
             {checkColumn && <td />}
             <td colSpan={span - (checkColumn ? 1 : 0)} className="pb-1.5 text-xs break-words">
               {task.body && <span className="block whitespace-pre-line text-zinc-500">{task.body}</span>}
