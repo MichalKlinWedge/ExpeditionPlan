@@ -16,6 +16,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const FIT = { padding: 48, maxZoom: 15 };
+/** Przybliżenie po „wyśrodkuj na wybranym punkcie” (ulice i budynki). */
+const FOCUS_ZOOM = 16;
 
 /** Prostokąt obejmujący punkty dnia (i podane linie); szare kropki z puli liczą się tylko, gdy nie ma innych pinezek. */
 function boundsOf(pins: MapPin[], lines: readonly { coordinates: readonly (readonly number[])[] }[] = []): LngLatBoundsLike | null {
@@ -76,6 +78,7 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
     [full, showTransit],
   );
   const fitKey = `${dayKey}:${showTransit && hasTransit}`;
+  const selectedPin = data.pins.find((pin) => holds(pin, selected));
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const markers = useRef<{ pin: MapPin; marker: Marker }[]>([]);
@@ -290,6 +293,23 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
           </svg>
         </button>
       )}
+      {/* Wybrany punkt (podświetlona pinezka): środek mapy na nim i przybliżenie. */}
+      {map !== null && selectedPin !== undefined && (
+        <button
+          type="button"
+          onClick={() => {
+            map.stop();
+            map.flyTo({ center: [selectedPin.lng, selectedPin.lat], zoom: Math.max(map.getZoom(), FOCUS_ZOOM), duration: 700 });
+          }}
+          title={`Wyśrodkuj i przybliż: ${selectedPin.name}`}
+          aria-label="Wyśrodkuj mapę na wybranym punkcie i przybliż"
+          className="absolute top-[113px] right-[10px] flex size-[29px] items-center justify-center rounded bg-white text-zinc-800 shadow-[0_0_0_2px_rgba(0,0,0,0.1)] hover:bg-zinc-100">
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <circle cx="8" cy="8" r="3.5" />
+            <path d="M8 1v2.5M8 12.5V15M1 8h2.5M12.5 8H15" />
+          </svg>
+        </button>
+      )}
       {hasTransit && !picking && (
         <button
           onClick={() => setShowTransit((value) => !value)}
@@ -313,11 +333,14 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
   );
 }
 
+/** Pinezka zawiera wybrany punkt (dnia, z puli albo atrakcję po drodze). */
+const holds = (pin: MapPin, selected: string | null) => selected !== null && (pin.stops.some((stop) => stop.ref === selected) || (pin.pool ?? []).some((each) => each.ref === selected) || pin.extra?.ref === selected);
+
 /** Wyróżnia pinezkę z wybranym punktem (dnia albo z puli); zwraca ją. */
 function highlight(markers: { pin: MapPin; marker: Marker }[], selected: string | null): MapPin | undefined {
   let found: MapPin | undefined;
   for (const { pin, marker } of markers) {
-    const active = selected !== null && (pin.stops.some((stop) => stop.ref === selected) || (pin.pool ?? []).some((each) => each.ref === selected) || pin.extra?.ref === selected);
+    const active = holds(pin, selected);
     const element = marker.getElement();
     element.dataset.active = String(active);
     element.style.zIndex = active ? "10" : "";
