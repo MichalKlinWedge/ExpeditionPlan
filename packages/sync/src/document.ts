@@ -206,7 +206,7 @@ export const SPECS: Record<Collection, Spec> = {
   tasks: {
     table: 'tasks',
     fields: [
-      'kind', 'title', 'body', 'answer', 'status', 'due', ['assigneeRefs', 'assignee_ids', 'many'], ['bookingRef', 'booking_id'],
+      'kind', 'title', 'body', 'answer', 'status', 'due', 'remindAt', ['assigneeRefs', 'assignee_ids', 'many'], ['bookingRef', 'booking_id'],
       ['itemRef', 'item_id'], ['variantGroupRef', 'variant_group_id'], ['budgetLineRef', 'budget_line_id'], 'priority',
     ],
   },

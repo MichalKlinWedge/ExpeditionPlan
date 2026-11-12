@@ -5,7 +5,8 @@ import type { TripDocument } from './schemas/trip-document.ts';
 /**
  * Przypomnienia z planu (powiadomienia lokalne w telefonie — działają offline): otwarte zadania
  * z terminem i „Jutro wyjazd”. Przed wyjazdem liczone w strefie domowej, w trakcie — w strefie dnia.
- * Godzina domyślna 9:00 (zadania), 19:00 (dzień przed wyjazdem).
+ * Godzina domyślna 9:00 (zadania), 19:00 (dzień przed wyjazdem); zadanie z własnym przypomnieniem (`remindAt`)
+ * przypomina tylko o nim.
  */
 
 type Doc = TripDocument;
@@ -24,11 +25,18 @@ export function tripReminders(doc: Doc, now: number): Reminder[] {
   };
 
   for (const task of doc.tasks) {
-    if (task.status !== 'open' || task.due === undefined) continue;
-    const due = task.due;
+    if (task.status !== 'open') continue;
     const title = task.priority === 'high' ? `Ważne: ${task.title}` : task.title;
     const body = `${doc.trip.title}${task.body ? ` — ${task.body}` : ''}`;
     const key = `task:${task.ref}`;
+    // Własne przypomnienie zastępuje domyślną godzinę z terminu: w strefie dnia wyjazdu z tą datą, inaczej domowej.
+    if (task.remindAt !== undefined) {
+      const { date, time } = task.remindAt;
+      add(key, title, body, date, time, doc.days.find((day) => day.date === date)?.tz ?? home);
+      continue;
+    }
+    if (task.due === undefined) continue;
+    const due = task.due;
     switch (due.kind) {
       case 'absolute':
         add(key, title, body, due.date, due.time ?? '09:00', home);

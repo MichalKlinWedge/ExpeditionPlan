@@ -214,6 +214,11 @@ export async function saveTask(tripId: string, ref: string | null, _prev: FormSt
     default:
       due = undefined;
   }
+  // Własne przypomnienie: pole `datetime-local` („RRRR-MM-DDTGG:MM”), puste = przypomnienie z terminu.
+  const remind = text(form, "remindAt");
+  const [remindDate = "", remindTime = ""] = remind.split("T");
+  if (remind !== "" && (!DATE.test(remindDate) || !TIME.test(remindTime.slice(0, 5)))) return { error: "Przypomnienie: podaj datę i godzinę." };
+  const remindAt = remind === "" ? undefined : { date: remindDate, time: remindTime.slice(0, 5) };
   return change(tripId, "tasks", ref, (_doc, current) => ({
     ...(current ?? { ref: `id-${uuidv7()}`, status: "open" }),
     title,
@@ -222,6 +227,7 @@ export async function saveTask(tripId: string, ref: string | null, _prev: FormSt
     body: optional(text(form, "body")),
     answer: optional(text(form, "answer")),
     due,
+    remindAt,
     assigneeRefs: form.getAll("assignee").map(String),
     bookingRef: optional(text(form, "bookingRef")),
     itemRef: optional(text(form, "itemRef")),

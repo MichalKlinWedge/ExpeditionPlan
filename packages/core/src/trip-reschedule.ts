@@ -8,7 +8,7 @@ import type { TripDocument } from './schemas/trip-document.ts';
  *
  * Razem z planem idzie to, co od niego zależy: `trip.startDate/endDate`, daty dni, rezerwacje jeszcze
  * niekupione (z `freeCancellationUntil`, bo to warunek oferty na dany termin), terminy `absolute`
- * otwartych zadań i `decideBy` z datą. Terminy względne (`before_trip`, `before_item`, `on_trip`,
+ * i własne przypomnienia (`remindAt`) otwartych zadań oraz `decideBy` z datą. Terminy względne (`before_trip`, `before_item`, `on_trip`,
  * `before_booking`, `decideBy.time`) i godziny punktów nie mają daty — liczą się od dnia same.
  *
  * Zostaje to, co jest faktem: rezerwacje kupione (`booked`, `paid`, zapłata albo kod potwierdzenia —
@@ -123,14 +123,19 @@ export function shiftTripDates(doc: Doc, newStart: string): TripShift {
 
   const bought = new Set(doc.bookings.filter((booking) => booking.status !== 'cancelled' && isBought(booking)).map((booking) => booking.ref));
   const tasks = doc.tasks.map((task) => {
-    if (task.due?.kind !== 'absolute' || task.status !== 'open') return task;
-    // Kupiona rezerwacja i dopłata po zadatku: termin jest u dostawcy, nie w planie.
+    const absolute = task.due?.kind === 'absolute' ? task.due : undefined;
+    if ((absolute === undefined && task.remindAt === undefined) || task.status !== 'open') return task;
+    // Kupiona rezerwacja i dopłata po zadatku: termin jest u dostawcy, nie w planie (przypomnienie zostaje z nim).
     if ((task.bookingRef !== undefined && bought.has(task.bookingRef)) || task.budgetLineRef !== undefined) {
-      review.keptTasks.push({ ref: task.ref, title: task.title, date: task.due.date });
+      review.keptTasks.push({ ref: task.ref, title: task.title, date: absolute?.date ?? task.remindAt!.date });
       return task;
     }
     moved.tasks.push(task.ref);
-    return { ...task, due: { ...task.due, date: shift(task.due.date) } };
+    return {
+      ...task,
+      ...(absolute ? { due: { ...absolute, date: shift(absolute.date) } } : {}),
+      ...(task.remindAt ? { remindAt: { ...task.remindAt, date: shift(task.remindAt.date) } } : {}),
+    };
   });
 
   const variantGroups = doc.variantGroups.map((group) => {

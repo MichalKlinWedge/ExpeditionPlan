@@ -25,14 +25,21 @@ export type HiredMode = keyof typeof HIRED;
 export const HIRED_MODES = Object.entries(HIRED) as [HiredMode, string][];
 const DEFAULT_HIRED: HiredMode = 'taxi';
 
+/**
+ * Samolot jest na liście „transportu publicznego”, ale nie jest komunikacją (`publicMode`, `isTransitItem`):
+ * nie ma linku Google do komunikacji, wklejania połączenia ani linii z OSM.
+ */
+const FLIGHT = 'samolot';
+const PUBLIC_VEHICLES: [PublicMode | 'flight', string][] = [...PUBLIC_MODES, ['flight', FLIGHT]];
+
 /** Środek wybierany przy „transporcie publicznym” albo „taksówce / transferze”. */
-export type VehicleMode = PublicMode | HiredMode;
+export type VehicleMode = PublicMode | 'flight' | HiredMode;
 
 export type KindChoice = Item['kind'] | FootMode | 'public' | 'hired';
 
 /** Środki do wyboru przy pozycji listy (tylko „transport publiczny” i „taksówka / transfer” je mają). */
 export function vehicleChoices(choice: KindChoice): [VehicleMode, string][] | undefined {
-  return choice === 'public' ? PUBLIC_MODES : choice === 'hired' ? HIRED_MODES : undefined;
+  return choice === 'public' ? PUBLIC_VEHICLES : choice === 'hired' ? HIRED_MODES : undefined;
 }
 
 /** Wybrany środek, jeśli pasuje do pozycji listy, inaczej pierwszy z jej listy. */
@@ -44,6 +51,9 @@ export function vehicleFor(choice: KindChoice, vehicle: VehicleMode | undefined)
 const footMode = (value: string | undefined): FootMode | undefined => (value === 'hike' || value === 'walk' ? value : undefined);
 const isPublic = (value: string | undefined): value is PublicMode => value !== undefined && value in PUBLIC;
 const isHired = (value: string | undefined): value is HiredMode => value !== undefined && value in HIRED;
+/** Środek z listy „transportu publicznego” (komunikacja albo samolot). */
+const isPublicChoice = (value: string | undefined): value is PublicMode | 'flight' => value === 'flight' || isPublic(value);
+const flies = (item: Pick<Item, 'kind' | 'leg'>) => item.kind === 'transport' && item.leg?.mode === 'flight';
 /** Środki jadące drogą: zmiana między nimi zostawia policzoną trasę. */
 const ROAD: ReadonlySet<string> = new Set(['car', 'rental_car', 'taxi', 'hired_driver']);
 
@@ -57,7 +67,7 @@ export const isTransitItem = (item: Pick<Item, 'kind' | 'leg'>) => publicMode(it
 export const hiredMode = (item: Pick<Item, 'kind' | 'leg'>): HiredMode | undefined => (item.kind === 'transport' && isHired(item.leg?.mode) ? item.leg.mode : undefined);
 
 /** Środek z listy wyboru, którym punkt jedzie (komunikacja albo taksówka / transfer). */
-export const vehicleMode = (item: Pick<Item, 'kind' | 'leg'>): VehicleMode | undefined => publicMode(item) ?? hiredMode(item);
+export const vehicleMode = (item: Pick<Item, 'kind' | 'leg'>): VehicleMode | undefined => (flies(item) ? 'flight' : (publicMode(item) ?? hiredMode(item)));
 
 /** Pozycje listy: etykiety rodzajów z aplikacji, a zaraz za przejazdem transport publiczny, taksówka / transfer, trekking i pieszo. */
 export function kindChoices(labels: Record<string, string>): [KindChoice, string][] {
@@ -70,7 +80,7 @@ export function kindChoices(labels: Record<string, string>): [KindChoice, string
 
 /** Pozycja listy, którą punkt ma teraz. */
 export function kindChoice(item: Pick<Item, 'kind' | 'leg'>): KindChoice {
-  if (publicMode(item) !== undefined) return 'public';
+  if (publicMode(item) !== undefined || flies(item)) return 'public';
   if (hiredMode(item) !== undefined) return 'hired';
   return (item.kind === 'transport' ? footMode(item.leg?.mode) : undefined) ?? item.kind;
 }
@@ -79,6 +89,7 @@ export function kindChoice(item: Pick<Item, 'kind' | 'leg'>): KindChoice {
 export function itemKindLabel(item: Pick<Item, 'kind' | 'leg'>, labels: Record<string, string>): string | undefined {
   const vehicle = publicMode(item);
   if (vehicle !== undefined) return PUBLIC[vehicle];
+  if (flies(item)) return FLIGHT;
   const hired = hiredMode(item);
   if (hired !== undefined) return hired === 'taxi' ? HIRED.taxi : 'transfer';
   const foot = item.kind === 'transport' ? footMode(item.leg?.mode) : undefined;
@@ -94,12 +105,12 @@ export function kindPatch(item: Pick<Item, 'kind' | 'leg'> | null, choice: KindC
   const foot = footMode(choice);
   if (foot === undefined && choice !== 'transport' && choice !== 'public' && choice !== 'hired') return { kind: choice as Item['kind'], leg: undefined };
   const current = item?.kind === 'transport' ? item.leg : undefined;
-  // „Przejazd” bez szczegółów albo z trekkingu, przejścia pieszo, transportu publicznego i taksówki: domyślnie auto.
-  const other = current === undefined || footMode(current.mode) !== undefined || isPublic(current.mode) || isHired(current.mode) ? 'car' : current.mode;
+  // „Przejazd” bez szczegółów albo z trekkingu, przejścia pieszo, transportu publicznego (z samolotem) i taksówki: domyślnie auto.
+  const other = current === undefined || footMode(current.mode) !== undefined || isPublicChoice(current.mode) || isHired(current.mode) ? 'car' : current.mode;
   const mode =
     foot ??
     (choice === 'public'
-      ? isPublic(vehicle) ? vehicle : isPublic(current?.mode) ? current!.mode as PublicMode : DEFAULT_PUBLIC
+      ? isPublicChoice(vehicle) ? vehicle : isPublicChoice(current?.mode) ? current!.mode as PublicMode | 'flight' : DEFAULT_PUBLIC
       : choice === 'hired'
         ? isHired(vehicle) ? vehicle : isHired(current?.mode) ? current!.mode as HiredMode : DEFAULT_HIRED
         : other);

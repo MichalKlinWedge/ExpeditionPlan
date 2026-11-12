@@ -33,6 +33,23 @@ describe('przypomnienia z planu', () => {
     expect(list.find((each) => each.key === 'trip:eve')!.at).toBe(zonedToInstant('2026-12-25', '19:00', 'Europe/Warsaw'));
   });
 
+  it('własne przypomnienie zastępuje godzinę z terminu: w trakcie w strefie dnia, przed wyjazdem w domowej', () => {
+    const day = maroko.days[1]!;
+    const doc = TripDocument.parse({
+      ...maroko,
+      tasks: [
+        ...maroko.tasks,
+        { ref: 't-odprawa', kind: 'todo', title: 'Odprawa', status: 'open', due: { kind: 'before_trip', days: 2 }, remindAt: { date: day.date, time: '18:30' } },
+        { ref: 't-ubezp', kind: 'todo', title: 'Ubezpieczenie', status: 'open', remindAt: { date: '2026-12-01', time: '20:15' } },
+        { ref: 't-gotowe', kind: 'todo', title: 'Zrobione', status: 'done', remindAt: { date: day.date, time: '10:00' } },
+      ],
+    });
+    const list = tripReminders(doc, zonedToInstant('2026-11-02', '12:00', 'Europe/Warsaw'));
+    expect(list.filter((each) => each.key === 'task:t-odprawa').map((each) => each.at)).toEqual([zonedToInstant(day.date, '18:30', day.tz)]);
+    expect(list.find((each) => each.key === 'task:t-ubezp')!.at).toBe(zonedToInstant('2026-12-01', '20:15', doc.trip.homeTz));
+    expect(list.map((each) => each.key)).not.toContain('task:t-gotowe');
+  });
+
   it('po wyjeździe nic nie zostaje', () => {
     expect(tripReminders(maroko, zonedToInstant('2027-02-01', '12:00', 'Europe/Warsaw'))).toEqual([]);
   });

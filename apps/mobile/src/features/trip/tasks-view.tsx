@@ -31,6 +31,12 @@ type Props = {
 const KIND: Record<Task['kind'], string> = { todo: '', question: 'pytanie', decision: 'decyzja' };
 
 function dueLabel(task: Task, doc: CachedTrip['state']['doc']): string {
+  // Własne przypomnienie (`remindAt`) obok terminu.
+  const remind = task.remindAt === undefined ? '' : `🔔 ${task.remindAt.date.slice(8)}.${task.remindAt.date.slice(5, 7)} ${task.remindAt.time}`;
+  return [dueText(task, doc), remind].filter(Boolean).join(' · ');
+}
+
+function dueText(task: Task, doc: CachedTrip['state']['doc']): string {
   const due = task.due;
   if (due === undefined) return '';
   if (due.kind === 'absolute') return `do ${due.date}`;

@@ -700,6 +700,11 @@ export const DocTask = z.object({
   answer: z.string().optional(),
   status: z.enum(['open', 'done', 'dropped']).default('open'),
   due: TaskDue.optional(),
+  /**
+   * Własne przypomnienie (telefon, póki zadanie otwarte) zamiast domyślnej godziny z terminu; czas lokalny strefy
+   * dnia wyjazdu z tą datą, inaczej domowej (`core/reminders.ts`). Przesuwa się ze zmianą terminu wyjazdu.
+   */
+  remindAt: z.object({ date: IsoDate, time: LocalTime }).optional(),
   assigneeRefs: z.array(Ref).default([]),
   bookingRef: Ref.optional(),
   itemRef: Ref.optional(),

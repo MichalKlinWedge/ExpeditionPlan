@@ -33,7 +33,7 @@ export function rescheduleChanges({ shift, ids, briefs = [] }: Omit<RescheduleIn
       end_date: booking.end?.date ?? null,
       free_cancellation_until: booking.freeCancellationUntil ?? null,
     })),
-    tasks: pick(doc.tasks, moved.tasks).map((task) => ({ id: ids[task.ref]!, due: task.due ?? null })),
+    tasks: pick(doc.tasks, moved.tasks).map((task) => ({ id: ids[task.ref]!, due: task.due ?? null, remind_at: task.remindAt ?? null })),
     variant_groups: pick(doc.variantGroups, moved.variantGroups).map((group) => ({ id: ids[group.ref]!, decide_by: group.decideBy ?? null })),
     travelers: pick(doc.travelers, moved.travelers).map((traveler) => ({ id: ids[traveler.ref]!, from_date: traveler.fromDate ?? null, to_date: traveler.toDate ?? null })),
     trip_brief: briefs

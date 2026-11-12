@@ -419,6 +419,12 @@ function TaskForm({ tripId, task, choices, onDone }: { tripId: string; task?: Ta
         )}
         {(dueKind === "absolute" || dueKind === "on_trip") && <input name="dueTime" type="time" defaultValue={dueTime} className={input} aria-label="Godzina" />}
       </div>
+      {/* Własna data i godzina przypomnienia (przed wyjazdem albo w trakcie), zamiast domyślnej z terminu. */}
+      <label className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+        przypomnij
+        <input name="remindAt" type="datetime-local" defaultValue={task?.remindAt ? `${task.remindAt.date}T${task.remindAt.time}` : ""} className={input} aria-label="Przypomnienie: data i godzina" />
+        <span>powiadomienie na telefonie, póki zadanie jest otwarte; puste = wg terminu (9:00)</span>
+      </label>
       <textarea name="body" defaultValue={task?.body} placeholder="opis (opcjonalnie)" rows={2} className={input} aria-label="Opis" />
       {(kind === "question" || kind === "decision") && <textarea name="answer" defaultValue={task?.answer} placeholder="odpowiedź / decyzja" rows={2} className={input} aria-label="Odpowiedź" />}
       {choices.travelers.length > 0 && (

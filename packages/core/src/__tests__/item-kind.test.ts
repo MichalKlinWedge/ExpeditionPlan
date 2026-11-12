@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { itemIcon } from '../item-icon.ts';
-import { hiredMode, itemKindLabel, kindChoice, kindChoices, kindPatch, PUBLIC_MODES, publicMode, vehicleFor } from '../item-kind.ts';
+import { hiredMode, isTransitItem, itemKindLabel, kindChoice, kindChoices, kindPatch, PUBLIC_MODES, publicMode, vehicleChoices, vehicleFor, vehicleMode } from '../item-kind.ts';
 import type { TripDocument } from '../schemas/trip-document.ts';
 
 const LABELS = { visit: 'zwiedzanie', transport: 'przejazd', meal: 'posiłek' };
@@ -25,11 +25,21 @@ describe('rodzaj punktu: transport publiczny', () => {
     expect(kindPatch({ kind: 'transport', leg: car }, 'public', 'tram').leg).toEqual({ mode: 'tram', durationMin: 40, links: [] });
   });
 
-  it('powrót na „przejazd” daje auto, a lot i taxi nie są transportem publicznym', () => {
+  it('powrót na „przejazd” daje auto, a taxi nie jest transportem publicznym', () => {
     expect(kindPatch({ kind: 'transport', leg: { mode: 'train', links: [] } }, 'transport').leg?.mode).toBe('car');
-    expect(kindChoice({ kind: 'transport', leg: { mode: 'flight', links: [] } })).toBe('transport');
     expect(publicMode({ kind: 'transport', leg: { mode: 'taxi', links: [] } })).toBeUndefined();
-    expect(itemKindLabel({ kind: 'transport', leg: { mode: 'flight', links: [] } }, LABELS)).toBe('przejazd');
+  });
+
+  it('samolot jest na liście transportu publicznego, ale nie jest komunikacją', () => {
+    const flight = { kind: 'transport' as const, leg: { mode: 'flight' as const, durationMin: 150, links: [] } };
+    expect(kindChoice(flight)).toBe('public');
+    expect(vehicleMode(flight)).toBe('flight');
+    expect(isTransitItem(flight)).toBe(false);
+    expect(itemKindLabel(flight, LABELS)).toBe('samolot');
+    expect(vehicleChoices('public')!.map(([mode]) => mode)).toContain('flight');
+    expect(kindPatch({ kind: 'visit' }, 'public', 'flight')).toEqual({ kind: 'transport', leg: { mode: 'flight', links: [] } });
+    expect(kindPatch(flight, 'public').leg).toEqual(flight.leg);
+    expect(kindPatch(flight, 'transport').leg?.mode).toBe('car');
   });
 });
 
