@@ -2,7 +2,7 @@
 
 import { BOOKING_KIND, BUDGET_CATEGORY, BUDGET_LINE_STATUS, type BudgetSuggestion, CONTACT_ROLE, formatMoney, formatMoneyRange, fxLine, lineTravelerNames, moneyToInput, PRICE_BASIS, type TripDocument } from "@expeditionplan/core";
 import Link from "next/link";
-import { Fragment, type ReactNode, startTransition, useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { createContext, Fragment, type ReactNode, startTransition, useActionState, useContext, useEffect, useRef, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { PlacePin } from "@/components/place-pin";
@@ -246,9 +246,57 @@ function BudgetForm({ tripId, line, currency, people, cars, onDone }: { tripId: 
   );
 }
 
-export function BudgetLines({ tripId, lines, balances = {}, currency, people, cars = [], canEdit }: { tripId: string; lines: Line[]; balances?: Record<string, string | null>; currency: string; people: Person[]; cars?: CarChoice[]; canEdit: boolean }) {
+/** Stan edycji budżetu wspólny dla przycisku i kart nad sekcją „Budżet” (`BudgetEditor`) i ołówków w tabeli (`BudgetLines`). */
+const BudgetEditing = createContext<{ editing: string | null; edit: (ref: string) => void }>({ editing: null, edit: () => undefined });
+
+/**
+ * Nad sekcją „Budżet”: „+ Dodaj pozycję budżetu”, a nowa pozycja i edycja w osobnej karcie (ołówek w tabeli otwiera
+ * edycję tutaj i przewija do niej). `children` — sama sekcja z tabelą `BudgetLines`.
+ */
+export function BudgetEditor({ tripId, lines, currency, people, cars = [], canEdit, children }: { tripId: string; lines: Line[]; currency: string; people: Person[]; cars?: CarChoice[]; canEdit: boolean; children: ReactNode }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (adding || editing !== null) box.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [adding, editing]);
+  const edited = editing === null ? undefined : lines.find((line) => line.ref === editing);
+  const edit = (ref: string) => {
+    setAdding(false);
+    setEditing(ref);
+  };
+  return (
+    <BudgetEditing.Provider value={{ editing, edit }}>
+      {canEdit && !adding && (
+        <button
+          onClick={() => {
+            setEditing(null);
+            setAdding(true);
+          }}
+          className="btn-secondary btn-sm self-start">
+          + Dodaj pozycję budżetu
+        </button>
+      )}
+      {canEdit && adding && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Nowa pozycja budżetu</h2>
+          <BudgetForm tripId={tripId} currency={currency} people={people} cars={cars} onDone={() => setAdding(false)} />
+        </section>
+      )}
+      {canEdit && edited !== undefined && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Edycja pozycji: {edited.title}</h2>
+          <BudgetForm key={edited.ref} tripId={tripId} line={edited} currency={currency} people={people} cars={cars} onDone={() => setEditing(null)} />
+        </section>
+      )}
+      {children}
+    </BudgetEditing.Provider>
+  );
+}
+
+/** Tabela pozycji budżetu w sekcji „Budżet”; dodawanie i edycja są w kartach nad nią (`BudgetEditor`). */
+export function BudgetLines({ tripId, lines, balances = {}, people, cars = [], canEdit }: { tripId: string; lines: Line[]; balances?: Record<string, string | null>; people: Person[]; cars?: CarChoice[]; canEdit: boolean }) {
+  const { editing, edit } = useContext(BudgetEditing);
   const remove = useAction();
   return (
     <div className="flex flex-col gap-3">
@@ -264,15 +312,8 @@ export function BudgetLines({ tripId, lines, balances = {}, currency, people, ca
             </tr>
           </thead>
           <tbody>
-            {lines.map((line) =>
-              editing === line.ref ? (
-                <tr key={line.ref} className="border-t border-zinc-100 dark:border-zinc-900">
-                  <td colSpan={5} className="py-2">
-                    <BudgetForm tripId={tripId} line={line} currency={currency} people={people} cars={cars} onDone={() => setEditing(null)} />
-                  </td>
-                </tr>
-              ) : (
-                <tr key={line.ref} className="border-t border-zinc-100 dark:border-zinc-900">
+            {lines.map((line) => (
+                <tr key={line.ref} className={`border-t border-zinc-100 dark:border-zinc-900 ${editing === line.ref ? "bg-signal/10" : ""}`}>
                   <td className="py-1">
                     {line.title}
                     {line.perPerson ? <span className="text-zinc-500"> · na osobę</span> : null}
@@ -300,26 +341,17 @@ export function BudgetLines({ tripId, lines, balances = {}, currency, people, ca
                   </td>
                   {canEdit && (
                     <td className="py-1 pl-2 text-right whitespace-nowrap text-zinc-500">
-                      <IconAction kind="edit" onClick={() => setEditing(line.ref)} />
+                      <IconAction kind="edit" onClick={() => edit(line.ref)} />
                       <br className="sm:hidden" />{" "}
                       <IconAction kind="remove" disabled={remove.pending} onClick={() => remove.run(() => removeBudgetLine(tripId, line.ref), `Usunąć pozycję „${line.title}”?`)} />
                     </td>
                   )}
                 </tr>
-              ),
-            )}
+            ))}
           </tbody>
         </table>
       )}
       <Status state={remove.state} />
-      {canEdit &&
-        (adding ? (
-          <BudgetForm tripId={tripId} currency={currency} people={people} cars={cars} onDone={() => setAdding(false)} />
-        ) : (
-          <button onClick={() => setAdding(true)} className="btn-secondary btn-sm self-start">
-            + Dodaj pozycję budżetu
-          </button>
-        ))}
     </div>
   );
 }

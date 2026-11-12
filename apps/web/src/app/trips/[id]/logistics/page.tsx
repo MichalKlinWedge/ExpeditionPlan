@@ -10,7 +10,7 @@ import { BookingImport } from "@/components/booking-import";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
 import { PlaceLink } from "@/components/place-pin";
-import { BookingRow, BookingStatusSelect, BudgetLines, BudgetSuggestions, type CarChoice, type Choices, ExpenseSplitEditor, ExpenseVehicleEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
+import { BookingRow, BookingStatusSelect, BudgetEditor, BudgetLines, BudgetSuggestions, type CarChoice, type Choices, ExpenseSplitEditor, ExpenseVehicleEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
@@ -174,13 +174,12 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
     <>
       <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Rezerwacje i budżet" actions={mayEdit && <EditToggle editing={canEdit} />} />
 
+      {/* „+ Dodaj pozycję budżetu” nad sekcją, nowa pozycja i edycja w osobnej karcie (`BudgetEditor`). */}
+      <BudgetEditor tripId={id} lines={doc.budgetLines} currency={doc.budgetLines.length === 0 ? doc.trip.baseCurrency : budget.currency} people={choices.travelers} cars={cars} canEdit={canEdit}>
       <section className={card}>
         <h2 className={heading}>Budżet</h2>
         {doc.budgetLines.length === 0 ? (
-          <>
-            <p className="text-sm text-zinc-500">Plan nie ma pozycji budżetu.</p>
-            <BudgetLines tripId={id} lines={[]} currency={doc.trip.baseCurrency} people={choices.travelers} cars={cars} canEdit={canEdit} />
-          </>
+          <p className="text-sm text-zinc-500">Plan nie ma pozycji budżetu.</p>
         ) : (
           <>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
@@ -202,7 +201,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                 </ul>
               </div>
             )}
-            <BudgetLines tripId={id} lines={doc.budgetLines} balances={balances} currency={budget.currency} people={choices.travelers} cars={cars} canEdit={canEdit} />
+            <BudgetLines tripId={id} lines={doc.budgetLines} balances={balances} people={choices.travelers} cars={cars} canEdit={canEdit} />
             {Object.keys(budget.unconverted).length > 0 && (
               <p className="text-xs text-amber-700">
                 Bez kursu w planie (poza sumą):{" "}
@@ -260,6 +259,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
         )}
         <Settlement doc={doc} tables={payload.tables as unknown as Parameters<typeof Settlement>[0]["tables"]} />
       </section>
+      </BudgetEditor>
 
       {/* Wszystko wybrane i nic nie czeka na przegląd — cała sekcja zwinięta do nagłówka. */}
       <details className={card} open={!(comparisons.length > 0 && comparisons.every((group) => group.chosenRef !== undefined) && !(candidatesDraft.success && draftRow.data?.status === "ok")) || undefined}>
