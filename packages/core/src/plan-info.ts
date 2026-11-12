@@ -158,6 +158,8 @@ export type MapPin = {
   movable?: boolean;
   /** Miejsce tylko dojazdu albo powrotu (lotnisko w domu, start długiej drogi) — mapa może je ukryć. */
   transit?: boolean;
+  /** Widoczne, ale poza dopasowaniem widoku („Pokaż wszystkie punkty”): dojazd i start z domu na mapie miejsc. */
+  approach?: boolean;
 };
 
 /** Kawałek linii dnia [lng, lat]: trasa po drogach z ORS (`routed`) albo prosta między miejscami. */
@@ -194,6 +196,24 @@ export function transitPlaceRefs(doc: Doc): Set<string> {
   }
   for (const ref of local) transit.delete(ref);
   return transit;
+}
+
+/**
+ * Miejsca dojazdu i startu: tylko dojazdu albo powrotu (`transitPlaceRefs`) oraz start i koniec podróży uczestników
+ * (dom), jeśli żaden zwykły punkt planu ani baza dnia z nich nie korzysta. Mapa miejsc pokazuje je, ale nie
+ * dopasowuje do nich widoku.
+ */
+export function approachPlaceRefs(doc: Doc): Set<string> {
+  const refs = transitPlaceRefs(doc);
+  const local = new Set(doc.days.flatMap((day) => (day.baseRef === undefined ? [] : [day.baseRef])));
+  for (const item of doc.items) {
+    if (isTransit(doc, item)) continue;
+    for (const ref of [item.placeRef, item.leg?.fromPlaceRef, item.leg?.toPlaceRef]) if (ref !== undefined) local.add(ref);
+  }
+  for (const traveler of doc.travelers) {
+    for (const ref of [traveler.startPlaceRef, traveler.endPlaceRef]) if (ref !== undefined && !local.has(ref)) refs.add(ref);
+  }
+  return refs;
 }
 
 export type DayMap = {

@@ -20,7 +20,10 @@ const FIT = { padding: 48, maxZoom: 15 };
 const FOCUS_ZOOM = 16;
 
 /** Prostokąt obejmujący punkty dnia (i podane linie); szare kropki z puli liczą się tylko, gdy nie ma innych pinezek. */
-function boundsOf(pins: MapPin[], lines: readonly { coordinates: readonly (readonly number[])[] }[] = []): LngLatBoundsLike | null {
+function boundsOf(all: MapPin[], lines: readonly { coordinates: readonly (readonly number[])[] }[] = []): LngLatBoundsLike | null {
+  // Dojazd i start z domu (`approach`) zostają na mapie, ale widok skupia się na miejscu wyjazdu — chyba że nic innego nie ma.
+  const near = all.filter((pin) => !pin.approach);
+  const pins = near.length > 0 ? near : all;
   const main = pins.filter((pin) => pin.stops.length > 0 || pin.base || pin.arrival);
   const focus = main.length > 0 ? main : pins;
   if (focus.length === 0) return null;
@@ -285,7 +288,7 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
             const bounds = boundsOf(data.pins, fitLines ? data.lines : []);
             if (bounds !== null) fitTo(map, bounds);
           }}
-          title="Pokaż wszystkie punkty"
+          title="Pokaż wszystkie punkty (bez dojazdu i startu z domu)"
           aria-label="Pokaż wszystkie punkty"
           className="absolute top-[76px] right-[10px] flex size-[29px] items-center justify-center rounded bg-white text-zinc-800 shadow-[0_0_0_2px_rgba(0,0,0,0.1)] hover:bg-zinc-100">
           <svg viewBox="0 0 16 16" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

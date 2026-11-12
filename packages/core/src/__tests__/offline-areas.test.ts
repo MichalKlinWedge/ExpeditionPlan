@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { maxZoomWithin, tileCount, tripMapAreas } from '../offline-areas.ts';
-import { transitPlaceRefs } from '../plan-info.ts';
+import { approachPlaceRefs, transitPlaceRefs } from '../plan-info.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const load = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
@@ -45,6 +45,17 @@ describe('obszary mapy offline wyjazdu', () => {
     // Bez progu odległości o obszarze decyduje sam dojazd.
     expect(tripMapAreas(doc, { outlierKm: 10_000 })[0]!.bounds[3]).toBeLessThan(36);
     expect(tripMapAreas(doc, { transit: true })[0]!.bounds[3]).toBeGreaterThan(51);
+  });
+
+  it('Maroko: miejsca dojazdu i startu z domu — lotnisko i dom uczestnika, nigdy baza noclegowa', () => {
+    const doc = load('maroko');
+    const wroclaw = doc.places.find((place) => place.name === 'Lotnisko Wrocław')!;
+    const home = { ref: 'p-dom-test', name: 'Dom', lat: 51.1, lng: 17.03 };
+    const withHome = TripDocument.parse({ ...doc, places: [...doc.places, home], travelers: doc.travelers.map((each, index) => (index === 0 ? { ...each, startPlaceRef: home.ref } : each)) });
+    const approach = approachPlaceRefs(withHome);
+    expect(approach.has(wroclaw.ref)).toBe(true);
+    expect(approach.has(home.ref)).toBe(true);
+    for (const day of doc.days) if (day.baseRef !== undefined) expect(approach.has(day.baseRef)).toBe(false);
   });
 
   it('każdy wzorcowy plan daje obszary w limicie (albo żadnych, gdy brak współrzędnych)', () => {

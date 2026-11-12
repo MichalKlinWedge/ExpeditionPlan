@@ -1,6 +1,6 @@
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
-import { canRatePlace, type GuideRow, memoriesOf, memorySummary, type PlaceMemoryRow, placeGuide, placeList, placeVisitYears, similarPlaces, type TripDocument, type VisitedPlaceRow } from "@expeditionplan/core";
+import { approachPlaceRefs, canRatePlace, type GuideRow, memoriesOf, memorySummary, type PlaceMemoryRow, placeGuide, placeList, placeVisitYears, similarPlaces, type TripDocument, type VisitedPlaceRow } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -59,13 +59,14 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
   const similar = similarPlaces(doc);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const memoryRows: PlaceMemoryRow[] = memories.data ?? [];
+  const approach = approachPlaceRefs(doc);
   const places = placeList(doc).flatMap(({ place, usage, n }) => {
     const rowId = ids[place.ref];
     const at: [number, number] | undefined = place.lat !== undefined && place.lng !== undefined ? [place.lng, place.lat] : undefined;
     const where = { name: place.name, ...(at ? { at } : {}) };
     const memory = memorySummary(memoriesOf(where, memoryRows), userId);
     const visits = { canRate: canRatePlace(where, visited), years: placeVisitYears(where, visited) };
-    return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, similar: similar[place.ref] ?? [], guide: placeGuide(doc.items, rows, ids, place.ref), memory, ...visits }];
+    return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, approach: approach.has(place.ref), similar: similar[place.ref] ?? [], guide: placeGuide(doc.items, rows, ids, place.ref), memory, ...visits }];
   });
 
   const back = backLink(id, doc, wroc);

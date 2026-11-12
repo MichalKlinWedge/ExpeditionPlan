@@ -34,6 +34,8 @@ export type PlaceRowData = {
   searchName?: string | undefined;
   usage: PlaceUsage;
   n?: number | undefined;
+  /** Miejsce dojazdu albo startu z domu (`approachPlaceRefs`): na mapie, ale poza „Pokaż wszystkie punkty”. */
+  approach?: boolean;
   /** Refy możliwych duplikatów. */
   similar: string[];
   guide: PlaceGuide | null;
@@ -87,7 +89,7 @@ export function PlacesView({ tripId, places, canEdit, hasRouted, initial = null 
     () => ({
       lines: [],
       numbers: {},
-      pins: places.flatMap((place) => (place.lat === undefined || place.lng === undefined ? [] : [{ placeRef: place.ref, name: place.name, lat: place.lat, lng: place.lng, stops: [{ ref: place.ref, n: place.n ?? 0, title: usageLabel(place.usage) || "nieużywane" }] }])),
+      pins: places.flatMap((place) => (place.lat === undefined || place.lng === undefined ? [] : [{ placeRef: place.ref, name: place.name, lat: place.lat, lng: place.lng, ...(place.approach ? { approach: true } : {}), stops: [{ ref: place.ref, n: place.n ?? 0, title: usageLabel(place.usage) || "nieużywane" }] }])),
     }),
     [places],
   );
