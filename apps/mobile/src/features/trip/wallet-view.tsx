@@ -120,23 +120,26 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
 
   return (
     <View style={styles.stack}>
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText type="small" themeColor="textSecondary">
-          BUDŻET Z PLANU
-        </ThemedText>
-        {doc.budgetLines.length === 0 ? (
-          <ThemedText type="small">Plan nie ma pozycji budżetu — dodaj je na webie.</ThemedText>
-        ) : (
-          <>
-            <Row label="Zapłacone" value={money(budget.paidMinor)} />
-            <Row label="Do wydania" value={range(money, budget.toSpendLowMinor, budget.toSpendHighMinor)} />
-            <Row label="Razem" value={range(money, budget.totalLowMinor, budget.totalHighMinor)} />
-            {budget.perPersonLowMinor !== null && <Row label="Na osobę" value={range(money, budget.perPersonLowMinor, budget.perPersonHighMinor!)} />}
-            {budget.perPersonLowMinor === null && budget.perTraveler.map((each) => <Row key={each.ref} label={`Na osobę: ${each.name}`} value={range(money, each.lowMinor, each.highMinor)} />)}
-            <BudgetDetails doc={doc} budget={budget} spent={wallet.byCategory} money={money} />
-          </>
-        )}
-      </ThemedView>
+      {/* Kolejność: dodawanie, wydatki (podsumowanie i lista), budżet z planu, plan a wydatki, rozliczenie. */}
+      {canAdd && !adding && (
+        <Pressable onPress={() => setAdding(true)} hitSlop={8}>
+          <ThemedText type="linkPrimary">+ Dodaj wydatek</ThemedText>
+        </Pressable>
+      )}
+      {canAdd && adding && (
+        <ExpenseForm
+          trip={trip}
+          tripId={tripId}
+          onCancel={() => setAdding(false)}
+          onSave={({ splitIds, receipt, ...expense }) => {
+            const id = uuidv7();
+            saveExpense(localDb, { tripId, id, ...expense, receiptPath: keepReceipt(tripId, id, receipt) });
+            saveExpenseSplits(localDb, tripId, id, splitIds, trip.live.travelers.map((row) => row.id));
+            setAdding(false);
+            onChanged();
+          }}
+        />
+      )}
 
       <ThemedView type="backgroundElement" style={styles.card}>
         <ThemedText type="small" themeColor="textSecondary">
@@ -165,28 +168,6 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
             </ThemedText>
           ))}
       </ThemedView>
-
-      <BudgetPaceCard doc={doc} expenses={paceExpenses} />
-
-      {canAdd && !adding && (
-        <Pressable onPress={() => setAdding(true)} hitSlop={8}>
-          <ThemedText type="linkPrimary">+ Dodaj wydatek</ThemedText>
-        </Pressable>
-      )}
-      {canAdd && adding && (
-        <ExpenseForm
-          trip={trip}
-          tripId={tripId}
-          onCancel={() => setAdding(false)}
-          onSave={({ splitIds, receipt, ...expense }) => {
-            const id = uuidv7();
-            saveExpense(localDb, { tripId, id, ...expense, receiptPath: keepReceipt(tripId, id, receipt) });
-            saveExpenseSplits(localDb, tripId, id, splitIds, trip.live.travelers.map((row) => row.id));
-            setAdding(false);
-            onChanged();
-          }}
-        />
-      )}
 
       {expenses.map((expense) =>
         editing === expense.id ? (
@@ -243,6 +224,26 @@ export function WalletView({ trip, tripId, canAdd, canEditAll, userId, onChanged
           </Pressable>
         ),
       )}
+
+      <ThemedView type="backgroundElement" style={styles.card}>
+        <ThemedText type="small" themeColor="textSecondary">
+          BUDŻET Z PLANU
+        </ThemedText>
+        {doc.budgetLines.length === 0 ? (
+          <ThemedText type="small">Plan nie ma pozycji budżetu — dodaj je na webie.</ThemedText>
+        ) : (
+          <>
+            <Row label="Zapłacone" value={money(budget.paidMinor)} />
+            <Row label="Do wydania" value={range(money, budget.toSpendLowMinor, budget.toSpendHighMinor)} />
+            <Row label="Razem" value={range(money, budget.totalLowMinor, budget.totalHighMinor)} />
+            {budget.perPersonLowMinor !== null && <Row label="Na osobę" value={range(money, budget.perPersonLowMinor, budget.perPersonHighMinor!)} />}
+            {budget.perPersonLowMinor === null && budget.perTraveler.map((each) => <Row key={each.ref} label={`Na osobę: ${each.name}`} value={range(money, each.lowMinor, each.highMinor)} />)}
+            <BudgetDetails doc={doc} budget={budget} spent={wallet.byCategory} money={money} />
+          </>
+        )}
+      </ThemedView>
+
+      <BudgetPaceCard doc={doc} expenses={paceExpenses} />
 
       <SettleView trip={trip} tripId={tripId} canEdit={canEditAll} fx={fx} onChanged={onChanged} />
     </View>
