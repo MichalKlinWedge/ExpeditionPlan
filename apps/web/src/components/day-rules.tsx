@@ -86,8 +86,31 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules, field, vot
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const groups = dayVariantGroups(doc, dayRef);
+  const undecided = groups.filter((group) => group.chosenRef === undefined).length;
+  const addButton =
+    onRules &&
+    (adding ? (
+      <NewGroup
+        onCancel={() => setAdding(false)}
+        onAdd={(fields, labels) => {
+          onRules((current) => addDayVariantGroup(current, dayRef, uuidv7, fields, labels));
+          setAdding(false);
+        }}
+      />
+    ) : (
+      <button onClick={() => setAdding(true)} className="btn-mini self-start">
+        + wariant dnia (plan B)
+      </button>
+    ));
+  if (groups.length === 0) return addButton || null;
   return (
-    <>
+    // Zwinięte domyślnie: wybrany wariant i tak widać w planie dnia. Stan pamięta przeglądarka (`RememberDetails`, wspólny dla dni).
+    <details data-remember="wybory" className="panel p-3 text-sm">
+      <summary className="cursor-pointer font-medium">
+        Wybory: {groups.length}
+        {undecided > 0 && <span className="font-normal text-zinc-500"> · bez decyzji: {undecided}</span>}
+      </summary>
+      <div className="mt-3 flex flex-col gap-3">
       {groups.map((group) => {
         const variants = groupVariants(doc, group.ref);
         const chosen = variants.find((variant) => variant.ref === group.chosenRef);
@@ -119,21 +142,9 @@ export function DayVariants({ doc, dayRef, active, onChoose, onRules, field, vot
           </div>
         );
       })}
-      {onRules &&
-        (adding ? (
-          <NewGroup
-            onCancel={() => setAdding(false)}
-            onAdd={(fields, labels) => {
-              onRules((current) => addDayVariantGroup(current, dayRef, uuidv7, fields, labels));
-              setAdding(false);
-            }}
-          />
-        ) : (
-          <button onClick={() => setAdding(true)} className="btn-mini self-start">
-            + wariant dnia (plan B)
-          </button>
-        ))}
-    </>
+      {addButton}
+      </div>
+    </details>
   );
 }
 
