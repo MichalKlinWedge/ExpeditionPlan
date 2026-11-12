@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { TripDocument } from '../schemas/trip-document.ts';
-import { taskDueDate, taskOverdue } from '../task-due.ts';
+import { taskDates, taskDueDate, taskOverdue, taskUrgency } from '../task-due.ts';
 import { tripReadiness } from '../trip-readiness.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
@@ -34,6 +34,15 @@ describe('zadanie po terminie', () => {
     expect(taskOverdue(doc, task('t-deadline'), '2026-12-02')).toBe(true);
     expect(taskOverdue(doc, task('t-deadline'), '2026-12-01')).toBe(false);
     expect(taskOverdue(doc, task('t-zrobione'), '2026-12-02')).toBe(false);
+  });
+
+  it('pilność do licznika w belce: po terminie, w ciągu 30 dni, później', () => {
+    expect(taskUrgency(taskDates(doc, task('t-deadline')), '2026-12-02')).toBe('overdue');
+    expect(taskUrgency(['2026-12-31'], '2026-12-02')).toBe('soon');
+    expect(taskUrgency(['2027-01-01'], '2026-12-02', 30)).toBe('soon');
+    expect(taskUrgency(['2027-01-02'], '2026-12-02', 30)).toBeNull();
+    expect(taskDates(doc, task('t-zrobione'))).toEqual([]);
+    expect(taskUrgency([], '2026-12-02')).toBeNull();
   });
 
   it('„Gotowość” liczy zaległość z „najpóźniej” i pokazuje wcześniejszą datę', () => {

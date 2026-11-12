@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { CompassIcon } from "./icons";
 import { RememberDetails } from "./remember-details";
 import { TripNav } from "./trip-nav";
+import { TaskAlerts } from "./task-alerts-server";
 import { UserMenu } from "./user-menu";
 
 /** Szerokość treści każdej strony: plan z mapą obok i film wyznaczają ją dla wszystkich. */
@@ -29,6 +30,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </span>
           </Link>
           <span className="flex items-center gap-3">
+            {/* Zadania po terminie i zbliżające się we wszystkich moich wyjazdach (dochodzą strumieniem, tylko po zalogowaniu). */}
+            <Suspense fallback={null}>
+              <TaskAlerts />
+            </Suspense>
             <Link href="/help" className="text-sm text-zinc-300 underline-offset-2 hover:text-white hover:underline">
               Pomoc
             </Link>
