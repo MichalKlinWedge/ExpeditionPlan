@@ -21,7 +21,7 @@ Oznaczenia: **OTA** = sama zmiana JS (`npm run ota`), **APK** = nowy moduł naty
 | Sejf: kod QR/kreskowy na pełnym ekranie, pełna jasność, pliki „offline” z sha256 | jest | tak, tylko dokumenty oznaczone „offline” |
 | Przewodnik: tekst, czytanie na głos (`expo-speech`), spacer z powiadomieniem przy miejscu | jest | tekst tak; zdjęcia z pamięci podręcznej; głos zależy od telefonu |
 | Wydatki, podziały, rozliczenie, kursy z pliku, budżet dzień po dniu | jest | tak (outbox); paragon przez AI — tylko z siecią |
-| Sprzęt i zakupy: odhaczanie, „Biorę” | jest | tak (outbox) |
+| Sprzęt i zakupy | usunięte z telefonu (12.11.2026) — tylko web | — |
 | Zadania: odhaczanie | jest | tak (outbox, sam status) |
 | Dziennik: wpisy i zdjęcia, kolejność, zdjęcia przy punkcie | jest | tak; własne zdjęcia z kolejką wysyłki |
 | Info: numery alarmowe, kontakty, notatki, źródła | jest | tak, o ile organizator je wpisał |

@@ -11,7 +11,7 @@ którą zabierasz (po ostatnim OTA). Zajmuje ok. 20 minut.
 - [ ] Wyjazdy → wyjazd → „Pobierz offline”: pobiera plan, mapę, dokumenty i opisy miejsc, z postępem.
       Na końcu komunikat „Wyjazd jest na telefonie”, a linijka nad przyciskiem zaczyna się od „✓ Offline:”.
       Przy „Pobrano częściowo” kliknij ponownie. Potem „Plan dzień po dniu →”: przejdź raz przez wszystkie
-      dni i zakładki Plan · Wydatki · Sprzęt · Zadania · Dziennik · Info.
+      dni i zakładki Plan · Wydatki · Posiłki · Zadania · Dziennik · Info.
 - [ ] Start → ⚙︎ → Przypomnienia: włączone i „Dokładne godziny: włączone” (inaczej „Zezwól na dokładne godziny” —
       bez tego „Za 15 min” może przyjść z opóźnieniem).
 - [ ] Start → blok „Na telefonie (offline)” pokazuje „N z M planów pobranych”, a zapisów czekających na wysłanie nie ma.
@@ -31,7 +31,7 @@ Włącz tryb samolotowy (i wyłącz Wi-Fi). Zamknij aplikację całkiem (z listy
       samolotowym nie wyjdzie — ważne, że numer jest pod ręką).
 - [ ] Wydatki: „+ Dodaj wydatek” — **1 MAD**, opis „test offline” — pojawia się na liście od razu
       (po próbie możesz go usunąć: „Usuń” w oknie poprawki wydatku).
-- [ ] Sprzęt: odhacz jedną rzecz — zostaje odhaczona po ponownym otwarciu.
+- [ ] Zadania: odhacz jedno zadanie — zostaje odhaczone po ponownym otwarciu.
 - [ ] Start → „Na telefonie (offline)”: widać zapisy czekające na wysłanie.
 
 ## 3. Powrót sieci
@@ -40,7 +40,7 @@ Wyłącz tryb samolotowy, otwórz aplikację (albo przełącz się do niej).
 
 - [ ] Po chwili zapisy czekające na wysłanie spadają do 0.
 - [ ] Na webie w „Rezerwacje i budżet” podsumowanie wydatków uwzględnia 1 MAD z kroku 2.
-- [ ] Na drugim telefonie (albo po ponownym zalogowaniu) odhaczona rzecz ze Sprzętu jest odhaczona.
+- [ ] Na webie (albo na drugim telefonie) odhaczone zadanie z kroku 2 jest odhaczone.
 
 ## 4. Mapa wyjazdu
 

@@ -49,7 +49,6 @@ import { TasksView } from '@/features/trip/tasks-view';
 import { JournalView } from '@/features/trip/journal-view';
 import { scheduleTripReminders } from '@/features/trip/reminders';
 import { useTripWeather } from '@/features/trip/trip-weather';
-import { PackingView } from '@/features/trip/packing-view';
 import { WalletView } from '@/features/trip/wallet-view';
 import { useTheme } from '@/hooks/use-theme';
 import { useEditMode } from '@/lib/edit-mode';
@@ -110,11 +109,11 @@ type PlanProps = {
   tripId: string;
   /** Bez logowania: tylko stan z telefonu, bez synchronizacji. */
   signedIn: boolean;
-  /** Edycja planu, „Zostajemy dłużej” i „Pomiń”, pakowanie za innych — organizator i edytor (RLS). */
+  /** Edycja planu, „Zostajemy dłużej” i „Pomiń” — organizator i edytor (RLS). */
   canAct: boolean;
   /** Dodawanie wydatków (`can_add_expenses`). */
   canAddExpense: boolean;
-  /** Zalogowany użytkownik — „ja” na liście pakowania. */
+  /** Zalogowany użytkownik — autor wpisów dziennika, przypisane zadania, głosy. */
   userId: string | null;
   /** Przycisk powrotu (okno z listy wyjazdów). */
   onClose?: () => void;
@@ -125,7 +124,7 @@ type PlanProps = {
 /** Plan jednego wyjazdu. */
 export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose, bottomInset = 0 }: PlanProps) {
   const theme = useTheme();
-  const [mode, setMode] = useState<'plan' | 'wallet' | 'packing' | 'meals' | 'tasks' | 'journal' | 'info'>('plan');
+  const [mode, setMode] = useState<'plan' | 'wallet' | 'meals' | 'tasks' | 'journal' | 'info'>('plan');
   const [trip, setTrip] = useState<CachedTrip | null>(null);
   /** „Co nowego” — zmiany innych od ostatniej wizyty (online). */
   const [news, setNews] = useState<NewsSummary | null>(null);
@@ -473,7 +472,6 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           options={[
             { value: 'plan', label: 'Plan' },
             { value: 'wallet', label: 'Wydatki' },
-            { value: 'packing', label: 'Sprzęt' },
             { value: 'meals', label: 'Posiłki' },
             { value: 'tasks', label: 'Zadania' },
             { value: 'journal', label: 'Dziennik' },
@@ -530,10 +528,8 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
             />
           ) : mode === 'tasks' ? (
             <TasksView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canAct={signedIn && canAct} onChanged={afterLocalWrite} />
-          ) : mode === 'journal' ? (
-            <JournalView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canEditAll={signedIn && canAct} onChanged={afterLocalWrite} onDragging={setJournalDrag} />
           ) : (
-            <PackingView trip={trip} tripId={tripId} canEdit={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
+            <JournalView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canEditAll={signedIn && canAct} onChanged={afterLocalWrite} onDragging={setJournalDrag} />
           )}
           <SyncStatus text={status} />
         </ScrollView>

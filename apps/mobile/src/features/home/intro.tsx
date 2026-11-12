@@ -42,7 +42,7 @@ const PAGES: { icon: string; title: string; points: string[] }[] = [
     title: 'Plan',
     points: [
       'Plan dnia z godzinami. W dniu wyjazdu karta „Teraz”: „✓ Zrobione”, „+15 min” (zostajemy dłużej — reszta dnia się przesuwa) i „Pomiń”.',
-      'Niżej: Wydatki (📷 paragon — kwotę odczyta AI), Sprzęt (także zakupy), Zadania, Dziennik ze zdjęciami i Info (numery alarmowe).',
+      'Niżej: Wydatki (📷 paragon — kwotę odczyta AI), Posiłki, Zadania, Dziennik ze zdjęciami i Info (numery alarmowe).',
       '„Pula” to pomysły spoza dni — do wstawienia, gdy zmienią się plany.',
     ],
   },

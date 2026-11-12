@@ -109,7 +109,7 @@ function EditModeCard() {
       <ThemedText type="small" themeColor="textSecondary">
         {edit
           ? 'Edycja: w planie przesuwasz, poprawiasz, usuwasz i dodajesz punkty (organizator i edytor, z internetem). Plan zmienia się dla wszystkich.'
-          : 'Podgląd: plan tylko do oglądania — bez przypadkowych zmian. „+15 min”, wydatki, sprzęt i dziennik działają w obu trybach.'}
+          : 'Podgląd: plan tylko do oglądania — bez przypadkowych zmian. „+15 min”, wydatki, zadania i dziennik działają w obu trybach.'}
       </ThemedText>
     </ThemedView>
   );

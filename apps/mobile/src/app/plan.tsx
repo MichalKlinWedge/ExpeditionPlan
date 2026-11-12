@@ -13,7 +13,7 @@ import { TripSwitcher } from '@/features/trips/trip-switcher';
 import { isConfigured } from '@/lib/supabase';
 
 /**
- * Zakładka Plan: od razu bieżący wyjazd na dzisiejszym dniu; obok plan dnia — wydatki i pakowanie. Bez logowania — plany z telefonu, do odczytu. Wybór wyjazdu: trwający dziś,
+ * Zakładka Plan: od razu bieżący wyjazd na dzisiejszym dniu; obok planu dnia — wydatki, posiłki, zadania, dziennik i informacje. Bez logowania — plany z telefonu, do odczytu. Wybór wyjazdu: trwający dziś,
  * inaczej najbliższy nadchodzący, inaczej ostatni. Przy kilku wyjazdach — przełącznik u góry.
  */
 
