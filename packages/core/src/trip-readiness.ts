@@ -89,6 +89,8 @@ export function tripReadiness(doc: Doc, today: string, vaultBookingRefs?: Readon
     if (group.chosenRef !== undefined) continue;
     // Warianty pogodowe i „na wypadek” rozstrzyga się w trasie; przed wyjazdem — wybory i rezerwacje.
     if (group.conditionKind !== 'choice' && group.scope !== 'booking') continue;
+    // Ankieta ogólna to tylko głos grupy, nie decyzja w planie.
+    if (group.scope === 'poll') continue;
     const date = group.decideBy && 'local' in group.decideBy ? group.decideBy.local.slice(0, 10) : undefined;
     out.push({ group: 'decide', ref: group.ref, title: group.title, ...(date ? { date } : {}), ...(date !== undefined && date < today ? { overdue: true as const } : {}) });
   }

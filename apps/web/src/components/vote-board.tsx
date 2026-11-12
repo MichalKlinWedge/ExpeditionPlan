@@ -4,7 +4,7 @@ import { addDays, climateFor, climateLine, climateYearsText, DAY_ANSWER, type Da
 import { useActionState, useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { castVote, chooseVariant, saveAvailability, saveDatePoll, setVotingOpen } from "@/app/vote-actions";
+import { castVote, chooseVariant, createPoll, removePoll, saveAvailability, saveDatePoll, setVotingOpen } from "@/app/vote-actions";
 import { ClimateCredit, useClimate, useClimatePlace } from "@/components/climate-hint";
 import { RescheduleDialog } from "@/components/trip-reschedule";
 import type { ClimateSource } from "@/lib/climate-place";
@@ -40,6 +40,8 @@ type Props = {
   people: BoardPerson[];
   travelerCount: number;
   groups: BoardGroup[];
+  /** Ankiety ogólne (`scope: 'poll'`), poza planem. */
+  polls: BoardGroup[];
   poll: DatePoll | null;
   length: number;
   terms: TermOption[];
@@ -84,6 +86,8 @@ export function VoteBoard(props: Props) {
 
       <DateSection {...props} person={person} />
 
+      <PollSection tripId={props.tripId} polls={props.polls} person={person} canEdit={props.canEdit} mayEdit={props.mayEdit} />
+
       <section className={card}>
         <h2 className="card-title">Warianty i kandydaci ({open.length} do decyzji)</h2>
         {groups.length === 0 && (
@@ -113,7 +117,62 @@ export function VoteBoard(props: Props) {
   );
 }
 
-function GroupCard({ tripId, group, person, canEdit }: { tripId: string; group: BoardGroup; person: BoardPerson | null; canEdit: boolean }) {
+/**
+ * Ankiety ogólne: pytanie z opcjami, niezwiązane z planem (jak ankieta terminu). „+ Dodaj ankietę” (organizator,
+ * edytor po „Edytuj”) otwiera formularz w osobnej karcie; głosowanie i „wybieram” jak przy wariantach.
+ */
+function PollSection({ tripId, polls, person, canEdit, mayEdit }: { tripId: string; polls: BoardGroup[]; person: BoardPerson | null; canEdit: boolean; mayEdit: boolean }) {
+  const [adding, setAdding] = useState(false);
+  const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
+    const result = await createPoll(tripId, prev, form);
+    if (result.ok) setAdding(false);
+    return result;
+  }, {});
+  if (polls.length === 0 && !canEdit) return null;
+  return (
+    <>
+      {canEdit && !adding && (
+        <button type="button" onClick={() => setAdding(true)} className="btn-secondary btn-sm self-start">
+          + Dodaj ankietę
+        </button>
+      )}
+      {canEdit && adding && (
+        <section className={card}>
+          <h2 className="card-title">Nowa ankieta</h2>
+          <form action={action} className="flex flex-col gap-2 text-sm">
+            <input name="title" required maxLength={200} placeholder="Pytanie, np. Gdzie jemy w sobotę wieczorem?" className="field px-2 py-1 text-sm" aria-label="Pytanie" />
+            <textarea name="options" required rows={4} placeholder={"Opcje, każda w osobnym wierszu, np.\nTapas w centrum\nGrill na kwaterze"} className="field px-2 py-1 text-sm" aria-label="Opcje" />
+            <input name="note" maxLength={500} placeholder="Opis (opcjonalnie)" className="field px-2 py-1 text-sm" aria-label="Opis" />
+            <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+              <input type="checkbox" name="open" defaultChecked /> od razu otwarta dla uczestników
+            </label>
+            <div className="flex gap-2">
+              <button disabled={pending} className="btn-primary btn-sm">
+                {pending ? "Zapisuję…" : "Dodaj ankietę"}
+              </button>
+              <button type="button" onClick={() => setAdding(false)} className="btn-secondary btn-sm">
+                Anuluj
+              </button>
+            </div>
+            {state.error && <p className="text-xs msg-error">{state.error}</p>}
+          </form>
+        </section>
+      )}
+      {(polls.length > 0 || state.ok) && (
+        <section className={card}>
+          <h2 className="card-title">Ankiety ({polls.length})</h2>
+          {state.ok && <p className="text-xs msg-ok">{state.ok}</p>}
+          {mayEdit && polls.length > 0 && <p className="text-xs text-zinc-500">Uczestnicy widzą tylko ankiety z otwartym głosowaniem.</p>}
+          {polls.map((group) => (
+            <GroupCard key={group.ref} tripId={tripId} group={group} person={person} canEdit={canEdit} removable />
+          ))}
+        </section>
+      )}
+    </>
+  );
+}
+
+function GroupCard({ tripId, group, person, canEdit, removable = false }: { tripId: string; group: BoardGroup; person: BoardPerson | null; canEdit: boolean; removable?: boolean }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<FormState>({});
   const mine = person === null ? undefined : group.byTraveler[person.ref];
@@ -133,6 +192,17 @@ function GroupCard({ tripId, group, person, canEdit }: { tripId: string; group: 
           {canEdit && (
             <button type="button" disabled={pending} onClick={() => run(() => setVotingOpen(tripId, group.ref, !group.votingOpen))} className="btn-mini">
               {group.votingOpen ? "zamknij głosowanie" : "otwórz głosowanie"}
+            </button>
+          )}
+          {canEdit && removable && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                if (window.confirm(`Usunąć ankietę „${group.title}”?`)) run(() => removePoll(tripId, group.ref));
+              }}
+              className="btn-mini btn-mini-danger">
+              usuń ankietę
             </button>
           )}
         </div>

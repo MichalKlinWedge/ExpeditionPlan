@@ -1,7 +1,7 @@
 "use server";
 
 import { DatePoll, TripDocument } from "@expeditionplan/core";
-import { dbErrorMessage, refIndex, saveElements, stateFromPayload, voteRow } from "@expeditionplan/sync";
+import { dbErrorMessage, type ElementWrite, refIndex, saveElements, stateFromPayload, uuidv7, voteRow } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 import { z } from "zod";
 
@@ -87,6 +87,68 @@ export async function setVotingOpen(tripId: string, groupRef: string, open: bool
   }
   refresh();
   return { ok: open ? "Otwarto głosowanie." : "Zamknięto głosowanie." };
+}
+
+/**
+ * Nowa ankieta ogólna (grupa `scope: 'poll'`): pytanie, opcje (po jednej w wierszu, 2–12), opcjonalny opis;
+ * „otwarta” od razu widoczna dla uczestników. Głosy jak przy wariantach planu.
+ */
+export async function createPoll(tripId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const title = String(form.get("title") ?? "").trim();
+  const note = String(form.get("note") ?? "").trim();
+  const options = [...new Set(String(form.get("options") ?? "").split("\n").map((line) => line.trim()).filter((line) => line !== ""))];
+  if (title === "") return { error: "Wpisz pytanie ankiety." };
+  if (options.length < 2) return { error: "Podaj co najmniej dwie opcje, każdą w osobnym wierszu." };
+  if (options.length > 12) return { error: "Najwyżej 12 opcji." };
+  const { supabase } = await requireUser(`/trips/${tripId}/votes`);
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { doc } = stateFromPayload(pulled.payload);
+  const group = {
+    ref: `id-${uuidv7()}`,
+    scope: "poll" as const,
+    title,
+    conditionKind: "choice" as const,
+    ...(note ? { conditionText: note } : {}),
+    ...(form.get("open") === "on" ? { votingOpen: true } : {}),
+  };
+  const variants = options.map((label) => ({ ref: `id-${uuidv7()}`, groupRef: group.ref, label, pros: [], cons: [] }));
+  const checked = TripDocument.safeParse({ ...doc, variantGroups: [...doc.variantGroups, group], variants: [...doc.variants, ...variants] });
+  if (!checked.success) return { error: validationError(checked.error) };
+  const writes: ElementWrite[] = [
+    { collection: "variantGroups", element: group, op: "insert" },
+    ...variants.map((element) => ({ collection: "variants" as const, element, op: "insert" as const })),
+  ];
+  try {
+    await saveElements(supabase, tripId, checked.data, writes, refIndex(pulled.payload.tables));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  refresh();
+  return { ok: "Dodano ankietę." };
+}
+
+/** Usuwa ankietę ogólną z jej opcjami (głosy zostają w bazie, bez grupy nikt ich nie liczy). */
+export async function removePoll(tripId: string, groupRef: string): Promise<FormState> {
+  const { supabase } = await requireUser(`/trips/${tripId}/votes`);
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const { doc } = stateFromPayload(pulled.payload);
+  const group = doc.variantGroups.find((each) => each.ref === groupRef && each.scope === "poll");
+  if (group === undefined) return { error: "Tej ankiety już nie ma — odśwież stronę." };
+  const variants = doc.variants.filter((each) => each.groupRef === groupRef);
+  const next = { ...doc, variantGroups: doc.variantGroups.filter((each) => each.ref !== groupRef), variants: doc.variants.filter((each) => each.groupRef !== groupRef) };
+  const writes: ElementWrite[] = [
+    ...variants.map((element) => ({ collection: "variants" as const, element, op: "remove" as const })),
+    { collection: "variantGroups", element: group, op: "remove" },
+  ];
+  try {
+    await saveElements(supabase, tripId, next, writes, refIndex(pulled.payload.tables));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  refresh();
+  return { ok: "Usunięto ankietę." };
 }
 
 /** Okno ankiety terminu; puste „od” usuwa ankietę (głosy zostają w bazie). */

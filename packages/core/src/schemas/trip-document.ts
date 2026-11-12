@@ -430,7 +430,8 @@ export const DocLeg = z.object({
 
 export const DocVariantGroup = z.object({
   ref: Ref,
-  scope: z.enum(['item', 'block', 'day', 'trip', 'booking']),
+  /** `poll` — ankieta ogólna na stronie „Głosowanie” (opcje to warianty), bez związku z planem. */
+  scope: z.enum(['item', 'block', 'day', 'trip', 'booking', 'poll']),
   dayRef: Ref.optional(),
   title: text,
   conditionKind: z.enum(['choice', 'weather', 'closure', 'schedule_slip', 'availability', 'wellbeing']),

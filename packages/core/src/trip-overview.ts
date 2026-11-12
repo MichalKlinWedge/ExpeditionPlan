@@ -202,7 +202,7 @@ export function tripOverview(doc: Doc, options: OverviewOptions = {}): TripOverv
       .map((booking) => ({ ref: booking.ref, kind: booking.kind, title: booking.title, ...(booking.start ? { date: booking.start.date } : {}) })),
     choices: doc.variantGroups.flatMap((group) => {
       const variants = doc.variants.filter((variant) => variant.groupRef === group.ref);
-      return group.conditionKind === 'choice' && group.scope !== 'booking' && group.chosenRef === undefined && variants.length > 1 ? [{ ref: group.ref, title: group.title, options: variants.map((variant) => variant.label) }] : [];
+      return group.conditionKind === 'choice' && group.scope !== 'booking' && group.scope !== 'poll' && group.chosenRef === undefined && variants.length > 1 ? [{ ref: group.ref, title: group.title, options: variants.map((variant) => variant.label) }] : [];
     }),
     notes: doc.notes.flatMap((note) => {
       const body = !hideNames && note.scope === 'trip' && (note.kind === 'warning' || note.kind === 'safety') ? clean(note.body) : undefined;

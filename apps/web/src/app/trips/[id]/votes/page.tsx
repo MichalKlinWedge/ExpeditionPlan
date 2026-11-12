@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Głosowanie — Expedition Planner" 
  * organizator albo edytor po „Edytuj”. Wyniki widzą wszyscy uczestnicy.
  */
 
-const SCOPE: Record<string, string> = { item: "punkt", block: "część dnia", day: "dzień", trip: "cały wyjazd", booking: "kandydaci rezerwacji" };
+const SCOPE: Record<string, string> = { item: "punkt", block: "część dnia", day: "dzień", trip: "cały wyjazd", booking: "kandydaci rezerwacji", poll: "ankieta" };
 
 export default function VotesPage(props: PageProps<"/trips/[id]/votes">) {
   return (
@@ -67,7 +67,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
   people.sort((a, b) => Number(b.mine) - Number(a.mine));
 
   // Uczestnik widzi tylko wybory, nad którymi organizator otworzył głosowanie.
-  const groups: BoardGroup[] = votingGroups(doc).filter((group) => mayEdit || group.votingOpen === true).map((group) => {
+  const all: BoardGroup[] = votingGroups(doc).filter((group) => mayEdit || group.votingOpen === true).map((group) => {
     const day = doc.days.find((each) => each.ref === group.dayRef);
     const tally = groupTally(doc, group.ref, votes);
     return {
@@ -89,6 +89,10 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
       byTraveler: tally.byTraveler,
     };
   });
+  // Ankiety ogólne (`scope: 'poll'`) mają własną sekcję; reszta to wybory z planu i kandydaci rezerwacji.
+  const pollRefs = new Set(doc.variantGroups.filter((group) => group.scope === "poll").map((group) => group.ref));
+  const groups = all.filter((group) => !pollRefs.has(group.ref));
+  const polls = all.filter((group) => pollRefs.has(group.ref));
 
   const poll = DatePoll.safeParse(payload.trip?.date_poll ?? null);
   const length = daysBetween(doc.trip.startDate, doc.trip.endDate) + 1;
@@ -114,6 +118,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         people={people}
         travelerCount={doc.travelers.length}
         groups={groups}
+        polls={polls}
         poll={poll.success ? poll.data : null}
         length={length}
         terms={poll.success ? bestTerms(doc, poll.data, votes, length) : []}
