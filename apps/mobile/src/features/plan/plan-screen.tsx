@@ -21,7 +21,7 @@ import {
 } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Modal, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Modal, Pressable, RefreshControl, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button as AppButton } from '@/components/button';
@@ -51,12 +51,13 @@ import { useTripWeather } from '@/features/trip/trip-weather';
 import { PackingView } from '@/features/trip/packing-view';
 import { WalletView } from '@/features/trip/wallet-view';
 import { useTheme } from '@/hooks/use-theme';
+import { useEditMode } from '@/lib/edit-mode';
 import { localDb, remote } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
 
 /**
  * Plan dnia na telefonie. Offline: najpierw stan z SQLite (`cachedTrip`), potem synchronizacja
- * przyrostowa (`refreshTrip`) — przy otwarciu, „Odśwież”, powrocie aplikacji na pierwszy plan
+ * przyrostowa (`refreshTrip`) — przy otwarciu, przeciągnięciu planu w dół, powrocie aplikacji na pierwszy plan
  * i na żywo: Realtime daje znać o każdej zmianie wyjazdu (np. edycji na webie). Godziny liczy silnik z packages/core na telefonie. Jeden dzień na ekranie;
  * domyślnie dzisiejszy, jeśli wyjazd trwa.
  */
@@ -129,7 +130,15 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const [news, setNews] = useState<NewsSummary | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [lastEvent, setLastEvent] = useState<LastEvent | null>(null);
-  const [editMode, setEditMode] = useState(false);
+  // Tryb podgląd / edycja — ustawienie całej aplikacji na Start (`lib/edit-mode.ts`).
+  const [editMode] = useEditMode();
+  /** Przeciągnięcie listy w dół — ręczne odświeżenie (zamiast przycisku „Odśwież”). */
+  const [pulling, setPulling] = useState(false);
+  const pullRefresh = () => {
+    if (!signedIn) return;
+    setPulling(true);
+    void load().finally(() => setPulling(false));
+  };
   /** Punkt otwarty w szczegółach (opis, przewodnik). */
   const [detail, setDetail] = useState<PlanItem | null>(null);
   const [booking, setBooking] = useState<string | null>(null);
@@ -425,22 +434,15 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
 
   return (
     <View style={styles.fill}>
-      <View style={styles.top}>
-        {onClose && (
+      {/* Nazwa i daty wyjazdu są w przełączniku nad planem — tu tylko powrót z listy wyjazdów (okno z Wyjazdów, bez przełącznika). */}
+      {onClose && (
+        <View style={styles.top}>
           <AppButton label="← Wyjazdy" onPress={onClose} small />
-        )}
-        <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
-          {state?.doc.trip.title ?? ''}
-        </ThemedText>
-        {signedIn && canAct && state !== null && mode === 'plan' && (
-          <AppButton label={editMode ? 'Gotowe' : 'Edytuj'} onPress={() => setEditMode(!editMode)} small />
-        )}
-        {signedIn && !editMode && (
-          <Pressable onPress={() => void load()} hitSlop={12}>
-            <ThemedText type="linkPrimary">Odśwież</ThemedText>
-          </Pressable>
-        )}
-      </View>
+          <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
+            {state?.doc.trip.title ?? ''}
+          </ThemedText>
+        </View>
+      )}
 
       {/* Plan jeszcze niewczytany — status na górze (to jedyna treść); potem na końcu strony. */}
       {trip === null && (
@@ -481,7 +483,12 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
         />
       )}
       {trip !== null && mode !== 'plan' && (
-        <ScrollView ref={tabScroll} scrollEnabled={!journalDrag} contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          ref={tabScroll}
+          scrollEnabled={!journalDrag}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={signedIn ? <RefreshControl refreshing={pulling} onRefresh={pullRefresh} /> : undefined}>
           {mode === 'wallet' ? (
             <WalletView trip={trip} tripId={tripId} canAdd={signedIn && canAddExpense} canEditAll={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           ) : mode === 'info' ? (
@@ -562,7 +569,10 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               </View>
             )}
           </View>
-          <ScrollView ref={scroll} contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]}>
+          <ScrollView
+            ref={scroll}
+            contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.three }]}
+            refreshControl={signedIn ? <RefreshControl refreshing={pulling} onRefresh={pullRefresh} /> : undefined}>
             {showPool && trip !== null && (
               <PoolView
                 trip={trip}
