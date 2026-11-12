@@ -212,29 +212,6 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
             )}
           </>
         )}
-        {budget.byCategory.length > 1 && (
-          <details className="text-sm">
-            <summary className="cursor-pointer text-zinc-500">Według kategorii</summary>
-            <table className="mt-2 w-full text-left">
-              <thead className="text-xs text-zinc-500">
-                <tr>
-                  <th className="font-normal">Kategoria</th>
-                  <th className="text-right font-normal">Zapłacone</th>
-                  <th className="text-right font-normal">Razem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {budget.byCategory.map((each) => (
-                  <tr key={each.category} className="border-t border-zinc-100 dark:border-zinc-900">
-                    <td className="py-0.5">{BUDGET_CATEGORY[each.category] ?? each.category}</td>
-                    <td className="py-0.5 text-right font-mono">{money(each.paidMinor)}</td>
-                    <td className="py-0.5 text-right font-mono">{range(each.lowMinor, each.highMinor)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </details>
-        )}
         {canEdit && <BudgetSuggestions tripId={id} suggestions={suggestions} />}
         <TripCurrency tripId={id} base={doc.trip.baseCurrency} known={tripCurrencies(doc)} canEdit={canEdit} />
         {/* Klucz: wiersze edytora biorą kursy tylko przy montowaniu, a zmiana waluty podaje nowe. */}
@@ -243,7 +220,6 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
           Portfel — wydane na miejscu: <span className="font-medium">{money(wallet.spentMinor)}</span>
           <span className="text-zinc-500"> ({wallet.count} wydatków z telefonu)</span>
         </p>
-        {pace.plannedHighMinor > 0 && <PaceTable pace={pace} today={tripToday} money={money} range={range} />}
         {expenses.length > 0 && (
           <ExpenseList
             tripId={id}
@@ -259,36 +235,37 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
         )}
         <Settlement doc={doc} tables={payload.tables as unknown as Parameters<typeof Settlement>[0]["tables"]} />
       </section>
-      </BudgetEditor>
 
-      {/* Wszystko wybrane i nic nie czeka na przegląd — cała sekcja zwinięta do nagłówka. */}
-      <details className={card} open={!(comparisons.length > 0 && comparisons.every((group) => group.chosenRef !== undefined) && !(candidatesDraft.success && draftRow.data?.status === "ok")) || undefined}>
-        <summary className={`${heading} cursor-pointer`}>
-          Do porównania ({comparisons.length})
-          {comparisons.length > 0 && <span className="text-sm font-normal text-zinc-500"> — wybrane: {comparisons.filter((group) => group.chosenRef !== undefined).length}</span>}
-        </summary>
-        <p className="text-xs text-zinc-500">Kandydaci na noclegi, auto, transfery — bez rezerwacji: linki prowadzą do wyszukiwarek, „Wybieram” oznacza opcję „do rezerwacji”.</p>
-        {canEdit && (
-          <PlanActionButton
-            ai
-            run={draftCandidates.bind(null, id)}
-            label={candidatesDraft.success ? "Nowi kandydaci z AI" : "Kandydaci z AI"}
-            note="Noclegi per baza, auto, transfery — szacunki cen do sprawdzenia (Gemini, ok. 30 s)"
-          />
-        )}
-        {/* Po „Dodaj do porównania” szkic znika z odświeżonej strony — potwierdzenie zostaje tutaj. */}
-        {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm msg-ok">Ostatni szkic AI dodany do porównania — grupy są niżej.</p>}
-        {canEdit && candidatesDraft.success && draftRow.data?.status === "ok" && (
-          <CandidatesReview tripId={id} runId={draftRow.data.id} info={candidatesDraft.data} checks={draftOutput?.checks ?? []} />
-        )}
-        {comparisons.map((group) => (
-          <ComparisonTable key={group.ref} tripId={id} group={group} canEdit={canEdit} />
-        ))}
-      </details>
+      {/* Zestawienia budżetu jako osobne zwijane karty, jak „Do porównania”. */}
+      {budget.byCategory.length > 1 && (
+        <details className={card}>
+          <summary className={`${heading} cursor-pointer`}>Według kategorii</summary>
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-zinc-500">
+              <tr>
+                <th className="font-normal">Kategoria</th>
+                <th className="text-right font-normal">Zapłacone</th>
+                <th className="text-right font-normal">Razem</th>
+              </tr>
+            </thead>
+            <tbody>
+              {budget.byCategory.map((each) => (
+                <tr key={each.category} className="border-t border-zinc-100 dark:border-zinc-900">
+                  <td className="py-0.5">{BUDGET_CATEGORY[each.category] ?? each.category}</td>
+                  <td className="py-0.5 text-right font-mono">{money(each.paidMinor)}</td>
+                  <td className="py-0.5 text-right font-mono">{range(each.lowMinor, each.highMinor)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
+      {pace.plannedHighMinor > 0 && <PaceTable pace={pace} today={tripToday} money={money} range={range} />}
+      </BudgetEditor>
 
       <section className={card}>
         <h2 className={heading}>Rezerwacje ({bookings.length})</h2>
-        {candidates > 0 && <p className="text-xs text-zinc-500">Kandydaci i pomysły ({candidates}) są wyżej, w „Do porównania” — tu tylko wybrane rezerwacje.</p>}
+        {candidates > 0 && <p className="text-xs text-zinc-500">Kandydaci i pomysły ({candidates}) są niżej, w „Do porównania” — tu tylko wybrane rezerwacje.</p>}
         {bookings.length > 0 && (
           <table className="w-full text-left text-sm">
             <thead className="text-xs text-zinc-500">
@@ -409,6 +386,31 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
         <HashFocus />
       </section>
 
+      {/* Wszystko wybrane i nic nie czeka na przegląd — cała sekcja zwinięta do nagłówka. */}
+      <details className={card} open={!(comparisons.length > 0 && comparisons.every((group) => group.chosenRef !== undefined) && !(candidatesDraft.success && draftRow.data?.status === "ok")) || undefined}>
+        <summary className={`${heading} cursor-pointer`}>
+          Do porównania ({comparisons.length})
+          {comparisons.length > 0 && <span className="text-sm font-normal text-zinc-500"> — wybrane: {comparisons.filter((group) => group.chosenRef !== undefined).length}</span>}
+        </summary>
+        <p className="text-xs text-zinc-500">Kandydaci na noclegi, auto, transfery — bez rezerwacji: linki prowadzą do wyszukiwarek, „Wybieram” oznacza opcję „do rezerwacji”.</p>
+        {canEdit && (
+          <PlanActionButton
+            ai
+            run={draftCandidates.bind(null, id)}
+            label={candidatesDraft.success ? "Nowi kandydaci z AI" : "Kandydaci z AI"}
+            note="Noclegi per baza, auto, transfery — szacunki cen do sprawdzenia (Gemini, ok. 30 s)"
+          />
+        )}
+        {/* Po „Dodaj do porównania” szkic znika z odświeżonej strony — potwierdzenie zostaje tutaj. */}
+        {canEdit && draftRow.data?.status === "accepted" && <p className="text-sm msg-ok">Ostatni szkic AI dodany do porównania — grupy są niżej.</p>}
+        {canEdit && candidatesDraft.success && draftRow.data?.status === "ok" && (
+          <CandidatesReview tripId={id} runId={draftRow.data.id} info={candidatesDraft.data} checks={draftOutput?.checks ?? []} />
+        )}
+        {comparisons.map((group) => (
+          <ComparisonTable key={group.ref} tripId={id} group={group} canEdit={canEdit} />
+        ))}
+      </details>
+
       <Link href={`/trips/${id}/tasks`} className="btn-secondary self-start">
         Zadania — otwarte {open.length} →
       </Link>
@@ -432,12 +434,12 @@ function PaceTable({ pace, today, money, range }: { pace: ReturnType<typeof budg
   const forecastOver = pace.forecastMinor !== null && pace.forecastMinor > pace.plannedHighMinor;
   const over = pace.categories.filter((each) => each.over);
   return (
-    <details className="text-sm" open={pace.elapsedDays > 0}>
-      <summary className="cursor-pointer font-medium">
+    <details className={`${card} text-sm`} open={pace.elapsedDays > 0}>
+      <summary className={`${heading} cursor-pointer`}>
         Plan a wydatki dzień po dniu
         {forecastOver ? <span className="ml-2 text-signal">⚠ prognoza ponad plan</span> : null}
       </summary>
-      <div className="mt-2 flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         <p className="text-zinc-600 dark:text-zinc-400">
           Do wydania na miejscu: {range(pace.plannedLowMinor, pace.plannedHighMinor)} (wygodnie {money(perDay)} dziennie)
           {pace.elapsedDays > 0 && (
