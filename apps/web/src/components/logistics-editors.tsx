@@ -482,7 +482,7 @@ export function TaskForm({ tripId, task, choices, onDone, itemRef }: { tripId: s
   );
 }
 /** Kolumny wiersza zadania, liczone na stronie, bo potrzebują całego planu. */
-export type TaskColumns = { due: string; who: string };
+export type TaskColumns = { due: string; remind: string; who: string };
 
 /** Tabela zadań, jak budżet i rezerwacje. `checkable` — zadania do odhaczenia także w podglądzie (organizator, edytor, widz przy swoich). */
 export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable = [] }: { tripId: string; tasks: Task[]; columns: Record<string, TaskColumns>; choices: Choices; canEdit: boolean; checkable?: string[] }) {
@@ -509,7 +509,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
     if (focusItem !== null) document.querySelector("[data-task-focus]")?.scrollIntoView({ block: "center" });
   }, [focusItem, showClosed]);
   const checkColumn = canEdit || checkable.length > 0;
-  const span = 4 + (checkColumn ? 1 : 0) + (canEdit ? 1 : 0);
+  const span = 5 + (checkColumn ? 1 : 0) + (canEdit ? 1 : 0);
   const buttons = (task: Task) => (
     <>
       <IconAction kind="edit" onClick={() => setEditing(task.ref)} />
@@ -526,7 +526,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
         </tr>
       );
     }
-    const { due, who } = columns[task.ref] ?? { due: "", who: "" };
+    const { due, remind, who } = columns[task.ref] ?? { due: "", remind: "", who: "" };
     const muted = task.status !== "open" ? "text-zinc-400 line-through" : "";
     const lit = focused(task) ? "bg-signal/10" : "";
     return (
@@ -552,11 +552,12 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
               {task.title}
             </span>
             {/* Na telefonie rodzaj, termin, osoby i działania pod nazwą: tyle kolumn się nie mieści. */}
-            <span className="block text-xs text-zinc-500 sm:hidden">{[TASK_KIND[task.kind], due, who].filter(Boolean).join(" · ")}</span>
+            <span className="block text-xs text-zinc-500 sm:hidden">{[TASK_KIND[task.kind], due, remind ? `🔔 ${remind}` : "", who].filter(Boolean).join(" · ")}</span>
             {canEdit && <span className="mt-1 flex gap-1 sm:hidden">{buttons(task)}</span>}
           </td>
           <td className="hidden py-1 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{TASK_KIND[task.kind]}</td>
           <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{due}</td>
+          <td className="hidden py-1 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{remind && `🔔 ${remind}`}</td>
           <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{who}</td>
           {canEdit && (
             <td className="hidden py-1 pl-2 align-top sm:table-cell">
@@ -585,6 +586,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
           <th className="py-1 font-normal">Zadanie</th>
           <th className="hidden py-1 font-normal sm:table-cell">Rodzaj</th>
           <th className="hidden py-1 font-normal sm:table-cell">Termin</th>
+          <th className="hidden py-1 font-normal sm:table-cell">Przypomnienie</th>
           <th className="hidden py-1 font-normal sm:table-cell">Kto</th>
           {canEdit && <th className="hidden py-1 sm:table-cell" />}
         </tr>

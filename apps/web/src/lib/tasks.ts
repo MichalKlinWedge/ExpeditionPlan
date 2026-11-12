@@ -38,7 +38,7 @@ export function taskColumns(doc: Doc): Record<string, TaskColumns> {
   return Object.fromEntries(
     doc.tasks.map((task) => [
       task.ref,
-      { due: [due(task, doc), task.remindAt ? `🔔 ${shortDate(task.remindAt.date)} ${task.remindAt.time}` : null].filter(Boolean).join(" · "), who: task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", ") },
+      { due: due(task, doc) ?? "", remind: task.remindAt ? `${shortDate(task.remindAt.date)} ${task.remindAt.time}` : "", who: task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", ") },
     ]),
   );
 }
