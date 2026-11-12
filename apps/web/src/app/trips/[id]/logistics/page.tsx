@@ -399,8 +399,13 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
             </tbody>
           </table>
         )}
-        {canEdit && <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />}
-        {canEdit && <BookingImport tripId={id} owner={membership.data?.role === "owner"} />}
+        {/* „+ Dodaj rezerwację” po lewej, „Importuj z potwierdzenia” po prawej; otwarty formularz zajmuje cały wiersz. */}
+        {canEdit && (
+          <div className="flex flex-wrap items-start justify-between gap-2 [&>.panel]:w-full">
+            <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />
+            <BookingImport tripId={id} owner={membership.data?.role === "owner"} />
+          </div>
+        )}
         <HashFocus />
       </section>
 
