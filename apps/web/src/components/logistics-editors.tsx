@@ -346,7 +346,8 @@ const DUE: Record<string, string> = {
   on_trip: "w trakcie wyjazdu",
 };
 
-function TaskForm({ tripId, task, choices, onDone }: { tripId: string; task?: Task; choices: Choices; onDone?: () => void }) {
+/** `itemRef` — nowe zadanie od razu przy tym punkcie (karta punktu). */
+export function TaskForm({ tripId, task, choices, onDone, itemRef }: { tripId: string; task?: Task; choices: Choices; onDone?: () => void; itemRef?: string }) {
   const [state, action, pending] = useActionState(async (prev: FormState, form: FormData) => {
     const result = await saveTask(tripId, task?.ref ?? null, prev, form);
     if (result.ok && onDone) onDone();
@@ -447,7 +448,7 @@ function TaskForm({ tripId, task, choices, onDone }: { tripId: string; task?: Ta
             </option>
           ))}
         </select>
-        <select name="itemRef" defaultValue={task?.itemRef ?? ""} className={`${input} max-w-56`} aria-label="Dotyczy punktu">
+        <select name="itemRef" defaultValue={task?.itemRef ?? itemRef ?? ""} className={`${input} max-w-56`} aria-label="Dotyczy punktu">
           <option value="">— punkt planu —</option>
           {choices.items.map((item) => (
             <option key={item.ref} value={item.ref}>

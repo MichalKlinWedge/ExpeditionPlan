@@ -19,7 +19,10 @@ import { JournalNew } from "@/components/journal-editor";
 import { JournalEntry } from "@/components/journal-entry";
 import { JournalLink } from "@/components/journal-link";
 import { journalCards } from "@/lib/journal";
+import { ItemTasks } from "@/components/item-tasks";
 import { ItemTexts } from "@/components/item-texts";
+import { planChoices } from "@/lib/tasks";
+import { tasksByItem } from "@/lib/task-link";
 import { LodgingEditor } from "@/components/lodging-editor";
 import { RouteEstimate } from "@/components/route-estimate";
 import { RoutePick } from "@/components/route-pick";
@@ -114,7 +117,9 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
       />
     );
   // Bez miejsca, przejazdu, rezerwacji i opisu karta z podstawowymi danymi byłaby pusta.
-  const hasInfo = place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || editing || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
+  // Zadania dotyczące punktu (bez porzuconych): link do „Zadań” i dodawanie od razu przy punkcie.
+  const linkedTasks = tasksByItem(doc.tasks).get(item.ref) ?? [];
+  const hasInfo = linkedTasks.length > 0 || place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || editing || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
   const itemId = ids[item.ref];
   // Wpisy przy punkcie i do połączenia: z dnia punktu i bez dnia, jednym podpisaniem zdjęć.
@@ -198,6 +203,14 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             ))}
           </p>
         )}
+        <ItemTasks
+          tripId={id}
+          itemRef={item.ref}
+          itemLabel={`${day ? `dz. ${dayIndex + 1} · ` : ""}${item.title}`}
+          tasks={linkedTasks.map((task) => ({ title: task.title, done: task.status === "done" }))}
+          choices={planChoices(doc)}
+          editing={editing}
+        />
       </section>
       )}
 
