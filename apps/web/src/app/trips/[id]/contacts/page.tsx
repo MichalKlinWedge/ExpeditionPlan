@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
-import { Contacts, HashFocus } from "@/components/logistics-editors";
+import { Contacts, ContactsEditor, HashFocus } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
@@ -62,12 +62,14 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
     <>
       <PageHeader back={{ href: `/trips/${id}`, label: doc.trip.title }} title="Kontakty" actions={mayEdit && <EditToggle editing={canEdit} />} />
 
+      {/* Dodawanie na górze, nowy kontakt i edycja w osobnej karcie (`ContactsEditor`). */}
+      <ContactsEditor tripId={id} contacts={doc.contacts} bookings={bookings} canEdit={canEdit}>
       {(emergency.length > 0 || canEdit) && (
         <section className="flex flex-col gap-2 card p-4">
           <h2 className="card-title">Numery alarmowe</h2>
           {/* W edycji — lista z „edytuj / usuń” i dodawaniem; w podglądzie — duże numery do wybrania jednym dotknięciem. */}
           {canEdit ? (
-            <Contacts tripId={id} contacts={emergency} bookings={bookings} canEdit defaultRole="emergency" addLabel="+ Dodaj numer alarmowy" bookingHrefs={bookingHrefs} bookingItems={bookingItems} />
+            <Contacts tripId={id} contacts={emergency} bookings={bookings} canEdit bookingHrefs={bookingHrefs} bookingItems={bookingItems} />
           ) : (
             <ul className="flex flex-wrap gap-3">
               {emergency
@@ -89,6 +91,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         <h2 className="card-title">Gospodarze, wypożyczalnie i inne ({others.length})</h2>
         <Contacts tripId={id} contacts={others} bookings={bookings} canEdit={canEdit} bookingHrefs={bookingHrefs} bookingItems={bookingItems} />
       </section>
+      </ContactsEditor>
       <HashFocus />
     </>
   );

@@ -1243,14 +1243,68 @@ function ContactForm({ tripId, contact, bookings, onDone, defaultRole = "host" }
   );
 }
 
-/** `defaultRole` i `addLabel` — np. lista numerów alarmowych z „+ Dodaj numer alarmowy”. */
+/** Stan edycji kontaktów wspólny dla kart nad listami (`ContactsEditor`) i ołówków w tabelach (`Contacts`). */
+const ContactEditing = createContext<{ editing: string | null; edit: (ref: string) => void }>({ editing: null, edit: () => undefined });
+
+/**
+ * Strona „Kontakty”: „+ Dodaj kontakt” i „+ Dodaj numer alarmowy” na górze, nowy kontakt i edycja w osobnej karcie
+ * (ołówek w tabeli otwiera edycję tutaj i przewija do niej). `children` — sekcje z tabelami `Contacts`.
+ */
+export function ContactsEditor({ tripId, contacts, bookings, canEdit, children }: { tripId: string; contacts: Contact[]; bookings: { ref: string; title: string }[]; canEdit: boolean; children: ReactNode }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  // Rola nowego kontaktu: zwykły (gospodarz) albo numer alarmowy; `null` — formularz zamknięty.
+  const [adding, setAdding] = useState<Contact["role"] | null>(null);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (adding !== null || editing !== null) box.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [adding, editing]);
+  const edited = editing === null ? undefined : contacts.find((contact) => contact.ref === editing);
+  const add = (role: Contact["role"]) => {
+    setEditing(null);
+    setAdding(role);
+  };
+  const edit = (ref: string) => {
+    setAdding(null);
+    setEditing(ref);
+  };
+  return (
+    <ContactEditing.Provider value={{ editing, edit }}>
+      {canEdit && adding === null && (
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => add("host")} className="btn-secondary btn-sm">
+            + Dodaj kontakt
+          </button>
+          <button onClick={() => add("emergency")} className="btn-secondary btn-sm">
+            + Dodaj numer alarmowy
+          </button>
+        </div>
+      )}
+      {canEdit && adding !== null && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">{adding === "emergency" ? "Nowy numer alarmowy" : "Nowy kontakt"}</h2>
+          <ContactForm key={adding} tripId={tripId} bookings={bookings} onDone={() => setAdding(null)} defaultRole={adding} />
+        </section>
+      )}
+      {canEdit && edited !== undefined && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Edycja kontaktu: {edited.name}</h2>
+          <ContactForm key={edited.ref} tripId={tripId} contact={edited} bookings={bookings} onDone={() => setEditing(null)} />
+        </section>
+      )}
+      {children}
+    </ContactEditing.Provider>
+  );
+}
+
+/**
+ * Kontakty jako tabela: kontakt (rola, notatka, punkty planu z jego rezerwacji), telefon i e-mail, rezerwacja, a po
+ * prawej (w edycji) ołówek i kosz; na telefonie rezerwacja pod nazwą. Dodawanie i edycja — karty `ContactsEditor`.
+ */
 export function Contacts({
   tripId,
   contacts,
   bookings,
   canEdit,
-  defaultRole,
-  addLabel = "+ Dodaj kontakt",
   bookingHrefs = {},
   bookingItems = {},
 }: {
@@ -1258,81 +1312,81 @@ export function Contacts({
   contacts: Contact[];
   bookings: { ref: string; title: string }[];
   canEdit: boolean;
-  defaultRole?: Contact["role"];
-  addLabel?: string;
   /** Ref rezerwacji → jej wiersz na „Rezerwacje i budżet”; bez wpisu sama nazwa. */
   bookingHrefs?: Record<string, string>;
   /** Ref rezerwacji → punkty planu, które do niej prowadzą (`itemsOfBooking`). */
   bookingItems?: Record<string, { ref: string; title: string }[]>;
 }) {
-  const [editing, setEditing] = useState<string | null>(null);
+  const { editing, edit } = useContext(ContactEditing);
   const remove = useAction();
   const titles = new Map(bookings.map((booking) => [booking.ref, booking.title]));
+  const booking = (contact: Contact) =>
+    contact.bookingRef === undefined ? null : bookingHrefs[contact.bookingRef] ? (
+      <Link href={bookingHrefs[contact.bookingRef]!} title="Szczegóły rezerwacji na „Rezerwacje i budżet”" className="btn-mini">
+        {titles.get(contact.bookingRef) ?? "rezerwacja"}
+      </Link>
+    ) : (
+      <span className="text-xs text-zinc-500">{titles.get(contact.bookingRef) ?? "rezerwacja"}</span>
+    );
   return (
     <div className="flex flex-col gap-2 text-sm">
-      {contacts.length === 0 && <p className="text-zinc-500">Brak kontaktów.</p>}
-      <ul className="flex flex-col gap-2">
-        {contacts.map((contact) =>
-          editing === contact.ref ? (
-            <li key={contact.ref}>
-              <ContactForm tripId={tripId} contact={contact} bookings={bookings} onDone={() => setEditing(null)} />
-            </li>
-          ) : (
-            <li key={contact.ref} id={contactAnchor(contact.ref)} className="flex flex-wrap items-baseline gap-x-2 rounded data-focus:bg-signal/10">
-              <span className="font-medium">{contact.name}</span>
-              <span className="text-xs text-zinc-500">{CONTACT_ROLE[contact.role]}</span>
-              {contact.phone && (
-                <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="underline">
-                  {contact.phone}
-                </a>
-              )}
-              {contact.email && (
-                <a href={`mailto:${contact.email}`} className="underline">
-                  {contact.email}
-                </a>
-              )}
-              {contact.bookingRef && (
-                <span className="text-xs text-zinc-500">
-                  ·{" "}
-                  {bookingHrefs[contact.bookingRef] ? (
-                    <Link href={bookingHrefs[contact.bookingRef]!} title="Szczegóły rezerwacji na „Rezerwacje i budżet”" className="btn-mini">
-                      {titles.get(contact.bookingRef) ?? "rezerwacja"}
-                    </Link>
-                  ) : (
-                    (titles.get(contact.bookingRef) ?? "rezerwacja")
+      {contacts.length === 0 ? (
+        <p className="text-zinc-500">Brak kontaktów.</p>
+      ) : (
+        <table className="w-full text-left text-sm">
+          <thead className="text-xs text-zinc-500">
+            <tr>
+              <th className="py-1 font-normal">Kontakt</th>
+              <th className="py-1 font-normal">Telefon / e-mail</th>
+              <th className="hidden py-1 font-normal sm:table-cell">Rezerwacja</th>
+              {canEdit && <th className="py-1" />}
+            </tr>
+          </thead>
+          <tbody>
+            {contacts.map((contact) => (
+              <tr key={contact.ref} id={contactAnchor(contact.ref)} className={`border-t border-zinc-100 data-focus:bg-signal/10 dark:border-zinc-900 ${editing === contact.ref ? "bg-signal/10" : ""}`}>
+                <td className="py-2 pr-3 align-top">
+                  <span className="font-medium">{contact.name}</span> <span className="text-xs text-zinc-500">{CONTACT_ROLE[contact.role]}</span>
+                  {contact.notes && <span className="block text-xs text-zinc-500">{contact.notes}</span>}
+                  {contact.bookingRef !== undefined && <span className="mt-1 block sm:hidden">{booking(contact)}</span>}
+                  {contact.bookingRef && (bookingItems[contact.bookingRef] ?? []).length > 0 && (
+                    <span className="mt-1 flex flex-wrap items-center gap-1 text-xs text-zinc-500">
+                      w planie:
+                      {bookingItems[contact.bookingRef]!.map((item) => (
+                        <Link key={item.ref} href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="btn-mini">
+                          {item.title}
+                        </Link>
+                      ))}
+                    </span>
                   )}
-                </span>
-              )}
-              {contact.notes && <span className="text-xs text-zinc-500">· {contact.notes}</span>}
-              {canEdit && (
-                <span className="text-zinc-500">
-                  <IconAction kind="edit" onClick={() => setEditing(contact.ref)} />{" "}
-                  <IconAction kind="remove" disabled={remove.pending} onClick={() => remove.run(() => removeContact(tripId, contact.ref), `Usunąć kontakt „${contact.name}”?`)} />
-                </span>
-              )}
-              {contact.bookingRef && (bookingItems[contact.bookingRef] ?? []).length > 0 && (
-                <span className="mt-0.5 flex basis-full flex-wrap items-center gap-1 text-xs text-zinc-500">
-                  w planie:
-                  {bookingItems[contact.bookingRef]!.map((item) => (
-                    <Link key={item.ref} href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="btn-mini">
-                      {item.title}
-                    </Link>
-                  ))}
-                </span>
-              )}
-            </li>
-          ),
-        )}
-      </ul>
+                </td>
+                <td className="py-2 pr-3 align-top">
+                  {contact.phone && (
+                    <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="block whitespace-nowrap underline">
+                      {contact.phone}
+                    </a>
+                  )}
+                  {contact.email && (
+                    <a href={`mailto:${contact.email}`} className="block break-all underline">
+                      {contact.email}
+                    </a>
+                  )}
+                </td>
+                <td className="hidden py-2 pr-3 align-top sm:table-cell">{booking(contact)}</td>
+                {canEdit && (
+                  <td className="py-2 align-top">
+                    <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                      <IconAction kind="edit" onClick={() => edit(contact.ref)} />
+                      <IconAction kind="remove" disabled={remove.pending} onClick={() => remove.run(() => removeContact(tripId, contact.ref), `Usunąć kontakt „${contact.name}”?`)} />
+                    </div>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <Status state={remove.state} />
-      {canEdit &&
-        (editing === "new" ? (
-          <ContactForm tripId={tripId} bookings={bookings} onDone={() => setEditing(null)} defaultRole={defaultRole} />
-        ) : (
-          <button onClick={() => setEditing("new")} className="btn-secondary btn-sm self-start">
-            {addLabel}
-          </button>
-        ))}
     </div>
   );
 }
