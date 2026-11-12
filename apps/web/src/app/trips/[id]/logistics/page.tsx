@@ -10,7 +10,7 @@ import { BookingImport } from "@/components/booking-import";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
 import { PlaceLink } from "@/components/place-pin";
-import { BookingRow, BookingStatusSelect, BudgetEditor, BudgetLines, BudgetSuggestions, type CarChoice, type Choices, ExpenseSplitEditor, ExpenseVehicleEditor, FxEditor, HashFocus, NewBooking, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
+import { BookingEditor, BookingRow, BookingStatusSelect, BudgetEditor, BudgetLines, BudgetSuggestions, type CarChoice, type Choices, ExpenseSplitEditor, ExpenseVehicleEditor, FxEditor, HashFocus, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
@@ -263,6 +263,15 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
       {pace.plannedHighMinor > 0 && <PaceTable pace={pace} today={tripToday} money={money} range={range} />}
       </BudgetEditor>
 
+      {/* Dodawanie i import nad sekcją, nowa rezerwacja i edycja w osobnej karcie (`BookingEditor`). */}
+      <BookingEditor
+        tripId={id}
+        bookings={doc.bookings}
+        statuses={statuses}
+        zones={zones}
+        places={doc.places}
+        canEdit={canEdit}
+        importer={<BookingImport tripId={id} owner={membership.data?.role === "owner"} />}>
       <section className={card}>
         <h2 className={heading}>Rezerwacje ({bookings.length})</h2>
         {candidates > 0 && <p className="text-xs text-zinc-500">Kandydaci i pomysły ({candidates}) są niżej, w „Do porównania” — tu tylko wybrane rezerwacje.</p>}
@@ -292,9 +301,6 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                     key={booking.ref}
                     tripId={id}
                     booking={booking}
-                    statuses={statuses}
-                    zones={zones}
-                    places={doc.places}
                     items={choices.items}
                     chosen={(packaged.get(booking.ref) ?? []).map((item) => item.ref)}
                     canEdit={canEdit}
@@ -376,15 +382,9 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
             </tbody>
           </table>
         )}
-        {/* „+ Dodaj rezerwację” po lewej, „Importuj z potwierdzenia” po prawej; otwarty formularz zajmuje cały wiersz. */}
-        {canEdit && (
-          <div className="flex flex-wrap items-start justify-between gap-2 [&>.panel]:w-full">
-            <NewBooking tripId={id} statuses={statuses} zones={zones} places={doc.places} />
-            <BookingImport tripId={id} owner={membership.data?.role === "owner"} />
-          </div>
-        )}
         <HashFocus />
       </section>
+      </BookingEditor>
 
       {/* Wszystko wybrane i nic nie czeka na przegląd — cała sekcja zwinięta do nagłówka. */}
       <details className={card} open={!(comparisons.length > 0 && comparisons.every((group) => group.chosenRef !== undefined) && !(candidatesDraft.success && draftRow.data?.status === "ok")) || undefined}>

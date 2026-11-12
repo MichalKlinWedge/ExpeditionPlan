@@ -997,16 +997,69 @@ function BookingForm({ tripId, booking, statuses, zones, places, onDone }: { tri
   );
 }
 
+/** Stan edycji rezerwacji wspólny dla kart nad sekcją „Rezerwacje” (`BookingEditor`) i ołówków w wierszach (`BookingRow`). */
+const BookingEditing = createContext<{ editing: string | null; edit: (ref: string) => void }>({ editing: null, edit: () => undefined });
+
 /**
- * Wiersz tabeli rezerwacji: komórki z danymi przychodzą ze strony, a tu działania i formularz w osobnym
+ * Nad sekcją „Rezerwacje”: „+ Dodaj rezerwację” po lewej i import z potwierdzenia (`importer`) po prawej, a nowa
+ * rezerwacja i edycja w osobnej karcie (ołówek w wierszu otwiera edycję tutaj i przewija do niej). `children` — sekcja.
+ */
+export function BookingEditor({ tripId, bookings, statuses, zones, places, canEdit, importer, children }: { tripId: string; bookings: Booking[]; statuses: Record<string, string>; zones: string[]; places: PlaceOption[]; canEdit: boolean; importer: ReactNode; children: ReactNode }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (adding || editing !== null) box.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [adding, editing]);
+  const edited = editing === null ? undefined : bookings.find((booking) => booking.ref === editing);
+  const edit = (ref: string) => {
+    setAdding(false);
+    setEditing(ref);
+  };
+  return (
+    <BookingEditing.Provider value={{ editing, edit }}>
+      {canEdit && (
+        // Otwarty import zajmuje cały wiersz.
+        <div className="flex flex-wrap items-start justify-between gap-2 [&>.panel]:w-full">
+          {!adding ? (
+            <button
+              onClick={() => {
+                setEditing(null);
+                setAdding(true);
+              }}
+              className="btn-secondary btn-sm self-start">
+              + Dodaj rezerwację
+            </button>
+          ) : (
+            <span />
+          )}
+          {importer}
+        </div>
+      )}
+      {canEdit && adding && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Nowa rezerwacja</h2>
+          <BookingForm tripId={tripId} statuses={statuses} zones={zones} places={places} onDone={() => setAdding(false)} />
+        </section>
+      )}
+      {canEdit && edited !== undefined && (
+        <section ref={box} className="card flex scroll-mt-4 flex-col gap-3 p-4 text-sm">
+          <h2 className="card-title">Edycja rezerwacji: {edited.title}</h2>
+          <BookingForm key={edited.ref} tripId={tripId} booking={edited} statuses={statuses} zones={zones} places={places} onDone={() => setEditing(null)} />
+        </section>
+      )}
+      {children}
+    </BookingEditing.Provider>
+  );
+}
+
+/**
+ * Wiersz tabeli rezerwacji: komórki z danymi przychodzą ze strony, a tu działania i „pakiet” w osobnym
  * wierszu na całą szerokość. Na telefonie działania też są w osobnym wierszu, bo kolumna się nie mieści.
  */
 export function BookingRow({
   tripId,
   booking,
-  statuses,
-  zones,
-  places,
   items,
   chosen,
   canEdit,
@@ -1017,9 +1070,6 @@ export function BookingRow({
 }: {
   tripId: string;
   booking: Booking;
-  statuses: Record<string, string>;
-  zones: string[];
-  places: PlaceOption[];
   items: { ref: string; label: string }[];
   chosen: string[];
   canEdit: boolean;
@@ -1029,10 +1079,12 @@ export function BookingRow({
   details: ReactNode;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState<"edit" | "items" | null>(null);
+  // Edycja w osobnej karcie nad sekcją (`BookingEditor`); tu zostaje tylko „pakiet”.
+  const [open, setOpen] = useState<"items" | null>(null);
+  const { editing, edit } = useContext(BookingEditing);
   const buttons = canEdit ? (
     <>
-      <IconAction kind="edit" onClick={() => setOpen(open === "edit" ? null : "edit")} />
+      <IconAction kind="edit" onClick={() => edit(booking.ref)} />
       <button onClick={() => setOpen(open === "items" ? null : "items")} title="Punkty planu w pakiecie tej rezerwacji" className={small}>
         pakiet{chosen.length > 0 ? ` (${chosen.length})` : ""}
       </button>
@@ -1040,7 +1092,7 @@ export function BookingRow({
   ) : null;
   return (
     <>
-      <tr id={bookingAnchor(booking.ref)} className="border-t border-zinc-100 data-focus:bg-signal/10 dark:border-zinc-900">
+      <tr id={bookingAnchor(booking.ref)} className={`border-t border-zinc-100 data-focus:bg-signal/10 dark:border-zinc-900 ${editing === booking.ref ? "bg-signal/10" : ""}`}>
         {children}
         {actionsColumn && (
           <td className="hidden py-1 pl-2 align-top sm:table-cell">
@@ -1068,14 +1120,10 @@ export function BookingRow({
           </td>
         </tr>
       )}
-      {open !== null && (
+      {open === "items" && (
         <tr>
           <td colSpan={6} className="pb-3">
-            {open === "edit" ? (
-              <BookingForm tripId={tripId} booking={booking} statuses={statuses} zones={zones} places={places} onDone={() => setOpen(null)} />
-            ) : (
-              <BookingItemsForm tripId={tripId} bookingRef={booking.ref} items={items} chosen={chosen} onDone={() => setOpen(null)} />
-            )}
+            <BookingItemsForm tripId={tripId} bookingRef={booking.ref} items={items} chosen={chosen} onDone={() => setOpen(null)} />
           </td>
         </tr>
       )}
@@ -1103,18 +1151,6 @@ export function HashFocus() {
     return () => window.removeEventListener("hashchange", focus);
   }, []);
   return null;
-}
-
-export function NewBooking({ tripId, statuses, zones, places }: { tripId: string; statuses: Record<string, string>; zones: string[]; places: PlaceOption[] }) {
-  const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} className="btn-secondary btn-sm self-start">
-        + Dodaj rezerwację
-      </button>
-    );
-  }
-  return <BookingForm tripId={tripId} statuses={statuses} zones={zones} places={places} onDone={() => setOpen(false)} />;
 }
 
 /** Punkty planu „w pakiecie” rezerwacji — zaznaczone wskazują rezerwację i mają płatność „w cenie”. */
