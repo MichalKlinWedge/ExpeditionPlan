@@ -1,7 +1,7 @@
 import { type GearCarry, gearGaps } from './gear.ts';
 import { dayLodging, missingOnMap } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
-import { taskDueDate, taskOverdue } from './task-due.ts';
+import { taskLimitDate, taskOverdue } from './task-due.ts';
 import { documentWarnings } from './travel-documents.ts';
 
 /**
@@ -45,11 +45,8 @@ export const READINESS_ORDER: ReadinessGroup[] = ['book', 'documents', 'decide',
 const OPEN_BOOKING = new Set(['idea', 'candidate', 'to_book', 'unknown']);
 const DONE_BOOKING = new Set(['booked', 'paid']);
 
-/** Data zadania na liście: wcześniejsza z terminu i ostatecznego terminu wykonania (zadania „w trakcie” tu nie trafiają). */
-function taskDate(doc: Doc, task: Doc['tasks'][number]): string | undefined {
-  const dates = [taskDueDate(doc, task), task.deadline].filter((date): date is string => date !== undefined).sort();
-  return dates[0];
-}
+/** Data zadania na liście: „najpóźniej”, gdy jest, inaczej termin (zadania „w trakcie” tu nie trafiają). */
+const taskDate = (doc: Doc, task: Doc['tasks'][number]) => taskLimitDate(doc, task);
 
 /**
  * Braki planu na dzień `today` (data lokalna). `vaultBookingRefs` — rezerwacje z dokumentem w sejfie;

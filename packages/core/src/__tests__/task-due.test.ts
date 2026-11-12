@@ -27,13 +27,17 @@ describe('zadanie po terminie', () => {
     expect(taskDueDate(doc, task('t-trakcie'))).toBe(doc.trip.endDate);
   });
 
-  it('po terminie albo po „najpóźniej”, tylko otwarte', () => {
+  it('po terminie, a z „najpóźniej” — tylko po nim; tylko otwarte', () => {
     expect(taskOverdue(doc, task('t-dni'), '2026-12-19')).toBe(false);
     expect(taskOverdue(doc, task('t-dni'), '2026-12-20')).toBe(true);
     // Termin (dzień przed wyjazdem) jeszcze nie minął, ale „najpóźniej” tak.
     expect(taskOverdue(doc, task('t-deadline'), '2026-12-02')).toBe(true);
     expect(taskOverdue(doc, task('t-deadline'), '2026-12-01')).toBe(false);
     expect(taskOverdue(doc, task('t-zrobione'), '2026-12-02')).toBe(false);
+    // „Najpóźniej” później niż termin: decyduje „najpóźniej”, nie termin.
+    const late = { status: 'open' as const, due: { kind: 'before_trip' as const, days: 7 }, deadline: '2026-12-24' };
+    expect(taskOverdue(doc, late, '2026-12-22')).toBe(false);
+    expect(taskOverdue(doc, late, '2026-12-25')).toBe(true);
   });
 
   it('pilność do licznika w belce: po terminie, w ciągu 30 dni, później', () => {

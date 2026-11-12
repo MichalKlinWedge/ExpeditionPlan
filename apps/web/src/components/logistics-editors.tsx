@@ -419,8 +419,8 @@ export function TaskForm({ tripId, task, choices, onDone, itemRef }: { tripId: s
           </select>
         )}
         {(dueKind === "absolute" || dueKind === "on_trip") && <input name="dueTime" type="time" defaultValue={dueTime} className={input} aria-label="Godzina" />}
-        {/* Ostateczny termin wykonania obok terminu: po którymkolwiek otwarte zadanie jest na czerwono. */}
-        <label className="flex items-center gap-2 text-xs text-zinc-500">
+        {/* Konkretna data „najpóźniej”: gdy jest, to ona (a nie termin obok) decyduje, że otwarte zadanie jest na czerwono. */}
+        <label className="flex items-center gap-2 text-xs text-zinc-500" title="Gdy podana, to od tej daty (a nie od terminu obok) zadanie jest po terminie">
           wykonać najpóźniej
           <input name="deadline" type="date" defaultValue={task?.deadline ?? ""} className={input} aria-label="Ostateczny termin wykonania" />
         </label>

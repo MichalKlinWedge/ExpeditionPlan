@@ -3,8 +3,9 @@ import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
  * Terminy zadania jako daty: termin (`due`, także względny — przed wyjazdem, punktem, rezerwacją, w trakcie)
- * i osobny ostateczny termin wykonania (`deadline`). Otwarte zadanie po którymkolwiek z nich jest „po terminie”:
- * web i telefon pokazują je na czerwono, „Gotowość do wyjazdu” liczy je jako zaległe.
+ * i ostateczny termin wykonania (`deadline`, konkretna data). O zaległości decyduje `deadline`, gdy jest,
+ * inaczej termin: otwarte zadanie po nim jest „po terminie” — web i telefon pokazują je na czerwono,
+ * „Gotowość do wyjazdu” liczy je jako zaległe.
  */
 
 type Doc = TripDocument;
@@ -45,17 +46,22 @@ export function taskDueDate(doc: TaskDueContext, task: Task): string | undefined
   }
 }
 
-/** Otwarte zadanie, którego termin albo ostateczny termin wykonania minął przed `today` (data lokalna). */
-export function taskOverdue(doc: TaskDueContext, task: Task, today: string): boolean {
-  if (task.status !== 'open') return false;
-  const due = taskDueDate(doc, task);
-  return (due !== undefined && due < today) || (task.deadline !== undefined && task.deadline < today);
+/** Data, od której zadanie jest zaległe: „najpóźniej” (`deadline`), gdy jest podana, inaczej termin `due`. */
+export function taskLimitDate(doc: TaskDueContext, task: Task): string | undefined {
+  return task.deadline ?? taskDueDate(doc, task);
 }
 
-/** Daty otwartego zadania do pilnowania: termin i „najpóźniej” (bez dat — pusta lista). */
+/** Otwarte zadanie, którego data graniczna (`taskLimitDate`) minęła przed `today` (data lokalna). */
+export function taskOverdue(doc: TaskDueContext, task: Task, today: string): boolean {
+  if (task.status !== 'open') return false;
+  const limit = taskLimitDate(doc, task);
+  return limit !== undefined && limit < today;
+}
+
+/** Data graniczna otwartego zadania do pilnowania (`taskLimitDate`; bez niej — pusta lista). */
 export function taskDates(doc: TaskDueContext, task: Task): string[] {
-  if (task.status !== 'open') return [];
-  return [taskDueDate(doc, task), task.deadline].filter((date): date is string => date !== undefined);
+  const limit = task.status === 'open' ? taskLimitDate(doc, task) : undefined;
+  return limit === undefined ? [] : [limit];
 }
 
 /**
