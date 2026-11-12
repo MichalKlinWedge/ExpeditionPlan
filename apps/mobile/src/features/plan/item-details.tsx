@@ -214,7 +214,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         <ThemedText type="subtitle">
           {itemIcon(doc, item)} {item.title}
         </ThemedText>
-        <PlanPlace trip={trip} item={item} plan={plan} onJump={onJump} />
+        <PlanPlace trip={trip} item={item} plan={plan} onJump={onJump} onBooking={setBooking} />
         {place && (
           <View style={styles.row}>
             <View style={styles.grow}>
@@ -257,7 +257,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
             <ThemedText type="linkPrimary">{link.label || link.url}</ThemedText>
           </Pressable>
         ))}
-        <ItemFactsCard trip={trip} item={item} tripId={tripId} online={online} onBooking={setBooking} />
+        <ItemFactsCard trip={trip} item={item} tripId={tripId} online={online} />
         <BookingSheet trip={trip} bookingRef={booking} onClose={() => setBooking(null)} tripId={tripId} online={online} onOpenItem={(ref) => ref !== item.ref && onOpen(ref)} onContacts={onContacts} />
         {item.kind === 'meal' && mealEateries(doc, item.ref).length > 0 && (
           <View style={styles.eateries}>

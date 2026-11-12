@@ -53,11 +53,9 @@ type Props = {
   /** Bez `tripId` karta nie pokazuje dokumentów (pliki leżą w katalogu wyjazdu). */
   tripId?: string;
   online?: boolean;
-  /** Okno rezerwacji punktu (także biletu odcinka i noclegu dnia). */
-  onBooking?: (bookingRef: string) => void;
 };
 
-export function ItemFactsCard({ trip, item, tripId, online = false, onBooking }: Props) {
+export function ItemFactsCard({ trip, item, tripId, online = false }: Props) {
   const doc = trip.state.doc;
   const facts: ItemFacts = itemFacts(doc, item);
   const hasMoney = facts.price !== undefined || facts.payment !== undefined;
@@ -87,7 +85,6 @@ export function ItemFactsCard({ trip, item, tripId, online = false, onBooking }:
                 🎫 {booking.title}
                 {booking.confirmationCode ? ` · kod ${booking.confirmationCode}` : ''}
               </ThemedText>
-              {onBooking && <Button label="Szczegóły rezerwacji" small onPress={() => onBooking(booking.ref)} style={styles.start} />}
             </View>
           )}
           <ContactList contacts={facts.contacts} />
@@ -102,5 +99,4 @@ const styles = StyleSheet.create({
   card: { borderRadius: 12, padding: Spacing.three, gap: Spacing.two },
   contact: { gap: Spacing.one },
   booking: { gap: Spacing.one },
-  start: { alignSelf: 'flex-start' },
 });
