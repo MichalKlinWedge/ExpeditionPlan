@@ -243,7 +243,10 @@ export async function saveTask(tripId: string, ref: string | null, _prev: FormSt
  */
 export async function setTaskStatus(tripId: string, ref: string, status: "open" | "done" | "dropped"): Promise<FormState> {
   const { supabase } = await requireUser(`/trips/${tripId}/tasks`);
-  const { data, error } = await supabase.from("tasks").update({ status }).eq("trip_id", tripId).eq("ref", ref).is("deleted_at", null).select("id");
+  // Zadanie dodane w aplikacji nie ma kolumny `ref` (null) — w dokumencie dostaje `id-<id wiersza>`.
+  const row = supabase.from("tasks").update({ status }).eq("trip_id", tripId);
+  const byRef = ref.startsWith("id-") ? row.eq("id", ref.slice(3)) : row.eq("ref", ref);
+  const { data, error } = await byRef.is("deleted_at", null).select("id");
   if (error) return { error: dbErrorMessage(error) };
   // RLS po cichu pomija wiersz, którego nie wolno zmienić.
   if ((data ?? []).length === 0) return { error: "Tego zadania nie możesz odhaczyć (albo już go nie ma — odśwież stronę)." };
