@@ -87,3 +87,4 @@ export * from './trip-show.ts';
 export * from './photo-time.ts';
 export * from './journal-order.ts';
 export * from './item-map.ts';
+export * from './note-markdown.ts';

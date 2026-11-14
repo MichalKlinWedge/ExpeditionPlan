@@ -1,4 +1,5 @@
 import { scheduleDay, type ScheduleOptions } from './engine/schedule.ts';
+import { markdownPlainLines, notesMarkdown } from './note-markdown.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
@@ -62,7 +63,7 @@ export function tripCalendar(doc: TripDocument, options: CalendarOptions): strin
       const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
       const place = placeRef === undefined ? undefined : places.get(placeRef);
       const url = itemUrl?.replace('{ref}', encodeURIComponent(item.ref));
-      const description = [item.description, ...item.notes, url].filter((each) => each !== undefined && each.trim() !== '').join('\n');
+      const description = [item.description, ...markdownPlainLines(notesMarkdown(item.notes)), url].filter((each) => each !== undefined && each.trim() !== '').join('\n');
       lines.push(
         'BEGIN:VEVENT',
         `UID:${tripId}-${item.ref}@expeditionplan`,

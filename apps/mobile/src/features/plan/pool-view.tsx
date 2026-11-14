@@ -1,4 +1,4 @@
-import { formatMinutes, formatMoneyRange, ITEM_KIND, itemIcon, itemKindLabel, type PlanItem, priceForGroup } from '@expeditionplan/core';
+import { formatMinutes, formatMoneyRange, ITEM_KIND, itemIcon, itemKindLabel, markdownPlainLines, notesMarkdown, type PlanItem, priceForGroup } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import * as Location from 'expo-location';
 import { useState } from 'react';
@@ -79,9 +79,9 @@ export function PoolView({ trip, onMove, onAdd, onOpen }: Props) {
                       {item.description}
                     </ThemedText>
                   )}
-                  {item.notes.slice(0, 2).map((note, i) => (
+                  {markdownPlainLines(notesMarkdown(item.notes)).slice(0, 2).map((note, i) => (
                     <ThemedText key={i} type="small" themeColor="textSecondary" numberOfLines={2}>
-                      • {note}
+                      {note}
                     </ThemedText>
                   ))}
                 </Pressable>

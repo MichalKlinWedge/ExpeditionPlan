@@ -17,6 +17,7 @@ import {
   
   linkGuideText,
   lodgingDetails,
+  notesMarkdown,
   type PlanItem as Item,
   speechParts,
   mealEateries,
@@ -32,6 +33,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { LinkedText } from '@/components/linked-text';
+import { NoteMarkdown } from '@/components/note-markdown';
 import { RouteSiteButton } from '@/components/route-site-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -256,11 +258,8 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
               {line}
             </ThemedText>
           ))}
-        {[...item.notes, ...notes].map((note, i) => (
-          <ThemedText key={i} type="small" themeColor="textSecondary">
-            • <LinkedText text={note} />
-          </ThemedText>
-        ))}
+        {/* Uwagi z formatowaniem (Markdown z webu); dawne uwagi „jedna w linii” jako lista. */}
+        <NoteMarkdown text={notesMarkdown([...item.notes, ...notes])} secondary />
         <NotePhotos photos={item.notePhotos ?? []} />
         {item.links.map((link) => (
           <Pressable key={link.url} onPress={() => open(link.url)} hitSlop={6}>
