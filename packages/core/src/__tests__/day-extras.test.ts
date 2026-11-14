@@ -23,6 +23,7 @@ import {
   itemExtras,
   pickPasses,
   setExtraDismissed,
+  setExtrasDismissed,
   wikipediaUrl,
 } from '../day-extras.ts';
 import { scheduleDay } from '../engine/schedule.ts';
@@ -125,6 +126,12 @@ describe('po drodze i w pobliżu', () => {
     // Nowe szukanie nie zastępuje odrzuconej.
     const again = applyExtraPicks(dismissed.doc, 'd1', candidates, [{ id: 'node/2', title: 'Wieża', why: '', stayMin: 20, fit: 'stop' }], '2026-06-02')!;
     expect(again.extras!.items).toEqual([expect.objectContaining({ id: 'node/2', status: 'dismissed' })]);
+    // Wiele naraz: zaznaczone odrzucone jednym zapisem, potem przywrócone.
+    const many = setExtrasDismissed(withDay, 'd1', ['node/1', 'node/2'], true)!;
+    expect(dayExtras(many.doc, 'd1').dismissed.map((each) => each.id).sort()).toEqual(['node/1', 'node/2']);
+    expect(many.writes).toHaveLength(1);
+    expect(dayExtras(setExtrasDismissed(many.doc, 'd1', ['node/1'], false)!.doc, 'd1').open.map((each) => each.id)).toEqual(['node/1']);
+    expect(setExtrasDismissed(withDay, 'd1', ['nie-ma'], true)).toBeNull();
   });
 
   it('dzień z autem: ciekawe miejsce 3 km od punktu to krótki podjazd; bliskich i ciekawych pominiętych przez AI dokłada kod', () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { addExtraToPlan, type DayExtraItem, dayExtras, type DaySchedule, EXTRA_CATEGORY, EXTRA_FIT, EXTRA_INTEREST, EXTRA_SCOPE, type ExtraCategory, extraFilterText, extraInterest, isExtraFilterNarrow, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
+import { addExtraToPlan, type DayExtraItem, dayExtras, type DaySchedule, EXTRA_CATEGORY, EXTRA_FIT, EXTRA_INTEREST, EXTRA_SCOPE, type ExtraCategory, extraFilterText, extraInterest, isExtraFilterNarrow, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, setExtrasDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -48,10 +48,25 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
   // „miejsce + opis” w toku (klucz atrakcji).
   const [describing, setDescribing] = useState<string | null>(null);
   const [placeNote, setPlaceNote] = useState<{ id: string; ok?: string; error?: string } | null>(null);
+  // Zaznaczone na liście (odrzucanie wielu naraz); liczą się tylko widoczne po filtrze.
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const slackMin = schedule?.slackMin ?? null;
   // Rodzaje i atrakcyjność: ustawienie tej przeglądarki, wspólne z mapą i znacznikami przy punktach.
   const filter = useExtraFilter();
   const list = dayExtras(doc, dayRef, filter);
+  const marked = list.open.filter((extra) => checked.has(extra.id));
+  const toggle = (id: string) => setChecked((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+  const dismissMarked = () => {
+    if (onRules === null || marked.length === 0) return;
+    const ids = marked.map((extra) => extra.id);
+    onRules((current) => setExtrasDismissed(current, dayRef, ids, true));
+    setChecked(new Set());
+  };
   const titles = new Map(doc.items.map((item) => [item.ref, item.title]));
   if (list.open.length === 0 && list.hidden === 0 && list.dismissed.length === 0 && !canFind && onRules === null) return null;
   const toggleCategory = (category: ExtraCategory) =>
@@ -171,6 +186,32 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
           )}
         </div>
       )}
+      {onRules && list.open.length > 1 && (
+        // Odrzucanie wielu naraz: zaznacz wszystkie widoczne albo pojedynczo przy nazwach.
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={marked.length === list.open.length}
+              ref={(box) => {
+                if (box) box.indeterminate = marked.length > 0 && marked.length < list.open.length;
+              }}
+              onChange={() => setChecked(marked.length === list.open.length ? new Set() : new Set(list.open.map((extra) => extra.id)))}
+            />
+            zaznacz wszystkie widoczne ({list.open.length})
+          </label>
+          {marked.length > 0 && (
+            <>
+              <button type="button" onClick={dismissMarked} className="btn-mini btn-mini-danger">
+                odrzuć zaznaczone ({marked.length})
+              </button>
+              <button type="button" onClick={() => setChecked(new Set())} className="btn-mini">
+                odznacz
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {list.open.length > 0 && (
         <ul className="flex flex-col gap-2">
           {list.open.map((extra) => {
@@ -181,6 +222,7 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
             return (
               <li key={extra.id} id={`item-${key}`} className={`flex flex-col gap-0.5 rounded px-1 ${selected === key ? "bg-signal/10" : ""}`}>
                 <div className="flex flex-wrap items-baseline gap-x-1.5">
+                  {onRules && <input type="checkbox" checked={checked.has(extra.id)} onChange={() => toggle(extra.id)} aria-label={`Zaznacz: ${extra.title}`} className="self-center" />}
                   <button type="button" onClick={() => onSelect(key)} title="Pokaż na mapie" aria-label={`${extra.title} — pokaż na mapie`} className="text-amber-600 dark:text-amber-400">
                     ★
                   </button>
@@ -256,6 +298,11 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
       {list.dismissed.length > 0 && onRules && (
         <details className="text-xs">
           <summary className="cursor-pointer text-zinc-500">Odrzucone ({list.dismissed.length})</summary>
+          {list.dismissed.length > 1 && (
+            <button type="button" onClick={() => onRules((current) => setExtrasDismissed(current, dayRef, list.dismissed.map((extra) => extra.id), false))} className="btn-mini mt-1">
+              przywróć wszystkie
+            </button>
+          )}
           <ul className="mt-1 flex flex-col gap-1">
             {list.dismissed.map((extra) => (
               <li key={extra.id} className="flex flex-wrap items-center gap-1.5">

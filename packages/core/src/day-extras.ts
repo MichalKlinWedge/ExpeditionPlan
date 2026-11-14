@@ -603,6 +603,25 @@ export function setExtraDismissed(doc: Doc, dayRef: string, id: string, dismisse
   return { doc: { ...doc, days: doc.days.map((each) => (each.ref === dayRef ? day : each)) }, writes: [{ collection: 'days', element: day, op: 'update' }], changed: [] };
 }
 
+/** Odrzucenie albo przywrócenie wielu dodatków naraz (zaznaczone na liście) — jeden zapis dnia. */
+export function setExtrasDismissed(doc: Doc, dayRef: string, ids: readonly string[], dismissed: boolean): RulesEdit | null {
+  const chosen = new Set(ids);
+  const day = doc.days.find((each) => each.ref === dayRef);
+  if (day?.extras === undefined || !day.extras.items.some((each) => chosen.has(each.id))) return null;
+  const next = {
+    ...day,
+    extras: {
+      ...day.extras,
+      items: day.extras.items.map((each) => {
+        if (!chosen.has(each.id)) return each;
+        const { status: _status, addedRef: _added, ...rest } = each;
+        return dismissed ? { ...rest, status: 'dismissed' as const } : rest;
+      }),
+    },
+  };
+  return { doc: { ...doc, days: doc.days.map((each) => (each.ref === dayRef ? next : each)) }, writes: [{ collection: 'days', element: next, op: 'update' }], changed: [] };
+}
+
 /** Miejsce tej atrakcji, gdy wyjazd już je ma: założone z niej wcześniej albo ta sama nazwa do 1,5 km. */
 function extraPlaceIn(doc: Doc, extra: DayExtraItem): Doc['places'][number] | undefined {
   const own = extra.placeRef === undefined ? undefined : doc.places.find((place) => place.ref === extra.placeRef);
