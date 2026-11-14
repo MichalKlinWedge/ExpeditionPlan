@@ -1,4 +1,4 @@
-import { type DaySchedule, formatMinutes, legLabel, nowAndNext, transitLines, type TripDocument } from '@expeditionplan/core';
+import { type DaySchedule, formatMinutes, planLegLine, nowAndNext, transitLines, type TripDocument } from '@expeditionplan/core';
 import type { DayEvent } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -63,7 +63,7 @@ export function NowCard({ schedule, now, doc, onEvent, lastEvent, pulled }: Prop
 
   const source = next === null ? undefined : doc.items.find((item) => item.ref === next.ref);
   const goTo = next === null ? null : itemTarget(doc, next.ref);
-  const leg = source === undefined ? null : [transitLines(source), legLabel(source)].filter(Boolean).join(' · ') || null;
+  const leg = source === undefined ? null : [transitLines(source), planLegLine(doc, source)].filter(Boolean).join(' · ') || null;
 
   if (current === null && next === null) {
     return (

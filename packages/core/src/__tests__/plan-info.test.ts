@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { dayLodging, dayMap, LODGING_STOP, isTransit, formatMinutes, legLabel, mapCoverage, missingOnMap } from '../plan-info.ts';
+import { dayLodging, dayMap, LODGING_STOP, isTransit, formatMinutes, legLabel, mapCoverage, missingOnMap, planLegLine, walkDistanceLabel } from '../plan-info.ts';
 import { encodePolyline, type LngLat } from '../polyline.ts';
 import { DocItem, TripDocument } from '../schemas/trip-document.ts';
 
@@ -26,6 +26,19 @@ describe('opis mapy w planie', () => {
     expect(legLabel(transport({ durationMin: 75, distanceKm: 70 }))).toBe('ok. 1 h 15 min, ok. 70 km (szacunek)');
     expect(legLabel(transport({ durationMin: 75, routed: true }, { durationMin: 90 }))).toBe('1 h 30 min (wpisane ręcznie)');
     expect(legLabel(transport({}))).toBeNull();
+  });
+
+  it('spacer i trekking: zaplanowana odległość przy czasie wpisanym ręcznie, bez powtórzonych km', () => {
+    const walk = DocItem.parse({ ref: 'w', kind: 'transport', title: 'Spacer', durationMin: 125, leg: { mode: 'walk', distanceKm: 6.2 } });
+    expect(walkDistanceLabel(maroko, walk)).toBe('6,2 km');
+    expect(planLegLine(maroko, walk)).toBe('6,2 km · 2 h 5 min (wpisane ręcznie)');
+    const routed = DocItem.parse({ ref: 'r', kind: 'transport', title: 'Trekking', leg: { mode: 'hike', distanceKm: 12.4, durationMin: 240, routed: true }, activity: { ascentM: 650, descentM: 600 } });
+    expect(planLegLine(maroko, routed)).toBe('12 km · ↑ 650 m · ↓ 600 m · 4 h (trasa z mapy)');
+    const trek = DocItem.parse({ ref: 'a', kind: 'activity', title: 'Wędrówka', activity: { distanceKm: 9 } });
+    expect(planLegLine(maroko, trek)).toBe('9 km');
+    expect(walkDistanceLabel(maroko, transport({ distanceKm: 70 }))).toBeNull();
+    expect(planLegLine(maroko, transport({ durationMin: 75, distanceKm: 70 }))).toBe('ok. 1 h 15 min, ok. 70 km (szacunek)');
+    expect(walkDistanceLabel(maroko, DocItem.parse({ ref: 'n', kind: 'transport', title: 'Spacer', leg: { mode: 'walk' } }))).toBeNull();
   });
 
   it('pokrycie mapy planu wzorcowego: miejsca bez współrzędnych i przejazdy bez trasy', () => {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, legLabel, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, stopsLabel, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, planLegLine, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
 import { bookingDetails, itemBookingRef, localToday, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { carRouteFromItem, itemRouteRef, routeChoices, routeFacts, routeKindFor } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload, type TripState } from "@expeditionplan/sync";
@@ -87,7 +87,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   // Dokumenty rezerwacji z sejfu do okna rezerwacji (RLS już odcięło te, których ktoś nie widzi).
   const bookingDocuments = booking === null || bookingRef === undefined || ids[bookingRef] === undefined ? [] : (payload.tables.documents ?? []).map((row) => vaultDocument(row as Record<string, unknown>)).filter((each): each is VaultDocument => each !== null && each.bookingId === ids[bookingRef]);
   const flight = flightOf(doc, item);
-  const leg = legLabel(item) ?? stopsLabel(item);
+  const leg = planLegLine(doc, item);
   const route = legRouteLink(doc, item);
   const rows = (payload.tables as unknown as { audio_guides?: GuideRow[] }).audio_guides ?? [];
   const guide = guideFor(rows, ids[item.ref], placeRef === undefined ? undefined : ids[placeRef]);

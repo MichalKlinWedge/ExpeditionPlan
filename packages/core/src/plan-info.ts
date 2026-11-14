@@ -29,8 +29,8 @@ export function formatMinutes(minutes: number): string {
  * „ok. 75 min, ok. 70 km (szacunek)”. Czas wpisany w punkt (edycja ręczna) wygrywa z `leg`
  * tak samo jak w silniku. `null` = punkt nie jest przejazdem albo nie ma czego pokazać.
  */
-export function legLabel(item: Item): string | null {
-  const time = legTimeLabel(item);
+export function legLabel(item: Item, { km = true }: { km?: boolean } = {}): string | null {
+  const time = legTimeLabel(item, km);
   // Silnik liczy tu czas drogi dwa razy, więc opis musi to mówić, inaczej godziny wyglądają na błąd.
   const both = item.leg?.roundTrip && item.durationMin === undefined && item.leg.durationMin !== undefined ? ` · tam i z powrotem: ${formatMinutes(item.leg.durationMin * 2)}` : '';
   const label = time === null ? null : `${time}${both}`;
@@ -47,15 +47,39 @@ export const routeStopTime = (minutes: number): string => (minutes > 0 ? `postó
 /** Postoje punktu, który nie ma opisu przejazdu (`legLabel` daje `null`). */
 export const stopsLabel = (item: Item): string | null => (item.stopsMin ? `w tym postoje i przerwy: ${formatMinutes(item.stopsMin)}` : null);
 
-function legTimeLabel(item: Item): string | null {
+const WALK_MODES: ReadonlySet<string> = new Set(['walk', 'hike', 'bike']);
+
+/**
+ * Zaplanowana droga spaceru, trekkingu albo przejażdżki rowerem: „4,2 km · ↑ 350 m ↓ 300 m” z odcinka,
+ * liczb wędrówki albo jej śladu w „Trasach”. `null` dla innych punktów i dla wędrówki bez dystansu.
+ */
+export function walkDistanceLabel(doc: Doc, item: Item): string | null {
+  const walking = item.kind === 'transport' ? item.leg !== undefined && WALK_MODES.has(item.leg.mode) : item.kind === 'activity' && (item.activity?.distanceKm !== undefined || item.activity?.trackRef !== undefined);
+  if (!walking) return null;
+  const trackRef = item.activity?.trackRef ?? item.leg?.trackRef;
+  const track = trackRef === undefined ? undefined : doc.tracks.find((each) => each.ref === trackRef);
+  const km = item.leg?.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm;
+  if (km === undefined) return null;
+  const up = item.activity?.ascentM ?? track?.ascentM ?? 0;
+  const down = item.activity?.descentM ?? track?.descentM ?? 0;
+  return [formatKm(km), up > 0 ? `↑ ${up} m` : '', down > 0 ? `↓ ${down} m` : ''].filter((part) => part !== '').join(' · ');
+}
+
+/** Linia pod punktem planu: dystans wędrówki, potem czas przejazdu (bez powtórzonych km) albo postoje. */
+export function planLegLine(doc: Doc, item: Item): string | null {
+  const walk = walkDistanceLabel(doc, item);
+  return [walk, legLabel(item, { km: walk === null }) ?? stopsLabel(item)].filter((part) => part !== null).join(' · ') || null;
+}
+
+function legTimeLabel(item: Item, withKm: boolean): string | null {
   const leg = item.leg;
   if (item.kind !== 'transport' || leg === undefined) return null;
   if (item.durationMin !== undefined) return `${formatMinutes(item.durationMin)} (wpisane ręcznie)`;
   if (leg.routed && leg.durationMin !== undefined) {
     const worse = leg.durationMaxMin !== undefined && leg.durationMaxMin > leg.durationMin ? `, w gorszym razie ${formatMinutes(leg.durationMaxMin)}` : '';
-    return `${leg.distanceKm !== undefined ? `${formatKm(leg.distanceKm)} · ` : ''}${formatMinutes(leg.durationMin)}${worse} (trasa z mapy)`;
+    return `${withKm && leg.distanceKm !== undefined ? `${formatKm(leg.distanceKm)} · ` : ''}${formatMinutes(leg.durationMin)}${worse} (trasa z mapy)`;
   }
-  const parts = [leg.durationMin === undefined ? null : `ok. ${formatMinutes(leg.durationMin)}`, leg.distanceKm === undefined ? null : `ok. ${formatKm(leg.distanceKm)}`].filter((part) => part !== null);
+  const parts = [leg.durationMin === undefined ? null : `ok. ${formatMinutes(leg.durationMin)}`, !withKm || leg.distanceKm === undefined ? null : `ok. ${formatKm(leg.distanceKm)}`].filter((part) => part !== null);
   return parts.length === 0 ? null : `${parts.join(', ')} (${leg.routed === false ? 'z podanej trasy' : 'szacunek'})`;
 }
 

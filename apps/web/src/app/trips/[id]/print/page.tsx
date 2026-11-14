@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BOOKING_KIND, CONTACT_ROLE, dayItems, dayLabel, flightLine, flightOf, guideFor, type GuideRow, instantToZoned, itemIcon, legLabel, routeStopsLabel, routeStopTime, scheduleDay, shortDate, stopsLabel, transitLines, type TripDocument } from "@expeditionplan/core";
+import { BOOKING_KIND, CONTACT_ROLE, dayItems, dayLabel, flightLine, flightOf, guideFor, type GuideRow, instantToZoned, itemIcon, planLegLine, routeStopsLabel, routeStopTime, scheduleDay, shortDate, transitLines, type TripDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -137,7 +137,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
                 {rows.map((row) => {
                   const item = items.get(row.ref);
                   const place = item?.placeRef === undefined ? undefined : places.get(item.placeRef)?.name;
-                  const leg = item === undefined ? null : [transitLines(item), legLabel(item) ?? stopsLabel(item)].filter(Boolean).join(" · ") || null;
+                  const leg = item === undefined ? null : [transitLines(item), planLegLine(doc, item)].filter(Boolean).join(" · ") || null;
                   const flight = item === undefined ? undefined : flightOf(doc, item);
                   const extra = [place, leg, routeStopsLabel(row), flight ? flightLine(flight) : undefined].filter(Boolean).join(" · ");
                   const guideKey = item?.leg?.toPlaceRef ?? item?.placeRef ?? item?.ref;

@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, legLabel, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, stopsLabel, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, planLegLine, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -901,7 +901,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
       {schedule?.items.map((item) => {
         const source = byRef.get(item.ref);
         const place = source?.placeRef === undefined ? undefined : places.get(source.placeRef)?.name;
-        const leg = source === undefined ? null : [transitLines(source), legLabel(source) ?? stopsLabel(source)].filter(Boolean).join(' · ') || null;
+        const leg = source === undefined ? null : [transitLines(source), planLegLine(doc, source)].filter(Boolean).join(' · ') || null;
         const offMap = source !== undefined && missingOnMap(doc, source);
         const flight = source === undefined ? undefined : flightOf(doc, source);
         const flightText = flight === undefined ? undefined : flightLine(flight);

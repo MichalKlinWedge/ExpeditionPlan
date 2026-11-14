@@ -10,10 +10,11 @@ import {
   type GuideSegment,
   guideText,
   itemIcon,
-  legLabel,
+  
+  planLegLine,
   transitDetails,
   legRouteLink,
-  stopsLabel,
+  
   linkGuideText,
   lodgingDetails,
   type PlanItem as Item,
@@ -173,7 +174,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
   const placeRef = item.leg?.toPlaceRef ?? item.placeRef;
   const place = placeRef === undefined ? undefined : doc.places.find((each) => each.ref === placeRef);
   const flight = flightOf(doc, item);
-  const leg = legLabel(item) ?? stopsLabel(item);
+  const leg = planLegLine(doc, item);
   const route = legRouteLink(doc, item);
   // Przy noclegu zamiast przewodnika są dane obiektu.
   const guide = item.kind === 'lodging' ? null : itemGuide(trip, item);
