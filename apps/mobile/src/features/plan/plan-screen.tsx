@@ -32,6 +32,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DayMap, useDayStops } from '@/features/plan/day-map';
 import { DayExtrasCard } from '@/features/plan/day-extras-card';
+import { DayStatsCard } from '@/features/plan/day-stats-card';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ContactList } from '@/features/plan/item-facts';
 import { PlacePin } from '@/features/plan/place-pin';
@@ -1076,6 +1077,8 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
       )}
 
       {schedule && <Warnings list={schedule.warnings.filter((warning) => warning.itemRef === undefined)} />}
+
+      <DayStatsCard doc={doc} schedule={schedule} />
 
       <DayExtrasCard doc={doc} dayRef={dayRef} slackMin={schedule?.slackMin ?? null} open={extrasOpen} onToggle={() => setExtrasOpen(!extrasOpen)} />
 
