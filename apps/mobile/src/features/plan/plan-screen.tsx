@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, planLegLine, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, SLACK_LABEL, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, planLegLine, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -63,13 +63,6 @@ import { supabase } from '@/lib/supabase';
  * i na żywo: Realtime daje znać o każdej zmianie wyjazdu (np. edycji na webie). Godziny liczy silnik z packages/core na telefonie. Jeden dzień na ekranie;
  * domyślnie dzisiejszy, jeśli wyjazd trwa.
  */
-
-const SLACK: Record<string, { label: string; color: string }> = {
-  large: { label: SLACK_LABEL.large, color: '#2e7d32' },
-  small: { label: SLACK_LABEL.small, color: '#b26a00' },
-  none: { label: SLACK_LABEL.none, color: '#e65100' },
-  negative: { label: SLACK_LABEL.negative, color: '#c62828' },
-};
 
 const HARD = '#d32f2f';
 const SOFT = '#b26a00';
@@ -815,7 +808,6 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
   const marks = schedule ? [...daySunMarks(schedule), ...dayGaps(schedule)].sort((a, b) => a.at - b.at) : [];
   // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu” (lista pod dniem).
   const extras = itemExtras(doc, dayRef);
-  const slack = schedule?.slack ? SLACK[schedule.slack] : undefined;
   const { map, pinOf } = useDayStops(doc, schedule?.items.map((item) => item.ref).join(',') ?? '', lodging?.placeRef);
   const [mapPlace, setMapPlace] = useState<string | null>(null);
   const [mapFocus, setMapFocus] = useState<{ lng: number; lat: number } | null>(null);
@@ -874,14 +866,6 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
           </Pressable>
         );
       })()}
-      {slack && (
-        <View style={[styles.badge, { borderColor: slack.color }]}>
-          <ThemedText type="small" style={{ color: slack.color }}>
-            {slack.label}
-            {schedule?.slackMin != null ? ` (${schedule.slackMin} min)` : ''}
-          </ThemedText>
-        </View>
-      )}
       {day.summary ? (
         <ThemedText type="small" themeColor="textSecondary">
           {day.summary}
@@ -1170,7 +1154,6 @@ const styles = StyleSheet.create({
   scenario: { paddingHorizontal: Spacing.three, paddingTop: Spacing.one },
   content: { padding: Spacing.three, gap: Spacing.three },
   day: { gap: Spacing.two },
-  badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three },
   group: { gap: Spacing.one },
   item: { padding: Spacing.three, borderRadius: 14, gap: 2, borderWidth: 1, borderLeftWidth: 5 },
   time: { fontSize: 15, lineHeight: 20, fontWeight: 800, fontVariant: ['tabular-nums'] },
