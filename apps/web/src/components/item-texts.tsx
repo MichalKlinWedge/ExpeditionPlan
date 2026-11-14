@@ -5,6 +5,7 @@ import { saveRulesEdit } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { LinkedText } from "@/components/linked-text";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -79,10 +80,14 @@ export function ItemTexts({ tripId, doc, ids, itemRef, editing }: { tripId: stri
   }
   return (
     <>
-      {item.description && <p className="whitespace-pre-line">{item.description}</p>}
+      {item.description && (
+        <p className="panel whitespace-pre-line px-3 py-2 font-medium text-ink dark:text-zinc-100">
+          <LinkedText text={item.description} />
+        </p>
+      )}
       {notes.map((note, i) => (
         <p key={i} className="text-zinc-600 dark:text-zinc-400">
-          • {note}
+          • <LinkedText text={note} />
         </p>
       ))}
       {editing && (
