@@ -42,12 +42,14 @@ type Task = {
   title: string;
   body: string;
   priority: string;
-  /** Data, która wprowadza zadanie na kartę: termin (`taskLimitDate`) albo własne przypomnienie. */
-  when?: string;
+  /** Data graniczna terminu (`taskLimitDate`); razem z przypomnieniem decyduje, kiedy zadanie wchodzi na kartę. */
+  limit?: string;
   due?: string;
   deadline?: string;
   remind?: { date: string; time: string };
   overdue: boolean;
+  /** Odhaczone tutaj przed chwilą: wiersz zostaje na liście (przypadkowe dotknięcie widać i da się cofnąć). */
+  done: boolean;
   /** Odhaczenie: organizator i edytor zawsze, widz — swoje zadania (RLS `tasks_update`). */
   canCheck: boolean;
   /** Zmiana przypomnienia: organizator i edytor (trigger `guard_viewer_task`). */
@@ -57,6 +59,8 @@ type Task = {
 const refOf = (row: Row) => (typeof row.ref === 'string' ? row.ref : `id-${String(row.id)}`);
 const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 const plural = (days: number) => (days === 1 ? 'dzień' : 'dni');
+/** Data, po której zadanie wchodzi na kartę: termin albo własne przypomnienie — co wcześniej. */
+const whenOf = (task: Task) => [task.limit, task.remind?.date].filter((date): date is string => date !== undefined).sort()[0];
 
 /** „dziś”, „jutro”, „za 5 dni”, „5 dni po terminie”. */
 function whenLabel(when: string | undefined, today: string, overdue: boolean): string {
@@ -107,7 +111,6 @@ function loadTasks(today: string, userId: string | null): Task[] {
       const limit = taskLimitDate(context, task);
       const remind = (row.remind_at ?? undefined) as { date: string; time: string } | undefined;
       // Własne przypomnienie liczy się jak termin: zadanie bez terminu też ma trafić na listę.
-      const dates = [limit, remind?.date].filter((date): date is string => date !== undefined).sort();
       const assignees = Array.isArray(row.assignee_ids) ? (row.assignee_ids as unknown[]).map(String) : [];
       return [
         {
@@ -117,11 +120,12 @@ function loadTasks(today: string, userId: string | null): Task[] {
           title: String(row.title ?? 'Zadanie'),
           body: typeof row.body === 'string' ? row.body : '',
           priority: typeof row.priority === 'string' ? row.priority : 'normal',
-          when: dates[0],
+          limit,
           due: taskDueDate(context, task),
           deadline: task.deadline,
           remind,
           overdue: limit !== undefined && limit < today,
+          done: false,
           canCheck: userId !== null && (canEdit || assignees.some((id) => mine.has(id))),
           canEdit,
         },
@@ -141,7 +145,7 @@ export function TaskAlerts() {
   const reload = useCallback(() => {
     try {
       const today = localToday();
-      setTasks(loadTasks(today, userId).sort((a, b) => (a.when ?? '9999').localeCompare(b.when ?? '9999')));
+      setTasks(loadTasks(today, userId).sort((a, b) => (whenOf(a) ?? '9999').localeCompare(whenOf(b) ?? '9999')));
     } catch {
       setTasks([]);
     }
@@ -152,23 +156,28 @@ export function TaskAlerts() {
   if (tasks === null || tasks.length === 0) return null;
   const today = localToday();
   const week = addDays(today, WEEK_DAYS);
-  const overdue = tasks.filter((task) => task.overdue);
-  const soon = tasks.filter((task) => !task.overdue && task.when !== undefined && task.when <= week);
-  const shown = group === null ? [] : (group === 'overdue' ? overdue : group === 'week' ? soon : tasks).slice(0, SHOWN);
+  // Liczniki pokazują to, co zostało do zrobienia; listy — także zadanie odhaczone przed chwilą.
+  const inWeek = (task: Task) => !task.overdue && whenOf(task) !== undefined && whenOf(task)! <= week;
+  const inGroup = (task: Task, which: Group) => (which === 'overdue' ? task.overdue : which === 'week' ? inWeek(task) : true);
+  const left = tasks.filter((task) => !task.done);
+  const overdue = left.filter((task) => task.overdue);
+  const soon = left.filter(inWeek);
+  const shown = group === null ? [] : tasks.filter((task) => inGroup(task, group)).slice(0, SHOWN);
   const open = (tripId: string) => {
     setCurrentTrip(tripId);
     router.navigate('/plan?tab=tasks');
   };
+  /** Odhaczenie i cofnięcie; wiersz zostaje na liście aż do następnego wejścia na Start. */
   const check = (task: Task) => {
     if (!task.canCheck) {
       RnAlert.alert('Nie możesz odhaczyć', 'To zadanie odhacza organizator, edytor albo osoba, do której jest przypisane.');
       return;
     }
+    const done = !task.done;
     try {
-      setTaskStatus(localDb, task.tripId, task.id, 'done');
+      setTaskStatus(localDb, task.tripId, task.id, done ? 'done' : 'open');
       void syncPending();
-      setSheet(null);
-      reload();
+      setTasks(tasks.map((each) => (each.id === task.id ? { ...each, done } : each)));
     } catch (e) {
       RnAlert.alert('Nie zapisano', e instanceof Error ? e.message : String(e));
     }
@@ -180,7 +189,7 @@ export function TaskAlerts() {
       <View style={styles.counts}>
         <Count label="po terminie" value={overdue.length} danger active={group === 'overdue'} onPress={() => setGroup(group === 'overdue' ? null : 'overdue')} />
         <Count label="w tym tygodniu" value={soon.length} active={group === 'week'} onPress={() => setGroup(group === 'week' ? null : 'week')} />
-        <Count label="wszystkich" value={tasks.length} active={group === 'all'} onPress={() => setGroup(group === 'all' ? null : 'all')} />
+        <Count label="wszystkich" value={left.length} active={group === 'all'} onPress={() => setGroup(group === 'all' ? null : 'all')} />
       </View>
       {group !== null && shown.length === 0 && (
         <ThemedText type="small" themeColor="textSecondary">
@@ -189,17 +198,18 @@ export function TaskAlerts() {
       )}
       {shown.map((task) => (
         <View key={task.id} style={styles.row}>
-          <Pressable onPress={() => check(task)} hitSlop={8} accessibilityLabel={`Zrobione: ${task.title}`} style={styles.box}>
-            <ThemedText style={styles.boxMark}>☐</ThemedText>
+          <Pressable onPress={() => check(task)} hitSlop={8} accessibilityLabel={`${task.done ? 'Cofnij odhaczenie' : 'Zrobione'}: ${task.title}`} style={styles.box}>
+            <ThemedText style={styles.boxMark}>{task.done ? '☑' : '☐'}</ThemedText>
           </Pressable>
           <Pressable onPress={() => setSheet(task.id)} style={styles.grow}>
-            <ThemedText type="small" style={task.overdue ? styles.overdue : undefined}>
+            <ThemedText type="small" style={task.done ? styles.struck : task.overdue ? styles.overdue : undefined}>
               {task.priority === 'high' ? '! ' : ''}
               {task.title}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {whenLabel(task.when, today, task.overdue)}
-              {task.remind !== undefined ? ` · 🔔 ${task.remind.time}` : ''} · {task.tripTitle}
+              {task.done
+                ? 'zrobione — dotknij ☑, żeby cofnąć'
+                : `${whenLabel(whenOf(task), today, task.overdue)}${task.remind !== undefined ? ` · 🔔 ${task.remind.time}` : ''} · ${task.tripTitle}`}
             </ThemedText>
           </Pressable>
         </View>
@@ -216,7 +226,7 @@ export function TaskAlerts() {
         today={today}
         onClose={() => setSheet(null)}
         onDone={() => current !== null && check(current)}
-        onSaved={reload}
+        onSaved={(remind) => setTasks(tasks.map((each) => (each.id === sheet ? { ...each, remind } : each)))}
         onOpenTrip={() => {
           if (current === null) return;
           setSheet(null);
@@ -258,7 +268,7 @@ function TaskSheet({
   today: string;
   onClose: () => void;
   onDone: () => void;
-  onSaved: () => void;
+  onSaved: (remind: { date: string; time: string } | undefined) => void;
   onOpenTrip: () => void;
 }) {
   const theme = useTheme();
@@ -290,7 +300,7 @@ function TaskSheet({
         setDate(next.date);
         setTime(next.time);
       }
-      onSaved();
+      onSaved(next ?? undefined);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : String(e));
     }
@@ -314,8 +324,8 @@ function TaskSheet({
                   {task.body !== '' && <ThemedText type="small">{task.body}</ThemedText>}
 
                   <Pressable onPress={onDone} style={[styles.done, { borderColor: theme.accent }]}>
-                    <ThemedText style={styles.doneMark}>☐</ThemedText>
-                    <ThemedText type="smallBold">Zrobione</ThemedText>
+                    <ThemedText style={styles.doneMark}>{task.done ? '☑' : '☐'}</ThemedText>
+                    <ThemedText type="smallBold">{task.done ? 'Zrobione — dotknij, żeby cofnąć' : 'Zrobione'}</ThemedText>
                   </Pressable>
                   {!task.canCheck && (
                     <ThemedText type="small" themeColor="textSecondary">
@@ -330,7 +340,7 @@ function TaskSheet({
                       {task.deadline === undefined ? '' : ` · najpóźniej ${task.deadline}`}
                     </ThemedText>
                     <ThemedText type="small" style={task.overdue ? styles.overdue : undefined}>
-                      {whenLabel(task.when, today, task.overdue)}
+                      {whenLabel(whenOf(task), today, task.overdue)}
                     </ThemedText>
                   </ThemedView>
 
@@ -399,6 +409,7 @@ const styles = StyleSheet.create({
   boxMark: { fontSize: 26, lineHeight: 30 },
   grow: { flex: 1 },
   overdue: { color: OVERDUE, fontWeight: '600' },
+  struck: { textDecorationLine: 'line-through', opacity: 0.6 },
   fill: { flex: 1 },
   top: { padding: Spacing.three },
   sheet: { padding: Spacing.four, gap: Spacing.three },
