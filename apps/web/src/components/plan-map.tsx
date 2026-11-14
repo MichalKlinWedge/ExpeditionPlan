@@ -76,10 +76,13 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
   // Dojazd i powrót (lot, długa droga) domyślnie ukryte — skala kraju gubi szczegóły na miejscu.
   const [showTransit, setShowTransit] = useState(false);
   const hasTransit = full.pins.some((pin) => pin.transit) || full.lines.some((line) => line.transit);
-  const data = useMemo(
-    () => (showTransit ? full : { ...full, pins: full.pins.filter((pin) => !pin.transit), lines: full.lines.filter((line) => !line.transit) }),
-    [full, showTransit],
-  );
+  // Gwiazdki „po drodze i w pobliżu” można schować, gdy zasłaniają plan dnia.
+  const [hideExtras, setHideExtras] = useState(false);
+  const hasExtras = full.pins.some((pin) => pin.extra !== undefined);
+  const data = useMemo(() => {
+    const pins = full.pins.filter((pin) => (showTransit || !pin.transit) && !(hideExtras && pin.extra !== undefined));
+    return { ...full, pins, lines: showTransit ? full.lines : full.lines.filter((line) => !line.transit) };
+  }, [full, showTransit, hideExtras]);
   const fitKey = `${dayKey}:${showTransit && hasTransit}`;
   const selectedPin = data.pins.find((pin) => holds(pin, selected));
   const [map, setMap] = useState<MapLibreMap | null>(null);
@@ -310,6 +313,22 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
           <svg viewBox="0 0 16 16" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
             <circle cx="8" cy="8" r="3.5" />
             <path d="M8 1v2.5M8 12.5V15M1 8h2.5M12.5 8H15" />
+          </svg>
+        </button>
+      )}
+      {/* Pod przyciskami mapy: pokaż / schowaj gwiazdki „po drodze i w pobliżu”. */}
+      {map !== null && hasExtras && (
+        <button
+          type="button"
+          onClick={() => setHideExtras((value) => !value)}
+          aria-pressed={hideExtras}
+          title={hideExtras ? "Pokaż atrakcje „po drodze i w pobliżu” (★)" : "Schowaj atrakcje „po drodze i w pobliżu” (★)"}
+          aria-label={hideExtras ? "Pokaż atrakcje po drodze i w pobliżu" : "Schowaj atrakcje po drodze i w pobliżu"}
+          style={{ top: selectedPin !== undefined ? 150 : 113 }}
+          className={`absolute right-[10px] flex size-[29px] items-center justify-center rounded shadow-[0_0_0_2px_rgba(0,0,0,0.1)] ${hideExtras ? "bg-zinc-200 text-zinc-500 hover:bg-zinc-300" : "bg-white text-amber-500 hover:bg-zinc-100"}`}>
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="size-4" fill={hideExtras ? "none" : "currentColor"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round">
+            <path d="M8 1.5l1.9 4 4.4.5-3.3 3 .9 4.3L8 11.1l-3.9 2.2.9-4.3-3.3-3 4.4-.5z" />
+            {hideExtras && <path d="M2 2l12 12" strokeLinecap="round" />}
           </svg>
         </button>
       )}
