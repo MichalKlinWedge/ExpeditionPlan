@@ -186,6 +186,9 @@ export function TaskAlerts() {
 
   return (
     <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.backgroundSelected }]}>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.heading}>
+        ZADANIA
+      </ThemedText>
       <View style={styles.counts}>
         <Count label="po terminie" value={overdue.length} danger active={group === 'overdue'} onPress={() => setGroup(group === 'overdue' ? null : 'overdue')} />
         <Count label="w tym tygodniu" value={soon.length} active={group === 'week'} onPress={() => setGroup(group === 'week' ? null : 'week')} />
@@ -412,6 +415,7 @@ function TaskSheet({
 
 const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: 16, gap: Spacing.two, borderWidth: 1 },
+  heading: { textAlign: 'center' },
   counts: { flexDirection: 'row', gap: Spacing.two },
   count: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.two, paddingHorizontal: Spacing.one, borderRadius: 16, borderWidth: 2 },
   countValue: { fontSize: 32, lineHeight: 36, fontWeight: '800' },
