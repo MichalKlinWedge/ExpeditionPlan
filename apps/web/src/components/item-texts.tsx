@@ -52,11 +52,15 @@ export function ItemTexts({ tripId, doc, ids, itemRef, editing }: { tripId: stri
           event.preventDefault();
           save();
         }}>
-        <label className="flex flex-col gap-1 text-xs text-zinc-500">
+        <label
+          className="flex flex-col gap-1 text-xs text-zinc-500"
+          title={"Jeden tekst o tym, czym jest punkt: co to jest, dlaczego warto, warunki.\nNa karcie punktu (web i telefon) jako akapit. AI dostaje jego skrót jako kontekst (przewodnik, Propozycje AI, „Po drodze i w pobliżu”), więc pisz tu o samym miejscu, nie wskazówki ani linki."}>
           Opis
           <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="Co to jest, dlaczego warto, warunki" className="field px-2 py-1 text-sm text-ink dark:text-zinc-100" />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-zinc-500">
+        <label
+          className="flex flex-col gap-1 text-xs text-zinc-500"
+          title={"Praktyczne wskazówki: jedna linia = jedna uwaga (jak dojść, co zabrać, na co uważać).\nNa karcie punktu jako lista z punktorami; w puli na telefonie widać 2 pierwsze. AI ich nie czyta. Puste linie i powtórzenia znikają przy zapisie."}>
           Uwagi (każda w osobnej linii)
           <textarea value={lines} onChange={(event) => setLines(event.target.value)} rows={Math.max(3, notes.length + 1)} placeholder="np. Na górze wieje, weźcie kurtki." className="field px-2 py-1 text-sm text-ink dark:text-zinc-100" />
         </label>
