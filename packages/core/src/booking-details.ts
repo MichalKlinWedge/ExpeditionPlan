@@ -52,6 +52,14 @@ export function ticketBookings(doc: Doc): Booking[] {
   return doc.bookings.filter((booking) => TICKET_KINDS.includes(booking.kind) && booking.status !== 'cancelled');
 }
 
+/** Bilety do wyboru przy przejeździe: `ticketBookings` i obecny bilet punktu, także anulowany (z dopiskiem statusu). */
+export function ticketChoices(doc: Doc, item: Pick<Item, 'leg'>): { ref: string; title: string; note?: string }[] {
+  const choices = ticketBookings(doc).map((booking) => ({ ref: booking.ref, title: booking.title }));
+  const current = doc.bookings.find((booking) => booking.ref === item.leg?.ticketBookingRef);
+  if (current === undefined || choices.some((each) => each.ref === current.ref)) return choices;
+  return [...choices, { ref: current.ref, title: current.title, note: BOOKING_STATUS[current.status] ?? current.status }];
+}
+
 /** Podpina bilet do przejazdu (punkt z `leg`); inny bilet tego przejazdu zastępuje. `null`, gdy nie ma czego zmienić. */
 export function linkTicket(doc: Doc, itemRef: string, bookingRef: string): { doc: Doc; changed: Item[] } | null {
   const item = doc.items.find((each) => each.ref === itemRef);

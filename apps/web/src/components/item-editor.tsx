@@ -39,7 +39,11 @@ const TIP = {
   stops: "Postoje i przerwy w trakcie punktu (np. kawa w trasie, odpoczynek na szlaku): dodają się do czasu trwania albo do czasu drogi i nie giną przy przeliczeniu trasy.",
   buffer: "Zapas po punkcie, zanim ruszy następny (np. zwrot auta, przebranie się po kąpieli).",
   priority: "Jak ważny jest punkt: „koniecznie” nigdy nie trafia do propozycji cięć, „opcjonalnie” idzie tam pierwsze.",
+  ticket: "Rezerwacja, która pokrywa ten przejazd (karta komunikacji, bilet): plan pokaże ją przy przejeździe, a „Rezerwacje” wśród jej przejazdów. Płatność przejazdu się nie zmienia.",
 };
+
+/** Bilet do wyboru w edytorze: rezerwacja i dopisek (np. „anulowana”). */
+export type TicketOption = { ref: string; title: string; note?: string };
 
 const input = "w-full field px-2 py-1 text-sm";
 const label = "flex flex-col gap-1 text-xs text-zinc-500";
@@ -64,6 +68,7 @@ type Draft = {
   priority: string;
   cutRank: string;
   vehicle: VehicleMode | undefined;
+  ticket: string;
 };
 
 function toDraft(item: Item, transitNow: boolean): Draft {
@@ -87,6 +92,7 @@ function toDraft(item: Item, transitNow: boolean): Draft {
     priority: item.priority ?? "",
     cutRank: item.cutRank?.toString() ?? "",
     vehicle: vehicleMode(item),
+    ticket: item.leg?.ticketBookingRef ?? "",
   };
 }
 
@@ -127,7 +133,9 @@ function toPatch(draft: Draft, item: Item, transitNow: boolean): Partial<Item> {
       time = undefined;
   }
   const cutRank = num(draft.cutRank);
-  const chosen = kindPatch(item, draft.kind, draft.vehicle);
+  const kind = kindPatch(item, draft.kind, draft.vehicle);
+  // Bilet należy do odcinka: bez przejazdu znika razem z nim.
+  const chosen = kind.leg === undefined ? kind : { ...kind, leg: withTicket(kind.leg, draft.ticket) };
   return {
     title: draft.title.trim() || item.title,
     ...chosen,
@@ -145,7 +153,26 @@ function toPatch(draft: Draft, item: Item, transitNow: boolean): Partial<Item> {
   };
 }
 
-export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, onCancel }: { item: Item; transitNow?: boolean; onSave: (patch: Partial<Item>) => void; onCancel: () => void }) {
+function withTicket(leg: NonNullable<Item["leg"]>, ticket: string): NonNullable<Item["leg"]> {
+  const rest = { ...leg };
+  delete rest.ticketBookingRef;
+  return ticket === "" ? rest : { ...rest, ticketBookingRef: ticket };
+}
+
+export function ItemEditor({
+  item,
+  transitNow = item.transit ?? false,
+  tickets = [],
+  onSave,
+  onCancel,
+}: {
+  item: Item;
+  transitNow?: boolean;
+  /** Rezerwacje, które mogą być biletem przejazdu (`ticketBookings`); pusta lista = bez pola „Bilet”. */
+  tickets?: TicketOption[];
+  onSave: (patch: Partial<Item>) => void;
+  onCancel: () => void;
+}) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(item, transitNow));
   const set = (patch: Partial<Draft>) => setDraft((current) => ({ ...current, ...patch }));
   const needsStart = ["exact", "approx", "range"].includes(draft.precision);
@@ -186,6 +213,20 @@ export function ItemEditor({ item, transitNow = item.transit ?? false, onSave, o
             {vehicleChoices(draft.kind)!.map(([key, name]) => (
               <option key={key} value={key}>
                 {name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {kindPatch(null, draft.kind).kind === "transport" && (tickets.length > 0 || draft.ticket !== "") && (
+        <label className={label} title={TIP.ticket}>
+          Bilet
+          <select className={input} value={draft.ticket} onChange={(event) => set({ ticket: event.target.value })}>
+            <option value="">— bez biletu —</option>
+            {tickets.map((ticket) => (
+              <option key={ticket.ref} value={ticket.ref}>
+                {ticket.title}
+                {ticket.note ? ` (${ticket.note})` : ""}
               </option>
             ))}
           </select>

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking, linkTicket, setBookingTickets, ticketBookings, ticketItems, unlinkTicket } from '../booking-details.ts';
+import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking, linkTicket, setBookingTickets, ticketBookings, ticketChoices, ticketItems, unlinkTicket } from '../booking-details.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
@@ -93,5 +93,13 @@ describe('bilet odcinka', () => {
     expect(TripDocument.safeParse(set.doc).success).toBe(true);
     expect(ticketBookings(barcelona).map((booking) => booking.ref)).toContain('t-casual');
     expect(ticketBookings(barcelona).some((booking) => booking.kind === 'lodging')).toBe(false);
+  });
+
+  it('wybór biletu w edytorze: obecny anulowany bilet zostaje na liście z dopiskiem', () => {
+    const item = ticketItems(barcelona, 't-casual')[0]!;
+    expect(ticketChoices(barcelona, item).find((each) => each.ref === 't-casual')).toEqual({ ref: 't-casual', title: expect.any(String) });
+    const cancelled: TripDocument = { ...barcelona, bookings: barcelona.bookings.map((booking) => (booking.ref === 't-casual' ? { ...booking, status: 'cancelled' } : booking)) };
+    expect(ticketChoices(cancelled, item).find((each) => each.ref === 't-casual')?.note).toBe('anulowane');
+    expect(ticketChoices(cancelled, { leg: undefined }).some((each) => each.ref === 't-casual')).toBe(false);
   });
 });

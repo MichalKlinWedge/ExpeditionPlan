@@ -1,6 +1,6 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, dayGaps, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, linkTicket, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, ticketBookings, transitLines, type TripDocument, unlinkTicket, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, dayGaps, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, linkTicket, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, ticketBookings, ticketChoices, transitLines, type TripDocument, unlinkTicket, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
@@ -1257,6 +1257,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     <ItemEditor
                       item={source}
                       transitNow={isTransit(doc, source)}
+                      tickets={ticketChoices(doc, source)}
                       onCancel={() => setEditing(null)}
                       onSave={(patch) => {
                         actions.update(item.ref, patch);

@@ -1,6 +1,6 @@
 "use client";
 
-import { documentProblem, isTransit, type PlanEdit, type TripDocument, updateItem } from "@expeditionplan/core";
+import { documentProblem, isTransit, type PlanEdit, ticketChoices, type TripDocument, updateItem } from "@expeditionplan/core";
 import { savePlanEdit } from "@expeditionplan/sync";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -47,6 +47,7 @@ export function ItemHeaderEditor({ tripId, doc, ids, itemRef }: { tripId: string
         key={version}
         item={item}
         transitNow={isTransit(doc, item)}
+        tickets={ticketChoices(doc, item)}
         onCancel={() => {
           setError(null);
           setVersion((each) => each + 1);
