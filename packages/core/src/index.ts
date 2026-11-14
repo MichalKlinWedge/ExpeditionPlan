@@ -54,6 +54,7 @@ export * from './item-icon.ts';
 export * from './item-kind.ts';
 export * from './meals.ts';
 export * from './guide.ts';
+export * from './note-photos.ts';
 export * from './gpx.ts';
 export * from './track-profile.ts';
 export * from './day-gaps.ts';

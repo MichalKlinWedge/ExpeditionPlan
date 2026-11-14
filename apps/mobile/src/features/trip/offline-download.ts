@@ -162,7 +162,7 @@ export async function downloadTripOffline(tripId: string, onProgress: (text: str
   }
 
   const guideUrls = guideImageUrls(trip);
-  if (guideUrls.length > 0) await saveGuideImages(guideUrls, (done, total) => onProgress(`Przewodnik: zdjęcia ${done}/${total}…`));
+  if (guideUrls.length > 0) await saveGuideImages(guideUrls, (done, total) => onProgress(`Przewodnik i uwagi: zdjęcia ${done}/${total}…`));
 
   const photoPaths = tripPhotoPaths(trip);
   if (photoPaths.length > 0) await savePhotos(photoPaths, (done, total) => onProgress(`Dziennik i paragony: zdjęcia ${done}/${total}…`));

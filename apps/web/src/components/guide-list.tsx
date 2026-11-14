@@ -10,6 +10,7 @@ import { addOwnGuideImage, dropGuideImage, findGuideImages, pickGuideImage, pick
 import { GuideArticle, GuideFigure } from "@/components/guide-article";
 import { GuideButtons, PlaceGuideButtons } from "@/components/guide-button";
 import { IconAction } from "@/components/icon-action";
+import { OWN_PHOTO_PX, ownPhotoJpeg } from "@/lib/own-photo";
 import { createClient } from "@/lib/supabase/client";
 
 /** Lista opisów na stronie „Opisy miejsc”: skrót, a po rozwinięciu cały opis, nowa wersja z AI, ręczna poprawka tekstu i zdjęć oraz usunięcie. */
@@ -229,25 +230,6 @@ function GuideImagesForm({ tripId, guide, onClose }: { tripId: string; guide: Tr
       )}
     </div>
   );
-}
-
-/** Najdłuższy bok wgrywanego zdjęcia: wystarcza na pełny ekran pokazu, a plik ma kilkaset kB. */
-const OWN_PHOTO_PX = 1920;
-
-/** Zdjęcie z dysku → JPEG najwyżej `OWN_PHOTO_PX` (bez EXIF, więc bez położenia z aparatu). */
-async function ownPhotoJpeg(file: File): Promise<Blob | string> {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, OWN_PHOTO_PX / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-    return blob ?? "Nie udało się przygotować zdjęcia.";
-  } catch {
-    return "Nie da się odczytać tego pliku jako zdjęcia (JPG, PNG albo WebP).";
-  }
 }
 
 /**

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { LinkedText } from "@/components/linked-text";
+import { NotePhotos } from "@/components/note-photos";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -90,6 +91,7 @@ export function ItemTexts({ tripId, doc, ids, itemRef, editing }: { tripId: stri
           • <LinkedText text={note} />
         </p>
       ))}
+      <NotePhotos tripId={tripId} itemRef={itemRef} photos={item.notePhotos ?? []} editing={editing} />
       {editing && (
         <button type="button" onClick={begin} className="btn-mini self-start">
           {item.description || notes.length > 0 ? "zmień opis i uwagi" : "+ opis i uwagi"}

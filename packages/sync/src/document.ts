@@ -172,7 +172,7 @@ export const SPECS: Record<Collection, Spec> = {
       ['variantRefs', 'variant_ids', 'many'], 'title', 'leg', ['parentRef', 'parent_id'], ['routeParentRefs', 'route_parent_ids', 'many'], 'description', ['placeRef', 'place_id'],
       'durationMin', 'durationMaxMin', 'stopsMin', 'bufferAfterMin', 'isFixed', 'priority', 'cutRank', 'price', 'payment',
       ['bookingRef', { bookings: 'booking_id', variantGroups: 'booking_group_id' }], 'weather', 'selfCooked', 'transit', 'activity',
-      ['participantRefs', 'participant_ids', 'many'], 'links', 'notes',
+      ['participantRefs', 'participant_ids', 'many'], 'links', 'notes', 'notePhotos',
     ],
     ...itemTime,
     ownOrder: true,

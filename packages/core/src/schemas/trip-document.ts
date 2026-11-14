@@ -349,6 +349,17 @@ export const ItemLeg = z.object({
 /** Klucz kolejności w dniu: porównywany jak tekst („0010” < „0020” < „0025”). */
 export const SortKey = z.string().regex(/^[0-9a-z]+$/, 'Klucz kolejności: cyfry i małe litery, np. „0010”.');
 
+/**
+ * Zdjęcie przy uwagach punktu (zrzut mapy terminalu, wejście, tablica): plik wgrany przez organizatora
+ * do publicznego bucketu `guide_photos` (`core/note-photos.ts`), adres publiczny, którego nie da się zgadnąć.
+ */
+export const NotePhoto = z.object({
+  url: HttpUrl,
+  caption: z.string().optional(),
+  author: z.string().optional(),
+});
+export type NotePhoto = z.infer<typeof NotePhoto>;
+
 export const DocItem = z.object({
   ref: Ref,
   /** Brak dnia = punkt w puli. */
@@ -411,6 +422,7 @@ export const DocItem = z.object({
   participantRefs: z.array(Ref).optional(),
   links: z.array(Link).default([]),
   notes: z.array(z.string()).default([]),
+  notePhotos: z.array(NotePhoto).optional(),
 });
 
 /**

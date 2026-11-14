@@ -19,6 +19,7 @@ import {
   type PlanItem as Item,
   speechParts,
   mealEateries,
+  notePhotoUrls,
   ratingStarsText,
 } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
@@ -43,6 +44,7 @@ import { TrackCard } from '@/features/plan/track-card';
 import { TrackProfileCard } from '@/features/plan/track-profile';
 import { guideImageUri } from '@/features/plan/guide-images';
 import { ItemMap } from '@/features/plan/item-map';
+import { NotePhotos } from '@/features/plan/note-photos';
 import { navigate, travelMode } from '@/lib/navigate';
 
 /**
@@ -98,12 +100,13 @@ export function guidedPlaces(trip: CachedTrip): Map<string, Item> {
 }
 
 /** Zdjęcia przewodników do pamięci podręcznej, póki jest sieć — na trasie będą offline. */
-/** Miniatury zdjęć wszystkich przewodników wyjazdu (do pamięci podręcznej — offline). */
+/** Miniatury zdjęć wszystkich przewodników wyjazdu i zdjęcia uwag punktów (do pamięci podręcznej — offline). */
 export function guideImageUrls(trip: CachedTrip): string[] {
-  return (trip.live.guides as unknown as GuideRow[]).flatMap((row) => {
+  const guides = (trip.live.guides as unknown as GuideRow[]).flatMap((row) => {
     const images = (row.content as { images?: { thumbUrl?: string }[] } | null)?.images ?? [];
     return images.flatMap((image) => (typeof image.thumbUrl === 'string' ? [image.thumbUrl] : []));
   });
+  return [...guides, ...notePhotoUrls(trip.state.doc)];
 }
 
 export function prefetchGuideImages(trip: CachedTrip) {
@@ -252,6 +255,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
             • {note}
           </ThemedText>
         ))}
+        <NotePhotos photos={item.notePhotos ?? []} />
         {item.links.map((link) => (
           <Pressable key={link.url} onPress={() => open(link.url)} hitSlop={6}>
             <ThemedText type="linkPrimary">{link.label || link.url}</ThemedText>

@@ -119,7 +119,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
   // Bez miejsca, przejazdu, rezerwacji i opisu karta z podstawowymi danymi byłaby pusta.
   // Zadania dotyczące punktu (bez porzuconych): link do „Zadań” i dodawanie od razu przy punkcie.
   const linkedTasks = tasksByItem(doc.tasks).get(item.ref) ?? [];
-  const hasInfo = linkedTasks.length > 0 || place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || editing || Boolean(item.description) || item.notes.length > 0 || notes.length > 0 || item.links.length > 0;
+  const hasInfo = linkedTasks.length > 0 || place !== undefined || leg !== null || route !== null || flight !== undefined || booking !== null || Boolean(item.activity?.distanceKm || item.activity?.ascentM) || editing || Boolean(item.description) || item.notes.length > 0 || (item.notePhotos?.length ?? 0) > 0 || notes.length > 0 || item.links.length > 0;
   const lodging = item.kind === "lodging" ? { lines: lodgingDetails(doc, item), contacts: bookingContacts(doc, lodgingBooking(doc, item)?.ref) } : null;
   const itemId = ids[item.ref];
   // Wpisy przy punkcie i do połączenia: z dnia punktu i bez dnia, jednym podpisaniem zdjęć.
