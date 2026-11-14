@@ -50,6 +50,11 @@ const timeLabel = (item: Item) => {
 /** Zwięzły plan dla modelu: dni z punktami (klucze, godziny, czas, miejsce, blokada) i pula. */
 export function tuneContext(doc: Doc, locked: ReadonlySet<string>) {
   const places = new Map(doc.places.map((place) => [place.ref, place.name]));
+  // Miejsca, z których korzysta plan (punkt, przejazd, rezerwacja) — do linków przy miejscu.
+  const used = new Set<string>([
+    ...doc.items.flatMap((item) => [item.placeRef, item.leg?.fromPlaceRef, item.leg?.toPlaceRef]),
+    ...doc.bookings.flatMap((booking) => [booking.startPlaceRef, booking.endPlaceRef]),
+  ].filter((ref): ref is string => ref !== undefined));
   const describe = (item: Item) => ({
     ref: item.ref,
     title: item.title,
@@ -57,6 +62,7 @@ export function tuneContext(doc: Doc, locked: ReadonlySet<string>) {
     time: timeLabel(item),
     durationMin: item.durationMin ?? item.leg?.durationMin,
     place: item.placeRef === undefined ? undefined : places.get(item.placeRef),
+    ...(item.placeRef !== undefined ? { placeRef: item.placeRef } : {}),
     ...(locked.has(item.ref) ? { locked: true } : {}),
     ...(item.variantRefs.length > 0 ? { variantOnly: true } : {}),
     ...(item.links.length > 0 ? { links: item.links.map((link) => link.url) } : {}),
@@ -73,6 +79,12 @@ export function tuneContext(doc: Doc, locked: ReadonlySet<string>) {
       return { ref: day.ref, date: day.date, title: day.title, items: dayItems(doc, day.ref).map(describe), ...(variants.length > 0 ? { variants } : {}) };
     }),
     pool: doc.items.filter((item) => item.dayRef === undefined).map(describe),
+    places: doc.places
+      .filter((place) => used.has(place.ref))
+      .map((place) => {
+        const links = [...(place.website ? [place.website] : []), ...place.links.map((link) => link.url)];
+        return { ref: place.ref, name: place.name, ...(links.length > 0 ? { links } : {}) };
+      }),
     bookings: doc.bookings
       .filter((booking) => booking.status !== 'idea')
       .map((booking) => ({ ref: booking.ref, title: booking.title, kind: booking.kind, status: booking.status, ...(booking.links.length > 0 ? { links: booking.links.map((link) => link.url) } : {}) })),
@@ -90,7 +102,7 @@ export function tunePrompt(doc: Doc, locked: ReadonlySet<string>, history: ChatT
     '4. `remove_item` domyślnie przenosi punkt do puli (`toPool: true`); `toPool: false` tylko, gdy człowiek wprost każe usunąć.',
     '5. `add_item`/`replace_item`: realny czas trwania, godzina tylko gdy ważna (otwarcie, zachód, rezerwacja); `place` po polsku i `searchName` z OpenStreetMap dla konkretnego miejsca.',
     '6. Plan B / alternatywa „jeśli pada”, „jeśli zamknięte”, „jeśli dzieci zmęczone” → `add_variant`: obecny plan dnia zostaje wariantem A (`mainLabel`), wariant B zastępuje `replacesItemRefs` punktami `items`. Nie usuwaj punktów, żeby zrobić alternatywę; nie dubluj wariantu, który dzień już ma (`variants`). Zastępuj tylko program (zwiedzanie, aktywności, posiłki) — nocleg i zameldowanie (`lodging`) zostają w obu wariantach. `mainLabel` nazywa obecny plan po treści („Słońce”, „Pełny program”), `label` — nowy („Deszcz: medyna i hammam”).',
-    '7. Linki tylko z adresem podanym przez człowieka w poleceniu albo obecnym w planie — nigdy nie wymyślaj adresów. Do punktu: `add_link`; do rezerwacji (`bookings`, potwierdzenie, oferta, strona przewoźnika): `add_booking_link`. Ten sam link w kilku miejscach (np. oba noclegi i ich rezerwacja) = osobna operacja dla każdego; pomiń to, co ma już ten adres (`links`).',
+    '7. Linki tylko z adresem podanym przez człowieka w poleceniu albo obecnym w planie — nigdy nie wymyślaj adresów. Do punktu: `add_link`; do rezerwacji (`bookings`, potwierdzenie, oferta, strona przewoźnika): `add_booking_link`; do miejsca (`places`, oficjalna strona, bilety wstępu — wspólne dla wszystkich punktów w tym miejscu): `add_place_link`. Ten sam link w kilku miejscach (np. oba noclegi i ich rezerwacja) = osobna operacja dla każdego; pomiń to, co ma już ten adres (`links`).',
     '8. Jeśli czegoś nie da się zrobić albo dzień się nie zmieści — powiedz to w `message` zamiast udawać. Piszesz po polsku.',
     '',
     'JSON Schema:',
@@ -388,6 +400,21 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
           const label = op.label?.trim() || (site !== 'Strona obiektu' ? site : linkLabel(op.url)) || 'Link';
           next = { ...current, bookings: current.bookings.map((each) => (each.ref === booking.ref ? { ...each, links: [...each.links, { label, url: op.url }] } : each)) };
           text = `Rezerwacja „${booking.title}”: link ${label}`;
+          break;
+        }
+        case 'add_place_link': {
+          const place = current.places.find((each) => each.ref === op.placeRef);
+          if (place === undefined) {
+            fail(`Nie ma miejsca „${op.placeRef}”.`);
+            continue;
+          }
+          if (place.website === op.url || place.links.some((link) => link.url === op.url)) {
+            fail(`Miejsce „${place.name}” ma już ten link.`);
+            continue;
+          }
+          const label = op.label?.trim() || linkLabel(op.url) || 'Link';
+          next = { ...current, places: current.places.map((each) => (each.ref === place.ref ? { ...each, links: [...each.links, { label, url: op.url }] } : each)) };
+          text = `Miejsce „${place.name}”: link ${label}`;
           break;
         }
         case 'set_field': {

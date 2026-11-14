@@ -1,6 +1,6 @@
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
-import { approachPlaceRefs, canRatePlace, type GuideRow, memoriesOf, memorySummary, type PlaceMemoryRow, placeGuide, placeList, placeVisitYears, similarPlaces, type TripDocument, type VisitedPlaceRow } from "@expeditionplan/core";
+import { approachPlaceRefs, canRatePlace, type GuideRow, memoriesOf, memorySummary, type PlaceMemoryRow, placeGuide, placeLinks, placeList, placeVisitYears, similarPlaces, type TripDocument, type VisitedPlaceRow } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -66,7 +66,7 @@ async function View({ params, searchParams }: { params: Promise<{ id: string }>;
     const where = { name: place.name, ...(at ? { at } : {}) };
     const memory = memorySummary(memoriesOf(where, memoryRows), userId);
     const visits = { canRate: canRatePlace(where, visited), years: placeVisitYears(where, visited) };
-    return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, approach: approach.has(place.ref), similar: similar[place.ref] ?? [], guide: placeGuide(doc.items, rows, ids, place.ref), memory, ...visits }];
+    return rowId === undefined ? [] : [{ id: rowId, ref: place.ref, name: place.name, address: place.address, links: placeLinks(place), lat: place.lat, lng: place.lng, provider: place.provider, searchName: place.searchName, usage, n, approach: approach.has(place.ref), similar: similar[place.ref] ?? [], guide: placeGuide(doc.items, rows, ids, place.ref), memory, ...visits }];
   });
 
   const back = backLink(id, doc, wroc);

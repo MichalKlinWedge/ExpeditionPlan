@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, planLegLine, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
+import { bookingContacts, dayLabel, flightLine, flightOf, footRouteUrl, formatMinutes, guideFor, guideLinkTargets, type GuideRow, guideRowFor, isFootRouteItem, isTransitItem, ITEM_KIND, itemIcon, itemKindLabel, placeLinks, planLegLine, legRouteLink, lodgingBooking, lodgingDetails, lodgingLink, transitDetailRows, transitRouteUrl, transitShapeRequest, type TripDocument } from "@expeditionplan/core";
 import { bookingDetails, itemBookingRef, localToday, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { carRouteFromItem, itemRouteRef, routeChoices, routeFacts, routeKindFor } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload, type TripState } from "@expeditionplan/sync";
@@ -33,6 +33,7 @@ import { TransitDetails, TransitEditor } from "@/components/transit-editor";
 import { Loading, Shell } from "@/components/shell";
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
+import { WebLinks } from "@/components/web-links";
 
 export const metadata: Metadata = { title: "Punkt planu — Expedition Planner" };
 
@@ -170,6 +171,7 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
                 </a>
               </>
             )}
+            <WebLinks links={placeLinks(place)} className="ml-1.5 align-middle" />
           </p>
         )}
         {(leg || route) && (

@@ -22,6 +22,7 @@ import {
   speechParts,
   mealEateries,
   notePhotoUrls,
+  placeLinks,
   ratingStarsText,
 } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
@@ -231,6 +232,11 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
                   {place.address}
                 </ThemedText>
               )}
+              {placeLinks(place).map((link) => (
+                <Pressable key={link.url} onPress={() => open(link.url)} hitSlop={6}>
+                  <ThemedText type="linkPrimary">🌐 {link.label}</ThemedText>
+                </Pressable>
+              ))}
             </View>
             {place.lat !== undefined && place.lng !== undefined && (
               <Button small variant="primary" label="Nawiguj" onPress={() => navigate({ lat: place.lat!, lng: place.lng!, name: place.name }, travelMode(item.leg))} />

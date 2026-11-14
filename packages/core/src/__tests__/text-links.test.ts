@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { linkLabel, splitLinks } from '../text-links.ts';
+import { linkLabel, placeLinks, splitLinks } from '../text-links.ts';
 
 describe('linki w tekście', () => {
   const airbnb = 'https://www.airbnb.pl/rooms/1755327897849431659?adults=4&check_in=2026-12-05&check_out=2026-12-07';
@@ -22,5 +22,15 @@ describe('linki w tekście', () => {
     expect(linkLabel('javascript:alert(1)')).toBeNull();
     expect(linkLabel('nie adres')).toBeNull();
     expect(splitLinks('javascript:alert(1)')).toEqual([{ text: 'javascript:alert(1)' }]);
+  });
+});
+
+describe('linki miejsca', () => {
+  it('strona miejsca pierwsza, dopisane bez powtórzeń', () => {
+    expect(placeLinks({ website: 'https://www.sagradafamilia.org/', links: [{ label: 'Bilety', url: 'https://tickets.example.com' }, { label: 'x', url: 'https://www.sagradafamilia.org/' }] })).toEqual([
+      { label: 'sagradafamilia.org', url: 'https://www.sagradafamilia.org/' },
+      { label: 'Bilety', url: 'https://tickets.example.com' },
+    ]);
+    expect(placeLinks({ links: [] })).toEqual([]);
   });
 });

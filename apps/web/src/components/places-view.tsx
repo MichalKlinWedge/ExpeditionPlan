@@ -11,6 +11,7 @@ import { PlaceGuideButtons } from "@/components/guide-button";
 import { type LatLng, PlanMap } from "@/components/plan-map";
 import { IconAction } from "@/components/icon-action";
 import { PlaceMemory, VERDICT_ICON } from "@/components/place-memory";
+import { WebLinks } from "@/components/web-links";
 
 /**
  * Wszystkie miejsca wyjazdu: lista i mapa z tymi samymi numerami. Organizator i edytor poprawiają nazwę,
@@ -28,6 +29,8 @@ export type PlaceRowData = {
   ref: string;
   name: string;
   address?: string | undefined;
+  /** Strona miejsca i dopisane linki (`placeLinks`). */
+  links: { label: string; url: string }[];
   lat?: number | undefined;
   lng?: number | undefined;
   provider: "osm" | "geoapify" | "user" | "unknown";
@@ -359,6 +362,7 @@ function PlaceRow({
         )}
       </div>
       {place.address && <p className="text-xs text-zinc-600 dark:text-zinc-400">{place.address}</p>}
+      {place.links.length > 0 && <WebLinks links={place.links} />}
       <p className="text-xs text-zinc-500">
         {located && (
           <>

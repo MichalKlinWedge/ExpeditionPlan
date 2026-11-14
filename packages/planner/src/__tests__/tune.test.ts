@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dayItems, itemsForDay, PlanPatch, TripDocument } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
-import { applyPatch, changedBookings, patchDiff, tuneContext } from '../tune.ts';
+import { applyPatch, changedBookings, changedPlaces, patchDiff, tuneContext } from '../tune.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
 let n = 0;
@@ -151,6 +151,17 @@ describe('etap 3 — linki', () => {
     expect(patchDiff(maroko, doc).changed).toEqual([]);
     expect(applyPatch(doc, PlanPatch.parse({ message: 'x', ops: [{ op: 'add_booking_link', bookingRef: 'lot-tam', url: airbnb }] }), new Set(), newId).results[0]!.ok).toBe(false);
     expect(tuneContext(maroko, new Set()).bookings.some((each) => each.ref === booking.ref)).toBe(true);
+  });
+
+  it('link do miejsca: wspólny dla punktów w tym miejscu, zapisany jak zmienione miejsce', () => {
+    const place = maroko.places.find((each) => maroko.items.some((item) => item.placeRef === each.ref))!;
+    const url = 'https://example.com/bilety-wstepu';
+    const { doc, results } = applyPatch(maroko, PlanPatch.parse({ message: 'x', ops: [{ op: 'add_place_link', placeRef: place.ref, url, label: 'Bilety' }] }), new Set(), newId);
+    expect(results[0]!.ok).toBe(true);
+    expect(doc.places.find((each) => each.ref === place.ref)!.links.at(-1)).toEqual({ label: 'Bilety', url });
+    expect(changedPlaces(maroko, doc).map((each) => each.ref)).toEqual([place.ref]);
+    expect(applyPatch(doc, PlanPatch.parse({ message: 'x', ops: [{ op: 'add_place_link', placeRef: place.ref, url }] }), new Set(), newId).results[0]!.ok).toBe(false);
+    expect(tuneContext(maroko, new Set()).places.some((each) => each.ref === place.ref)).toBe(true);
   });
 
   it('link spoza http(s) odrzuca już schemat', () => {

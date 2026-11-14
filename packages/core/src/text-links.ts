@@ -36,3 +36,10 @@ export function splitLinks(text: string): TextPart[] {
   pushText(text.slice(position));
   return parts;
 }
+
+/** Linki miejsca: oficjalna strona (`website`), potem dopisane (`links`), bez powtórzeń adresu. */
+export function placeLinks(place: { website?: string | undefined; links: readonly { label: string; url: string }[] }): { label: string; url: string }[] {
+  const out = place.website ? [{ label: linkLabel(place.website) ?? 'Strona', url: place.website }] : [];
+  for (const link of place.links) if (!out.some((each) => each.url === link.url)) out.push({ label: link.label, url: link.url });
+  return out;
+}
