@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, NOTABLE_EXTRAS, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, planLegLine, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraAsItem, extraPins, itemExtras, NOTABLE_EXTRAS, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, planLegLine, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -37,7 +37,7 @@ import { TripStatsCard } from '@/features/plan/trip-stats-card';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ContactList } from '@/features/plan/item-facts';
 import { PlacePin } from '@/features/plan/place-pin';
-import { guidedPlaces, ItemDetails, itemGuide, prefetchGuideImages } from '@/features/plan/item-details';
+import { guidedPlaces, ItemDetails, itemGuide, placeGuided, prefetchGuideImages } from '@/features/plan/item-details';
 import { DayPicker, ItemEditor, type ItemFields, type PlaceChange } from '@/features/plan/item-editor';
 import { PoolView } from '@/features/plan/pool-view';
 import { ChoicesSection } from '@/features/plan/choices-section';
@@ -615,6 +615,11 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                     setDetailPlay(play);
                     setDetail(item);
                   }}
+                  placeGuided={trip === null ? undefined : (placeRef) => placeGuided(trip, placeRef)}
+                  onExtraDetails={(item) => {
+                    setDetailPlay(false);
+                    setDetail(item);
+                  }}
                   guided={trip === null ? undefined : new Set(trip.state.doc.items.filter((each) => itemGuide(trip, each) !== null).map((each) => each.ref))}
                   top={
                     instantToZoned(now, day.tz).date === day.date
@@ -660,7 +665,8 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           online={signedIn}
           onSaveEatOut={signedIn && canAct ? saveEatOut : undefined}
           plan={{ scenario, variants }}
-          journal={{ userId: signedIn ? userId : null, canEditAll: signedIn && canAct, onChanged: signedIn ? afterLocalWrite : undefined }}
+          // Atrakcja „po drodze” (poza planem) nie ma zdjęć punktu.
+          journal={detail !== null && !trip.state.doc.items.some((each) => each.ref === detail.ref) ? undefined : { userId: signedIn ? userId : null, canEditAll: signedIn && canAct, onChanged: signedIn ? afterLocalWrite : undefined }}
           onContacts={() => {
             setDetail(null);
             showContacts();
@@ -728,6 +734,9 @@ type DayProps = {
   /** Miejsca z przewodnikiem do mapy dnia i „Poczytaj / Posłuchaj” z karty pinezki. */
   guides?: Map<string, PlanItem>;
   onGuide?: (item: PlanItem, play: boolean) => void;
+  /** Miejsce z opisem (atrakcja „po drodze” z miejscem) i otwarcie jej szczegółów. */
+  placeGuided?: (placeRef: string) => boolean;
+  onExtraDetails?: (item: PlanItem) => void;
 };
 
 /** Miejsce punktu (tylko ten punkt) albo końce przejazdu; nowe nazwy tworzą miejsca bez współrzędnych. */
@@ -777,7 +786,7 @@ function StopNumber({ n, pin, chosen, onPress }: { n: number; pin: MapPin | unde
   );
 }
 
-function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions, weather, weatherAt, onOpen, onShowMap, onBooking, guided, guides, onGuide }: DayProps) {
+function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions, weather, weatherAt, onOpen, onShowMap, onBooking, guided, guides, onGuide, placeGuided: hasGuide, onExtraDetails }: DayProps) {
   const theme = useTheme();
   const { doc, inputs } = state;
   const [editing, setEditing] = useState<PlanItem | 'new' | null>(null);
@@ -1116,6 +1125,11 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
             setExtraFocus(null);
           }}
           focus={extraFocus}
+          hasDetails={(extra) => hasGuide !== undefined && extraAsItem(doc, extra) !== null && hasGuide(extra.placeRef!)}
+          onDetails={(extra) => {
+            const item = extraAsItem(doc, extra);
+            if (item !== null) onExtraDetails?.(item);
+          }}
           onEntryLayout={(id, y) => {
             extraTops.current.set(id, y);
             if (pendingExtra.current === id) {

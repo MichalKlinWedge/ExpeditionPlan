@@ -1,4 +1,4 @@
-import { dayExtras, EXTRA_FIT, extraInterest, NOTABLE_EXTRAS, extraDistanceText, extraMinutes, extraTimeText, type TripDocument } from '@expeditionplan/core';
+import { type DayExtraItem, dayExtras, EXTRA_FIT, extraInterest, NOTABLE_EXTRAS, extraDistanceText, extraMinutes, extraTimeText, type TripDocument } from '@expeditionplan/core';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -19,6 +19,8 @@ export function DayExtrasCard({
   onToggle,
   focus = null,
   onEntryLayout,
+  hasDetails,
+  onDetails,
 }: {
   doc: TripDocument;
   dayRef: string;
@@ -29,6 +31,9 @@ export function DayExtrasCard({
   focus?: string | null;
   /** Położenie wpisu w karcie (do przewinięcia planu). */
   onEntryLayout?: (id: string, y: number) => void;
+  /** Atrakcja z miejscem i opisem („miejsce + opis” na webie): „Opis” otwiera szczegóły. */
+  hasDetails?: (extra: DayExtraItem) => boolean;
+  onDetails?: (extra: DayExtraItem) => void;
 }) {
   const theme = useTheme();
   const list = dayExtras(doc, dayRef, NOTABLE_EXTRAS).open;
@@ -72,6 +77,11 @@ export function DayExtrasCard({
                   </ThemedText>
                 ) : null}
                 <View style={styles.links}>
+                  {onDetails && hasDetails?.(extra) ? (
+                    <Pressable onPress={() => onDetails(extra)} hitSlop={6}>
+                      <ThemedText type="linkPrimary">Opis ›</ThemedText>
+                    </Pressable>
+                  ) : null}
                   {extra.wikipedia ? (
                     <Pressable onPress={() => void Linking.openURL(extra.wikipedia!)} hitSlop={6}>
                       <ThemedText type="linkPrimary">Wikipedia</ThemedText>

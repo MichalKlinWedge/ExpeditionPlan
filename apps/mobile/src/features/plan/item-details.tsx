@@ -94,6 +94,12 @@ export function itemGuide(trip: CachedTrip, item: Item) {
   return guideFor(trip.live.guides as unknown as GuideRow[], trip.ids[item.ref], placeRef === undefined ? undefined : trip.ids[placeRef]);
 }
 
+/** Miejsce ma przewodnik (opis miejsca, także bez punktu w planie — np. atrakcja „po drodze”). */
+export function placeGuided(trip: CachedTrip, placeRef: string): boolean {
+  const id = trip.ids[placeRef];
+  return id !== undefined && guideFor(trip.live.guides as unknown as GuideRow[], undefined, id) !== null;
+}
+
 /** Miejsca z przewodnikiem: `placeRef` → pierwszy punkt w tym miejscu (do kart pinezek na mapach). */
 export function guidedPlaces(trip: CachedTrip): Map<string, Item> {
   const places = new Map<string, Item>();

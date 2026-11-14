@@ -696,6 +696,30 @@ export function addExtraToPlan(doc: Doc, dayRef: string, id: string, ids: { item
   };
 }
 
+/**
+ * Atrakcja z miejscem wyjazdu („miejsce + opis”) jako punkt do podglądu szczegółów na telefonie: poza planem
+ * (bez dnia, klucz `extra:<id>`), z miejscem, opisem i linkami — szczegóły pokazują wtedy opis miejsca. `null` — bez miejsca.
+ */
+export function extraAsItem(doc: Doc, extra: DayExtraItem): Item | null {
+  if (extra.placeRef === undefined || !doc.places.some((place) => place.ref === extra.placeRef)) return null;
+  return {
+    ref: `extra:${extra.id}`,
+    kind: 'visit',
+    planStatus: 'candidate',
+    title: extra.title,
+    placeRef: extra.placeRef,
+    durationMin: extra.stayMin,
+    ...(extra.why ? { description: extra.why } : {}),
+    ...(extra.weather ? { weather: extra.weather } : {}),
+    priority: 'optional',
+    replacesRefs: [],
+    routeParentRefs: [],
+    variantRefs: [],
+    links: [...(extra.wikipedia ? [{ label: 'Wikipedia', url: extra.wikipedia }] : []), ...(extra.website ? [{ label: 'strona', url: extra.website }] : [])],
+    notes: [],
+  };
+}
+
 /** Pinezki otwartych dodatków dnia na mapę (bez numerów, `extra.ref` = `extra:<id>`). */
 export function extraPins(doc: Doc, dayRef: string, filter: ExtraFilter = NO_EXTRA_FILTER): MapPin[] {
   return dayExtras(doc, dayRef, filter).open.map((extra) => ({ placeRef: `extra:${extra.id}`, name: extra.title, lat: extra.lat, lng: extra.lng, stops: [], extra: { ref: `extra:${extra.id}`, title: extra.title } }));

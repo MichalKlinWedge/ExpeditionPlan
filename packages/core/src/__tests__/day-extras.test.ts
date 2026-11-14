@@ -16,6 +16,7 @@ import {
   extraCategory,
   extraFilterText,
   extraPins,
+  extraAsItem,
   extraToPlace,
   extraTimeText,
   isExtraFilterNarrow,
@@ -213,6 +214,11 @@ describe('po drodze i w pobliżu', () => {
     const added = addExtraToPlan(made.doc, 'd1', 'node/1', { itemId: '00000000-0000-7000-8000-000000000001', placeId: 'nieużyte' })!;
     expect(added.places).toBeUndefined();
     expect(added.created).toMatchObject({ placeRef: made.place.ref, title: 'Zamek Wysoki' });
+    // Szczegóły na telefonie: atrakcja z miejscem jako punkt poza planem; bez miejsca — nic.
+    const extra = made.day.extras!.items[0]!;
+    expect(extraAsItem(made.doc, extra)).toMatchObject({ ref: 'extra:node/1', placeRef: made.place.ref, title: 'Zamek Wysoki', description: 'Ruiny.' });
+    expect(extraAsItem(made.doc, extra)!.dayRef).toBeUndefined();
+    expect(extraAsItem(withDay, day.extras!.items[0]!)).toBeNull();
   });
 
   it('dojazd z domu własnym autem zostaje w korytarzu (długi: miasta po drodze), autobus — nie', () => {
