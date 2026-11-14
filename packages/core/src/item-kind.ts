@@ -120,5 +120,10 @@ export function kindPatch(item: Pick<Item, 'kind' | 'leg'> | null, choice: KindC
   if (ROAD.has(current.mode) && ROAD.has(mode)) return { kind: 'transport', leg: { ...current, mode } };
   // Linia i czas z OpenRouteService dotyczyły poprzedniego środka transportu: zostaje sam szacunek.
   const { routed: _routed, geometry: _geometry, ...rest } = current;
+  // Samolot leci po łuku: kilometry i czas drogi z ziemi (auto, pieszo, pociąg) do lotu nie pasują, i odwrotnie.
+  if ((mode === 'flight') !== (current.mode === 'flight')) {
+    const { distanceKm: _km, durationMin: _min, durationMaxMin: _max, ...ground } = rest;
+    return { kind: 'transport', leg: { ...ground, mode } };
+  }
   return { kind: 'transport', leg: { ...rest, mode } };
 }

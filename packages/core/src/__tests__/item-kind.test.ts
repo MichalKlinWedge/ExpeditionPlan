@@ -25,6 +25,13 @@ describe('rodzaj punktu: transport publiczny', () => {
     expect(kindPatch({ kind: 'transport', leg: car }, 'public', 'tram').leg).toEqual({ mode: 'tram', durationMin: 40, links: [] });
   });
 
+  it('zmiana na samolot i z samolotu kasuje kilometry i czas drogi', () => {
+    const car = { mode: 'car' as const, distanceKm: 2009, durationMin: 1200, line: 'A7', links: [] };
+    expect(kindPatch({ kind: 'transport', leg: car }, 'public', 'flight').leg).toEqual({ mode: 'flight', line: 'A7', links: [] });
+    const flight = { mode: 'flight' as const, distanceKm: 1700, durationMin: 150, links: [] };
+    expect(kindPatch({ kind: 'transport', leg: flight }, 'public', 'train').leg).toEqual({ mode: 'train', links: [] });
+  });
+
   it('powrót na „przejazd” daje auto, a taxi nie jest transportem publicznym', () => {
     expect(kindPatch({ kind: 'transport', leg: { mode: 'train', links: [] } }, 'transport').leg?.mode).toBe('car');
     expect(publicMode({ kind: 'transport', leg: { mode: 'taxi', links: [] } })).toBeUndefined();

@@ -79,7 +79,8 @@ export function dayStatistics(doc: Doc, schedule: DaySchedule): DayStatistics | 
     const place = ref === undefined ? undefined : places.get(ref);
     return place?.lat !== undefined && place.lng !== undefined ? [place.lng, place.lat] : undefined;
   };
-  // Lot bez dystansu w planie: odległość po łuku między lotniskami (tak liczy się dystans lotu).
+  // Lot: odległość po łuku między lotniskami (tak liczy się dystans lotu); zapisane km tylko bez współrzędnych,
+  // bo w planie bywają kilometry drogi autem z czasu, gdy przejazd nie był jeszcze lotem.
   const flightKm = (item: Item): number | undefined => {
     if (item.leg?.mode !== 'flight') return undefined;
     const from = coords(item.leg.fromPlaceRef ?? item.placeRef);
@@ -119,7 +120,7 @@ export function dayStatistics(doc: Doc, schedule: DaySchedule): DayStatistics | 
       target.minutes += Math.max(0, row.durationMin - stopsMin);
       target.stopsMin += stopsMin;
       const track = climb(target, item);
-      const km = item.leg.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm ?? flightKm(item);
+      const km = flightKm(item) ?? item.leg.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm;
       if (km === undefined) target.noKm += 1;
       else target.km += km;
       continue;

@@ -63,5 +63,8 @@ describe('statystyki dnia', () => {
     expect(km.noKm).toBe(0);
     expect(km.km).toBeGreaterThan(1500);
     expect(km.km).toBeLessThan(1800);
+    // Kilometry drogi zapisane w locie nie zawyżają statystyk, gdy lotniska mają współrzędne.
+    const stored: TripDocument = { ...barcelona, items: barcelona.items.map((item) => (item.ref === flight.ref ? { ...item, leg: { ...item.leg!, distanceKm: 2009 } } : item)) };
+    expect(dayStatistics(stored, scheduleDay(stored, flight.dayRef!))!.moves.find((move) => move.kind === 'flight')!.km).toBe(km.km);
   });
 });
