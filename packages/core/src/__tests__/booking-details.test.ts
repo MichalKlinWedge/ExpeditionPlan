@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking, ticketItems } from '../booking-details.ts';
+import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking, ticketItems, unlinkTicket } from '../booking-details.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
@@ -64,5 +64,17 @@ describe('bilet odcinka', () => {
     expect(details.tickets.length).toBeGreaterThan(1);
     expect(details.tickets.map((item) => item.ref)).toEqual(ticketItems(barcelona, 't-casual').map((item) => item.ref));
     expect(ticketItems(barcelona, 't-casual').every((item) => itemBookingRef(barcelona, item) === 't-casual')).toBe(true);
+  });
+
+  it('odpięcie biletu od jednego przejazdu: reszta odcinka i rezerwacja zostają', () => {
+    const [first, ...rest] = ticketItems(barcelona, 't-casual');
+    expect(unlinkTicket(barcelona, first!.ref, 'inny-bilet')).toBeNull();
+    const edit = unlinkTicket(barcelona, first!.ref, 't-casual')!;
+    expect(edit.changed[0]!.leg).toEqual(expect.objectContaining({ mode: first!.leg!.mode }));
+    expect(edit.changed[0]!.leg?.ticketBookingRef).toBeUndefined();
+    expect(ticketItems(edit.doc, 't-casual').map((item) => item.ref)).toEqual(rest.map((item) => item.ref));
+    expect(edit.doc.bookings).toBe(barcelona.bookings);
+    expect(unlinkTicket(edit.doc, first!.ref)).toBeNull();
+    expect(TripDocument.safeParse(edit.doc).success).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 "use server";
 
-import { balanceTask, BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, type FxRate, mergeRates, parseMoney, parseWeightKg, PriceBasis, rebaseRates, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument } from "@expeditionplan/core";
+import { balanceTask, BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, type FxRate, mergeRates, parseMoney, parseWeightKg, PriceBasis, rebaseRates, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument, unlinkTicket } from "@expeditionplan/core";
 import { carrierRow, dbErrorMessage, type ElementWrite, expenseSplitRows, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -435,6 +435,15 @@ export async function setBookingItems(tripId: string, bookingRef: string, itemRe
       return next;
     });
     return { doc: { ...doc, items }, writes, ok: writes.length === 0 ? "Bez zmian." : `Zapisano (zmienione punkty: ${writes.length}).` };
+  });
+}
+
+/** Odpina bilet `bookingRef` od przejazdu `itemRef` (rezerwacja zostaje). */
+export async function unlinkBookingTicket(tripId: string, bookingRef: string, itemRef: string): Promise<FormState> {
+  return commit(tripId, (doc) => {
+    const edit = unlinkTicket(doc, itemRef, bookingRef);
+    if (edit === null) return "Ten przejazd nie ma już tego biletu — odśwież stronę.";
+    return { doc: edit.doc, writes: edit.changed.map((item) => ({ collection: "items" as const, element: item, op: "update" as const })), ok: "Odpięto bilet od przejazdu." };
   });
 }
 

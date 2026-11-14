@@ -31,6 +31,19 @@ export function ticketItems(doc: Doc, bookingRef: string): Item[] {
   return doc.items.filter((item) => item.leg?.ticketBookingRef === bookingRef && item.bookingRef !== bookingRef);
 }
 
+/**
+ * Odpina bilet od przejazdu (`leg.ticketBookingRef`); rezerwacja i reszta odcinka zostają. `null`, gdy punkt
+ * nie ma biletu (albo ma inny niż `bookingRef`, jeśli podany).
+ */
+export function unlinkTicket(doc: Doc, itemRef: string, bookingRef?: string): { doc: Doc; changed: Item[] } | null {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  const ticket = item?.leg?.ticketBookingRef;
+  if (item === undefined || item.leg === undefined || ticket === undefined || (bookingRef !== undefined && ticket !== bookingRef)) return null;
+  const { ticketBookingRef: _ticket, ...leg } = item.leg;
+  const next: Item = { ...item, leg };
+  return { doc: { ...doc, items: doc.items.map((each) => (each.ref === itemRef ? next : each)) }, changed: [next] };
+}
+
 /** „26 gru 06:10 → 26 gru 09:55”. */
 export function bookingWhen(booking: Booking): string {
   const part = (time: Booking['start']) => (time ? `${shortDate(time.date)}${time.time ? ` ${time.precision === 'approx' ? 'ok. ' : ''}${time.time}` : ''}` : '');

@@ -10,7 +10,7 @@ import { BookingImport } from "@/components/booking-import";
 import { CandidatesReview, type ComparisonGroup, ComparisonTable } from "@/components/candidates";
 import { LinkedText } from "@/components/linked-text";
 import { PlaceLink } from "@/components/place-pin";
-import { BookingEditor, BookingRow, BookingStatusSelect, BudgetEditor, BudgetLines, BudgetSuggestions, type CarChoice, type Choices, ExpenseSplitEditor, ExpenseVehicleEditor, FxEditor, HashFocus, RemoveCancelledBooking, TripCurrency } from "@/components/logistics-editors";
+import { BookingEditor, BookingRow, BookingStatusSelect, BudgetEditor, BudgetLines, BudgetSuggestions, type CarChoice, type Choices, ExpenseSplitEditor, ExpenseVehicleEditor, FxEditor, HashFocus, RemoveCancelledBooking, TripCurrency, UnlinkTicket } from "@/components/logistics-editors";
 import { Settlement } from "@/components/settlement";
 import { EditToggle } from "@/components/edit-toggle";
 import { editMode } from "@/lib/edit-mode";
@@ -346,12 +346,15 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                             </span>
                           )}
                           {ticketed.get(booking.ref)!.length > 0 && (
-                            <span className="mt-0.5 flex flex-wrap items-center gap-1" title="Rezerwacja jest biletem tych przejazdów (bez płatności „w cenie”); usunięcie anulowanej rezerwacji ją od nich odepnie">
+                            <span className="mt-0.5 flex flex-wrap items-center gap-1" title="Rezerwacja jest biletem tych przejazdów (bez płatności „w cenie”); w trybie edycji ✕ odpina bilet od przejazdu">
                               bilet na przejazdy:
                               {ticketed.get(booking.ref)!.map((item) => (
-                                <Link key={item.ref} href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="btn-mini">
-                                  {item.title}
-                                </Link>
+                                <span key={item.ref} className="inline-flex items-center gap-0.5">
+                                  <Link href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="btn-mini">
+                                    {item.title}
+                                  </Link>
+                                  {canEdit && <UnlinkTicket tripId={id} bookingRef={booking.ref} itemRef={item.ref} title={item.title} />}
+                                </span>
                               ))}
                             </span>
                           )}

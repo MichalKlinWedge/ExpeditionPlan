@@ -29,6 +29,7 @@ import {
   setExpenseSplits,
   setTaskStatus,
   setTripCurrency,
+  unlinkBookingTicket,
 } from "@/app/logistics-actions";
 import { setExpenseVehicle } from "@/app/vehicle-actions";
 
@@ -726,6 +727,17 @@ export function RemoveCancelledBooking({ tripId, bookingRef, title, note }: { tr
       {action.pending && <span className="text-xs text-zinc-500">usuwam…</span>}
       {action.state.error && <span className="text-xs msg-error">{action.state.error}</span>}
     </span>
+  );
+}
+
+/** Odpięcie biletu od jednego przejazdu (rezerwacja zostaje). */
+export function UnlinkTicket({ tripId, bookingRef, itemRef, title }: { tripId: string; bookingRef: string; itemRef: string; title: string }) {
+  const action = useAction();
+  return (
+    <>
+      <IconAction kind="close" tip={`Odepnij bilet od „${title}”`} disabled={action.pending} onClick={() => action.run(() => unlinkBookingTicket(tripId, bookingRef, itemRef), `Odpiąć bilet od przejazdu „${title}”? Rezerwacja zostaje.`)} />
+      {action.state.error && <span className="text-xs msg-error">{action.state.error}</span>}
+    </>
   );
 }
 
