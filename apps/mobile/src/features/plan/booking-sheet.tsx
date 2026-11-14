@@ -67,27 +67,30 @@ export function BookingSheet({ trip, bookingRef, onClose, tripId, online = false
                       </ThemedText>
                     ))}
                   </ThemedView>
-                  {details.items.length > 0 && (
-                    <View style={styles.block}>
-                      <ThemedText type="smallBold">W pakiecie</ThemedText>
-                      {details.items.map((item) =>
-                        onOpenItem ? (
-                          <Pressable
-                            key={item.ref}
-                            hitSlop={6}
-                            onPress={() => {
-                              onClose();
-                              onOpenItem(item.ref);
-                            }}>
-                            <ThemedText type="linkPrimary">· {item.title} ›</ThemedText>
-                          </Pressable>
-                        ) : (
-                          <ThemedText key={item.ref} type="small">
-                            · {item.title}
-                          </ThemedText>
-                        ),
-                      )}
-                    </View>
+                  {([['W pakiecie', details.items], ['Bilet na przejazdy', details.tickets]] as const).map(
+                    ([heading, items]) =>
+                      items.length > 0 && (
+                        <View key={heading} style={styles.block}>
+                          <ThemedText type="smallBold">{heading}</ThemedText>
+                          {items.map((item) =>
+                            onOpenItem ? (
+                              <Pressable
+                                key={item.ref}
+                                hitSlop={6}
+                                onPress={() => {
+                                  onClose();
+                                  onOpenItem(item.ref);
+                                }}>
+                                <ThemedText type="linkPrimary">· {item.title} ›</ThemedText>
+                              </Pressable>
+                            ) : (
+                              <ThemedText key={item.ref} type="small">
+                                · {item.title}
+                              </ThemedText>
+                            ),
+                          )}
+                        </View>
+                      ),
                   )}
                   {details.booking.notes.length > 0 && (
                     <View style={styles.block}>

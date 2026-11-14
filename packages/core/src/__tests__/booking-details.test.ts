@@ -3,10 +3,11 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking } from '../booking-details.ts';
+import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking, ticketItems } from '../booking-details.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
+const barcelona = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/barcelona/plan.json', import.meta.url)), 'utf8')));
 
 describe('szczegóły rezerwacji', () => {
   it('pakiet: termin, zapłacona kwota, warunki, punkty w pakiecie i kontakt', () => {
@@ -53,5 +54,15 @@ describe('rezerwacja punktu', () => {
     const lodging = maroko.items.find((each) => each.ref === 'd2-radykalny-oboz')!;
     const { bookingRef: __, ...unbooked } = lodging;
     expect(itemBookingRef(maroko, unbooked as typeof lodging)).toBe('nocleg-agafay');
+  });
+});
+
+describe('bilet odcinka', () => {
+  it('karta komunikacji nie ma pakietu, ale jest biletem kilku przejazdów', () => {
+    const details = bookingDetails(barcelona, 't-casual', '2026-11-07')!;
+    expect(details.items).toEqual([]);
+    expect(details.tickets.length).toBeGreaterThan(1);
+    expect(details.tickets.map((item) => item.ref)).toEqual(ticketItems(barcelona, 't-casual').map((item) => item.ref));
+    expect(ticketItems(barcelona, 't-casual').every((item) => itemBookingRef(barcelona, item) === 't-casual')).toBe(true);
   });
 });

@@ -26,6 +26,11 @@ export function itemsOfBooking(doc: Doc, bookingRef: string): Item[] {
   return doc.items.filter((item) => itemBookingRef(doc, item) === bookingRef);
 }
 
+/** Punkty, dla których rezerwacja jest biletem odcinka (bilet komunikacji na kilka przejazdów), a nie pakietem. */
+export function ticketItems(doc: Doc, bookingRef: string): Item[] {
+  return doc.items.filter((item) => item.leg?.ticketBookingRef === bookingRef && item.bookingRef !== bookingRef);
+}
+
 /** „26 gru 06:10 → 26 gru 09:55”. */
 export function bookingWhen(booking: Booking): string {
   const part = (time: Booking['start']) => (time ? `${shortDate(time.date)}${time.time ? ` ${time.precision === 'approx' ? 'ok. ' : ''}${time.time}` : ''}` : '');
@@ -77,6 +82,8 @@ export type BookingDetails = {
   place?: string;
   /** Punkty planu w pakiecie tej rezerwacji. */
   items: { ref: string; title: string }[];
+  /** Przejazdy, dla których ta rezerwacja jest biletem odcinka (`leg.ticketBookingRef`), poza pakietem. */
+  tickets: { ref: string; title: string }[];
   contacts: Contact[];
 };
 
@@ -94,6 +101,7 @@ export function bookingDetails(doc: Doc, ref: string, today: string): BookingDet
     facts: bookingFacts(booking, today),
     ...(place !== undefined ? { place } : {}),
     items: doc.items.filter((item) => item.bookingRef === ref).map((item) => ({ ref: item.ref, title: item.title })),
+    tickets: ticketItems(doc, ref).map((item) => ({ ref: item.ref, title: item.title })),
     contacts: bookingContacts(doc, ref),
   };
 }

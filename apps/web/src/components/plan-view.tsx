@@ -1175,8 +1175,14 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                   </p>
                 )}
                 {booking && flight !== booking && (
-                  <p className="ml-31 text-xs text-zinc-500">
-                    Rezerwacja: {booking.title}
+                  <p className={`ml-31 text-xs ${booking.status === "cancelled" ? "text-amber-600" : "text-zinc-500"}`}>
+                    {booking.status === "cancelled" ? (
+                      <span title="Ta rezerwacja jest anulowana: usuń ją w „Rezerwacjach” (odepnie się od punktów) albo zmień jej status">
+                        Rezerwacja anulowana: <span className="line-through">{booking.title}</span>
+                      </span>
+                    ) : (
+                      <>Rezerwacja: {booking.title}</>
+                    )}
                     {booking.confirmationCode ? ` · kod ${booking.confirmationCode}` : ""}
                     {openBooking && <BookingButton onClick={openBooking} />}
                   </p>

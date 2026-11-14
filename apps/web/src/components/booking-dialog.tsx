@@ -78,19 +78,27 @@ export function BookingDialog({ tripId, details, documents, onClose }: Props) {
           ))}
         </div>
 
-        {details.items.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <h3 className="font-semibold">W pakiecie</h3>
-            <ul className="flex flex-wrap gap-1">
-              {details.items.map((item) => (
-                <li key={item.ref}>
-                  <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" onClick={leave} className="btn-mini">
-                    {item.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {(
+          [
+            ["W pakiecie", details.items],
+            ["Bilet na przejazdy", details.tickets],
+          ] as const
+        ).map(
+          ([heading, items]) =>
+            items.length > 0 && (
+              <div key={heading} className="flex flex-col gap-1">
+                <h3 className="font-semibold">{heading}</h3>
+                <ul className="flex flex-wrap gap-1">
+                  {items.map((item) => (
+                    <li key={item.ref}>
+                      <Link href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" onClick={leave} className="btn-mini">
+                        {item.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ),
         )}
 
         {booking.notes.length > 0 && (

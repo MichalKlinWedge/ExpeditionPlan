@@ -181,7 +181,15 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
         {flight && <p>✈ {flightLine(flight)}</p>}
         {booking && (
           <p>
-            Rezerwacja: <strong>{booking.booking.title}</strong>
+            {booking.booking.status === "cancelled" ? (
+              <span className="text-amber-600" title="Ta rezerwacja jest anulowana: usuń ją w „Rezerwacjach” (odepnie się od punktów) albo zmień jej status">
+                Rezerwacja anulowana: <strong className="line-through">{booking.booking.title}</strong>
+              </span>
+            ) : (
+              <>
+                Rezerwacja: <strong>{booking.booking.title}</strong>
+              </>
+            )}
             {booking.booking.confirmationCode ? <span className="font-mono"> · {booking.booking.confirmationCode}</span> : null}{" "}
             <BookingButton tripId={id} details={booking} documents={bookingDocuments} label={bookingDocuments.length > 0 ? `szczegóły i dokumenty (${bookingDocuments.length})` : "szczegóły"} />
           </p>

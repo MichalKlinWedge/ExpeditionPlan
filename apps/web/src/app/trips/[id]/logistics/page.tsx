@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { balanceText, BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, lineBalance, vehicleTravelers, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { balanceText, BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, ticketItems, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, lineBalance, vehicleTravelers, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -121,6 +121,8 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
   const candidates = doc.bookings.length - bookings.length;
   const packaged = new Map<string, Doc["items"]>();
   for (const item of doc.items) if (item.bookingRef) packaged.set(item.bookingRef, [...(packaged.get(item.bookingRef) ?? []), item]);
+  // Bilet odcinka (np. karta komunikacji na kilka przejazdów) to nie pakiet, ale też wiąże rezerwację z planem.
+  const ticketed = new Map(doc.bookings.map((booking) => [booking.ref, ticketItems(doc, booking.ref)] as const));
   const open = doc.tasks.filter((task) => task.status === "open");
   // Etap 4: szkic kandydatów z AI i grupy porównania z planu (kandydaci rezerwacji).
   const draftOutput = draftRow.data?.output as { info?: unknown; checks?: string[] } | null | undefined;
@@ -312,7 +314,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                     actionsColumn={mayEdit}
                     removal={mayEdit && booking.status === "cancelled" ? <RemoveCancelledBooking tripId={id} bookingRef={booking.ref} title={booking.title} note={bookingRemovalNote(removeBooking(doc, booking.ref)!.summary)} /> : null}
                     details={
-                      line || facts.length > 0 || place || packaged.get(booking.ref) || contacts.length > 0 ? (
+                      line || facts.length > 0 || place || packaged.get(booking.ref) || ticketed.get(booking.ref)!.length > 0 || contacts.length > 0 ? (
                         <>
                           {line ? (
                             <span className="block text-zinc-600 dark:text-zinc-400">
@@ -337,6 +339,16 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                             <span className="mt-0.5 flex flex-wrap items-center gap-1">
                               w pakiecie:
                               {packaged.get(booking.ref)!.map((item) => (
+                                <Link key={item.ref} href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="btn-mini">
+                                  {item.title}
+                                </Link>
+                              ))}
+                            </span>
+                          )}
+                          {ticketed.get(booking.ref)!.length > 0 && (
+                            <span className="mt-0.5 flex flex-wrap items-center gap-1" title="Rezerwacja jest biletem tych przejazdów (bez płatności „w cenie”); usunięcie anulowanej rezerwacji ją od nich odepnie">
+                              bilet na przejazdy:
+                              {ticketed.get(booking.ref)!.map((item) => (
                                 <Link key={item.ref} href={`/trips/${id}/item/${encodeURIComponent(item.ref)}`} title="Karta punktu" className="btn-mini">
                                   {item.title}
                                 </Link>
