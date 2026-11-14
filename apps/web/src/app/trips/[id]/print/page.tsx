@@ -10,6 +10,7 @@ import { itemRouteLinks, RouteSiteLink } from "@/components/route-site-link";
 import { Loading } from "@/components/shell";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
+import { tripStatsView } from "@/lib/trip-stats";
 
 export const metadata: Metadata = { title: "Wydruk planu — Expedition Planner" };
 
@@ -53,6 +54,7 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
   const options = { scenario: "optimistic" as const, activeVariants: inputs.activeVariants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done, pulled: inputs.pulled };
   const contacts = doc.contacts.filter((contact) => contact.phone || contact.email);
   const bookings = doc.bookings.filter((booking) => !["idea", "candidate", "cancelled"].includes(booking.status));
+  const stats = tripStatsView(doc, options);
 
   return (
     <article className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8 text-sm print:max-w-none print:px-0 print:py-0">
@@ -69,6 +71,23 @@ async function PrintDoc({ params }: { params: Promise<{ id: string }> }) {
           {tripDates(doc.trip.startDate, doc.trip.endDate)} · {doc.days.length} dni · {doc.travelers.length} os.
         </p>
       </header>
+
+      {stats !== null && (
+        <section className="break-inside-avoid">
+          <h2 className="mb-1 text-base font-bold uppercase tracking-wide">Statystyki wyjazdu</h2>
+          <table className="w-full border-collapse">
+            <tbody>
+              {stats.rows.map(([label, value]) => (
+                <tr key={label} className="border-b border-zinc-200 align-top">
+                  <td className="py-0.5 pr-3 whitespace-nowrap text-zinc-500">{label}</td>
+                  <td className="py-0.5">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-1 text-xs text-zinc-500">{stats.note}</p>
+        </section>
+      )}
 
       {contacts.length > 0 && (
         <section className="break-inside-avoid">
