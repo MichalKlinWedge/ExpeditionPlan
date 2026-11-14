@@ -24,7 +24,9 @@ export type ExtraAlong = DayExtraItem['along'];
 export type ExtraFit = DayExtraItem['fit'];
 
 /** Jak daleko szukać: od miejsca punktu (pieszo), od przejścia i od drogi przejazdu (m). */
-export const EXTRA_RADIUS_M: Record<ExtraAlong, number> = { at: 700, foot: 350, car: 2000 };
+export const EXTRA_RADIUS_M: Record<ExtraAlong, number> = { at: 1000, foot: 500, car: 2500 };
+/** W dzień z jazdą autem: od miejsca punktu dalej niż spacer, do tylu metrów — krótki podjazd (zamek za miastem). */
+export const SPOT_DRIVE_M = 5000;
 
 const FOOT: ReadonlySet<string> = new Set(['walk', 'hike', 'bike']);
 const DRIVE: ReadonlySet<string> = new Set(['car', 'rental_car', 'taxi', 'hired_driver']);
@@ -38,8 +40,8 @@ const PARKING_MIN = 5;
 /** Tuż przy drodze: zatrzymanie na poboczu. */
 const ROADSIDE_M = 150;
 const ROADSIDE_MIN = 2;
-/** Kandydatów dla AI (wybiera do 20): więcej to dłuższa odpowiedź bez lepszego wyboru. */
-export const EXTRA_CANDIDATES_MAX = 60;
+/** Kandydatów dla AI (wybiera do 30); bliscy i ciekawi, których pominie, wracają z `closeMisses`. */
+export const EXTRA_CANDIDATES_MAX = 100;
 
 type Path = { mode: 'foot' | 'car'; coordinates: LngLat[]; ref?: string };
 type Spot = { lat: number; lng: number; ref?: string };
@@ -117,7 +119,7 @@ function capPoints(line: LngLat[], toleranceM: number): LngLat[] {
  * Linie do zapytania Overpass (`around`): miejsca i przejścia pieszo w promieniu „przy miejscu”, przejazdy — „przy drodze”;
  * długie przejazdy (`long`, od `LONG_DRIVE_M`) osobno: tańszy pas przy drodze i szukanie miast po drodze.
  */
-export function corridorQueryLines(corridor: DayCorridor): { near: LngLat[][]; car: LngLat[][]; long: LngLat[][] } {
+export function corridorQueryLines(corridor: DayCorridor): { near: LngLat[][]; car: LngLat[][]; long: LngLat[][]; spots: LngLat[][] } {
   // Miejsca łańcuchem po kolei, póki są blisko siebie (dalej to osobne linie — inaczej pas biegłby na przełaj).
   const near: LngLat[][] = [];
   let chain: LngLat[] = [];
@@ -149,6 +151,8 @@ export function corridorQueryLines(corridor: DayCorridor): { near: LngLat[][]; c
     near: [...near, ...joined('foot').map((line) => capPoints(line, 30))].map(pad),
     car: car.filter((line) => !long(line)).map((line) => pad(capPoints(line, 150))),
     long: car.filter(long).map((line) => capPoints(line, 150)),
+    // Same miejsca punktów — przy jeździe autem szersze koło (`SPOT_DRIVE_M`).
+    spots: near.map(pad),
   };
 }
 
@@ -177,10 +181,14 @@ export function corridorTowns(corridor: DayCorridor, features: readonly OsmFeatu
 
 /** Rodzaje atrakcji z tagów OSM: nazwa po polsku i waga (ciekawsze wyżej). */
 const TYPES: Record<string, Record<string, [string, number]>> = {
-  tourism: { attraction: ['atrakcja', 1], viewpoint: ['punkt widokowy', 2], museum: ['muzeum', 2], gallery: ['galeria', 1], zoo: ['zoo', 1], aquarium: ['akwarium', 1], theme_park: ['park rozrywki', 1] },
+  tourism: {
+    attraction: ['atrakcja', 1], viewpoint: ['punkt widokowy', 2], museum: ['muzeum', 2], gallery: ['galeria', 1], zoo: ['zoo', 1], aquarium: ['akwarium', 1], theme_park: ['park rozrywki', 1],
+    artwork: ['dzieło sztuki', 0],
+  },
   historic: {
     castle: ['zamek', 2], fort: ['fort', 2], ruins: ['ruiny', 2], archaeological_site: ['stanowisko archeologiczne', 2], city_gate: ['brama miejska', 1], palace: ['pałac', 2],
     monastery: ['klasztor', 2], manor: ['dwór', 1], tower: ['wieża', 1], monument: ['pomnik', 0], memorial: ['miejsce pamięci', 0], church: ['kościół', 1], building: ['zabytkowy budynek', 0],
+    aqueduct: ['akwedukt', 1], mine: ['dawna kopalnia', 1], bridge: ['zabytkowy most', 1],
   },
   natural: {
     waterfall: ['wodospad', 2], cave_entrance: ['jaskinia', 2], arch: ['łuk skalny', 2], gorge: ['wąwóz', 2], hot_spring: ['gorące źródło', 2], geyser: ['gejzer', 2], volcano: ['wulkan', 2],
@@ -232,7 +240,7 @@ const effort = (option: { along: ExtraAlong; detourMin: number }) => option.deto
  * Atrakcja poza pasem korytarza (w mieście po drodze albo w podanym mieście): objazd od najbliższego miejsca, przejścia
  * albo drogi dnia, bez limitu odległości; dalej niż spacer liczy się jako zjazd autem.
  */
-function placeAnywhere(corridor: DayCorridor, at: { lat: number; lng: number }): { along: ExtraAlong; offM: number; detourMin: number; nearRef?: string } | null {
+export function placeAnywhere(corridor: DayCorridor, at: { lat: number; lng: number }): { along: ExtraAlong; offM: number; detourMin: number; nearRef?: string } | null {
   const point = pointOf(at);
   const options: { along: ExtraAlong; offM: number; nearRef?: string }[] = [
     ...corridor.spots.map((spot) => ({ along: 'at' as const, offM: distanceM(pointOf(spot), point), ...(spot.ref ? { nearRef: spot.ref } : {}) })),
@@ -250,13 +258,20 @@ function placeAnywhere(corridor: DayCorridor, at: { lat: number; lng: number }):
 /** Gdzie atrakcja leży względem dnia: najtańszy objazd spośród miejsc, przejść i przejazdów w zasięgu. */
 export function placeOnCorridor(corridor: DayCorridor, at: { lat: number; lng: number }): { along: ExtraAlong; offM: number; detourMin: number; nearRef?: string } | null {
   const point = pointOf(at);
-  const options: { along: ExtraAlong; offM: number; nearRef?: string }[] = [];
-  for (const spot of corridor.spots) options.push({ along: 'at', offM: distanceM(pointOf(spot), point), ...(spot.ref ? { nearRef: spot.ref } : {}) });
-  for (const path of corridor.paths) options.push({ along: path.mode, offM: offPath(path.coordinates, point), ...(path.ref ? { nearRef: path.ref } : {}) });
+  const drives = corridor.paths.some((path) => path.mode === 'car');
+  const options: { along: ExtraAlong; offM: number; radius: number; nearRef?: string }[] = [];
+  for (const spot of corridor.spots) {
+    const offM = distanceM(pointOf(spot), point);
+    const nearRef = spot.ref ? { nearRef: spot.ref } : {};
+    options.push({ along: 'at', offM, radius: EXTRA_RADIUS_M.at, ...nearRef });
+    // Dalej niż spacer, a dzień i tak jest autem: krótki podjazd od miejsca.
+    if (drives && offM > EXTRA_RADIUS_M.at) options.push({ along: 'car', offM, radius: SPOT_DRIVE_M, ...nearRef });
+  }
+  for (const path of corridor.paths) options.push({ along: path.mode, offM: offPath(path.coordinates, point), radius: EXTRA_RADIUS_M[path.mode], ...(path.ref ? { nearRef: path.ref } : {}) });
   const nearestSpot = corridor.spots.filter((spot) => spot.ref !== undefined).sort((a, b) => distanceM(pointOf(a), point) - distanceM(pointOf(b), point))[0];
   const best = options
-    .filter((each) => each.offM <= EXTRA_RADIUS_M[each.along])
-    .map((each) => ({ ...each, offM: Math.round(each.offM), detourMin: detourMinutes(each.along, each.offM) }))
+    .filter((each) => each.offM <= each.radius)
+    .map(({ radius: _radius, ...each }) => ({ ...each, offM: Math.round(each.offM), detourMin: detourMinutes(each.along, each.offM) }))
     // Blisko miejsca, gdzie i tak się jest pieszo, nie wsiada się do auta: zjazd liczy się o kilka minut drożej.
     .sort((a, b) => effort(a) - effort(b) || a.offM - b.offM)[0];
   if (best === undefined) return null;
@@ -283,6 +298,8 @@ export type ExtraCandidate = {
   note?: string;
   /** Miasto po drodze albo podane, w którym leży. */
   town?: string;
+  /** Waga rodzaju (`attractionType`): 2 — zamek, wodospad, punkt widokowy, muzeum…; pula wyjazdu też 2. */
+  weight: number;
   score: number;
 };
 
@@ -333,6 +350,7 @@ export function extraCandidates(doc: Doc, corridor: DayCorridor, features: reado
       poolRef: item.ref,
       ...(item.description ? { note: item.description.slice(0, 200) } : {}),
       ...(located.town ? { town: located.town.name } : {}),
+      weight: 2,
       score: 10,
     });
   }
@@ -366,6 +384,7 @@ export function extraCandidates(doc: Doc, corridor: DayCorridor, features: reado
       ...(feature.tags.opening_hours ? { openingHours: feature.tags.opening_hours } : {}),
       ...(note ? { note } : {}),
       ...(located.town ? { town: located.town.name } : {}),
+      weight: kind.weight,
       score,
     });
   }
@@ -387,6 +406,27 @@ export type ExtraPick = {
   swapRef?: string | null;
   weather?: 'outdoor' | 'indoor' | 'any' | null;
 };
+
+/** Blisko: objazd do tylu minut — takich ciekawych miejsc lista nie może pominąć. */
+export const CLOSE_DETOUR_MIN = 20;
+/** Czas na miejscu, gdy wybiera kod (AI pominęło): z rodzaju, inaczej 20 min. */
+const STAY_BY_TYPE: Record<string, number> = {
+  'punkt widokowy': 15, wodospad: 20, 'łuk skalny': 15, wąwóz: 45, jaskinia: 45, 'gorące źródło': 60, zamek: 60, pałac: 60, fort: 45, klasztor: 45, ruiny: 30,
+  'stanowisko archeologiczne': 30, muzeum: 90, 'latarnia morska': 20, katedra: 30,
+};
+
+/**
+ * Bliscy, których AI nie wybrało, a nie wolno ich przegapić: punkt z puli wyjazdu albo ciekawy rodzaj (zamek,
+ * wodospad, punkt widokowy, muzeum…) lub hasło w Wikipedii, z objazdem do `CLOSE_DETOUR_MIN`. Dochodzą jako wybór
+ * bez opisu, z czasem na miejscu z rodzaju; od najmniejszego objazdu.
+ */
+export function closeMisses(candidates: readonly ExtraCandidate[], picks: readonly ExtraPick[]): ExtraPick[] {
+  const picked = new Set(picks.map((pick) => pick.id));
+  return candidates
+    .filter((each) => !picked.has(each.id) && each.detourMin <= CLOSE_DETOUR_MIN && (each.weight >= 2 || each.wikipedia !== undefined))
+    .sort((a, b) => a.detourMin - b.detourMin)
+    .map((each) => ({ id: each.id, title: each.name, type: each.type, why: '', stayMin: STAY_BY_TYPE[each.type] ?? 20, fit: 'stop' as const }));
+}
 
 /** „Widać po drodze” tylko naprawdę przy trasie: pieszo do 100 m, przy drodze do 500 m (zamek nad drogą). */
 const PASS_M: Record<ExtraAlong, number> = { at: 100, foot: 100, car: 500 };

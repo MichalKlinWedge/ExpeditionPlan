@@ -4,6 +4,8 @@ import {
   addExtraToPlan,
   applyExtraPicks,
   attractionType,
+  CLOSE_DETOUR_MIN,
+  closeMisses,
   corridorQueryLines,
   corridorTowns,
   dayCorridor,
@@ -115,6 +117,20 @@ describe('po drodze i w pobliżu', () => {
     // Nowe szukanie nie zastępuje odrzuconej.
     const again = applyExtraPicks(dismissed.doc, 'd1', candidates, [{ id: 'node/2', title: 'Wieża', why: '', stayMin: 20, fit: 'stop' }], '2026-06-02')!;
     expect(again.extras!.items).toEqual([expect.objectContaining({ id: 'node/2', status: 'dismissed' })]);
+  });
+
+  it('dzień z autem: ciekawe miejsce 3 km od punktu to krótki podjazd; bliskich i ciekawych pominiętych przez AI dokłada kod', () => {
+    // 3 km na północ od Jeziora — poza pasem drogi i spaceru.
+    const falls: OsmFeature = { id: 'node/7', lat: 50.027, lng: 20.1, tags: { name: 'Wodospad', natural: 'waterfall' } };
+    const list = extraCandidates(doc, corridor, [...features, falls]);
+    const waterfall = list.find((each) => each.id === 'node/7')!;
+    expect(waterfall).toMatchObject({ along: 'car', nearRef: 'jezioro', weight: 2 });
+    expect(waterfall.detourMin).toBeLessThanOrEqual(CLOSE_DETOUR_MIN);
+    // AI wybrało tylko zamek: wodospad, wieża (blisko, ale zwykła) i pula wracają według reguły.
+    const missed = closeMisses(list, [{ id: 'node/1', title: 'Zamek', why: 'x', stayMin: 30, fit: 'stop' }]);
+    expect(missed.map((each) => each.id)).toEqual(expect.arrayContaining(['node/7', 'pool:kapliczka']));
+    expect(missed.some((each) => each.id === 'node/1')).toBe(false);
+    expect(missed.find((each) => each.id === 'node/7')).toMatchObject({ stayMin: 20, fit: 'stop', why: '' });
   });
 
   it('do planu: przy drodze przejazdu = postój w trasie; z puli — punkt przechodzi do dnia', () => {

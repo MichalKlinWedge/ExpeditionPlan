@@ -1,7 +1,9 @@
 import { type AiClient, type AiUsage, askStructured } from '@expeditionplan/ai';
 import {
+  closeMisses,
   corridorQueryLines,
   type DayCorridor,
+  EXTRA_RADIUS_M,
   type ExtraCandidate,
   type ExtraPick,
   type ExtraRequest,
@@ -11,6 +13,7 @@ import {
   type OsmFeature,
   scheduleDay,
   type ScheduleOptions,
+  SPOT_DRIVE_M,
   type TripDocument,
 } from '@expeditionplan/core';
 import { z } from 'zod';
@@ -33,22 +36,40 @@ type Doc = TripDocument;
  * (setki kilometrów autostrady).
  */
 const MAIN_FILTERS = [
-  'nwr[tourism~"^(attraction|viewpoint|museum|gallery|zoo|aquarium)$"][name]',
+  'nwr[tourism~"^(attraction|viewpoint|museum|gallery|zoo|aquarium|theme_park)$"][name]',
   'nwr[historic~"^(castle|fort|ruins|archaeological_site|city_gate|palace|monastery|manor|tower)$"][name]',
   'nwr[natural~"^(waterfall|cave_entrance|arch|gorge|hot_spring|geyser|volcano)$"][name]',
+  'nwr[man_made=lighthouse][name]',
 ];
 
-/** Atrakcje z nazwą i znane (Wikidata) — pełny zestaw przy miejscach, krótkich przejazdach i w miastach. */
+/** Znane (Wikidata) — także w szerszym kole wokół miejsc w dzień z autem. */
+const WIKIDATA_FILTER = 'nwr[wikidata][~"^(historic|natural|man_made|leisure)$"~"."][name]';
+
+/** Atrakcje z nazwą, znane (Wikidata) i zabytki z rejestru (`heritage`) — pełny zestaw przy miejscach, przy drodze i w miastach. */
 const FILTERS = [
   ...MAIN_FILTERS,
-  'nwr[wikidata][~"^(historic|natural|man_made|leisure)$"~"."][name]',
+  WIKIDATA_FILTER,
   'nwr[wikidata][amenity=place_of_worship][name]',
   'nwr[wikidata][building~"^(cathedral|church|mosque|temple|chapel)$"][name]',
+  'nwr[wikidata][tourism=artwork][name]',
+  'nwr[heritage][historic~"^(building|monument|memorial|church|manor|tower|city_gate|aqueduct|mine|bridge)$"][name]',
+  'nwr[heritage][amenity=place_of_worship][name]',
+  'nwr[man_made~"^(windmill|watermill)$"][name]',
 ];
 
+/** Szczyty i plaże są w terenie wszędzie — liczą się tylko tuż przy miejscach i szlakach dnia. */
+const NEAR_FILTERS = ['nwr[natural~"^(peak|beach)$"][name]'];
+
+/** Szersze koło wokół miejsc (dzień z autem): tylko główne rodzaje i znane. */
+const WIDE_FILTERS = [...MAIN_FILTERS, WIKIDATA_FILTER];
+
 const SERVER_TIMEOUT_S = 60;
-/** Najwięcej elementów w odpowiedzi — w dużym mieście atrakcji są setki, a AI dostaje 60. */
-const MAX_ELEMENTS = 600;
+/**
+ * Najwięcej elementów w odpowiedzi: najpierw pas przy miejscach i drogach (`close`), potem szersze koło i miasta po
+ * drodze (`wide`, bez tych z pasa) — w dużym mieście atrakcji są setki, a obcięcie nie może zabrać tych najbliżej.
+ */
+const MAX_CLOSE = 500;
+const MAX_WIDE = 300;
 
 const coords = (line: readonly LngLat[]) => line.map(([lng, lat]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join(',');
 
@@ -65,15 +86,17 @@ const MAX_TOWNS = 60;
 const regexEscape = (text: string) => text.replace(/[\\^$.*+?()[\]{}|"]/g, (char) => `\\\\${char}`);
 
 /**
- * Zapytanie: atrakcje w pasie wokół miejsc i przejść (700 m) i wokół dróg przejazdów (2 km), a przy długich
- * przejazdach także w miastach po drodze; zakres `route` — tylko przejazdy, `city` — tylko podane miasto
- * (szukane po nazwie, też polskiej i angielskiej, do `CITY_SEARCH_KM` od korytarza). Odpowiedź: najpierw atrakcje,
- * potem same miasta (`place`).
+ * Zapytanie: atrakcje w pasie wokół miejsc i przejść (`EXTRA_RADIUS_M.at`, 1 km) i wokół dróg przejazdów (2,5 km);
+ * w dzień z autem także szersze koło wokół miejsc (`SPOT_DRIVE_M`, 5 km — główne rodzaje i znane), a przy długich
+ * przejazdach miasta po drodze; zakres `route` — tylko przejazdy, `city` — tylko podane miasto (szukane po nazwie,
+ * też polskiej i angielskiej, do `CITY_SEARCH_KM` od korytarza). Odpowiedź: najpierw pas, potem szersze koło
+ * i atrakcje miast, na końcu same miasta (`place`).
  */
-export function dayExtrasQuery(lines: { near: LngLat[][]; car: LngLat[][]; long?: LngLat[][] }, request: ExtraRequest = { scope: 'day' }): string {
+export function dayExtrasQuery(lines: { near: LngLat[][]; car: LngLat[][]; long?: LngLat[][]; spots?: LngLat[][] }, request: ExtraRequest = { scope: 'day' }): string {
   const all = [...lines.near, ...lines.car, ...(lines.long ?? [])].flat();
-  // Miasto podane do szukania może leżeć dalej, a miasto po drodze — do `CITY_OFF_M` obok trasy.
-  const box = bboxAround(all, request.scope === 'city' ? CITY_SEARCH_KM : (lines.long ?? []).length > 0 ? CITY_OFF_M / 1000 + 3 : 3);
+  const drives = lines.car.length + (lines.long ?? []).length > 0;
+  // Miasto podane do szukania może leżeć dalej, a miasto po drodze — do `CITY_OFF_M` obok trasy; koło wokół miejsc — `SPOT_DRIVE_M`.
+  const box = bboxAround(all, request.scope === 'city' ? CITY_SEARCH_KM : (lines.long ?? []).length > 0 ? CITY_OFF_M / 1000 + 3 : drives ? SPOT_DRIVE_M / 1000 + 1 : 3);
   const bbox = [box.south, box.west, box.north, box.east].map((value) => value.toFixed(5)).join(',');
   const city = request.scope === 'city' ? request.city?.trim() : undefined;
   const towns =
@@ -81,20 +104,22 @@ export function dayExtrasQuery(lines: { near: LngLat[][]; car: LngLat[][]; long?
       ? [`node[place~"^(city|town|village|suburb)$"][~"^name(:pl|:en)?$"~"^${regexEscape(city)}$",i];`]
       : (lines.long ?? []).flatMap((line) => [`node[place=city](around:${CITY_OFF_M},${coords(line)});`, `node[place=town](around:${TOWN_OFF_M},${coords(line)});`]);
   const inTowns = towns.length > 0 ? FILTERS.map((filter) => `${filter}(around.towns:${TOWN_RADIUS_M});`) : [];
-  const parts =
+  const around = (filters: readonly string[], radius: number, line: readonly LngLat[]) => filters.map((filter) => `${filter}(around:${radius},${coords(line)});`);
+  const close =
     request.scope === 'city'
       ? inTowns
       : [
-          ...(request.scope === 'route' ? [] : lines.near.flatMap((line) => FILTERS.map((filter) => `${filter}(around:700,${coords(line)});`))),
-          ...lines.car.flatMap((line) => FILTERS.map((filter) => `${filter}(around:2000,${coords(line)});`)),
-          ...(lines.long ?? []).flatMap((line) => MAIN_FILTERS.map((filter) => `${filter}(around:2000,${coords(line)});`)),
-          ...inTowns,
+          ...(request.scope === 'route' ? [] : lines.near.flatMap((line) => around([...FILTERS, ...NEAR_FILTERS], EXTRA_RADIUS_M.at, line))),
+          ...lines.car.flatMap((line) => around(FILTERS, EXTRA_RADIUS_M.car, line)),
+          ...(lines.long ?? []).flatMap((line) => around(MAIN_FILTERS, EXTRA_RADIUS_M.car, line)),
         ];
+  const wide = request.scope === 'city' ? [] : [...(request.scope === 'day' && drives ? (lines.spots ?? []).flatMap((line) => around(WIDE_FILTERS, SPOT_DRIVE_M, line)) : []), ...inTowns];
   return [
     `[out:json][timeout:${SERVER_TIMEOUT_S}][maxsize:67108864][bbox:${bbox}];`,
     ...(towns.length > 0 ? [`(${towns.join(' ')})->.towns;`] : []),
-    `(${parts.join(' ')})->.found;`,
-    `.found out center tags qt ${MAX_ELEMENTS};`,
+    `(${close.join(' ')})->.close;`,
+    `.close out center tags qt ${MAX_CLOSE};`,
+    ...(wide.length > 0 ? [`(${wide.join(' ')})->.wide;`, '(.wide; - .close;)->.wide;', `.wide out center tags qt ${MAX_WIDE};`] : []),
     ...(towns.length > 0 ? [`.towns out tags qt ${MAX_TOWNS};`] : []),
   ].join('\n');
 }
@@ -136,7 +161,7 @@ export const DayExtrasAnswer = z.object({
         weather: z.enum(['outdoor', 'indoor', 'any']).nullish(),
       }),
     )
-    .max(24),
+    .max(40),
 });
 
 const clip = (text: string | undefined, max: number) => (text === undefined ? undefined : text.length > max ? `${text.slice(0, max)}…` : text);
@@ -202,7 +227,7 @@ export function dayExtrasPrompt(doc: Doc, dayRef: string, options: ScheduleOptio
     '',
     'Zasady:',
     '1. Wybieraj tylko z listy `candidates`, kluczem `id`. Nie dopisuj innych miejsc.',
-    '2. Najwyżej 20, od najciekawszych. Pomiń drobiazgi (zwykłe pomniki, przeciętne kościoły, parki osiedlowe), chyba że są wyjątkowe. Kandydaci „z puli wyjazdu” to pomysły podróżnych — bierz je, gdy pasują.',
+    '2. Najwyżej 30, od najciekawszych. Najważniejsze, żeby nie przegapić tego, co naprawdę blisko: kandydata z małym `detourMin` (do ok. 20 min) albo `along: at` bierz, chyba że to drobiazg (zwykły pomnik, przydrożna kapliczka, przeciętny kościół, park osiedlowy). Lepiej kilka bliskich za dużo niż jeden ciekawy pominięty. Dalszych bierz tylko wartych objazdu. Kandydaci „z puli wyjazdu” to pomysły podróżnych — bierz je, gdy pasują.',
     '3. `title`: nazwa po polsku, gdy jest znana, inaczej oryginalna. `type`: rodzaj po polsku jednym-dwoma słowami. `why`: 1–2 zdania po polsku, co to jest i dlaczego warto; bez cen i godzin otwarcia z pamięci.',
     '4. `stayMin`: realny czas na miejscu (obejrzeć z zewnątrz 5–15 min, krótki spacer 20–40 min, muzeum lub zamek ze zwiedzaniem 60–120 min). Dojazdu nie wliczaj: `detourMin` policzył kod.',
     '5. `fit`: `pass` — widać po drodze bez zatrzymywania albo leży tuż przy trasie (wieża, zamek nad drogą, wodospad przy szlaku; tylko przy małym `offM`); `stop` — krótki postój do ok. 20 min na miejscu; `visit` — zwiedzanie.',
@@ -236,5 +261,6 @@ export async function pickDayExtras(
     label: `${doc.trip.title} po drodze`,
     ...(deps.onUsage ? { onUsage: deps.onUsage } : {}),
   });
-  return answer.data.picks;
+  // Bliskich i ciekawych, których model pominął, kod dokłada (bez opisu).
+  return [...answer.data.picks, ...closeMisses(candidates, answer.data.picks)];
 }

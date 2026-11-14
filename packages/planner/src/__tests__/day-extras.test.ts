@@ -17,12 +17,14 @@ const refs = scheduleDay(maroko, day.ref).items.map((item) => item.ref);
 const corridor = dayCorridor(maroko, refs, dayLodging(maroko, day.ref)?.placeRef);
 
 describe('po drodze i w pobliżu — OSM i AI', () => {
-  it('zapytanie: pasy 700 m i 2 km po liniach korytarza, w prostokącie dnia, z limitem wyników', () => {
+  it('zapytanie: pasy 1 km i 2,5 km po liniach korytarza, koło 5 km wokół miejsc w dzień z autem, najpierw pas', () => {
     const query = dayExtrasQuery(corridorQueryLines(corridor));
     expect(query).toMatch(/^\[out:json\]\[timeout:60\]\[maxsize:\d+\]\[bbox:[\d.,-]+\];/);
-    expect(query).toContain('(around:700,');
-    expect(query).toContain('(around:2000,');
-    expect(query).toContain('out center tags qt 600;');
+    expect(query).toContain('(around:1000,');
+    expect(query).toContain('(around:2500,');
+    expect(query).toContain('(around:5000,');
+    expect(query).toContain('(.wide; - .close;)->.wide;');
+    expect(query.indexOf('.close out center tags qt 500;')).toBeLessThan(query.indexOf('.wide out center tags qt 300;'));
   });
 
   it('zapytanie: miasta po drodze długiego przejazdu, tylko trasa, podane miasto po nazwie', () => {
@@ -32,11 +34,11 @@ describe('po drodze i w pobliżu — OSM i AI', () => {
     expect(day).toContain('(around.towns:3000);');
     expect(day).toContain('.towns out tags qt 60;');
     const route = dayExtrasQuery(lines, { scope: 'route' });
-    expect(route).not.toContain('(around:700,');
-    expect(route).toContain('(around:2000,');
+    expect(route).not.toContain('(around:1000,');
+    expect(route).toContain('(around:2500,');
     const city = dayExtrasQuery(lines, { scope: 'city', city: 'Bratysława' });
     expect(city).toContain('[~"^name(:pl|:en)?$"~"^Bratysława$",i]');
-    expect(city).not.toContain('(around:2000,');
+    expect(city).not.toContain('(around:2500,');
     expect(dayExtrasQuery(lines, { scope: 'city', city: 'St. "X"' })).toContain('^St\\\\. \\\\"X\\\\"$');
   });
 
@@ -73,7 +75,9 @@ describe('po drodze i w pobliżu — OSM i AI', () => {
     const picks = await pickDayExtras(maroko, day.ref, {}, candidates, { client });
     expect(seen).toContain('Wybieraj tylko z listy');
     const next = applyExtraPicks(maroko, day.ref, candidates, picks, '2026-11-11')!;
-    expect(next.extras!.items).toEqual([expect.objectContaining({ id: 'node/1', stayMin: 10, fit: 'stop', weather: 'outdoor' })]);
+    expect(next.extras!.items[0]).toEqual(expect.objectContaining({ id: 'node/1', stayMin: 10, fit: 'stop', weather: 'outdoor' }));
+    // Reszta to bliscy i ciekawi, których model pominął (bez opisu).
+    expect(next.extras!.items.slice(1).every((each) => each.why === undefined)).toBe(true);
     expect(TripDocument.safeParse({ ...maroko, days: maroko.days.map((each) => (each.ref === day.ref ? next : each)) }).success).toBe(true);
   });
 });

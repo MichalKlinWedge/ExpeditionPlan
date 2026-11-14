@@ -1368,7 +1368,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
       doc={doc}
       dayRef={dayRef}
       tripId={tripId ?? ""}
-      slackMin={schedule?.slackMin ?? null}
+      schedule={schedule ?? null}
       onEdit={actions?.edit ?? null}
       onRules={onRules}
       canFind={extrasAi && tripId !== undefined}

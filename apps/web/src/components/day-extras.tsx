@@ -1,17 +1,19 @@
 "use client";
 
-import { addExtraToPlan, type DayExtraItem, dayExtras, EXTRA_FIT, EXTRA_SCOPE, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
+import { addExtraToPlan, type DayExtraItem, dayExtras, type DaySchedule, EXTRA_FIT, EXTRA_SCOPE, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import { useState, useTransition } from "react";
 
 import { findDayExtras } from "@/app/day-extras-actions";
+import { DayExtrasExternal } from "@/components/day-extras-external";
 import type { OnRules } from "@/components/day-rules";
 import { SparkIcon } from "@/components/icons";
 
 /**
  * „Po drodze i w pobliżu” pod planem dnia: atrakcje przy trasie i miejscach dnia (OSM i pula, wybór i opis AI,
  * objazd policzony przez kod, `core/day-extras.ts`) na wypadek, gdy zostanie czas albo coś wypadnie z planu.
- * W edycji: szukanie z AI, „do planu” (zaraz po punkcie, przy którym leży), odrzucenie i przywrócenie.
+ * W edycji: szukanie z AI, „do planu” (zaraz po punkcie, przy którym leży), odrzucenie i przywrócenie, a także
+ * wytyczne dla zewnętrznego AI i wczytanie jego odpowiedzi (`DayExtrasExternal`).
  * Bez edycji i na telefonie — tylko podgląd.
  */
 
@@ -19,8 +21,8 @@ type Props = {
   doc: TripDocument;
   dayRef: string;
   tripId: string;
-  /** Zapas dnia z silnika (min); `null` — nieznany. */
-  slackMin: number | null;
+  /** Dzień z silnika (warianty oglądane w planie); `null` — nie dało się policzyć. */
+  schedule: DaySchedule | null;
   /** Edycja planu (`null` — podgląd). */
   onEdit: ((edit: PlanEdit | null) => void) | null;
   onRules: OnRules | null;
@@ -33,16 +35,17 @@ type Props = {
 /** Klucz dodatku w wyborze na mapie i w liście (`item-extra:<id>`). */
 export const extraKey = (extra: Pick<DayExtraItem, "id">) => `extra:${extra.id}`;
 
-export function DayExtras({ doc, dayRef, tripId, slackMin, onEdit, onRules, canFind, selected, onSelect }: Props) {
+export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canFind, selected, onSelect }: Props) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<{ ok?: string; error?: string }>({});
   // Doprecyzowanie szukania: gdzie (cały dzień, trasa przejazdu, miasto) i czego (własne słowa dla AI).
   const [scope, setScope] = useState<ExtraScope>("day");
   const [city, setCity] = useState("");
   const [hint, setHint] = useState("");
+  const slackMin = schedule?.slackMin ?? null;
   const list = dayExtras(doc, dayRef);
   const titles = new Map(doc.items.map((item) => [item.ref, item.title]));
-  if (list.open.length === 0 && list.dismissed.length === 0 && !canFind) return null;
+  if (list.open.length === 0 && list.dismissed.length === 0 && !canFind && onRules === null) return null;
 
   const narrowed = scope !== "day" || hint.trim() !== "";
   const find = () =>
@@ -91,6 +94,7 @@ export function DayExtras({ doc, dayRef, tripId, slackMin, onEdit, onRules, canF
           )}
         </div>
       )}
+      {onRules && schedule && <DayExtrasExternal doc={doc} dayRef={dayRef} schedule={schedule} onRules={onRules} />}
       {list.fetchedAt === undefined && (
         <p className="text-xs text-zinc-500">Atrakcje przy trasie i punktach dnia, które da się dorzucić, gdy zostanie czas albo coś wypadnie z planu — z czasem, jaki zajmą. Odrzucone nie wracają przy kolejnym szukaniu.</p>
       )}
@@ -187,7 +191,7 @@ export function DayExtras({ doc, dayRef, tripId, slackMin, onEdit, onRules, canF
           <a href="https://openstreetmap.org/fixthemap" target="_blank" rel="noreferrer" className="underline">
             zgłoś błąd
           </a>
-          ; wybór i opis: AI (Gemini); czas objazdu szacunkowy, z odległości. Sprawdzone {shortDate(list.fetchedAt)}.
+          ; wybór i opis: AI (Gemini albo wczytane z zewnętrznego AI); czas objazdu szacunkowy, z odległości. Sprawdzone {shortDate(list.fetchedAt)}.
         </p>
       )}
       </div>
