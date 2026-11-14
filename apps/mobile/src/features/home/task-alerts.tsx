@@ -248,12 +248,11 @@ export function TaskAlerts() {
 /** Jedna z trzech liczb zwiniętej karty; dotknięcie rozwija (albo zwija) listę tej grupy. */
 function Count({ label, value, danger = false, active, onPress }: { label: string; value: number; danger?: boolean; active: boolean; onPress: () => void }) {
   const theme = useTheme();
+  // Wygląd jak odliczanie dni do najbliższego wyjazdu: miękkie tło, duża liczba, podpis pod spodem.
   return (
-    <Pressable onPress={onPress} style={[styles.count, { borderColor: active ? theme.accent : theme.backgroundSelected }]}>
-      <ThemedText type="subtitle" style={danger && value > 0 ? styles.overdue : { color: theme.accent }}>
-        {value}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
+    <Pressable onPress={onPress} style={[styles.count, { backgroundColor: theme.accentSoft, borderColor: active ? theme.primary : 'transparent' }]}>
+      <ThemedText style={[styles.countValue, { color: danger && value > 0 ? OVERDUE : theme.primary }]}>{value}</ThemedText>
+      <ThemedText type="small" themeColor="accent" style={styles.countLabel}>
         {label}
       </ThemedText>
     </Pressable>
@@ -414,7 +413,9 @@ function TaskSheet({
 const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: 16, gap: Spacing.two, borderLeftWidth: 4 },
   counts: { flexDirection: 'row', gap: Spacing.two },
-  count: { flex: 1, alignItems: 'center', paddingVertical: Spacing.two, borderRadius: 12, borderWidth: 1 },
+  count: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.two, paddingHorizontal: Spacing.one, borderRadius: 16, borderWidth: 2 },
+  countValue: { fontSize: 32, lineHeight: 36, fontWeight: '800' },
+  countLabel: { textAlign: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 44 },
   box: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   boxMark: { fontSize: 26, lineHeight: 30 },
