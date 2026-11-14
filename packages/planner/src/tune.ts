@@ -5,6 +5,8 @@ import {
   documentProblem,
   ItemInUseError,
   LEG_MODE,
+  linkLabel,
+  lodgingLinkLabel,
   type MergeEdit,
   moveAfter,
   moveToDay,
@@ -12,6 +14,7 @@ import {
   PlanPatch,
   type PlanItem,
   removeItemClosingGap,
+  setLodgingLink,
   TripDocument,
   updateItem,
 } from '@expeditionplan/core';
@@ -56,6 +59,7 @@ export function tuneContext(doc: Doc, locked: ReadonlySet<string>) {
     place: item.placeRef === undefined ? undefined : places.get(item.placeRef),
     ...(locked.has(item.ref) ? { locked: true } : {}),
     ...(item.variantRefs.length > 0 ? { variantOnly: true } : {}),
+    ...(item.links.length > 0 ? { links: item.links.map((link) => link.url) } : {}),
   });
   const variantsOf = (dayRef: string) =>
     doc.variantGroups
@@ -79,11 +83,12 @@ export function tunePrompt(doc: Doc, locked: ReadonlySet<string>, history: ChatT
     'Zasady:',
     '1. Zmieniaj tylko to, o co prosi polecenie — reszta planu zostaje. Najmniej operacji, które to załatwiają.',
     '2. Punkty i dni wskazuj kluczami z planu (`itemRef`, `dayRef`, `afterItemRef`). Nie wymyślaj kluczy.',
-    '3. Punkty z `locked: true` zmienił człowiek — NIE ruszaj ich; jeśli polecenie tego wymaga, napisz to w `message`.',
+    '3. Punkty z `locked: true` zmienił człowiek — NIE ruszaj ich; jeśli polecenie tego wymaga, napisz to w `message`. Wyjątek: `add_link` (link do rezerwacji, strony obiektu, biletów) wolno dodać także do nich — niczego nie nadpisuje.',
     '4. `remove_item` domyślnie przenosi punkt do puli (`toPool: true`); `toPool: false` tylko, gdy człowiek wprost każe usunąć.',
     '5. `add_item`/`replace_item`: realny czas trwania, godzina tylko gdy ważna (otwarcie, zachód, rezerwacja); `place` po polsku i `searchName` z OpenStreetMap dla konkretnego miejsca.',
     '6. Plan B / alternatywa „jeśli pada”, „jeśli zamknięte”, „jeśli dzieci zmęczone” → `add_variant`: obecny plan dnia zostaje wariantem A (`mainLabel`), wariant B zastępuje `replacesItemRefs` punktami `items`. Nie usuwaj punktów, żeby zrobić alternatywę; nie dubluj wariantu, który dzień już ma (`variants`). Zastępuj tylko program (zwiedzanie, aktywności, posiłki) — nocleg i zameldowanie (`lodging`) zostają w obu wariantach. `mainLabel` nazywa obecny plan po treści („Słońce”, „Pełny program”), `label` — nowy („Deszcz: medyna i hammam”).',
-    '7. Jeśli czegoś nie da się zrobić albo dzień się nie zmieści — powiedz to w `message` zamiast udawać. Piszesz po polsku.',
+    '7. Linki (`add_link`) tylko z adresem podanym przez człowieka w poleceniu albo obecnym w planie — nigdy nie wymyślaj adresów. Ten sam link do kilku punktów (np. oba noclegi) = osobny `add_link` dla każdego; punkt, który ma już ten adres (`links`), pomiń.',
+    '8. Jeśli czegoś nie da się zrobić albo dzień się nie zmieści — powiedz to w `message` zamiast udawać. Piszesz po polsku.',
     '',
     'JSON Schema:',
     schemaOf(PlanPatch),
@@ -168,7 +173,8 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
       fail(`Nie ma punktu „${op.itemRef}”.`);
       continue;
     }
-    if (target !== undefined && locked.has(target.ref)) {
+    // Link tylko dokłada się do punktu — wolno go dodać także do punktu zmienionego ręcznie.
+    if (target !== undefined && locked.has(target.ref) && op.op !== 'add_link') {
       fail(`„${target.title}” zmieniłeś ręcznie — AI go nie rusza.`);
       continue;
     }
@@ -351,6 +357,18 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
           }
           next = { ...current, places: current.places.map((each) => (each.ref === place.ref ? { ...each, searchName: op.searchName } : each)) };
           text = `Mapa: „${place.name}” — szukaj jako „${op.searchName}”${place.lat === undefined ? ' (teraz poza mapą)' : ' (pinezka do sprawdzenia od nowa)'}${op.reason ? ` — ${op.reason}` : ''}`;
+          break;
+        }
+        case 'add_link': {
+          if (target!.links.some((link) => link.url === op.url)) {
+            fail(`„${target!.title}” ma już ten link.`);
+            continue;
+          }
+          // Strona noclegu (Booking.com, Airbnb) staje się linkiem „Obiekt” na karcie punktu.
+          const lodging = target!.kind === 'lodging' && lodgingLinkLabel(op.url) !== 'Strona obiektu';
+          const label = op.label?.trim() || (lodging ? lodgingLinkLabel(op.url) : linkLabel(op.url)) || 'Link';
+          next = lodging ? (setLodgingLink(current, op.itemRef, op.url)?.doc ?? null) : (updateItem(current, op.itemRef, { links: [...target!.links, { label, url: op.url }] })?.doc ?? null);
+          text = `„${target!.title}”: link ${lodging ? lodgingLinkLabel(op.url) : label}`;
           break;
         }
         case 'set_field': {

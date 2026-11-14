@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { IsoDate } from './common.ts';
+import { HttpUrl, IsoDate } from './common.ts';
 import { PriceBasis } from './price.ts';
 import { ContactRole, ItemKind, LegMode, Ref, TripDocumentShape } from './trip-document.ts';
 
@@ -260,6 +260,11 @@ export const PatchOp = z.discriminatedUnion('op', [
    * jest podejrzanie daleko. Współrzędne dokłada kod (Geoapify) przy zastosowaniu — AI ich nie podaje.
    */
   z.object({ op: z.literal('set_place'), placeRef: Ref, searchName: text, reason: z.string().optional() }),
+  /**
+   * Link przy punkcie (rezerwacja, strona obiektu, bilety, mapa) — tylko adres podany przez człowieka albo
+   * obecny w planie. Jedyna operacja dozwolona także na punkcie zmienionym ręcznie: niczego nie nadpisuje.
+   */
+  z.object({ op: z.literal('add_link'), itemRef: Ref, url: HttpUrl, label: z.string().optional() }),
   /**
    * Plan B dla dnia (pogoda, zamknięcie, samopoczucie): obecny plan dnia zostaje wariantem A,
    * wariant B zastępuje wskazane punkty nowymi. Nic nie znika z planu — decyzję podejmuje się na miejscu.

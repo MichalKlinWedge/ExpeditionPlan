@@ -119,3 +119,29 @@ describe('etap 3 — łatka na planie', () => {
     expect(doc.variants.at(-1)!.excludesRefs).toEqual([]);
   });
 });
+
+describe('etap 3 — linki', () => {
+  const lodging = maroko.items.find((item) => item.kind === 'lodging')!;
+  const visit = maroko.items.find((item) => item.kind === 'visit')!;
+  const airbnb = 'https://www.airbnb.pl/rooms/123?adults=4';
+
+  it('link wolno dodać także do punktu zmienionego ręcznie; nocleg dostaje link „Obiekt”, inne punkty zwykły', () => {
+    const patch = PlanPatch.parse({
+      message: 'Dodaję linki.',
+      ops: [
+        { op: 'add_link', itemRef: lodging.ref, url: airbnb },
+        { op: 'add_link', itemRef: visit.ref, url: 'https://example.com/bilety', label: 'Bilety' },
+        { op: 'set_field', itemRef: lodging.ref, field: 'description', value: 'x' },
+      ],
+    });
+    const { doc, results } = applyPatch(maroko, patch, new Set([lodging.ref, visit.ref]), newId);
+    expect(results.map((each) => each.ok)).toEqual([true, true, false]);
+    expect(doc.items.find((item) => item.ref === lodging.ref)!.links[0]).toEqual({ label: 'Airbnb', url: airbnb });
+    expect(doc.items.find((item) => item.ref === visit.ref)!.links.at(-1)).toEqual({ label: 'Bilety', url: 'https://example.com/bilety' });
+    expect(applyPatch(doc, PlanPatch.parse({ message: 'x', ops: [{ op: 'add_link', itemRef: lodging.ref, url: airbnb }] }), new Set(), newId).results[0]!.ok).toBe(false);
+  });
+
+  it('link spoza http(s) odrzuca już schemat', () => {
+    expect(PlanPatch.safeParse({ message: 'x', ops: [{ op: 'add_link', itemRef: visit.ref, url: 'javascript:alert(1)' }] }).success).toBe(false);
+  });
+});
