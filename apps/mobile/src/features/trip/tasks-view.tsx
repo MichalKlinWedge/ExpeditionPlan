@@ -154,14 +154,21 @@ function TaskRow({ task, due, overdue, who, canCheck, onToggle }: { task: Task; 
   if (!canCheck) {
     return (
       <View style={line}>
-        <ThemedText themeColor="textSecondary">{done ? '✓' : '·'}</ThemedText>
+        <View style={styles.box}>
+          <ThemedText themeColor="textSecondary" style={styles.boxMark}>
+            {done ? '✓' : '·'}
+          </ThemedText>
+        </View>
         {body}
       </View>
     );
   }
+  // Duże pole do odhaczenia (44 px) — ten sam rozmiar co na karcie zadań na Starcie.
   return (
-    <Pressable onPress={onToggle} hitSlop={6} style={line}>
-      <ThemedText style={overdue ? styles.overdue : undefined}>{done ? '☑' : '☐'}</ThemedText>
+    <Pressable onPress={onToggle} hitSlop={6} style={line} accessibilityLabel={`${done ? 'Cofnij odhaczenie' : 'Zrobione'}: ${task.title}`}>
+      <View style={styles.box}>
+        <ThemedText style={[styles.boxMark, overdue ? styles.overdue : undefined]}>{done ? '☑' : '☐'}</ThemedText>
+      </View>
       {body}
     </Pressable>
   );
@@ -171,7 +178,9 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: Spacing.three },
   list: { gap: Spacing.two, paddingHorizontal: Spacing.three },
   card: { borderRadius: 12, padding: Spacing.three, gap: Spacing.two },
-  task: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 40 },
+  task: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 44 },
+  box: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  boxMark: { fontSize: 26, lineHeight: 30 },
   grow: { flex: 1 },
   done: { textDecorationLine: 'line-through', opacity: 0.6 },
   meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.one },
