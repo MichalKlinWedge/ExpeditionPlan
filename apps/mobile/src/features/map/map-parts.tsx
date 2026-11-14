@@ -100,7 +100,7 @@ export type PinGuide = { onRead: () => void; onListen: () => void };
 export type PinPool = { onOpen: (ref: string) => void; onInsert?: (ref: string) => void };
 
 /** Karta wybranego miejsca: nazwa, punkty z godzinami, punkty z puli, „Nawiguj” (Google Maps), przewodnik i „Zamknij”. */
-export function PinCard({ pin, times, onClose, small = false, guide, pool, onExtra }: { pin: MapPin; times: Map<string, string>; onClose: () => void; small?: boolean; guide?: PinGuide; pool?: PinPool; onExtra?: () => void }) {
+export function PinCard({ pin, times, onClose, small = false, guide, pool, onExtra }: { pin: MapPin; times: Map<string, string>; onClose: () => void; small?: boolean; guide?: PinGuide; pool?: PinPool; onExtra?: (ref: string) => void }) {
   return (
     <View style={styles.block}>
       <ThemedText type="smallBold" style={small ? undefined : styles.title}>
@@ -127,7 +127,7 @@ export function PinCard({ pin, times, onClose, small = false, guide, pool, onExt
         <Button label="Nawiguj" variant="primary" small={small} onPress={() => navigateTo(pin)} />
         {guide && <Button label="📖 Poczytaj" small={small} onPress={guide.onRead} />}
         {guide && <Button label="▶ Posłuchaj" small={small} onPress={guide.onListen} />}
-        {pin.extra && onExtra && <Button label="Szczegóły" small={small} onPress={onExtra} />}
+        {pin.extra && onExtra && <Button label="Szczegóły" small={small} onPress={() => onExtra(pin.extra!.ref)} />}
         <Button label="Zamknij" small={small} onPress={onClose} />
       </View>
     </View>

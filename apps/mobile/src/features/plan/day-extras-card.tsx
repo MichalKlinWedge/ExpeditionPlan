@@ -3,6 +3,7 @@ import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 
 /**
@@ -10,7 +11,26 @@ import { Spacing } from '@/constants/theme';
  * które da się dorzucić, gdy zostanie czas albo coś wypadnie, z dodatkowym czasem. Bez drobnych (★, `NOTABLE_EXTRAS`),
  * od najciekawszych. Szukanie, filtr i zmiany są na webie.
  */
-export function DayExtrasCard({ doc, dayRef, slackMin, open, onToggle }: { doc: TripDocument; dayRef: string; slackMin: number | null; open: boolean; onToggle: () => void }) {
+export function DayExtrasCard({
+  doc,
+  dayRef,
+  slackMin,
+  open,
+  onToggle,
+  focus = null,
+  onEntryLayout,
+}: {
+  doc: TripDocument;
+  dayRef: string;
+  slackMin: number | null;
+  open: boolean;
+  onToggle: () => void;
+  /** Atrakcja, do której przeszło się z karty punktu albo z mapy — podświetlona. */
+  focus?: string | null;
+  /** Położenie wpisu w karcie (do przewinięcia planu). */
+  onEntryLayout?: (id: string, y: number) => void;
+}) {
+  const theme = useTheme();
   const list = dayExtras(doc, dayRef, NOTABLE_EXTRAS).open;
   if (list.length === 0) return null;
   const titles = new Map(doc.items.map((item) => [item.ref, item.title]));
@@ -28,7 +48,7 @@ export function DayExtrasCard({ doc, dayRef, slackMin, open, onToggle }: { doc: 
             const swap = extra.swapRef === undefined ? undefined : titles.get(extra.swapRef);
             const minutes = extraMinutes(extra);
             return (
-              <View key={extra.id} style={styles.entry}>
+              <View key={extra.id} style={[styles.entry, focus === extra.id && { backgroundColor: theme.accentSoft }]} onLayout={(event) => onEntryLayout?.(extra.id, event.nativeEvent.layout.y)}>
                 <ThemedText type="smallBold">
                   {extra.title}
                   <ThemedText type="small" themeColor="primary">{` ${'★'.repeat(extraInterest(extra))}`}</ThemedText>
@@ -75,6 +95,6 @@ export function DayExtrasCard({ doc, dayRef, slackMin, open, onToggle }: { doc: 
 
 const styles = StyleSheet.create({
   card: { padding: Spacing.three, borderRadius: 14, gap: Spacing.two },
-  entry: { gap: 2 },
+  entry: { gap: 2, borderRadius: 8, marginHorizontal: -Spacing.one, paddingHorizontal: Spacing.one, paddingVertical: 2 },
   links: { flexDirection: 'row', gap: Spacing.three },
 });

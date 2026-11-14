@@ -784,6 +784,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
   const [moving, setMoving] = useState<string | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
+  const [extraFocus, setExtraFocus] = useState<string | null>(null);
   const day = doc.days.find((each) => each.ref === dayRef)!;
   const options = { scenario, activeVariants: variants, delays: inputs.delays, skipRefs: inputs.skipRefs, done: inputs.done, pulled: inputs.pulled };
   let schedule: DaySchedule | null = null;
@@ -827,6 +828,22 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
     const first = map.pins.find((pin) => pin.placeRef === placeRef)?.stops[0];
     const y = first === undefined ? undefined : cardTops.current.get(first.ref);
     if (y !== undefined) onShowMap?.(Math.max(dayTop.current + y - Spacing.two, 0));
+  };
+  /** Lista „Po drodze i w pobliżu” pod dniem: jej położenie i położenia wpisów — przejście do atrakcji z karty punktu albo z mapy. */
+  const extrasTop = useRef(0);
+  const extraTops = useRef(new Map<string, number>());
+  const pendingExtra = useRef<string | null>(null);
+  const scrollToExtra = (id: string) => {
+    const y = extraTops.current.get(id);
+    if (y === undefined) return false;
+    onShowMap?.(Math.max(dayTop.current + extrasTop.current + y - Spacing.two, 0));
+    return true;
+  };
+  const showExtra = (id: string) => {
+    setExtraFocus(id);
+    // Zwinięta lista: przewinięcie po jej rozwinięciu, gdy wpis dostanie położenie.
+    if (!extrasOpen || !scrollToExtra(id)) pendingExtra.current = id;
+    setExtrasOpen(true);
   };
   const stopNumber = (ref: string) => {
     const n = map.numbers[ref];
@@ -882,7 +899,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
       {/* Mapa dnia nad punktami planu: numer pinezki przewija w dół do punktu, karta punktu — z powrotem do mapy. */}
       {schedule && (
         <View onLayout={(event) => (mapTop.current = event.nativeEvent.layout.y)}>
-          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} extras={extraPins(doc, dayRef, NOTABLE_EXTRAS)} onExtra={() => setExtrasOpen(true)} />
+          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} extras={extraPins(doc, dayRef, NOTABLE_EXTRAS)} onExtra={(ref) => showExtra(ref.replace(/^extra:/, ''))} />
         </View>
       )}
 
@@ -948,13 +965,33 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
               {(() => {
                 const marks = extras.get(item.ref);
                 if (marks === undefined) return null;
-                const text = [marks.near.length > 0 ? `★ +${marks.near.length} w pobliżu` : null, marks.swaps.length > 0 ? '⇄ jest zamiennik' : null].filter(Boolean).join(' · ');
+                // Każda atrakcja osobno: dotknięcie rozwija listę pod dniem i przewija do niej.
+                const near = marks.near.slice(0, 3);
+                const more = marks.near.length - near.length;
                 return (
-                  <Pressable onPress={() => setExtrasOpen(true)} hitSlop={6}>
-                    <ThemedText type="small" themeColor="accent">
-                      {text} — lista pod dniem
-                    </ThemedText>
-                  </Pressable>
+                  <View style={styles.extraLinks}>
+                    {marks.swaps.map((extra) => (
+                      <Pressable key={`swap-${extra.id}`} onPress={() => showExtra(extra.id)} hitSlop={4} style={styles.extraLink}>
+                        <ThemedText type="small" themeColor="accent">
+                          ⇄ zamiennik: {extra.title}
+                        </ThemedText>
+                      </Pressable>
+                    ))}
+                    {near.map((extra) => (
+                      <Pressable key={`near-${extra.id}`} onPress={() => showExtra(extra.id)} hitSlop={4} style={styles.extraLink}>
+                        <ThemedText type="small" themeColor="accent">
+                          ★ {extra.title}
+                        </ThemedText>
+                      </Pressable>
+                    ))}
+                    {more > 0 && (
+                      <Pressable onPress={() => showExtra(marks.near[near.length]!.id)} hitSlop={4} style={styles.extraLink}>
+                        <ThemedText type="small" themeColor="accent">
+                          +{more} w pobliżu
+                        </ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
                 );
               })()}
               {offMap && (
@@ -1068,7 +1105,26 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
 
       <DayStatsCard doc={doc} schedule={schedule} active={active} />
 
-      <DayExtrasCard doc={doc} dayRef={dayRef} slackMin={schedule?.slackMin ?? null} open={extrasOpen} onToggle={() => setExtrasOpen(!extrasOpen)} />
+      <View onLayout={(event) => (extrasTop.current = event.nativeEvent.layout.y)}>
+        <DayExtrasCard
+          doc={doc}
+          dayRef={dayRef}
+          slackMin={schedule?.slackMin ?? null}
+          open={extrasOpen}
+          onToggle={() => {
+            setExtrasOpen(!extrasOpen);
+            setExtraFocus(null);
+          }}
+          focus={extraFocus}
+          onEntryLayout={(id, y) => {
+            extraTops.current.set(id, y);
+            if (pendingExtra.current === id) {
+              pendingExtra.current = null;
+              scrollToExtra(id);
+            }
+          }}
+        />
+      </View>
 
       {cuts.length > 0 && (
         <View style={styles.group}>
@@ -1140,6 +1196,8 @@ function GapLine({ from, to, minutes }: { from: string; to: string; minutes: num
 }
 
 const styles = StyleSheet.create({
+  extraLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: Spacing.two, rowGap: 2 },
+  extraLink: { paddingVertical: 2 },
   fill: { flex: 1 },
   lodgingActions: { flexDirection: 'row', alignItems: 'stretch', alignSelf: 'flex-start', gap: Spacing.two },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },

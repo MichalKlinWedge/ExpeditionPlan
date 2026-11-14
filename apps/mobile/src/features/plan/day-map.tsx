@@ -44,7 +44,8 @@ type Props = {
   onGuide?: (item: PlanItem, play: boolean) => void;
   /** Atrakcje „po drodze i w pobliżu” dnia (`extraPins`): gwiazdki bez numerów; „Szczegóły” rozwija ich listę pod dniem. */
   extras?: MapPin[];
-  onExtra?: () => void;
+  /** „Szczegóły” w karcie gwiazdki: klucz `extra:<id>`. */
+  onExtra?: (ref: string) => void;
 };
 
 export function DayMap({ dayRef, schedule, full, selected, onSelect, focus, variantsKey, guides, onGuide, extras = [], onExtra }: Props) {
