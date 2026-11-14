@@ -30,6 +30,8 @@ type Props = {
 };
 
 const KIND: Record<Task['kind'], string> = { todo: '', question: 'pytanie', decision: 'decyzja' };
+/** Czerwień zaległego zadania — ta sama co na karcie zadań na Starcie i na liście na webie. */
+const OVERDUE = '#dc2626';
 
 function dueLabel(task: Task, doc: CachedTrip['state']['doc']): string {
   // Własne przypomnienie (`remindAt`) obok terminu.
@@ -136,26 +138,30 @@ function TaskRow({ task, due, overdue, who, canCheck, onToggle }: { task: Task; 
       <ThemedText type="small" style={done ? styles.done : overdue ? styles.overdue : undefined}>
         {task.priority === 'high' ? '! ' : ''}
         {task.title}
-        {overdue ? ' — po terminie' : ''}
       </ThemedText>
-      {meta !== '' && (
-        <ThemedText type="small" themeColor="textSecondary">
-          {meta}
-        </ThemedText>
-      )}
+      <View style={styles.meta}>
+        {overdue && <ThemedText style={styles.badge}>PO TERMINIE</ThemedText>}
+        {meta !== '' && (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.grow}>
+            {meta}
+          </ThemedText>
+        )}
+      </View>
     </View>
   );
+  // Zaległe zadanie odcina się od reszty listy: czerwony pasek z lewej i tło, nie sam kolor tekstu.
+  const line = [styles.task, overdue ? styles.overdueRow : undefined];
   if (!canCheck) {
     return (
-      <View style={styles.task}>
+      <View style={line}>
         <ThemedText themeColor="textSecondary">{done ? '✓' : '·'}</ThemedText>
         {body}
       </View>
     );
   }
   return (
-    <Pressable onPress={onToggle} hitSlop={6} style={styles.task}>
-      <ThemedText>{done ? '☑' : '☐'}</ThemedText>
+    <Pressable onPress={onToggle} hitSlop={6} style={line}>
+      <ThemedText style={overdue ? styles.overdue : undefined}>{done ? '☑' : '☐'}</ThemedText>
       {body}
     </Pressable>
   );
@@ -168,6 +174,9 @@ const styles = StyleSheet.create({
   task: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 40 },
   grow: { flex: 1 },
   done: { textDecorationLine: 'line-through', opacity: 0.6 },
+  meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.one },
   // Otwarte zadanie po terminie albo po „najpóźniej” (`taskOverdue`).
-  overdue: { color: '#dc2626', fontWeight: '600' },
+  overdue: { color: OVERDUE, fontWeight: '600' },
+  overdueRow: { backgroundColor: '#dc26261f', borderLeftWidth: 3, borderLeftColor: OVERDUE, borderRadius: 8, paddingLeft: Spacing.two, paddingRight: Spacing.one, paddingVertical: 4 },
+  badge: { color: '#FFFFFF', backgroundColor: OVERDUE, fontSize: 11, lineHeight: 16, fontWeight: '700', borderRadius: 6, paddingHorizontal: 6, overflow: 'hidden' },
 });
