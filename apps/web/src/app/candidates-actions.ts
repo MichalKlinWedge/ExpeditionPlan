@@ -1,6 +1,6 @@
 "use server";
 
-import { LogisticsCandidates, plural, removeCandidate, TripBrief, TripDocument } from "@expeditionplan/core";
+import { type CandidateRemoval, LogisticsCandidates, plural, removeCandidate, removeComparison, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { type LogisticsDraft, logisticsCandidates, mergeLogistics } from "@expeditionplan/planner";
 import { dbErrorMessage, type ElementWrite, type PullPayload, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -137,10 +137,22 @@ export async function chooseCandidate(tripId: string, groupRef: string, variantR
 export async function removeComparisonCandidate(tripId: string, groupRef: string, variantRef: string): Promise<FormState> {
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
-  const { doc, payload, supabase } = loaded;
+  const { doc } = loaded;
   const label = doc.variants.find((each) => each.ref === variantRef)?.label ?? "propozycję";
   const result = removeCandidate(doc, groupRef, variantRef);
   if ("error" in result) return { error: result.error };
+  const saved = await saveRemoval(tripId, loaded, result);
+  if ("error" in saved) return saved;
+  const checked = saved.doc;
+  refresh();
+  if (!result.ended) return { ok: `Usunięto „${label}”.` };
+  const left = checked.bookings.find((booking) => doc.bookings.some((before) => before.ref === booking.ref && before.variantGroupRef === groupRef));
+  return { ok: `Usunięto „${label}”. Została jedna propozycja — porównanie zakończone${left ? `, „${left.title}” jest zwykłą rezerwacją` : ""}.` };
+}
+
+/** Zapis usunięcia z porównania: dokumenty z sejfu tracą powiązanie z usuniętymi rezerwacjami, potem zmiany i usunięcia. */
+async function saveRemoval(tripId: string, loaded: { supabase: Awaited<ReturnType<typeof requireUser>>["supabase"]; payload: PullPayload }, result: CandidateRemoval): Promise<{ doc: TripDocument } | { error: string }> {
+  const { supabase, payload } = loaded;
   const checked = TripDocument.safeParse(result.doc);
   if (!checked.success) return { error: `Nie zapisano: ${checked.error.issues[0]?.message ?? ""}` };
   let ids = refIndex(payload.tables);
@@ -159,8 +171,18 @@ export async function removeComparisonCandidate(tripId: string, groupRef: string
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
+  return { doc: checked.data };
+}
+
+/** Usunięcie całego porównania (`removeComparison`): grupa, propozycje i ich rezerwacje-kandydaci. */
+export async function removeComparisonGroup(tripId: string, groupRef: string): Promise<FormState> {
+  const loaded = await load(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  const title = loaded.doc.variantGroups.find((each) => each.ref === groupRef)?.title ?? "porównanie";
+  const result = removeComparison(loaded.doc, groupRef);
+  if ("error" in result) return { error: result.error };
+  const saved = await saveRemoval(tripId, loaded, result);
+  if ("error" in saved) return saved;
   refresh();
-  if (!result.ended) return { ok: `Usunięto „${label}”.` };
-  const left = checked.data.bookings.find((booking) => doc.bookings.some((before) => before.ref === booking.ref && before.variantGroupRef === groupRef));
-  return { ok: `Usunięto „${label}”. Została jedna propozycja — porównanie zakończone${left ? `, „${left.title}” jest zwykłą rezerwacją` : ""}.` };
+  return { ok: `Usunięto porównanie „${title}” (${plural(result.removedBookingRefs.length, ["rezerwacja-kandydat", "rezerwacje-kandydaci", "rezerwacji-kandydatów"])}).` };
 }

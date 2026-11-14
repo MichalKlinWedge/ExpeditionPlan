@@ -101,3 +101,48 @@ export function removeCandidate(doc: Doc, groupRef: string, variantRef: string):
   }
   return { doc: next, writes: writesBetween(doc, next), removedBookingRefs: own.map((booking) => booking.ref), ended };
 }
+
+/**
+ * Usunięcie całego porównania rezerwacji: grupa, jej warianty i wszystkie rezerwacje-kandydaci (`removeBooking`); dni,
+ * punkty i zadania przestają je wskazywać, a notatki o porównaniu znikają. Gdy któraś propozycja jest już
+ * zarezerwowana albo opłacona — odmowa (wtedy usuwa się pozostałe propozycje, a ona zostaje zwykłą rezerwacją).
+ */
+export function removeComparison(doc: Doc, groupRef: string): CandidateRemoval | { error: string } {
+  const group = doc.variantGroups.find((each) => each.ref === groupRef && each.scope === 'booking');
+  if (group === undefined) return { error: 'Nie ma takiego porównania — odśwież stronę.' };
+  const variants = groupVariants(doc, groupRef);
+  const own = doc.bookings.filter((booking) => booking.variantGroupRef === groupRef || (booking.variantRef !== undefined && variants.some((variant) => variant.ref === booking.variantRef)));
+  const fixed = own.find((booking) => FIXED.has(booking.status));
+  if (fixed !== undefined) return { error: `„${fixed.title}” jest już zarezerwowana — usuń pozostałe propozycje pojedynczo, a ona zostanie zwykłą rezerwacją.` };
+
+  let next = doc;
+  for (const booking of own) next = removeBooking(next, booking.ref)?.doc ?? next;
+  next = {
+    ...next,
+    tasks: next.tasks.map((task) => {
+      if (task.variantGroupRef !== groupRef) return task;
+      const { variantGroupRef: _group, ...plain } = task;
+      return plain;
+    }),
+    days: next.days.map((day) => {
+      if (day.lodgingRef !== groupRef) return day;
+      const { lodgingRef: _lodging, ...plain } = day;
+      return plain;
+    }),
+    items: next.items.map((item) => {
+      if (item.bookingRef !== groupRef) return item;
+      const { bookingRef: _booking, ...plain } = item;
+      return plain;
+    }),
+    notes: next.notes.filter((note) => !(note.scope === 'variant_group' && note.targetRef === groupRef)),
+  };
+  try {
+    // Punkty wybranej (albo pierwszej) propozycji zostają w planie, pozostałych — do puli; zwykle porównanie rezerwacji ich nie ma.
+    const keep = group.chosenRef ?? variants[0]?.ref;
+    if (keep !== undefined) next = removeVariantGroup(next, groupRef, keep)!.doc;
+    else next = { ...next, variantGroups: next.variantGroups.filter((each) => each.ref !== groupRef) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  return { doc: next, writes: writesBetween(doc, next), removedBookingRefs: own.map((booking) => booking.ref), ended: true };
+}

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { removeCandidate } from '../booking-candidate-remove.ts';
+import { removeCandidate, removeComparison } from '../booking-candidate-remove.ts';
 import { documentProblem } from '../plan-edits.ts';
 import { groupVariants } from '../plan-rules.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
@@ -38,5 +38,25 @@ describe('usunięcie propozycji z porównania rezerwacji', () => {
     }
     expect(removed).toBeGreaterThan(0);
     expect(ended).toBeGreaterThan(0);
+  });
+
+  it('całe porównanie z fixture’ów: znika grupa, warianty i kandydaci; dokument spójny', () => {
+    let removed = 0;
+    for (const { slug, doc } of plans) {
+      for (const group of doc.variantGroups.filter((each) => each.scope === 'booking')) {
+        const result = removeComparison(doc, group.ref);
+        if ('error' in result) {
+          expect(doc.bookings.some((booking) => booking.variantGroupRef === group.ref && (booking.status === 'booked' || booking.status === 'paid')), `${slug} ${group.ref}: ${result.error}`).toBe(true);
+          continue;
+        }
+        removed++;
+        expect(documentProblem(result.doc), `${slug} ${group.ref}`).toBeNull();
+        expect(JSON.stringify(result.doc)).not.toContain(`"${group.ref}"`);
+        for (const variant of groupVariants(doc, group.ref)) expect(JSON.stringify(result.doc)).not.toContain(`"${variant.ref}"`);
+        for (const ref of result.removedBookingRefs) expect(JSON.stringify(result.doc)).not.toContain(`"${ref}"`);
+        expect(result.writes.at(-1)).toMatchObject({ collection: 'variantGroups', op: 'remove', element: { ref: group.ref } });
+      }
+    }
+    expect(removed).toBeGreaterThan(0);
   });
 });

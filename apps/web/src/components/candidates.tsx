@@ -4,7 +4,7 @@ import { BOOKING_KIND, formatMoneyRange, type LogisticsCandidates, PRICE_BASIS }
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { applyCandidates, chooseCandidate, removeComparisonCandidate } from "@/app/candidates-actions";
+import { applyCandidates, chooseCandidate, removeComparisonCandidate, removeComparisonGroup } from "@/app/candidates-actions";
 
 /**
  * Etap 4 na stronie logistyki: podgląd szkicu kandydatów (zaznacz decyzje do dodania) i grupy
@@ -107,7 +107,7 @@ export type ComparisonRow = {
 };
 export type ComparisonGroup = { ref: string; title: string; conditionText?: string; chosenRef?: string; columns: string[]; rows: ComparisonRow[] };
 
-/** Grupa porównania z planu: tabela, linki wyszukiwania, „Wybieram” i „usuń” (propozycja razem z rezerwacją-kandydatem). */
+/** Grupa porównania z planu: tabela, linki wyszukiwania, „Wybieram”, „usuń” (propozycja razem z rezerwacją-kandydatem) i „usuń porównanie”. */
 /** Grupa z wybraną opcją jest zwinięta do jednej linii („✓ wybrane: …”) — rozwija się, gdy trzeba zmienić wybór. */
 export function ComparisonTable({ tripId, group, canEdit }: { tripId: string; group: ComparisonGroup; canEdit: boolean }) {
   const chosen = group.rows.find((row) => row.variantRef === group.chosenRef);
@@ -131,9 +131,23 @@ function ComparisonBody({ tripId, group, canEdit }: { tripId: string; group: Com
   const [pending, start] = useTransition();
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <div>
-        <span className="font-medium">{group.title}</span>
-        {group.conditionText && <span className="block text-xs text-zinc-500">{group.conditionText}</span>}
+      <div className="flex flex-wrap items-start gap-2">
+        <div className="grow">
+          <span className="font-medium">{group.title}</span>
+          {group.conditionText && <span className="block text-xs text-zinc-500">{group.conditionText}</span>}
+        </div>
+        {canEdit && (
+          <button
+            disabled={pending}
+            onClick={() => {
+              if (!confirm(`Usunąć całe porównanie „${group.title}” razem ze wszystkimi propozycjami i ich rezerwacjami-kandydatami?`)) return;
+              start(async () => setResult(await removeComparisonGroup(tripId, group.ref)));
+            }}
+            title="Usuwa porównanie, wszystkie propozycje i ich rezerwacje-kandydatów"
+            className="btn-mini btn-mini-danger">
+            usuń porównanie
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
