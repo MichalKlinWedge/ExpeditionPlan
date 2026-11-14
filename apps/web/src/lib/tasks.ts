@@ -46,7 +46,11 @@ export function taskColumns(doc: Doc): Record<string, TaskColumns> {
         due: [due(task, doc), task.deadline ? `najpóźniej ${shortDate(task.deadline)}` : null].filter(Boolean).join(" · "),
         overdue: taskOverdue(doc, task, today),
         remind: task.remindAt ? `${shortDate(task.remindAt.date)} ${task.remindAt.time}` : "",
-        who: task.assigneeRefs.map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "?").join(", "),
+        // Osoby, których nie ma już w planie, znikają z wiersza — nigdy surowe odwołanie.
+        who: task.assigneeRefs
+          .map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "")
+          .filter(Boolean)
+          .join(", "),
       },
     ]),
   );
@@ -98,11 +102,10 @@ type TravelerRow = { id: string; ref?: unknown; user_id?: unknown; guardian_id?:
  */
 export function checkableTasks(doc: Doc, travelers: readonly TravelerRow[], userId: string): string[] {
   const byId = new Map(travelers.map((row) => [row.id, row]));
+  // Uczestnik dodany w aplikacji nie ma kolumny `ref` — w dokumencie jest nim „id-<id wiersza>”.
+  const refOf = (row: TravelerRow) => (typeof row.ref === "string" ? row.ref : `id-${row.id}`);
   const mine = new Set(
-    travelers
-      .filter((row) => row.user_id === userId || (typeof row.guardian_id === "string" && byId.get(row.guardian_id)?.user_id === userId))
-      .map((row) => row.ref)
-      .filter((ref): ref is string => typeof ref === "string"),
+    travelers.filter((row) => row.user_id === userId || (typeof row.guardian_id === "string" && byId.get(row.guardian_id)?.user_id === userId)).map(refOf),
   );
   return doc.tasks.filter((task) => task.assigneeRefs.some((ref) => mine.has(ref))).map((task) => task.ref);
 }
