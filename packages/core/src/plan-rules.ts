@@ -292,6 +292,20 @@ export function setDayEnd(doc: Doc, dayRef: string, dayEnd: string | undefined):
   return { doc: { ...doc, days: swap(doc.days, [next]) }, writes: [{ collection: 'days', element: next, op: 'update' }], changed: [] };
 }
 
+// --- Opis dnia --------------------------------------------------------------------------------
+
+/**
+ * Opis dnia pod nagłówkiem planu (zwykle z „Zaplanuj z AI”, importu albo wpisany ręcznie).
+ * Puste pole kasuje opis.
+ */
+export function setDaySummary(doc: Doc, dayRef: string, summary: string | undefined): RulesEdit | null {
+  const day = doc.days.find((each) => each.ref === dayRef);
+  if (day === undefined) return null;
+  const next = clean({ ...day, summary: summary?.trim() });
+  if ((day.summary ?? '') === (next.summary ?? '')) return null;
+  return { doc: { ...doc, days: swap(doc.days, [next]) }, writes: [{ collection: 'days', element: next, op: 'update' }], changed: [] };
+}
+
 // --- Scenariusze dnia -------------------------------------------------------------------------
 
 /** Czy dzień ma scenariusze optymistyczny / pesymistyczny (domyślnie tak). */

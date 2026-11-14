@@ -11,7 +11,7 @@ import { DayStats } from "@/components/day-stats";
 import { ArticleIcon, InfoIcon, ListIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { itemTasksHref, tasksByItem } from "@/lib/task-link";
 import { PlaceLink } from "@/components/place-pin";
-import { DayConstraints, DayEndField, DayNotes, DayStartField, DayScenariosField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
+import { DayConstraints, DayEndField, DayNotes, DayStartField, DayScenariosField, DaySummaryField, DayVariants, ItemVariants, type OnRules } from "@/components/day-rules";
 import { ItemEditor } from "@/components/item-editor";
 import { MealLink } from "@/components/meal-link";
 import { ItemPlaceEditor } from "@/components/item-place";
@@ -1036,7 +1036,11 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
         );
       })()}
 
-      {day.summary && <p className="text-sm text-zinc-600 dark:text-zinc-400">{day.summary}</p>}
+      {onRules === null ? (
+        day.summary && <p className="text-sm text-zinc-600 dark:text-zinc-400">{day.summary}</p>
+      ) : (
+        <DaySummaryField dayRef={dayRef} value={day.summary} onRules={onRules} />
+      )}
 
       {hasFieldLog(field) && <FieldSummary field={field} tz={day.tz} />}
 

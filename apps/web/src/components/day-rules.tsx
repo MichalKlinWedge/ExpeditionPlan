@@ -21,6 +21,7 @@ import {
   type ScheduleWarning,
   setDayEnd,
   setDayStart,
+  setDaySummary,
   setDayScenarios,
   setItemVariants,
   type TripDocument,
@@ -524,6 +525,25 @@ export function DayEndField({ dayRef, value, onRules }: { dayRef: string; value:
         }}
       />
       <span>puste pole = bez ostrzeżenia</span>
+    </label>
+  );
+}
+
+// --- Opis dnia --------------------------------------------------------------------------------
+
+/** Opis dnia pod nagłówkiem; zapis po wyjściu z pola, puste pole kasuje opis. */
+export function DaySummaryField({ dayRef, value, onRules }: { dayRef: string; value: string | undefined; onRules: OnRules }) {
+  return (
+    <label className="flex flex-col gap-1 self-stretch text-xs text-zinc-500">
+      Opis dnia
+      <textarea
+        key={value ?? ""}
+        defaultValue={value ?? ""}
+        rows={2}
+        placeholder="np. dzień na aklimatyzację, krótkie wyjście nad jezioro"
+        className={`${input} w-full`}
+        onBlur={(event) => onRules((doc) => setDaySummary(doc, dayRef, event.target.value))}
+      />
     </label>
   );
 }
