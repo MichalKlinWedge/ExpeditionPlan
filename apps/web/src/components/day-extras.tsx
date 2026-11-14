@@ -127,8 +127,9 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
       )}
       {message.error && <p className="text-xs msg-error">{message.error}</p>}
       {message.ok && <p className="text-xs msg-ok">{message.ok}</p>}
-      {list.open.length + list.hidden > 0 && (
-        // Filtr listy: atrakcyjność (od AI, 1–3) i rodzaje z liczbą otwartych; puste rodzaje = wszystkie.
+      {(canFind || list.open.length + list.hidden > 0) && (
+        // Filtr listy i szukania: atrakcyjność (od AI, 1–3) i rodzaje z liczbą otwartych; puste rodzaje = wszystkie.
+        // Widać go też przed pierwszym szukaniem — zawęża, czego szukać.
         <div className="flex flex-col gap-1.5 border-t border-zinc-200 pt-2 dark:border-zinc-800">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-zinc-600 dark:text-zinc-400">Atrakcyjność</span>
@@ -141,10 +142,12 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-zinc-600 dark:text-zinc-400">Rodzaje</span>
             {(Object.keys(EXTRA_CATEGORY) as ExtraCategory[])
-              .filter((category) => (list.categories[category] ?? 0) > 0 || filter.categories.includes(category))
+              // Bez listy wszystkie rodzaje (do szukania); z listą — te, które na niej są, i wybrane.
+              .filter((category) => list.open.length + list.hidden === 0 || canFind || (list.categories[category] ?? 0) > 0 || filter.categories.includes(category))
               .map((category) => (
                 <button key={category} type="button" onClick={() => toggleCategory(category)} aria-pressed={filter.categories.includes(category)} className="toggle-chip">
-                  {EXTRA_CATEGORY[category]} <span className="text-zinc-500">{list.categories[category] ?? 0}</span>
+                  {EXTRA_CATEGORY[category]}
+                  {(list.categories[category] ?? 0) > 0 && <span className="text-zinc-500"> {list.categories[category]}</span>}
                 </button>
               ))}
             {filter.categories.length > 0 && (
