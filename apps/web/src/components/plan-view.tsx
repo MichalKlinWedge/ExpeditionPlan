@@ -7,6 +7,7 @@ import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BookingDialog } from "@/components/booking-dialog";
 import { DayExtras } from "@/components/day-extras";
+import { DayStats } from "@/components/day-stats";
 import { ArticleIcon, InfoIcon, ListIcon, SparkIcon, TicketIcon } from "@/components/icons";
 import { itemTasksHref, tasksByItem } from "@/lib/task-link";
 import { PlaceLink } from "@/components/place-pin";
@@ -1357,7 +1358,8 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
 
       <DayNotes doc={doc} dayRef={dayRef} onRules={onRules} />
     </section>
-    {/* Osobna, zwijana karta pod dniem. */}
+    {/* Osobne, zwijane karty pod dniem. */}
+    <DayStats doc={doc} dayRef={dayRef} schedule={schedule} />
     <DayExtras
       doc={doc}
       dayRef={dayRef}

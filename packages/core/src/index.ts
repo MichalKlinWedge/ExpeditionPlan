@@ -58,6 +58,7 @@ export * from './note-photos.ts';
 export * from './gpx.ts';
 export * from './track-profile.ts';
 export * from './day-gaps.ts';
+export * from './day-stats.ts';
 export * from './day-sun.ts';
 export * from './track-pois.ts';
 export * from './guide-links.ts';

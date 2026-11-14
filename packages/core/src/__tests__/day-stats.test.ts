@@ -1,0 +1,35 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, it } from 'vitest';
+
+import { dayStatistics, moveLine, stayLine } from '../day-stats.ts';
+import { scheduleDay } from '../engine/schedule.ts';
+import { TripDocument } from '../schemas/trip-document.ts';
+
+const load = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
+const maroko = load('maroko');
+
+describe('statystyki dnia', () => {
+  it('przejazdy, pobyt i wolny czas z silnika; kilometry z planu', () => {
+    const day = maroko.days.find((each) => each.date === '2026-12-26')!;
+    const schedule = scheduleDay(maroko, day.ref);
+    const stats = dayStatistics(maroko, schedule)!;
+    expect(stats.start).toBe(schedule.items[0]!.startLocal);
+    expect(stats.points).toBe(schedule.items.filter((row) => !row.child && !row.routeStop).length);
+    const drive = stats.moves.find((move) => move.kind === 'drive')!;
+    expect(drive.km).toBeGreaterThan(200);
+    expect(moveLine(drive)).toMatch(/^246 km · 2 h 52 min · 1 odcinek$/);
+    expect(stats.moves.map((move) => move.kind)).toEqual(['drive', 'flight']);
+    expect(stats.moves.find((move) => move.kind === 'flight')!.noKm).toBe(1);
+    expect(stats.stays.map((each) => each.kind)).toEqual(['sights', 'meals', 'other']);
+    expect(stats.freeMin).toBeGreaterThan(0);
+  });
+
+  it('pusty dzień bez statystyk, opisy liczb', () => {
+    expect(dayStatistics(maroko, { ...scheduleDay(maroko, maroko.days[0]!.ref), items: [] })).toBeNull();
+    expect(moveLine({ kind: 'foot', count: 2, km: 12.4, noKm: 1, minutes: 190, stopsMin: 30, ascentM: 650, descentM: 600 })).toBe('12 km · 3 h 10 min · ↑ 650 m ↓ 600 m · 2 odcinki (1 bez km) · postoje 30 min');
+    expect(stayLine({ kind: 'sights', count: 6, minutes: 320, untimed: 2 })).toBe('6 punktów (2 bez czasu) · 5 h 20 min');
+    expect(stayLine({ kind: 'meals', count: 2, minutes: 0, untimed: 2 })).toBe('2 punkty (bez czasu w planie)');
+  });
+});
