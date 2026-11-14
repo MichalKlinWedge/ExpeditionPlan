@@ -117,7 +117,7 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
       <View style={styles.grid}>
         <Tile value={stats.total} label="wyjazdów" />
         <Tile value={stats.upcoming} label="przed wami" />
-        <Tile value={stats.past} label="zakończonych" />
+        <Tile value={stats.past} label="za nami" />
         <Tile value={stats.daysTraveled} label="dni w podróży" />
         <Tile value={stats.daysAhead} label="dni zaplanowanych" />
         <Tile value={stats.daysThisYear} label={`dni w ${year}`} />
@@ -145,10 +145,10 @@ function Tile({ value, label }: { value: number; label: string }) {
   const theme = useTheme();
   return (
     <ThemedView type="backgroundElement" style={[styles.tile, { borderColor: theme.backgroundSelected }]}>
-      <ThemedText type="subtitle" themeColor="accent">
+      <ThemedText type="subtitle" themeColor="accent" style={styles.tileText}>
         {value}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" themeColor="textSecondary" style={styles.tileText}>
         {label}
       </ThemedText>
     </ThemedView>
@@ -168,5 +168,6 @@ const styles = StyleSheet.create({
   nextTitle: { fontSize: 17, lineHeight: 22 },
   offline: { borderLeftWidth: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  tile: { flexBasis: '31%', flexGrow: 1, padding: Spacing.three, borderRadius: 16, borderWidth: 1 },
+  tile: { flexBasis: '31%', flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.three, borderRadius: 16, borderWidth: 1 },
+  tileText: { textAlign: 'center' },
 });
