@@ -119,7 +119,16 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
         <Tile value={stats.upcoming} label="przed wami" />
         <Tile value={stats.past} label="za nami" />
         <Tile value={stats.daysTraveled} label="dni w podróży" />
-        <Tile value={stats.daysAhead} label="dni zaplanowanych" />
+        <Tile
+          value={stats.daysAhead}
+          label="dni zaplanowanych"
+          onPress={() => {
+            // Plan najbliższego wyjazdu (albo trwającego); bez nich zakładka wybierze sama.
+            const trip = stats.ongoing?.trip.id ?? stats.next?.trip.id;
+            if (trip !== undefined) setCurrentTrip(trip);
+            router.navigate('/plan');
+          }}
+        />
         <Tile value={stats.daysThisYear} label={`dni w ${year}`} />
       </View>
 
@@ -141,17 +150,31 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
   );
 }
 
-function Tile({ value, label }: { value: number; label: string }) {
+/** Kafelek statystyki; z `onPress` prowadzi dalej (wtedy podpis dostaje strzałkę). */
+function Tile({ value, label, onPress }: { value: number; label: string; onPress?: () => void }) {
   const theme = useTheme();
-  return (
-    <ThemedView type="backgroundElement" style={[styles.tile, { borderColor: theme.backgroundSelected }]}>
+  const inner = (
+    <>
       <ThemedText type="subtitle" themeColor="accent" style={styles.tileText}>
         {value}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.tileText}>
+      <ThemedText type="small" themeColor={onPress === undefined ? 'textSecondary' : 'accent'} style={styles.tileText}>
         {label}
+        {onPress === undefined ? '' : ' →'}
       </ThemedText>
-    </ThemedView>
+    </>
+  );
+  if (onPress === undefined) {
+    return (
+      <ThemedView type="backgroundElement" style={[styles.tile, { borderColor: theme.backgroundSelected }]}>
+        {inner}
+      </ThemedView>
+    );
+  }
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={[styles.tile, { borderColor: theme.accent, backgroundColor: theme.backgroundElement }]}>
+      {inner}
+    </Pressable>
   );
 }
 
