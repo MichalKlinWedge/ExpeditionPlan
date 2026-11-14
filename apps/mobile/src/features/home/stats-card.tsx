@@ -116,7 +116,7 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
 
       <View style={styles.grid}>
         <Tile value={stats.total} label="wyjazdów" />
-        <Tile value={stats.upcoming} label="przed wami" />
+        <Tile value={stats.upcoming} label="przed nami" />
         <Tile value={stats.past} label="za nami" />
         <Tile value={stats.daysTraveled} label="dni w podróży" />
         <Tile
