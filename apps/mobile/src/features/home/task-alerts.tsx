@@ -61,6 +61,10 @@ const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T00:0
 const plural = (days: number) => (days === 1 ? 'dzień' : 'dni');
 /** Data, po której zadanie wchodzi na kartę: termin albo własne przypomnienie — co wcześniej. */
 const whenOf = (task: Task) => [task.limit, task.remind?.date].filter((date): date is string => date !== undefined).sort()[0];
+/** „5.12” — dzień i miesiąc z daty ISO. */
+const shortDate = (date: string) => `${Number(date.slice(8))}.${date.slice(5, 7)}`;
+/** „🔔 5.12 09:00” — własne przypomnienie zadania. */
+const remindLabel = (task: Task) => (task.remind === undefined ? '' : `🔔 ${shortDate(task.remind.date)} ${task.remind.time}`);
 
 /** „dziś”, „jutro”, „za 5 dni”, „5 dni po terminie”. */
 function whenLabel(when: string | undefined, today: string, overdue: boolean): string {
@@ -214,7 +218,7 @@ export function TaskAlerts() {
               <ThemedText type="small" themeColor="textSecondary" style={styles.grow}>
                 {task.done
                   ? 'zrobione — dotknij ☑, żeby cofnąć'
-                  : `${whenLabel(whenOf(task), today, task.overdue)}${task.remind !== undefined ? ` · 🔔 ${task.remind.time}` : ''} · ${task.tripTitle}`}
+                  : [whenLabel(whenOf(task), today, task.overdue), remindLabel(task), task.tripTitle].filter(Boolean).join(' · ')}
               </ThemedText>
             </View>
           </Pressable>
