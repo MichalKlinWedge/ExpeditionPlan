@@ -243,15 +243,24 @@ export function setVote(db: LocalDb, tripId: string, travelerId: string, choice:
  * w SQLite dostaje nowy status od razu i czeka (`pending`) na potwierdzenie z serwera.
  */
 export function setTaskStatus(db: LocalDb, tripId: string, taskId: string, status: 'open' | 'done'): void {
+  updateTask(db, tripId, taskId, { status });
+}
+
+/**
+ * Zmiana pól zadania z telefonu — tych samych kolumn, co `setTaskStatus`, i przypomnienia
+ * (`remind_at`, `null` = bez własnego przypomnienia). Zmianę inną niż status przyjmie tylko
+ * organizator i edytor (trigger `guard_viewer_task`), więc widzowi serwer ją odrzuci.
+ */
+export function updateTask(db: LocalDb, tripId: string, taskId: string, patch: Record<string, unknown>): void {
   const local = db.all<{ data: string }>('select data from rows where tbl = ? and id = ?', ['tasks', taskId])[0];
   if (local === undefined) throw new Error('Tego zadania nie ma w bazie telefonu — odśwież plan');
-  const row = { ...(JSON.parse(local.data) as Record<string, unknown>), status };
+  const row = { ...(JSON.parse(local.data) as Record<string, unknown>), ...patch };
   db.transaction(() => {
     db.run('update rows set data = ?, pending = 1 where tbl = ? and id = ?', [JSON.stringify(row), 'tasks', taskId]);
     db.run('insert into outbox (tbl, row_id, payload, created_at) values (?, ?, ?, ?)', [
       'tasks',
       taskId,
-      JSON.stringify({ id: taskId, trip_id: tripId, status }),
+      JSON.stringify({ id: taskId, trip_id: tripId, ...patch }),
       new Date().toISOString(),
     ]);
   });

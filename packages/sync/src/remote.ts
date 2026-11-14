@@ -75,10 +75,15 @@ export function supabaseRemote(client: SupabaseClient): Remote {
     async push(table, rows) {
       if (table === 'tasks') {
         for (const row of rows) {
-          const { data, error } = await client.from('tasks').update({ status: row.status }).eq('id', row.id).eq('trip_id', row.trip_id).select('id');
+          // Tylko pola z outboxa (status, przypomnienie) — reszta wiersza zostaje taka, jak na serwerze.
+          const patch = Object.fromEntries(Object.entries(row).filter(([column]) => column !== 'id' && column !== 'trip_id'));
+          const { data, error } = await client.from('tasks').update(patch).eq('id', row.id).eq('trip_id', row.trip_id).select('id');
           if (error) throw new RemoteError(dbErrorMessage(error), error.code);
           // RLS po cichu pomija wiersz, którego nie wolno zmienić — dla outboxa to odmowa, nie sukces.
-          if ((data ?? []).length === 0) throw new RemoteError('Brak uprawnień do odhaczenia tego zadania', '42501');
+          if ((data ?? []).length === 0) {
+            const only = Object.keys(patch).length === 1 && patch.status !== undefined;
+            throw new RemoteError(only ? 'Brak uprawnień do odhaczenia tego zadania' : 'Brak uprawnień do zmiany tego zadania', '42501');
+          }
         }
         return;
       }
