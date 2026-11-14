@@ -1,12 +1,13 @@
 "use server";
 
-import { applyExtraPicks, corridorTowns, dayCorridor, dayLodging, extraCandidates, type ExtraRequest, localToday, type OsmFeature, plural, scheduleDay, TripDocument } from "@expeditionplan/core";
+import { applyExtraPicks, corridorTowns, dayCorridor, dayLodging, extraCandidates, type ExtraRequest, extraToPlace, localToday, type OsmFeature, plural, scheduleDay, TripDocument } from "@expeditionplan/core";
 import { z } from "zod";
 import { fetchDayAttractions, OVERPASS_URL, pickDayExtras } from "@expeditionplan/planner";
-import { refIndex, saveElements, stateFromPayload } from "@expeditionplan/sync";
+import { refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/app/actions";
+import { describeFromSource, describePlaceGuide } from "@/app/guide-actions";
 import { aiAccessError, geminiClient } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { chosenVariantsFromCookie } from "@/lib/plan-variants-server";
@@ -96,4 +97,48 @@ export async function findDayExtras(tripId: string, dayRef: string, input: Parti
   if (found === 0) return { ok: merge ? "AI nie znalazło niczego nowego do dopisania." : "AI nie znalazło niczego wartego dorzucenia do tego dnia." };
   const where = request.scope === "city" ? ` w mieście ${request.city}` : request.scope === "route" ? " na trasie przejazdu" : " po drodze i w pobliżu";
   return { ok: `${merge ? "Dopisano" : "Znaleziono"} ${plural(found, ["atrakcję", "atrakcje", "atrakcji"])}${where}.` };
+}
+
+/**
+ * „Miejsce + opis” przy atrakcji: miejsce wyjazdu z atrakcji (`extraToPlace`: istniejące o tej nazwie albo nowe, bez
+ * punktu planu) i opis miejsca jak na stronie „Miejsca” — z artykułu Wikipedii atrakcji, gdy OSM go podaje, inaczej
+ * szukany po nazwie i współrzędnych. Bez dostępu do AI zakłada samo miejsce.
+ */
+export async function extraPlaceWithGuide(tripId: string, dayRef: string, extraId: string): Promise<FormState & { placeRef?: string }> {
+  const { supabase } = await requireUser(`/trips/${tripId}/plan?day=${encodeURIComponent(dayRef)}`);
+  const role = await supabase.from("my_trips").select("role").eq("id", tripId).maybeSingle();
+  if (role.data?.role !== "owner" && role.data?.role !== "editor") return { error: "Miejsca zakłada organizator albo edytor wyjazdu." };
+  const pulled = await pullTrip(supabase, tripId);
+  if (pulled.error !== undefined) return { error: pulled.error };
+  const doc = stateFromPayload(pulled.payload).doc;
+  const extra = doc.days.find((each) => each.ref === dayRef)?.extras?.items.find((each) => each.id === extraId);
+  if (extra === undefined) return { error: "Tej atrakcji już nie ma na liście — odśwież stronę." };
+  const made = extraToPlace(doc, dayRef, extraId, uuidv7());
+  if (made === null) return { error: "Tej atrakcji już nie ma na liście — odśwież stronę." };
+  const checked = TripDocument.safeParse(made.doc);
+  if (!checked.success) return { error: validationError(checked.error) };
+  let ids = refIndex(pulled.payload.tables);
+  try {
+    ids = await saveElements(supabase, tripId, checked.data, [...(made.created ? [{ collection: "places" as const, element: made.place, op: "insert" as const }] : []), { collection: "days", element: made.day, op: "update" }], ids);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  const placeRef = made.place.ref;
+  const saved = made.created ? `Dodano miejsce „${made.place.name}”.` : `Miejsce „${made.place.name}” już było w wyjeździe.`;
+  // Miejsce z opisem: nowy opis tylko na „Miejscach” („Odśwież”), tu wystarczy przejść.
+  const placeId = ids[placeRef];
+  if (placeId !== undefined) {
+    const { data: guide } = await supabase.from("audio_guides").select("id").eq("trip_id", tripId).eq("place_id", placeId).is("deleted_at", null).limit(1).maybeSingle();
+    if (guide) {
+      refresh();
+      return { ok: `${saved} Ma już opis.`, placeRef };
+    }
+  }
+  if ((await aiAccessError()) !== null) {
+    refresh();
+    return { ok: `${saved} Opisu nie przygotuję: to wymaga dostępu do AI.`, placeRef };
+  }
+  const described = extra.wikipedia ? await describeFromSource(tripId, { placeRef }, extra.wikipedia) : await describePlaceGuide(tripId, placeRef);
+  refresh();
+  return "error" in described && described.error ? { error: `${saved} Opis: ${described.error}`, placeRef } : { ok: `${saved} Opis gotowy.`, placeRef };
 }

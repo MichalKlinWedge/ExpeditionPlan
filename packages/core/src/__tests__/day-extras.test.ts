@@ -14,6 +14,7 @@ import {
   extraCandidates,
   extraCategory,
   extraPins,
+  extraToPlace,
   extraTimeText,
   itemExtras,
   setExtraDismissed,
@@ -180,6 +181,20 @@ describe('po drodze i w pobliżu', () => {
     const pooled = addExtraToPlan(withDay, 'd1', 'pool:kapliczka', { itemId: 'x', placeId: 'y' })!;
     expect(pooled.created).toBeUndefined();
     expect(pooled.changed.find((each) => each.ref === 'kapliczka')).toMatchObject({ dayRef: 'd1', parentRef: 'jazda' });
+  });
+
+  it('miejsce z atrakcji: nowe z linkami, drugi raz to samo; „do planu” używa go zamiast nowego', () => {
+    const candidates = extraCandidates(doc, corridor, features);
+    const day = applyExtraPicks(doc, 'd1', candidates, [{ id: 'node/1', title: 'Zamek Wysoki', type: 'zamek', why: 'Ruiny.', stayMin: 30, fit: 'stop' }], '2026-06-01')!;
+    const withDay = { ...doc, days: [day] };
+    const made = extraToPlace(withDay, 'd1', 'node/1', '00000000-0000-7000-8000-000000000009')!;
+    expect(made).toMatchObject({ created: true, place: { ref: 'id-00000000-0000-7000-8000-000000000009', name: 'Zamek Wysoki', category: 'zamek', links: [{ label: 'Wikipedia', url: 'https://pl.wikipedia.org/wiki/Zamek_Wysoki' }] } });
+    expect(made.day.extras!.items[0]!.placeRef).toBe(made.place.ref);
+    expect(TripDocument.safeParse(made.doc).success).toBe(true);
+    expect(extraToPlace(made.doc, 'd1', 'node/1', 'inne')).toMatchObject({ created: false, place: { ref: made.place.ref } });
+    const added = addExtraToPlan(made.doc, 'd1', 'node/1', { itemId: '00000000-0000-7000-8000-000000000001', placeId: 'nieużyte' })!;
+    expect(added.places).toBeUndefined();
+    expect(added.created).toMatchObject({ placeRef: made.place.ref, title: 'Zamek Wysoki' });
   });
 
   it('dojazd z domu własnym autem zostaje w korytarzu (długi: miasta po drodze), autobus — nie', () => {

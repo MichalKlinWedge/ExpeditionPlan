@@ -578,9 +578,42 @@ export function setExtraDismissed(doc: Doc, dayRef: string, id: string, dismisse
   return { doc: { ...doc, days: doc.days.map((each) => (each.ref === dayRef ? day : each)) }, writes: [{ collection: 'days', element: day, op: 'update' }], changed: [] };
 }
 
+/** Miejsce tej atrakcji, gdy wyjazd już je ma: założone z niej wcześniej albo ta sama nazwa do 1,5 km. */
+function extraPlaceIn(doc: Doc, extra: DayExtraItem): Doc['places'][number] | undefined {
+  const own = extra.placeRef === undefined ? undefined : doc.places.find((place) => place.ref === extra.placeRef);
+  if (own !== undefined) return own;
+  const plain = plainName(extra.title);
+  return doc.places.find((place) => plainName(place.name) === plain && (place.lat === undefined || place.lng === undefined || distanceM([place.lng, place.lat], [extra.lng, extra.lat]) < 1500));
+}
+
+const newExtraPlace = (extra: DayExtraItem, placeId: string): Doc['places'][number] => ({
+  ref: `id-${placeId}`,
+  name: extra.title,
+  lat: extra.lat,
+  lng: extra.lng,
+  provider: 'osm',
+  links: [...(extra.website ? [{ label: 'strona', url: extra.website }] : []), ...(extra.wikipedia ? [{ label: 'Wikipedia', url: extra.wikipedia }] : [])],
+  ...(extra.type ? { category: extra.type } : {}),
+});
+
+/**
+ * Miejsce wyjazdu z atrakcji (bez punktu planu, np. żeby przygotować opis): istniejące (`extraPlaceIn`) albo nowe;
+ * atrakcja zapamiętuje je w `placeRef`. `null` — nie ma takiej atrakcji.
+ */
+export function extraToPlace(doc: Doc, dayRef: string, id: string, placeId: string): { doc: Doc; place: Doc['places'][number]; created: boolean; day: Doc['days'][number] } | null {
+  const extra = doc.days.find((each) => each.ref === dayRef)?.extras?.items.find((each) => each.id === id);
+  if (extra === undefined) return null;
+  const existing = extraPlaceIn(doc, extra);
+  const place = existing ?? newExtraPlace(extra, placeId);
+  const day = withExtra(doc, dayRef, id, (each) => ({ ...each, placeRef: place.ref }))!;
+  const next = { ...doc, places: existing ? doc.places : [...doc.places, place], days: doc.days.map((each) => (each.ref === dayRef ? day : each)) };
+  return { doc: next, place, created: existing === undefined, day };
+}
+
 /**
  * Wstawia dodatek do planu zaraz po punkcie, przy którym leży (bez niego — na koniec dnia): punkt z puli
- * przechodzi do dnia, atrakcja z OSM staje się nowym miejscem i punktem z czasem na miejscu. Przy drodze
+ * przechodzi do dnia, atrakcja z OSM staje się punktem z czasem na miejscu — w miejscu założonym z niej wcześniej
+ * („miejsce + opis”, `placeRef`) albo w nowym. Przy drodze
  * przejazdu autem zostaje postojem w trasie, więc jej czas wydłuża przejazd. Dodatek dostaje znacznik `added`.
  */
 export function addExtraToPlan(doc: Doc, dayRef: string, id: string, ids: { itemId: string; placeId: string }): PlanEdit | null {
@@ -591,19 +624,14 @@ export function addExtraToPlan(doc: Doc, dayRef: string, id: string, ids: { item
   let base = doc;
   let ref: string;
   const places: NonNullable<PlanEdit['places']> = [];
+  let newItem = false;
   if (extra.poolRef !== undefined && doc.items.some((item) => item.ref === extra.poolRef && item.dayRef === undefined)) {
     ref = extra.poolRef;
   } else {
-    const place: Doc['places'][number] = {
-      ref: `id-${ids.placeId}`,
-      name: extra.title,
-      lat: extra.lat,
-      lng: extra.lng,
-      provider: 'osm',
-      links: extra.website ? [{ label: 'strona', url: extra.website }] : [],
-      ...(extra.type ? { category: extra.type } : {}),
-    };
+    const existing = extraPlaceIn(doc, extra);
+    const place = existing ?? newExtraPlace(extra, ids.placeId);
     ref = `id-${ids.itemId}`;
+    newItem = true;
     const item: Item = {
       ref,
       kind: 'visit',
@@ -620,8 +648,8 @@ export function addExtraToPlan(doc: Doc, dayRef: string, id: string, ids: { item
       links: extra.wikipedia ? [{ label: 'Wikipedia', url: extra.wikipedia }] : [],
       notes: [],
     };
-    places.push({ place, created: true });
-    base = { ...doc, places: [...doc.places, place], items: [...doc.items, item] };
+    if (existing === undefined) places.push({ place, created: true });
+    base = { ...doc, places: existing ? doc.places : [...doc.places, place], items: [...doc.items, item] };
   }
   const moved = moveAfter(base, ref, dayRef, afterRef);
   if (moved === null) return null;
@@ -633,7 +661,7 @@ export function addExtraToPlan(doc: Doc, dayRef: string, id: string, ids: { item
   }
   const day = withExtra(edit.doc, dayRef, id, (each) => ({ ...each, status: 'added', addedRef: ref }))!;
   const nextDoc = { ...edit.doc, days: edit.doc.days.map((each) => (each.ref === dayRef ? day : each)) };
-  const created = places.length > 0 ? edit.changed.find((each) => each.ref === ref) : undefined;
+  const created = newItem ? edit.changed.find((each) => each.ref === ref) : undefined;
   return {
     doc: nextDoc,
     changed: edit.changed.filter((each) => each !== created),

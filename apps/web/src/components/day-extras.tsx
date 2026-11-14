@@ -2,18 +2,20 @@
 
 import { addExtraToPlan, type DayExtraItem, dayExtras, type DaySchedule, EXTRA_CATEGORY, EXTRA_FIT, EXTRA_INTEREST, EXTRA_SCOPE, type ExtraCategory, extraInterest, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
-import { findDayExtras } from "@/app/day-extras-actions";
+import { extraPlaceWithGuide, findDayExtras } from "@/app/day-extras-actions";
 import { DayExtrasExternal } from "@/components/day-extras-external";
 import type { OnRules } from "@/components/day-rules";
-import { SparkIcon } from "@/components/icons";
+import { ArticleIcon, GlobeIcon, PinIcon, SparkIcon } from "@/components/icons";
 import { DEFAULT_EXTRA_FILTER, setExtraFilter, useExtraFilter } from "@/lib/extra-filter";
 
 /**
  * „Po drodze i w pobliżu” pod planem dnia: atrakcje przy trasie i miejscach dnia (OSM i pula, wybór i opis AI,
  * objazd policzony przez kod, `core/day-extras.ts`) na wypadek, gdy zostanie czas albo coś wypadnie z planu.
- * W edycji: szukanie z AI, „do planu” (zaraz po punkcie, przy którym leży), odrzucenie i przywrócenie, a także
+ * W edycji: szukanie z AI, „do planu” (zaraz po punkcie, przy którym leży), „miejsce + opis” (miejsce wyjazdu
+ * bez punktu planu i jego opis, `extraPlaceWithGuide`), odrzucenie i przywrócenie, a także
  * wytyczne dla zewnętrznego AI i wczytanie jego odpowiedzi (`DayExtrasExternal`).
  * Bez edycji i na telefonie — tylko podgląd.
  */
@@ -43,6 +45,9 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
   const [scope, setScope] = useState<ExtraScope>("day");
   const [city, setCity] = useState("");
   const [hint, setHint] = useState("");
+  // „miejsce + opis” w toku (klucz atrakcji).
+  const [describing, setDescribing] = useState<string | null>(null);
+  const [placeNote, setPlaceNote] = useState<{ id: string; ok?: string; error?: string } | null>(null);
   const slackMin = schedule?.slackMin ?? null;
   // Rodzaje i atrakcyjność: ustawienie tej przeglądarki, wspólne z mapą i znacznikami przy punktach.
   const filter = useExtraFilter();
@@ -53,6 +58,17 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
     setExtraFilter({ ...filter, categories: filter.categories.includes(category) ? filter.categories.filter((each) => each !== category) : [...filter.categories, category] });
 
   const narrowed = scope !== "day" || hint.trim() !== "";
+  const describe = (extra: DayExtraItem) => {
+    setDescribing(extra.id);
+    start(async () => {
+      setPlaceNote(null);
+      const result = await extraPlaceWithGuide(tripId, dayRef, extra.id);
+      setPlaceNote({ id: extra.id, ...(result.error ? { error: result.error } : { ok: result.ok ?? "" }) });
+      setDescribing(null);
+    });
+  };
+  const placeNames = new Map(doc.places.map((place) => [place.ref, place.name]));
+  const iconLink = "inline-flex size-7 items-center justify-center rounded text-sea hover:bg-zinc-100 dark:hover:bg-zinc-800";
   const find = () =>
     start(async () => {
       setMessage({});
@@ -187,22 +203,34 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
                 {extra.why && <p className="text-xs text-zinc-600 dark:text-zinc-400">{extra.why}</p>}
                 <div className="flex flex-wrap items-center gap-1 text-xs">
                   {extra.wikipedia && (
-                    <a href={extra.wikipedia} target="_blank" rel="noreferrer" className="text-sea underline">
-                      Wikipedia
+                    <a href={extra.wikipedia} target="_blank" rel="noreferrer" title="Wikipedia" aria-label={`${extra.title} — Wikipedia`} className={iconLink}>
+                      <ArticleIcon className="size-4" />
                     </a>
                   )}
                   {extra.website && (
-                    <a href={extra.website} target="_blank" rel="noreferrer" className="text-sea underline">
-                      strona
+                    <a href={extra.website} target="_blank" rel="noreferrer" title={`Strona: ${extra.website}`} aria-label={`${extra.title} — strona`} className={iconLink}>
+                      <GlobeIcon className="size-4" />
                     </a>
                   )}
-                  <a href={`https://www.openstreetmap.org/?mlat=${extra.lat}&mlon=${extra.lng}#map=17/${extra.lat}/${extra.lng}`} target="_blank" rel="noreferrer" className="text-sea underline">
-                    mapa
+                  <a href={`https://www.openstreetmap.org/?mlat=${extra.lat}&mlon=${extra.lng}#map=17/${extra.lat}/${extra.lng}`} target="_blank" rel="noreferrer" title="Mapa (OpenStreetMap)" aria-label={`${extra.title} — mapa`} className={iconLink}>
+                    <PinIcon className="size-4" />
                   </a>
                   {onEdit && (
                     <button type="button" onClick={() => onEdit(addExtraToPlan(doc, dayRef, extra.id, { itemId: uuidv7(), placeId: uuidv7() }))} title={near ? `Wstawia do planu zaraz po „${near}”` : "Wstawia na koniec dnia"} className="btn-mini ml-1">
                       do planu
                     </button>
+                  )}
+                  {extra.placeRef !== undefined && placeNames.has(extra.placeRef) ? (
+                    <Link href={`/trips/${tripId}/places?miejsce=${encodeURIComponent(extra.placeRef)}`} title="Miejsce z opisem na stronie „Miejsca”" className="btn-mini">
+                      miejsce i opis
+                    </Link>
+                  ) : (
+                    canFind && (
+                      <button type="button" onClick={() => describe(extra)} disabled={pending} title="Dodaje miejsce do wyjazdu (bez punktu planu) i przygotowuje jego opis z Wikipedii" className="btn-mini">
+                        <SparkIcon className="size-3.5" />
+                        {describing === extra.id ? "Przygotowuję…" : "miejsce + opis"}
+                      </button>
+                    )
                   )}
                   {onRules && (
                     <button type="button" onClick={() => onRules((current) => setExtraDismissed(current, dayRef, extra.id, true))} className="btn-mini btn-mini-danger">
@@ -210,6 +238,7 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
                     </button>
                   )}
                 </div>
+                {placeNote?.id === extra.id && <p className={`text-xs ${placeNote.error ? "msg-error" : "msg-ok"}`}>{placeNote.error ?? placeNote.ok}</p>}
               </li>
             );
           })}
