@@ -53,4 +53,15 @@ describe('statystyki dnia', () => {
     expect(trip.movingMin).toBe(trip.moves.reduce((sum, move) => sum + move.minutes, 0));
     expect(tripStatistics(maroko, [])).toBeNull();
   });
+
+  it('lot bez dystansu w planie: odległość po łuku między lotniskami', () => {
+    const barcelona = load('barcelona');
+    const flight = barcelona.items.find((item) => item.leg?.mode === 'flight')!;
+    expect(flight.leg!.distanceKm).toBeUndefined();
+    const stats = dayStatistics(barcelona, scheduleDay(barcelona, flight.dayRef!))!;
+    const km = stats.moves.find((move) => move.kind === 'flight')!;
+    expect(km.noKm).toBe(0);
+    expect(km.km).toBeGreaterThan(1500);
+    expect(km.km).toBeLessThan(1800);
+  });
 });

@@ -2,6 +2,7 @@ import type { DaySchedule } from './engine/schedule.ts';
 import { dayGaps } from './day-gaps.ts';
 import { formatKm, plural } from './format.ts';
 import { formatMinutes } from './plan-info.ts';
+import { distanceM, type LngLat } from './polyline.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
@@ -73,6 +74,18 @@ export function dayStatistics(doc: Doc, schedule: DaySchedule): DayStatistics | 
   if (rows.length === 0) return null;
   const items = new Map(doc.items.map((item) => [item.ref, item]));
   const tracks = new Map(doc.tracks.map((track) => [track.ref, track]));
+  const places = new Map(doc.places.map((place) => [place.ref, place]));
+  const coords = (ref: string | undefined): LngLat | undefined => {
+    const place = ref === undefined ? undefined : places.get(ref);
+    return place?.lat !== undefined && place.lng !== undefined ? [place.lng, place.lat] : undefined;
+  };
+  // Lot bez dystansu w planie: odległość po łuku między lotniskami (tak liczy się dystans lotu).
+  const flightKm = (item: Item): number | undefined => {
+    if (item.leg?.mode !== 'flight') return undefined;
+    const from = coords(item.leg.fromPlaceRef ?? item.placeRef);
+    const to = coords(item.leg.toPlaceRef);
+    return from === undefined || to === undefined ? undefined : Math.round(distanceM(from, to) / 1000);
+  };
   const moves = new Map<MoveKind, MoveStats>();
   const stays = new Map<StayKind, StayStats>();
   const move = (kind: MoveKind) => {
@@ -106,7 +119,7 @@ export function dayStatistics(doc: Doc, schedule: DaySchedule): DayStatistics | 
       target.minutes += Math.max(0, row.durationMin - stopsMin);
       target.stopsMin += stopsMin;
       const track = climb(target, item);
-      const km = item.leg.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm;
+      const km = item.leg.distanceKm ?? item.activity?.distanceKm ?? track?.distanceKm ?? flightKm(item);
       if (km === undefined) target.noKm += 1;
       else target.km += km;
       continue;
