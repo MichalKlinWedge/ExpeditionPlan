@@ -15,7 +15,9 @@ import { TripRescheduleButton } from "@/components/trip-reschedule";
 import { TripStatusButton } from "@/components/trip-status-button";
 import { TripTitle } from "@/components/trip-title";
 import { TripNews } from "@/components/trip-news";
+import { TripStats } from "@/components/trip-stats";
 import { requireUser } from "@/lib/auth";
+import { chosenVariantsFromCookie } from "@/lib/plan-variants-server";
 import { tripDates } from "@/lib/labels";
 
 export const metadata: Metadata = { title: "Wyjazd — Expedition Planner" };
@@ -77,11 +79,8 @@ async function loadNews(client: SupabaseClient, tripId: string): Promise<NewsSum
  * Braki planu przed wyjazdem (`tripReadiness`) i kto bez konta / bez telefonu (statystyki RPC oddaje
  * tylko organizatorowi — u innych lista telefonów jest pusta, a strona i tak jej nie pokazuje). Po wyjeździe — null.
  */
-async function loadReadiness(client: SupabaseClient, tripId: string) {
+async function loadReadiness(client: SupabaseClient, tripId: string, payload: PullPayload) {
   try {
-    const { data, error } = await client.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
-    if (error || data === null) return null;
-    const payload = data as PullPayload;
     const { doc } = stateFromPayload(payload);
     const today = instantToZoned(new Date().getTime(), doc.trip.primaryTz).date;
     if (today > doc.trip.endDate) return null;
@@ -103,10 +102,20 @@ async function loadReadiness(client: SupabaseClient, tripId: string) {
   }
 }
 
+/** Cały wyjazd jednym odczytem (gotowość i statystyki); błąd = bez tych kart. */
+async function loadPayload(client: SupabaseClient, tripId: string): Promise<PullPayload | null> {
+  try {
+    const { data, error } = await client.rpc("pull_changes", { p_trip: tripId, p_since: 0 });
+    return error || data === null ? null : (data as PullPayload);
+  } catch {
+    return null;
+  }
+}
+
 async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}`);
-  const [trip, members, travelers, days, items, brief, mine, tasks, undecided, poll, news, readiness] = await Promise.all([
+  const [trip, members, travelers, days, items, brief, mine, tasks, undecided, poll, news, payload, chosen] = await Promise.all([
     supabase.from("my_trips").select("*").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id", { count: "exact", head: true }).eq("trip_id", id),
     supabase.from("travelers").select("tentative").eq("trip_id", id).is("deleted_at", null),
@@ -118,9 +127,11 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
     supabase.from("variant_groups").select("voting_open").eq("trip_id", id).is("chosen_variant_id", null).is("deleted_at", null),
     supabase.from("trips").select("date_poll").eq("id", id).maybeSingle(),
     loadNews(supabase as unknown as SupabaseClient, id),
-    loadReadiness(supabase as unknown as SupabaseClient, id),
+    loadPayload(supabase as unknown as SupabaseClient, id),
+    chosenVariantsFromCookie(id),
   ]);
   if (trip.data === null) notFound();
+  const readiness = payload === null ? null : await loadReadiness(supabase as unknown as SupabaseClient, id, payload);
   const wavering = (travelers.data ?? []).filter((person) => person.tentative).length;
   const role = trip.data.role!;
   // Uczestnik liczy tylko wybory z otwartym głosowaniem.
@@ -168,6 +179,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
 
       {news !== null && <TripNews tripId={id} news={news} now={new Date().getTime()} />}
       {readiness !== null && !postponed && !title.startsWith(DRAFT) && <TripReadiness tripId={id} issues={readiness.issues} daysLeft={readiness.daysLeft} people={role === "owner" ? readiness.people : null} />}
+      {payload !== null && <TripStats doc={stateFromPayload(payload).doc} chosen={chosen} />}
 
       {/* Kafelki w trzech grupach, w tej samej kolejności co pasek ikon (`components/trip-nav.tsx`). Przy dwóch kolumnach ostatni kafelek bez pary zajmuje cały wiersz. */}
       <nav className="flex flex-col gap-3">

@@ -157,6 +157,64 @@ export function dayStatistics(doc: Doc, schedule: DaySchedule): DayStatistics | 
   };
 }
 
+export type TripStatistics = {
+  days: number;
+  points: number;
+  moves: MoveStats[];
+  stays: StayStats[];
+  freeMin: number;
+  /** Czas w ruchu łącznie (wszystkie środki, bez postojów). */
+  movingMin: number;
+  /** Dzień od pierwszej do ostatniej godziny planu najdłuższy, najwięcej km pieszo, największe podejście. */
+  longestDay?: { date: string; spanMin: number };
+  mostFoot?: { date: string; km: number };
+  mostAscent?: { date: string; ascentM: number };
+};
+
+/** Statystyki całego wyjazdu: suma `dayStatistics` dni (te same warianty i scenariusz) i dni z rekordami. */
+export function tripStatistics(doc: Doc, schedules: readonly DaySchedule[]): TripStatistics | null {
+  const days = schedules.flatMap((schedule) => {
+    const stats = dayStatistics(doc, schedule);
+    return stats === null ? [] : [{ date: schedule.date, stats }];
+  });
+  if (days.length === 0) return null;
+  const moves = new Map<MoveKind, MoveStats>();
+  const stays = new Map<StayKind, StayStats>();
+  let longestDay: TripStatistics['longestDay'];
+  let mostFoot: TripStatistics['mostFoot'];
+  let mostAscent: TripStatistics['mostAscent'];
+  for (const { date, stats } of days) {
+    for (const move of stats.moves) {
+      const sum = moves.get(move.kind) ?? { kind: move.kind, count: 0, km: 0, noKm: 0, minutes: 0, stopsMin: 0, ascentM: 0, descentM: 0 };
+      moves.set(move.kind, { kind: move.kind, count: sum.count + move.count, km: sum.km + move.km, noKm: sum.noKm + move.noKm, minutes: sum.minutes + move.minutes, stopsMin: sum.stopsMin + move.stopsMin, ascentM: sum.ascentM + move.ascentM, descentM: sum.descentM + move.descentM });
+    }
+    for (const stay of stats.stays) {
+      const sum = stays.get(stay.kind) ?? { kind: stay.kind, count: 0, minutes: 0, untimed: 0 };
+      stays.set(stay.kind, { kind: stay.kind, count: sum.count + stay.count, minutes: sum.minutes + stay.minutes, untimed: sum.untimed + stay.untimed });
+    }
+    if (longestDay === undefined || stats.spanMin > longestDay.spanMin) longestDay = { date, spanMin: stats.spanMin };
+    const foot = stats.moves.find((move) => move.kind === 'foot');
+    if (foot !== undefined && foot.km > 0 && (mostFoot === undefined || foot.km > mostFoot.km)) mostFoot = { date, km: foot.km };
+    const ascentM = stats.moves.reduce((sum, move) => sum + move.ascentM, 0);
+    if (ascentM > 0 && (mostAscent === undefined || ascentM > mostAscent.ascentM)) mostAscent = { date, ascentM };
+  }
+  const moveList = ORDER.flatMap((kind) => {
+    const found = moves.get(kind);
+    return found === undefined ? [] : [{ ...found, km: Math.round(found.km * 10) / 10 }];
+  });
+  return {
+    days: days.length,
+    points: days.reduce((sum, day) => sum + day.stats.points, 0),
+    moves: moveList,
+    stays: (['sights', 'meals', 'other'] as const).flatMap((kind) => stays.get(kind) ?? []),
+    freeMin: days.reduce((sum, day) => sum + day.stats.freeMin, 0),
+    movingMin: moveList.reduce((sum, move) => sum + move.minutes, 0),
+    ...(longestDay ? { longestDay } : {}),
+    ...(mostFoot ? { mostFoot } : {}),
+    ...(mostAscent ? { mostAscent } : {}),
+  };
+}
+
 /**
  * Warianty, z którymi liczą się statystyki dnia: wybrany wariant każdej grupy tego dnia („Bagaż: Skrytka przy
  * Pl. Catalunya”). `active` = `activeVariants` widoku planu; grupy na cały wyjazd, rezerwacji i ankiety pomija.

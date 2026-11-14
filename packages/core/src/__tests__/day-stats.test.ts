@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { dayStatistics, dayVariantLabels, moveLine, stayLine } from '../day-stats.ts';
+import { dayStatistics, dayVariantLabels, moveLine, stayLine, tripStatistics } from '../day-stats.ts';
 import { activeVariants, scheduleDay } from '../engine/schedule.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
@@ -39,5 +39,18 @@ describe('statystyki dnia', () => {
     const count = (variantRef: string) => dayStatistics(maroko, scheduleDay(maroko, group.dayRef!, { activeVariants: { [group.ref]: variantRef } }))!.points;
     expect(count(full!.ref)).toBeGreaterThan(count(radical!.ref));
     expect(dayVariantLabels(maroko, group.dayRef!, activeVariants(maroko, { [group.ref]: radical!.ref }))).toContain(`${group.title}: ${radical!.label}`);
+  });
+
+  it('cały wyjazd: suma dni i dni z rekordami', () => {
+    const schedules = maroko.days.map((day) => scheduleDay(maroko, day.ref));
+    const days = schedules.map((schedule) => dayStatistics(maroko, schedule)!);
+    const trip = tripStatistics(maroko, schedules)!;
+    expect(trip.days).toBe(maroko.days.length);
+    expect(trip.points).toBe(days.reduce((sum, day) => sum + day.points, 0));
+    const driveKm = days.reduce((sum, day) => sum + (day.moves.find((move) => move.kind === 'drive')?.km ?? 0), 0);
+    expect(trip.moves.find((move) => move.kind === 'drive')!.km).toBeCloseTo(driveKm, 1);
+    expect(trip.longestDay!.spanMin).toBe(Math.max(...days.map((day) => day.spanMin)));
+    expect(trip.movingMin).toBe(trip.moves.reduce((sum, move) => sum + move.minutes, 0));
+    expect(tripStatistics(maroko, [])).toBeNull();
   });
 });
