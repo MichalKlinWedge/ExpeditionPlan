@@ -73,6 +73,9 @@ export function tuneContext(doc: Doc, locked: ReadonlySet<string>) {
       return { ref: day.ref, date: day.date, title: day.title, items: dayItems(doc, day.ref).map(describe), ...(variants.length > 0 ? { variants } : {}) };
     }),
     pool: doc.items.filter((item) => item.dayRef === undefined).map(describe),
+    bookings: doc.bookings
+      .filter((booking) => booking.status !== 'idea')
+      .map((booking) => ({ ref: booking.ref, title: booking.title, kind: booking.kind, status: booking.status, ...(booking.links.length > 0 ? { links: booking.links.map((link) => link.url) } : {}) })),
   };
 }
 
@@ -87,7 +90,7 @@ export function tunePrompt(doc: Doc, locked: ReadonlySet<string>, history: ChatT
     '4. `remove_item` domyślnie przenosi punkt do puli (`toPool: true`); `toPool: false` tylko, gdy człowiek wprost każe usunąć.',
     '5. `add_item`/`replace_item`: realny czas trwania, godzina tylko gdy ważna (otwarcie, zachód, rezerwacja); `place` po polsku i `searchName` z OpenStreetMap dla konkretnego miejsca.',
     '6. Plan B / alternatywa „jeśli pada”, „jeśli zamknięte”, „jeśli dzieci zmęczone” → `add_variant`: obecny plan dnia zostaje wariantem A (`mainLabel`), wariant B zastępuje `replacesItemRefs` punktami `items`. Nie usuwaj punktów, żeby zrobić alternatywę; nie dubluj wariantu, który dzień już ma (`variants`). Zastępuj tylko program (zwiedzanie, aktywności, posiłki) — nocleg i zameldowanie (`lodging`) zostają w obu wariantach. `mainLabel` nazywa obecny plan po treści („Słońce”, „Pełny program”), `label` — nowy („Deszcz: medyna i hammam”).',
-    '7. Linki (`add_link`) tylko z adresem podanym przez człowieka w poleceniu albo obecnym w planie — nigdy nie wymyślaj adresów. Ten sam link do kilku punktów (np. oba noclegi) = osobny `add_link` dla każdego; punkt, który ma już ten adres (`links`), pomiń.',
+    '7. Linki tylko z adresem podanym przez człowieka w poleceniu albo obecnym w planie — nigdy nie wymyślaj adresów. Do punktu: `add_link`; do rezerwacji (`bookings`, potwierdzenie, oferta, strona przewoźnika): `add_booking_link`. Ten sam link w kilku miejscach (np. oba noclegi i ich rezerwacja) = osobna operacja dla każdego; pomiń to, co ma już ten adres (`links`).',
     '8. Jeśli czegoś nie da się zrobić albo dzień się nie zmieści — powiedz to w `message` zamiast udawać. Piszesz po polsku.',
     '',
     'JSON Schema:',
@@ -371,6 +374,22 @@ export function applyPatch(doc: Doc, patch: PlanPatch, locked: ReadonlySet<strin
           text = `„${target!.title}”: link ${lodging ? lodgingLinkLabel(op.url) : label}`;
           break;
         }
+        case 'add_booking_link': {
+          const booking = current.bookings.find((each) => each.ref === op.bookingRef);
+          if (booking === undefined) {
+            fail(`Nie ma rezerwacji „${op.bookingRef}”.`);
+            continue;
+          }
+          if (booking.links.some((link) => link.url === op.url)) {
+            fail(`Rezerwacja „${booking.title}” ma już ten link.`);
+            continue;
+          }
+          const site = lodgingLinkLabel(op.url);
+          const label = op.label?.trim() || (site !== 'Strona obiektu' ? site : linkLabel(op.url)) || 'Link';
+          next = { ...current, bookings: current.bookings.map((each) => (each.ref === booking.ref ? { ...each, links: [...each.links, { label, url: op.url }] } : each)) };
+          text = `Rezerwacja „${booking.title}”: link ${label}`;
+          break;
+        }
         case 'set_field': {
           const patchFields: Partial<Item> =
             op.field === 'durationMin'
@@ -427,6 +446,15 @@ export function patchDiff(before: Doc, after: Doc): MergeEdit {
     kept: [],
     copied: {},
   };
+}
+
+/** Rezerwacje zmienione łatką (`add_booking_link`): zapisuje się je osobno, `MergeEdit` ich nie zna. */
+export function changedBookings(before: Doc, after: Doc): Doc['bookings'] {
+  const old = new Map(before.bookings.map((booking) => [booking.ref, booking]));
+  return after.bookings.filter((booking) => {
+    const was = old.get(booking.ref);
+    return was !== undefined && JSON.stringify(was) !== JSON.stringify(booking);
+  });
 }
 
 /** Miejsca zmienione łatką (`set_place`): zapisuje się je osobno, bo `MergeEdit` zna tylko nowe miejsca. */

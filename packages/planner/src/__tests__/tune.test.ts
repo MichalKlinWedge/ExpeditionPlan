@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dayItems, itemsForDay, PlanPatch, TripDocument } from '@expeditionplan/core';
 import { describe, expect, it } from 'vitest';
 
-import { applyPatch, patchDiff, tuneContext } from '../tune.ts';
+import { applyPatch, changedBookings, patchDiff, tuneContext } from '../tune.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
 let n = 0;
@@ -139,6 +139,18 @@ describe('etap 3 — linki', () => {
     expect(doc.items.find((item) => item.ref === lodging.ref)!.links[0]).toEqual({ label: 'Airbnb', url: airbnb });
     expect(doc.items.find((item) => item.ref === visit.ref)!.links.at(-1)).toEqual({ label: 'Bilety', url: 'https://example.com/bilety' });
     expect(applyPatch(doc, PlanPatch.parse({ message: 'x', ops: [{ op: 'add_link', itemRef: lodging.ref, url: airbnb }] }), new Set(), newId).results[0]!.ok).toBe(false);
+  });
+
+  it('link do rezerwacji: dopisany raz, widoczny dla zapisu i w kontekście', () => {
+    const booking = maroko.bookings.find((each) => each.ref === 'lot-tam')!;
+    const patch = PlanPatch.parse({ message: 'x', ops: [{ op: 'add_booking_link', bookingRef: 'lot-tam', url: airbnb }, { op: 'add_booking_link', bookingRef: 'nie-ma', url: airbnb }] });
+    const { doc, results } = applyPatch(maroko, patch, new Set(), newId);
+    expect(results.map((each) => each.ok)).toEqual([true, false]);
+    expect(doc.bookings.find((each) => each.ref === 'lot-tam')!.links.at(-1)).toEqual({ label: 'Airbnb', url: airbnb });
+    expect(changedBookings(maroko, doc).map((each) => each.ref)).toEqual(['lot-tam']);
+    expect(patchDiff(maroko, doc).changed).toEqual([]);
+    expect(applyPatch(doc, PlanPatch.parse({ message: 'x', ops: [{ op: 'add_booking_link', bookingRef: 'lot-tam', url: airbnb }] }), new Set(), newId).results[0]!.ok).toBe(false);
+    expect(tuneContext(maroko, new Set()).bookings.some((each) => each.ref === booking.ref)).toBe(true);
   });
 
   it('link spoza http(s) odrzuca już schemat', () => {

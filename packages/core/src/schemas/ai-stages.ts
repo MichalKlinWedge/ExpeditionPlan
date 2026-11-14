@@ -265,6 +265,8 @@ export const PatchOp = z.discriminatedUnion('op', [
    * obecny w planie. Jedyna operacja dozwolona także na punkcie zmienionym ręcznie: niczego nie nadpisuje.
    */
   z.object({ op: z.literal('add_link'), itemRef: Ref, url: HttpUrl, label: z.string().optional() }),
+  /** Link przy rezerwacji (potwierdzenie, oferta, strona przewoźnika) — te same zasady co `add_link`. */
+  z.object({ op: z.literal('add_booking_link'), bookingRef: Ref, url: HttpUrl, label: z.string().optional() }),
   /**
    * Plan B dla dnia (pogoda, zamknięcie, samopoczucie): obecny plan dnia zostaje wariantem A,
    * wariant B zastępuje wskazane punkty nowymi. Nic nie znika z planu — decyzję podejmuje się na miejscu.

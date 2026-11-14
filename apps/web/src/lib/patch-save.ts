@@ -1,7 +1,7 @@
 import "server-only";
 
 import { TripBrief, TripDocument } from "@expeditionplan/core";
-import { changedPlaces, geoapifyLookup, groundPlaces, patchDiff, withCoordinates } from "@expeditionplan/planner";
+import { changedBookings, changedPlaces, geoapifyLookup, groundPlaces, patchDiff, withCoordinates } from "@expeditionplan/planner";
 import { dbErrorMessage, lockedRefs, type PullPayload, refIndex, saveElements, saveMergeEdit, stateFromPayload } from "@expeditionplan/sync";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -76,6 +76,8 @@ export async function savePatchedPlan(
     const ids = await saveMergeEdit(supabase, tripId, patchDiff(loaded.doc, checked.data), refIndex(loaded.payload.tables));
     const places = changedPlaces(loaded.doc, checked.data);
     if (places.length > 0) await saveElements(supabase, tripId, checked.data, places.map((element) => ({ collection: "places" as const, element, op: "update" as const })), ids);
+    const bookings = changedBookings(loaded.doc, checked.data);
+    if (bookings.length > 0) await saveElements(supabase, tripId, checked.data, bookings.map((element) => ({ collection: "bookings" as const, element, op: "update" as const })), ids);
   } catch (e) {
     return { error: `Nie zapisano: ${e instanceof Error ? e.message : String(e)}` };
   }
