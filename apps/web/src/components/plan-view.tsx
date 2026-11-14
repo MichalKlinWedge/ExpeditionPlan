@@ -1200,6 +1200,9 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                     <IconAction kind="edit" onClick={() => setEditing(editing === item.ref ? null : item.ref)} />
                     <IconAction kind="remove"
                       onClick={() => window.confirm(`Usunąć „${item.title}” z planu?`) && actions.remove(item.ref)} />
+                    <button onClick={() => actions.moveTo(item.ref, null)} title="Zdejmij z dnia, ale zachowaj w puli: później wstawisz go do dowolnego dnia" className="btn-mini">
+                      → do puli
+                    </button>
                     <MoveSelect doc={doc} current={dayRef} onMove={(target) => actions.moveTo(item.ref, target)} />
                     {item.routeStop ? (
                       <button onClick={() => actions.edit(setRouteStop(doc, item.ref, false, options))} title="Punkt wraca do zwykłej kolejności dnia" className="btn-mini">
