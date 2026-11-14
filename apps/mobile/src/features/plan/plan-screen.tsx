@@ -144,9 +144,12 @@ export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose,
   const [editMode] = useEditMode();
   /** Przeciągnięcie listy w dół — ręczne odświeżenie (zamiast przycisku „Odśwież”). */
   const [pulling, setPulling] = useState(false);
+  /** Liczba odświeżeń listy — zakładki, które trzymają własny stan (Zadania), zaczynają po nim od nowa. */
+  const [refreshes, setRefreshes] = useState(0);
   const pullRefresh = () => {
     if (!signedIn) return;
     setPulling(true);
+    setRefreshes((count) => count + 1);
     void load().finally(() => setPulling(false));
   };
   /** Punkt otwarty w szczegółach (opis, przewodnik). */
@@ -537,7 +540,7 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
               }}
             />
           ) : mode === 'tasks' ? (
-            <TasksView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canAct={signedIn && canAct} onChanged={afterLocalWrite} />
+            <TasksView key={refreshes} trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canAct={signedIn && canAct} onChanged={afterLocalWrite} />
           ) : (
             <JournalView trip={trip} tripId={tripId} signedIn={signedIn} userId={signedIn ? userId : null} canEditAll={signedIn && canAct} onChanged={afterLocalWrite} onDragging={setJournalDrag} />
           )}

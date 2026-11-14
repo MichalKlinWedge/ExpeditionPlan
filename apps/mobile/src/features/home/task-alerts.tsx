@@ -197,29 +197,37 @@ export function TaskAlerts() {
         </ThemedText>
       )}
       {shown.map((task) => (
-        <View key={task.id} style={styles.row}>
+        <View key={task.id} style={[styles.row, task.overdue && !task.done ? styles.overdueRow : undefined]}>
           <Pressable onPress={() => check(task)} hitSlop={8} accessibilityLabel={`${task.done ? 'Cofnij odhaczenie' : 'Zrobione'}: ${task.title}`} style={styles.box}>
-            <ThemedText style={styles.boxMark}>{task.done ? '☑' : '☐'}</ThemedText>
+            <ThemedText style={[styles.boxMark, task.overdue && !task.done ? styles.overdue : undefined]}>{task.done ? '☑' : '☐'}</ThemedText>
           </Pressable>
           <Pressable onPress={() => setSheet(task.id)} style={styles.grow}>
             <ThemedText type="small" style={task.done ? styles.struck : task.overdue ? styles.overdue : undefined}>
               {task.priority === 'high' ? '! ' : ''}
               {task.title}
             </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {task.done
-                ? 'zrobione — dotknij ☑, żeby cofnąć'
-                : `${whenLabel(whenOf(task), today, task.overdue)}${task.remind !== undefined ? ` · 🔔 ${task.remind.time}` : ''} · ${task.tripTitle}`}
-            </ThemedText>
+            <View style={styles.meta}>
+              {task.overdue && !task.done && <ThemedText style={styles.badge}>PO TERMINIE</ThemedText>}
+              <ThemedText type="small" themeColor="textSecondary" style={styles.grow}>
+                {task.done
+                  ? 'zrobione — dotknij ☑, żeby cofnąć'
+                  : `${whenLabel(whenOf(task), today, task.overdue)}${task.remind !== undefined ? ` · 🔔 ${task.remind.time}` : ''} · ${task.tripTitle}`}
+              </ThemedText>
+            </View>
           </Pressable>
         </View>
       ))}
-      {group !== null && shown.length > 0 && (
-        <Pressable onPress={() => open(shown[0]!.tripId)} hitSlop={6}>
-          <ThemedText type="small" themeColor="accent">
-            Wszystkie zadania wyjazdu →
-          </ThemedText>
-        </Pressable>
+      {group !== null && left.length > 0 && (
+        <View style={styles.trips}>
+          {/* Każdy wyjazd z otwartymi zadaniami, nie tylko ten z pierwszego wiersza. */}
+          {[...new Map(left.map((task) => [task.tripId, task])).values()].map((task) => (
+            <Pressable key={task.tripId} onPress={() => open(task.tripId)} style={[styles.trip, { borderColor: theme.backgroundSelected }]}>
+              <ThemedText type="small" themeColor="accent">
+                {task.tripTitle} ({left.filter((each) => each.tripId === task.tripId).length}) →
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
       )}
       <TaskSheet
         task={current}
@@ -339,9 +347,12 @@ function TaskSheet({
                       {task.due === undefined ? 'Bez terminu' : `Termin: ${task.due}`}
                       {task.deadline === undefined ? '' : ` · najpóźniej ${task.deadline}`}
                     </ThemedText>
-                    <ThemedText type="small" style={task.overdue ? styles.overdue : undefined}>
-                      {whenLabel(whenOf(task), today, task.overdue)}
-                    </ThemedText>
+                    <View style={styles.meta}>
+                      {task.overdue && !task.done && <ThemedText style={styles.badge}>PO TERMINIE</ThemedText>}
+                      <ThemedText type="small" style={task.overdue ? styles.overdue : undefined}>
+                        {whenLabel(whenOf(task), today, task.overdue)}
+                      </ThemedText>
+                    </View>
                   </ThemedView>
 
                   <ThemedView type="backgroundElement" style={styles.block}>
@@ -409,6 +420,12 @@ const styles = StyleSheet.create({
   boxMark: { fontSize: 26, lineHeight: 30 },
   grow: { flex: 1 },
   overdue: { color: OVERDUE, fontWeight: '600' },
+  // Zaległe zadanie odcina się od reszty listy, tak samo jak w zakładce „Zadania”.
+  overdueRow: { backgroundColor: '#dc26261f', borderLeftWidth: 3, borderLeftColor: OVERDUE, borderRadius: 8, paddingRight: Spacing.one },
+  meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.one },
+  trips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  trip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 4 },
+  badge: { color: '#FFFFFF', backgroundColor: OVERDUE, fontSize: 11, lineHeight: 16, fontWeight: '700', borderRadius: 6, paddingHorizontal: 6, overflow: 'hidden' },
   struck: { textDecorationLine: 'line-through', opacity: 0.6 },
   fill: { flex: 1 },
   top: { padding: Spacing.three },

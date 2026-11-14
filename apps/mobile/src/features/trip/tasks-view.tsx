@@ -55,8 +55,15 @@ function dueText(task: Task, doc: CachedTrip['state']['doc']): string {
 export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }: Props) {
   const doc = trip.state.doc;
   const [doneOpen, setDoneOpen] = useState(false);
-  const open = doc.tasks.filter((task) => task.status === 'open');
-  const finished = doc.tasks.filter((task) => task.status === 'done');
+  /**
+   * Zadanie odhaczone przed chwilą zostaje w swojej sekcji (przypadkowe dotknięcie widać i da się
+   * cofnąć); do „Zrobione” przechodzi dopiero po odświeżeniu — przeciągnięciu listy w dół albo
+   * powrocie na zakładkę.
+   */
+  const [held, setHeld] = useState<Record<string, 'open' | 'done'>>({});
+  const section = (task: Task) => held[task.ref] ?? task.status;
+  const open = doc.tasks.filter((task) => section(task) === 'open');
+  const finished = doc.tasks.filter((task) => section(task) === 'done');
   // Uczestnicy „moi”: z moim kontem albo dzieci pod moją opieką — jak `is_my_traveler` w bazie.
   const travelers = trip.live.travelers as unknown as TravelerRow[];
   const byId = new Map(travelers.map((row) => [row.id, row]));
@@ -72,6 +79,7 @@ export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }:
     if (!canCheck(task)) return;
     try {
       setTaskDone(localDb, tripId, trip, task.ref, task.status !== 'done');
+      setHeld({ ...held, [task.ref]: section(task) });
       onChanged();
     } catch (e) {
       Alert.alert('Nie zapisano', e instanceof Error ? e.message : String(e));
@@ -85,6 +93,7 @@ export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }:
       due={dueLabel(task, doc)}
       overdue={taskOverdue(doc, task, today)}
       who={(task.assigneeRefs ?? []).map((ref) => names.get(ref) ?? ref).join(', ')}
+      note={section(task) === task.status ? '' : task.status === 'done' ? 'zrobione — dotknij ☑, żeby cofnąć' : 'do zrobienia — dotknij ☐, żeby odhaczyć'}
       canCheck={canCheck(task)}
       onToggle={() => toggle(task)}
     />
@@ -130,9 +139,27 @@ export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }:
 }
 
 /** Zadanie z polem do odhaczenia; bez prawa do zmiany — sam tekst (widz, cudze zadanie, bez logowania). */
-function TaskRow({ task, due, overdue, who, canCheck, onToggle }: { task: Task; due: string; overdue: boolean; who: string; canCheck: boolean; onToggle: () => void }) {
+function TaskRow({
+  task,
+  due,
+  overdue: late,
+  who,
+  note,
+  canCheck,
+  onToggle,
+}: {
+  task: Task;
+  due: string;
+  overdue: boolean;
+  who: string;
+  /** Zmiana zrobiona przed chwilą, wiersz czeka w swojej sekcji na odświeżenie. */
+  note: string;
+  canCheck: boolean;
+  onToggle: () => void;
+}) {
   const done = task.status === 'done';
-  const meta = [KIND[task.kind], due, who].filter(Boolean).join(' · ');
+  const overdue = late && !done;
+  const meta = note !== '' ? note : [KIND[task.kind], due, who].filter(Boolean).join(' · ');
   const body = (
     <View style={styles.grow}>
       <ThemedText type="small" style={done ? styles.done : overdue ? styles.overdue : undefined}>
