@@ -39,6 +39,7 @@ export * from './vehicles.ts';
 export * from './route-stops.ts';
 export * from './booking-place.ts';
 export * from './booking-remove.ts';
+export * from './booking-candidate-remove.ts';
 export * from './documents.ts';
 export * from './code-raster.ts';
 export * from './booking-info.ts';

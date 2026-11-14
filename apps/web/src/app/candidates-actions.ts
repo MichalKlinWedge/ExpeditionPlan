@@ -1,6 +1,6 @@
 "use server";
 
-import { LogisticsCandidates, plural, TripBrief, TripDocument } from "@expeditionplan/core";
+import { LogisticsCandidates, plural, removeCandidate, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { type LogisticsDraft, logisticsCandidates, mergeLogistics } from "@expeditionplan/planner";
 import { dbErrorMessage, type ElementWrite, type PullPayload, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -127,4 +127,40 @@ export async function chooseCandidate(tripId: string, groupRef: string, variantR
   }
   refresh();
   return { ok: `Wybrano. Kandydat ma status „do rezerwacji” — zarezerwuj go i zmień status w rezerwacjach.` };
+}
+
+/**
+ * Usunięcie propozycji z porównania (`removeCandidate`): jej wariant i rezerwacje-kandydaci z odwołaniami; gdy zostaje
+ * jedna propozycja, porównanie się kończy i ona zostaje zwykłą rezerwacją. Dokumenty z sejfu tracą powiązanie z usuniętą
+ * rezerwacją (jak przy usuwaniu anulowanej), zostają w „Inne dokumenty”.
+ */
+export async function removeComparisonCandidate(tripId: string, groupRef: string, variantRef: string): Promise<FormState> {
+  const loaded = await load(tripId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { doc, payload, supabase } = loaded;
+  const label = doc.variants.find((each) => each.ref === variantRef)?.label ?? "propozycję";
+  const result = removeCandidate(doc, groupRef, variantRef);
+  if ("error" in result) return { error: result.error };
+  const checked = TripDocument.safeParse(result.doc);
+  if (!checked.success) return { error: `Nie zapisano: ${checked.error.issues[0]?.message ?? ""}` };
+  let ids = refIndex(payload.tables);
+  for (const ref of result.removedBookingRefs) {
+    const id = ids[ref];
+    if (id === undefined) continue;
+    const unlinked = await supabase.from("documents").update({ booking_id: null }).eq("trip_id", tripId).eq("booking_id", id);
+    if (unlinked.error) return { error: dbErrorMessage(unlinked.error) };
+  }
+  const writes = result.writes as ElementWrite[];
+  const upserts = writes.filter((write) => write.op !== "remove");
+  const removes = writes.filter((write) => write.op === "remove");
+  try {
+    if (upserts.length > 0) ids = await saveElements(supabase, tripId, checked.data, upserts, ids);
+    if (removes.length > 0) await saveElements(supabase, tripId, checked.data, removes, ids);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  refresh();
+  if (!result.ended) return { ok: `Usunięto „${label}”.` };
+  const left = checked.data.bookings.find((booking) => doc.bookings.some((before) => before.ref === booking.ref && before.variantGroupRef === groupRef));
+  return { ok: `Usunięto „${label}”. Została jedna propozycja — porównanie zakończone${left ? `, „${left.title}” jest zwykłą rezerwacją` : ""}.` };
 }

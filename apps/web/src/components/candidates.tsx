@@ -4,7 +4,7 @@ import { BOOKING_KIND, formatMoneyRange, type LogisticsCandidates, PRICE_BASIS }
 import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
-import { applyCandidates, chooseCandidate } from "@/app/candidates-actions";
+import { applyCandidates, chooseCandidate, removeComparisonCandidate } from "@/app/candidates-actions";
 
 /**
  * Etap 4 na stronie logistyki: podgląd szkicu kandydatów (zaznacz decyzje do dodania) i grupy
@@ -107,7 +107,7 @@ export type ComparisonRow = {
 };
 export type ComparisonGroup = { ref: string; title: string; conditionText?: string; chosenRef?: string; columns: string[]; rows: ComparisonRow[] };
 
-/** Grupa porównania z planu: tabela, linki wyszukiwania, „Wybieram”. */
+/** Grupa porównania z planu: tabela, linki wyszukiwania, „Wybieram” i „usuń” (propozycja razem z rezerwacją-kandydatem). */
 /** Grupa z wybraną opcją jest zwinięta do jednej linii („✓ wybrane: …”) — rozwija się, gdy trzeba zmienić wybór. */
 export function ComparisonTable({ tripId, group, canEdit }: { tripId: string; group: ComparisonGroup; canEdit: boolean }) {
   const chosen = group.rows.find((row) => row.variantRef === group.chosenRef);
@@ -173,11 +173,26 @@ function ComparisonBody({ tripId, group, canEdit }: { tripId: string; group: Com
                   ))}
                   <td className="py-1 pr-3 whitespace-nowrap">{row.price ?? "—"}</td>
                   <td className="py-1 text-right">
-                    {canEdit && !chosen && (
-                      <button disabled={pending} onClick={() => start(async () => setResult(await chooseCandidate(tripId, group.ref, row.variantRef)))} className="btn-mini">
-                        Wybieram
-                      </button>
-                    )}
+                    <span className="inline-flex flex-wrap justify-end gap-1">
+                      {canEdit && !chosen && (
+                        <button disabled={pending} onClick={() => start(async () => setResult(await chooseCandidate(tripId, group.ref, row.variantRef)))} className="btn-mini">
+                          Wybieram
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          disabled={pending}
+                          onClick={() => {
+                            const last = group.rows.length <= 2 ? " Zostanie jedna propozycja, więc porównanie się zakończy, a ona będzie zwykłą rezerwacją." : "";
+                            if (!confirm(`Usunąć „${row.label}” z porównania razem z jej rezerwacją-kandydatem?${last}`)) return;
+                            start(async () => setResult(await removeComparisonCandidate(tripId, group.ref, row.variantRef)));
+                          }}
+                          title="Usuwa propozycję i jej rezerwację-kandydata"
+                          className="btn-mini btn-mini-danger">
+                          usuń
+                        </button>
+                      )}
+                    </span>
                   </td>
                 </tr>
               );
