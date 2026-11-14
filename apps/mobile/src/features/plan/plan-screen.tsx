@@ -1078,7 +1078,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
 
       {schedule && <Warnings list={schedule.warnings.filter((warning) => warning.itemRef === undefined)} />}
 
-      <DayStatsCard doc={doc} schedule={schedule} />
+      <DayStatsCard doc={doc} schedule={schedule} active={active} />
 
       <DayExtrasCard doc={doc} dayRef={dayRef} slackMin={schedule?.slackMin ?? null} open={extrasOpen} onToggle={() => setExtrasOpen(!extrasOpen)} />
 

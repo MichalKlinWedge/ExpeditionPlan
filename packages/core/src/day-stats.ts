@@ -157,6 +157,19 @@ export function dayStatistics(doc: Doc, schedule: DaySchedule): DayStatistics | 
   };
 }
 
+/**
+ * Warianty, z którymi liczą się statystyki dnia: wybrany wariant każdej grupy tego dnia („Bagaż: Skrytka przy
+ * Pl. Catalunya”). `active` = `activeVariants` widoku planu; grupy na cały wyjazd, rezerwacji i ankiety pomija.
+ */
+export function dayVariantLabels(doc: Doc, dayRef: string, active: ReadonlySet<string>): string[] {
+  return doc.variantGroups
+    .filter((group) => group.dayRef === dayRef && group.scope !== 'trip' && group.scope !== 'booking' && group.scope !== 'poll')
+    .flatMap((group) => {
+      const chosen = doc.variants.find((variant) => variant.groupRef === group.ref && active.has(variant.ref));
+      return chosen === undefined ? [] : [`${group.title}: ${chosen.label}`];
+    });
+}
+
 /** „12,4 km · 3 h 10 min · ↑ 650 m ↓ 600 m · 4 odcinki (1 bez km) · postoje 30 min”. */
 export function moveLine(stats: MoveStats): string {
   const parts = [

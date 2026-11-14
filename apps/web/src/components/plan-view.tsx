@@ -1359,7 +1359,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
       <DayNotes doc={doc} dayRef={dayRef} onRules={onRules} />
     </section>
     {/* Osobne, zwijane karty pod dniem. */}
-    <DayStats doc={doc} dayRef={dayRef} schedule={schedule} />
+    <DayStats doc={doc} dayRef={dayRef} schedule={schedule} active={active} />
     <DayExtras
       doc={doc}
       dayRef={dayRef}

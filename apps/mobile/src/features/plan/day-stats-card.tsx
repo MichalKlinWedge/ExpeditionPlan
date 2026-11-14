@@ -1,4 +1,4 @@
-import { type DaySchedule, dayStatistics, formatMinutes, MOVE_LABEL, moveLine, plural, STAY_LABEL, stayLine, type TripDocument } from '@expeditionplan/core';
+import { type DaySchedule, dayStatistics, dayVariantLabels, formatMinutes, MOVE_LABEL, moveLine, plural, STAY_LABEL, stayLine, type TripDocument } from '@expeditionplan/core';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -11,17 +11,19 @@ import { Spacing } from '@/constants/theme';
  * autem, komunikacją, czas na zwiedzanie, posiłki, wolny czas. Z tego samego przeliczenia co plan nad nią
  * (scenariusz, warianty, zgłoszenia z terenu), offline.
  */
-export function DayStatsCard({ doc, schedule }: { doc: TripDocument; schedule: DaySchedule | null }) {
+export function DayStatsCard({ doc, schedule, active }: { doc: TripDocument; schedule: DaySchedule | null; active: ReadonlySet<string> }) {
   const [open, setOpen] = useState(false);
   const stats = schedule === null ? null : dayStatistics(doc, schedule);
   if (stats === null || schedule === null) return null;
   const nextDay = stats.endDate !== schedule.date ? ' (następnego dnia)' : '';
+  const variants = dayVariantLabels(doc, schedule.dayRef, active);
   const rows: [string, string][] = [
     ['Dzień', `${stats.start} → ${stats.end}${nextDay} · ${formatMinutes(stats.spanMin)} · ${plural(stats.points, ['punkt', 'punkty', 'punktów'])}`],
     ...stats.moves.map((move): [string, string] => [MOVE_LABEL[move.kind], moveLine(move)]),
     ...stats.stays.map((stay): [string, string] => [STAY_LABEL[stay.kind], stayLine(stay)]),
     ...(stats.freeMin > 0 ? [['Wolny czas', `${formatMinutes(stats.freeMin)} · ${plural(stats.freeCount, ['przerwa', 'przerwy', 'przerw'])} od 15 min`] as [string, string]] : []),
     ...(stats.bufferMin > 0 ? [['Zapasy po punktach', formatMinutes(stats.bufferMin)] as [string, string]] : []),
+    ...(variants.length > 0 ? [['Warianty', variants.join('\n')] as [string, string]] : []),
   ];
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
@@ -37,7 +39,7 @@ export function DayStatsCard({ doc, schedule }: { doc: TripDocument; schedule: D
             </View>
           ))}
           <ThemedText type="small" themeColor="textSecondary">
-            Czasy jak w planie powyżej ({schedule.scenario === 'pessimistic' ? 'scenariusz pesymistyczny' : 'scenariusz optymistyczny'}, wybrane warianty, zgłoszenia z terenu). Odcinek „bez km” nie ma dystansu w planie.
+            Liczą się tylko punkty wybranych wariantów. Czasy jak w planie powyżej ({schedule.scenario === 'pessimistic' ? 'scenariusz pesymistyczny' : 'scenariusz optymistyczny'}, zgłoszenia z terenu). Odcinek „bez km” nie ma dystansu w planie.
           </ThemedText>
         </>
       )}

@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { dayStatistics, moveLine, stayLine } from '../day-stats.ts';
-import { scheduleDay } from '../engine/schedule.ts';
+import { dayStatistics, dayVariantLabels, moveLine, stayLine } from '../day-stats.ts';
+import { activeVariants, scheduleDay } from '../engine/schedule.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const load = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL(`../../../../fixtures/plans/${slug}/plan.json`, import.meta.url)), 'utf8')));
@@ -31,5 +31,13 @@ describe('statystyki dnia', () => {
     expect(moveLine({ kind: 'foot', count: 2, km: 12.4, noKm: 1, minutes: 190, stopsMin: 30, ascentM: 650, descentM: 600 })).toBe('12 km · 3 h 10 min · ↑ 650 m ↓ 600 m · 2 odcinki (1 bez km) · postoje 30 min');
     expect(stayLine({ kind: 'sights', count: 6, minutes: 320, untimed: 2 })).toBe('6 punktów (2 bez czasu) · 5 h 20 min');
     expect(stayLine({ kind: 'meals', count: 2, minutes: 0, untimed: 2 })).toBe('2 punkty (bez czasu w planie)');
+  });
+
+  it('liczą się tylko punkty wybranych wariantów, a karta je nazywa', () => {
+    const group = maroko.variantGroups.find((each) => each.dayRef !== undefined && maroko.variants.filter((variant) => variant.groupRef === each.ref).length > 2)!;
+    const [full, , , radical] = maroko.variants.filter((variant) => variant.groupRef === group.ref);
+    const count = (variantRef: string) => dayStatistics(maroko, scheduleDay(maroko, group.dayRef!, { activeVariants: { [group.ref]: variantRef } }))!.points;
+    expect(count(full!.ref)).toBeGreaterThan(count(radical!.ref));
+    expect(dayVariantLabels(maroko, group.dayRef!, activeVariants(maroko, { [group.ref]: radical!.ref }))).toContain(`${group.title}: ${radical!.label}`);
   });
 });
