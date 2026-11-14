@@ -33,6 +33,7 @@ import { Spacing } from '@/constants/theme';
 import { DayMap, useDayStops } from '@/features/plan/day-map';
 import { DayExtrasCard } from '@/features/plan/day-extras-card';
 import { DayStatsCard } from '@/features/plan/day-stats-card';
+import { TripStatsCard } from '@/features/plan/trip-stats-card';
 import { BookingSheet } from '@/features/plan/booking-sheet';
 import { ContactList } from '@/features/plan/item-facts';
 import { PlacePin } from '@/features/plan/place-pin';
@@ -505,26 +506,29 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
           {mode === 'wallet' ? (
             <WalletView trip={trip} tripId={tripId} canAdd={signedIn && canAddExpense} canEditAll={signedIn && canAct} userId={signedIn ? userId : null} onChanged={afterLocalWrite} />
           ) : mode === 'info' ? (
-            <InfoView
-              trip={trip}
-              tripId={tripId}
-              signedIn={signedIn}
-              onBooking={setBooking}
-              onOpenItem={(ref) => {
-                const item = trip.state.doc.items.find((each) => each.ref === ref);
-                if (item === undefined) return;
-                setDetailPlay(false);
-                setDetail(item);
-              }}
-              onContactsAt={
-                toContacts
-                  ? (y) => {
-                      tabScroll.current?.scrollTo({ y, animated: true });
-                      setToContacts(false);
-                    }
-                  : undefined
-              }
-            />
+            <>
+              <InfoView
+                trip={trip}
+                tripId={tripId}
+                signedIn={signedIn}
+                onBooking={setBooking}
+                onOpenItem={(ref) => {
+                  const item = trip.state.doc.items.find((each) => each.ref === ref);
+                  if (item === undefined) return;
+                  setDetailPlay(false);
+                  setDetail(item);
+                }}
+                onContactsAt={
+                  toContacts
+                    ? (y) => {
+                        tabScroll.current?.scrollTo({ y, animated: true });
+                        setToContacts(false);
+                      }
+                    : undefined
+                }
+              />
+              {state !== null && <TripStatsCard state={state} variants={variants} scenario={scenario} />}
+            </>
           ) : mode === 'meals' ? (
             <MealsView
               trip={trip}
