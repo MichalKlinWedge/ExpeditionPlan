@@ -174,7 +174,7 @@ async function saveRemoval(tripId: string, loaded: { supabase: Awaited<ReturnTyp
   return { doc: checked.data };
 }
 
-/** Usunięcie całego porównania (`removeComparison`): grupa, propozycje i ich rezerwacje-kandydaci. */
+/** Usunięcie całego porównania (`removeComparison`): grupa, propozycje i ich rezerwacje-kandydaci; zarezerwowane i opłacone zostają zwykłymi rezerwacjami. */
 export async function removeComparisonGroup(tripId: string, groupRef: string): Promise<FormState> {
   const loaded = await load(tripId);
   if ("error" in loaded) return { error: loaded.error };
@@ -184,5 +184,7 @@ export async function removeComparisonGroup(tripId: string, groupRef: string): P
   const saved = await saveRemoval(tripId, loaded, result);
   if ("error" in saved) return saved;
   refresh();
-  return { ok: `Usunięto porównanie „${title}” (${plural(result.removedBookingRefs.length, ["rezerwacja-kandydat", "rezerwacje-kandydaci", "rezerwacji-kandydatów"])}).` };
+  const kept = (result.keptBookingRefs ?? []).map((ref) => saved.doc.bookings.find((booking) => booking.ref === ref)?.title ?? ref);
+  const keptText = kept.length > 0 ? ` Zarezerwowane zostają jako zwykłe rezerwacje: ${kept.map((title) => `„${title}”`).join(", ")}.` : "";
+  return { ok: `Usunięto porównanie „${title}” (${plural(result.removedBookingRefs.length, ["rezerwacja-kandydat", "rezerwacje-kandydaci", "rezerwacji-kandydatów"])}).${keptText}` };
 }

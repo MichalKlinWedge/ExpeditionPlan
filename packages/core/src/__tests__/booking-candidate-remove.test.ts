@@ -45,10 +45,7 @@ describe('usunięcie propozycji z porównania rezerwacji', () => {
     for (const { slug, doc } of plans) {
       for (const group of doc.variantGroups.filter((each) => each.scope === 'booking')) {
         const result = removeComparison(doc, group.ref);
-        if ('error' in result) {
-          expect(doc.bookings.some((booking) => booking.variantGroupRef === group.ref && (booking.status === 'booked' || booking.status === 'paid')), `${slug} ${group.ref}: ${result.error}`).toBe(true);
-          continue;
-        }
+        if ('error' in result) throw new Error(`${slug} ${group.ref}: ${result.error}`);
         removed++;
         expect(documentProblem(result.doc), `${slug} ${group.ref}`).toBeNull();
         expect(JSON.stringify(result.doc)).not.toContain(`"${group.ref}"`);
@@ -58,5 +55,20 @@ describe('usunięcie propozycji z porównania rezerwacji', () => {
       }
     }
     expect(removed).toBeGreaterThan(0);
+  });
+
+  it('całe porównanie z zarezerwowaną propozycją: ona zostaje zwykłą rezerwacją, punkty wskazujące porównanie — ją', () => {
+    const maroko = plans.find((each) => each.slug === 'maroko')!.doc;
+    const booked = { ...maroko, bookings: maroko.bookings.map((booking) => (booking.ref === 'auto-sixt-octavia' ? { ...booking, status: 'booked' as const } : booking)) };
+    const result = removeComparison(booked, 'auto');
+    if ('error' in result) throw new Error(result.error);
+    expect(documentProblem(result.doc)).toBeNull();
+    expect(result.keptBookingRefs).toEqual(['auto-sixt-octavia']);
+    expect(result.removedBookingRefs).toHaveLength(8);
+    const octavia = result.doc.bookings.find((booking) => booking.ref === 'auto-sixt-octavia')!;
+    expect(octavia.variantGroupRef).toBeUndefined();
+    expect(octavia.variantRef).toBeUndefined();
+    expect(result.doc.items.find((item) => item.ref === 'd1-odbior-auta')?.bookingRef).toBe('auto-sixt-octavia');
+    expect(result.doc.variantGroups.some((each) => each.ref === 'auto')).toBe(false);
   });
 });

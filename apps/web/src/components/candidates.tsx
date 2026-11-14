@@ -140,7 +140,7 @@ function ComparisonBody({ tripId, group, canEdit }: { tripId: string; group: Com
           <button
             disabled={pending}
             onClick={() => {
-              if (!confirm(`Usunąć całe porównanie „${group.title}” razem ze wszystkimi propozycjami i ich rezerwacjami-kandydatami?`)) return;
+              if (!confirm(`Usunąć całe porównanie „${group.title}” razem z propozycjami i ich rezerwacjami-kandydatami? Zarezerwowane i opłacone zostaną jako zwykłe rezerwacje.`)) return;
               start(async () => setResult(await removeComparisonGroup(tripId, group.ref)));
             }}
             title="Usuwa porównanie, wszystkie propozycje i ich rezerwacje-kandydatów"
