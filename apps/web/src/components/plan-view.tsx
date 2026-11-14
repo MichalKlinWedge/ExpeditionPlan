@@ -1,6 +1,6 @@
 "use client";
 
-import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, dayGaps, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, transitLines, type TripDocument, unlinkTicket, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
+import { activeVariants as resolveVariants, addItem, addItemAtPin, addPoolItem, bookingDetails, extraPins, itemExtras, dayChip, dayItems, dayLabel, dayLodging, dayMap, dayGaps, type DaySchedule, daySunMarks, type DayWeather, documentProblem as problem, dropItem, fetchWeather, fieldLog, type FieldLog, flightLine, flightOf, formatMinutes, hasFieldLog, hasScenarios, instantToZoned, isTransit, ITEM_KIND, itemIcon, type KindChoice, kindChoices, kindPatch, legLabel, linkTicket, localToday, LODGING_STOP, mapCoverage, missingOnMap, movePlace, moveToDay, moveWithinDay, type PlanEdit as Edit, type PlanItem as Item, proposeCuts, removeItemClosingGap, routeStopsLabel, routeStopTarget, routeStopTime, type Scenario, scheduleDay, setRouteStop, SLACK_LABEL, stopsLabel, ticketBookings, transitLines, type TripDocument, unlinkTicket, updateItem, type VaultDocument, WEATHER_ATTRIBUTION, weatherAlerts, weatherIcon, weatherLine, weatherPoints, weatherVariantHint } from "@expeditionplan/core";
 import { savePlanEdit, saveRulesEdit, type TripState, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
@@ -703,6 +703,25 @@ type Actions = {
   remove: (ref: string) => void;
 };
 
+/** „bilet…” przy przejeździe bez biletu: rezerwacja, która go pokrywa (karta komunikacji, bilet). */
+function TicketSelect({ doc, onPick }: { doc: TripDocument; onPick: (bookingRef: string) => void }) {
+  return (
+    <select
+      value=""
+      onChange={(event) => event.target.value !== "" && onPick(event.target.value)}
+      title="Podepnij rezerwację jako bilet tego przejazdu"
+      className="ml-2 max-w-36 rounded border border-zinc-300 bg-transparent px-1 text-xs text-zinc-500 dark:border-zinc-700"
+      aria-label="Podepnij bilet">
+      <option value="">bilet…</option>
+      {ticketBookings(doc).map((booking) => (
+        <option key={booking.ref} value={booking.ref}>
+          {booking.title}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 /** „Przenieś do…” — inny dzień albo pula. */
 function MoveSelect({ doc, current, onMove }: { doc: TripDocument; current: string | undefined; onMove: (dayRef: string | null) => void }) {
   return (
@@ -1215,6 +1234,9 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
                       → do puli
                     </button>
                     <MoveSelect doc={doc} current={dayRef} onMove={(target) => actions.moveTo(item.ref, target)} />
+                    {source.leg !== undefined && source.bookingRef === undefined && source.leg.ticketBookingRef === undefined && ticketBookings(doc).length > 0 && (
+                      <TicketSelect doc={doc} onPick={(bookingRef) => actions.edit(linkTicket(doc, item.ref, bookingRef))} />
+                    )}
                     {item.routeStop ? (
                       <button onClick={() => actions.edit(setRouteStop(doc, item.ref, false, options))} title="Punkt wraca do zwykłej kolejności dnia" className="btn-mini">
                         wyjmij z trasy

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking, ticketItems, unlinkTicket } from '../booking-details.ts';
+import { bookingDetails, bookingFacts, itemBookingRef, itemsOfBooking, linkTicket, setBookingTickets, ticketBookings, ticketItems, unlinkTicket } from '../booking-details.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
@@ -76,5 +76,22 @@ describe('bilet odcinka', () => {
     expect(edit.doc.bookings).toBe(barcelona.bookings);
     expect(unlinkTicket(edit.doc, first!.ref)).toBeNull();
     expect(TripDocument.safeParse(edit.doc).success).toBe(true);
+  });
+
+  it('podpięcie biletu: tylko przejazd z odcinkiem, a formularz ustawia dokładnie wybrane', () => {
+    const tickets = ticketItems(barcelona, 't-casual').map((item) => item.ref);
+    const [first] = tickets;
+    const other = barcelona.items.find((item) => item.leg !== undefined && item.leg.ticketBookingRef === undefined && item.bookingRef === undefined)!;
+    const noLeg = barcelona.items.find((item) => item.leg === undefined)!;
+    expect(linkTicket(barcelona, noLeg.ref, 't-casual')).toBeNull();
+    expect(linkTicket(barcelona, first!, 't-casual')).toBeNull();
+    expect(linkTicket(barcelona, other.ref, 'nie-ma')).toBeNull();
+    expect(linkTicket(barcelona, other.ref, 't-casual')!.changed[0]!.leg?.ticketBookingRef).toBe('t-casual');
+    const set = setBookingTickets(barcelona, 't-casual', [other.ref, ...tickets.slice(1)]);
+    expect(set.changed.map((item) => item.ref).sort()).toEqual([first!, other.ref].sort());
+    expect(ticketItems(set.doc, 't-casual').map((item) => item.ref).sort()).toEqual([other.ref, ...tickets.slice(1)].sort());
+    expect(TripDocument.safeParse(set.doc).success).toBe(true);
+    expect(ticketBookings(barcelona).map((booking) => booking.ref)).toContain('t-casual');
+    expect(ticketBookings(barcelona).some((booking) => booking.kind === 'lodging')).toBe(false);
   });
 });

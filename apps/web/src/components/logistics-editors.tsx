@@ -26,6 +26,7 @@ import {
   saveShoppingItem,
   saveTask,
   setBookingItems,
+  setBookingTicketItems,
   setExpenseSplits,
   setTaskStatus,
   setTripCurrency,
@@ -1074,6 +1075,7 @@ export function BookingRow({
   booking,
   items,
   chosen,
+  tickets,
   canEdit,
   actionsColumn,
   removal,
@@ -1084,6 +1086,8 @@ export function BookingRow({
   booking: Booking;
   items: { ref: string; label: string }[];
   chosen: string[];
+  /** Przejazdy do wyboru i te z tym biletem; brak = ta rezerwacja nie może być biletem (nocleg, ubezpieczenie). */
+  tickets?: { legs: { ref: string; label: string }[]; chosen: string[] };
   canEdit: boolean;
   actionsColumn: boolean;
   removal: ReactNode;
@@ -1092,7 +1096,7 @@ export function BookingRow({
   children: ReactNode;
 }) {
   // Edycja w osobnej karcie nad sekcją (`BookingEditor`); tu zostaje tylko „pakiet”.
-  const [open, setOpen] = useState<"items" | null>(null);
+  const [open, setOpen] = useState<"items" | "tickets" | null>(null);
   const { editing, edit } = useContext(BookingEditing);
   const buttons = canEdit ? (
     <>
@@ -1100,6 +1104,11 @@ export function BookingRow({
       <button onClick={() => setOpen(open === "items" ? null : "items")} title="Punkty planu w pakiecie tej rezerwacji" className={small}>
         pakiet{chosen.length > 0 ? ` (${chosen.length})` : ""}
       </button>
+      {tickets && tickets.legs.length > 0 && (
+        <button onClick={() => setOpen(open === "tickets" ? null : "tickets")} title="Przejazdy, które pokrywa ten bilet (bez płatności „w cenie”)" className={small}>
+          bilet{tickets.chosen.length > 0 ? ` (${tickets.chosen.length})` : ""}
+        </button>
+      )}
     </>
   ) : null;
   return (
@@ -1135,7 +1144,14 @@ export function BookingRow({
       {open === "items" && (
         <tr>
           <td colSpan={6} className="pb-3">
-            <BookingItemsForm tripId={tripId} bookingRef={booking.ref} items={items} chosen={chosen} onDone={() => setOpen(null)} />
+            <BookingItemsForm items={items} chosen={chosen} hint="Zaznacz punkty planu, które ta rezerwacja obejmuje — dostaną płatność „w cenie” i nie trafią osobno do budżetu." save={(refs) => setBookingItems(tripId, booking.ref, refs)} onDone={() => setOpen(null)} />
+          </td>
+        </tr>
+      )}
+      {open === "tickets" && tickets && (
+        <tr>
+          <td colSpan={6} className="pb-3">
+            <BookingItemsForm items={tickets.legs} chosen={tickets.chosen} hint="Zaznacz przejazdy, na które jest ten bilet (karta komunikacji, bilet okresowy). Przejazd z innym biletem dostanie ten zamiast niego." save={(refs) => setBookingTicketItems(tripId, booking.ref, refs)} onDone={() => setOpen(null)} />
           </td>
         </tr>
       )}
@@ -1166,12 +1182,12 @@ export function HashFocus() {
 }
 
 /** Punkty planu „w pakiecie” rezerwacji — zaznaczone wskazują rezerwację i mają płatność „w cenie”. */
-function BookingItemsForm({ tripId, bookingRef, items, chosen, onDone }: { tripId: string; bookingRef: string; items: { ref: string; label: string }[]; chosen: string[]; onDone: () => void }) {
+function BookingItemsForm({ items, chosen, hint, save, onDone }: { items: { ref: string; label: string }[]; chosen: string[]; hint: string; save: (refs: string[]) => Promise<FormState>; onDone: () => void }) {
   const [picked, setPicked] = useState<Set<string>>(() => new Set(chosen));
   const action = useAction();
   return (
     <div className="mt-1 flex flex-col gap-2 panel p-3 text-sm">
-      <p className="text-xs text-zinc-500">Zaznacz punkty planu, które ta rezerwacja obejmuje — dostaną płatność „w cenie” i nie trafią osobno do budżetu.</p>
+      <p className="text-xs text-zinc-500">{hint}</p>
       <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
         {items.map((item) => (
           <li key={item.ref}>
@@ -1193,7 +1209,7 @@ function BookingItemsForm({ tripId, bookingRef, items, chosen, onDone }: { tripI
       </ul>
       <div className="flex gap-2">
         <button disabled={action.pending} onClick={() => action.run(async () => {
-          const result = await setBookingItems(tripId, bookingRef, [...picked]);
+          const result = await save([...picked]);
           if (result.ok) onDone();
           return result;
         })} className={primary}>

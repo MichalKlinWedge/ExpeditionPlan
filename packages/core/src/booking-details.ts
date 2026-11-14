@@ -44,6 +44,37 @@ export function unlinkTicket(doc: Doc, itemRef: string, bookingRef?: string): { 
   return { doc: { ...doc, items: doc.items.map((each) => (each.ref === itemRef ? next : each)) }, changed: [next] };
 }
 
+/** Rodzaje rezerwacji, które mogą być biletem przejazdu (bilet, karta komunikacji, lot, pociąg…); nie nocleg ani ubezpieczenie. */
+export const TICKET_KINDS: readonly string[] = ['ticket', 'transit_pass', 'train', 'bus', 'ferry', 'flight', 'transfer', 'driver_hire', 'package', 'other'];
+
+/** Rezerwacje do wyboru jako bilet przejazdu: pasujący rodzaj, bez anulowanych. */
+export function ticketBookings(doc: Doc): Booking[] {
+  return doc.bookings.filter((booking) => TICKET_KINDS.includes(booking.kind) && booking.status !== 'cancelled');
+}
+
+/** Podpina bilet do przejazdu (punkt z `leg`); inny bilet tego przejazdu zastępuje. `null`, gdy nie ma czego zmienić. */
+export function linkTicket(doc: Doc, itemRef: string, bookingRef: string): { doc: Doc; changed: Item[] } | null {
+  const item = doc.items.find((each) => each.ref === itemRef);
+  if (item?.leg === undefined || item.leg.ticketBookingRef === bookingRef || !doc.bookings.some((booking) => booking.ref === bookingRef)) return null;
+  const next: Item = { ...item, leg: { ...item.leg, ticketBookingRef: bookingRef } };
+  return { doc: { ...doc, items: doc.items.map((each) => (each.ref === itemRef ? next : each)) }, changed: [next] };
+}
+
+/** Bilet `bookingRef` dokładnie przy przejazdach `itemRefs`: dopina brakujące, odpina pozostałe. */
+export function setBookingTickets(doc: Doc, bookingRef: string, itemRefs: string[]): { doc: Doc; changed: Item[] } {
+  const wanted = new Set(itemRefs);
+  let current = doc;
+  const changed = new Map<string, Item>();
+  for (const item of doc.items) {
+    const has = item.leg?.ticketBookingRef === bookingRef;
+    const edit = wanted.has(item.ref) && !has ? linkTicket(current, item.ref, bookingRef) : !wanted.has(item.ref) && has ? unlinkTicket(current, item.ref, bookingRef) : null;
+    if (edit === null) continue;
+    current = edit.doc;
+    for (const each of edit.changed) changed.set(each.ref, each);
+  }
+  return { doc: current, changed: [...changed.values()] };
+}
+
 /** „26 gru 06:10 → 26 gru 09:55”. */
 export function bookingWhen(booking: Booking): string {
   const part = (time: Booking['start']) => (time ? `${shortDate(time.date)}${time.time ? ` ${time.precision === 'approx' ? 'ok. ' : ''}${time.time}` : ''}` : '');

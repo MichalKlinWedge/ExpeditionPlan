@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { balanceText, BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, ticketItems, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, lineBalance, vehicleTravelers, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
+import { balanceText, BOOKING_KIND, BOOKING_STATUS, bookingContacts, bookingFacts, bookingLine, bookingPrice, bookingRemovalNote, bookingWhen, BUDGET_CATEGORY, TICKET_KINDS, ticketItems, budgetPace, budgetSuggestions, budgetSummary, dayChip, formatMoney, lineBalance, vehicleTravelers, instantToZoned, LogisticsCandidates, removeBooking, tripCurrencies, type TripDocument, walletSummary } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -123,6 +123,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
   for (const item of doc.items) if (item.bookingRef) packaged.set(item.bookingRef, [...(packaged.get(item.bookingRef) ?? []), item]);
   // Bilet odcinka (np. karta komunikacji na kilka przejazdów) to nie pakiet, ale też wiąże rezerwację z planem.
   const ticketed = new Map(doc.bookings.map((booking) => [booking.ref, ticketItems(doc, booking.ref)] as const));
+  const withLeg = new Set(doc.items.flatMap((item) => (item.leg ? [item.ref] : [])));
   const open = doc.tasks.filter((task) => task.status === "open");
   // Etap 4: szkic kandydatów z AI i grupy porównania z planu (kandydaci rezerwacji).
   const draftOutput = draftRow.data?.output as { info?: unknown; checks?: string[] } | null | undefined;
@@ -310,6 +311,7 @@ async function Logistics({ params }: { params: Promise<{ id: string }> }) {
                     booking={booking}
                     items={choices.items}
                     chosen={(packaged.get(booking.ref) ?? []).map((item) => item.ref)}
+                    tickets={TICKET_KINDS.includes(booking.kind) ? { legs: choices.items.filter((item) => withLeg.has(item.ref)), chosen: doc.items.filter((item) => item.leg?.ticketBookingRef === booking.ref).map((item) => item.ref) } : undefined}
                     canEdit={canEdit}
                     actionsColumn={mayEdit}
                     removal={mayEdit && booking.status === "cancelled" ? <RemoveCancelledBooking tripId={id} bookingRef={booking.ref} title={booking.title} note={bookingRemovalNote(removeBooking(doc, booking.ref)!.summary)} /> : null}

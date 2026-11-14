@@ -1,6 +1,6 @@
 "use server";
 
-import { balanceTask, BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, type FxRate, mergeRates, parseMoney, parseWeightKg, PriceBasis, rebaseRates, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument, unlinkTicket } from "@expeditionplan/core";
+import { balanceTask, BookingKind, bookingPlace, BookingStatus, BudgetCategory, budgetSuggestions, fetchRates, type FxRate, mergeRates, parseMoney, parseWeightKg, PriceBasis, rebaseRates, removeBooking, SHOPPING_CATEGORY, tripCurrencies, TripDocument, setBookingTickets, unlinkTicket } from "@expeditionplan/core";
 import { carrierRow, dbErrorMessage, type ElementWrite, expenseSplitRows, refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import { refresh } from "next/cache";
 
@@ -435,6 +435,15 @@ export async function setBookingItems(tripId: string, bookingRef: string, itemRe
       return next;
     });
     return { doc: { ...doc, items }, writes, ok: writes.length === 0 ? "Bez zmian." : `Zapisano (zmienione punkty: ${writes.length}).` };
+  });
+}
+
+/** Bilet `bookingRef` dokładnie przy przejazdach `itemRefs` (formularz „bilet” przy rezerwacji). */
+export async function setBookingTicketItems(tripId: string, bookingRef: string, itemRefs: string[]): Promise<FormState> {
+  return commit(tripId, (doc) => {
+    if (!doc.bookings.some((booking) => booking.ref === bookingRef)) return "Tej rezerwacji już nie ma — odśwież stronę.";
+    const edit = setBookingTickets(doc, bookingRef, itemRefs);
+    return { doc: edit.doc, writes: edit.changed.map((item) => ({ collection: "items" as const, element: item, op: "update" as const })), ok: edit.changed.length === 0 ? "Bez zmian." : `Zapisano (zmienione przejazdy: ${edit.changed.length}).` };
   });
 }
 
