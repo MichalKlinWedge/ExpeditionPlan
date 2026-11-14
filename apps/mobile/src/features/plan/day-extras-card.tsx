@@ -1,4 +1,4 @@
-import { dayExtras, EXTRA_FIT, extraDistanceText, extraMinutes, extraTimeText, type TripDocument } from '@expeditionplan/core';
+import { dayExtras, EXTRA_FIT, extraInterest, NOTABLE_EXTRAS, extraDistanceText, extraMinutes, extraTimeText, type TripDocument } from '@expeditionplan/core';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -7,10 +7,11 @@ import { Spacing } from '@/constants/theme';
 
 /**
  * „Po drodze i w pobliżu” dnia na telefonie — tylko podgląd, offline z planu (`DocDay.extras`): atrakcje,
- * które da się dorzucić, gdy zostanie czas albo coś wypadnie, z dodatkowym czasem. Szukanie i zmiany są na webie.
+ * które da się dorzucić, gdy zostanie czas albo coś wypadnie, z dodatkowym czasem. Bez drobnych (★, `NOTABLE_EXTRAS`),
+ * od najciekawszych. Szukanie, filtr i zmiany są na webie.
  */
 export function DayExtrasCard({ doc, dayRef, slackMin, open, onToggle }: { doc: TripDocument; dayRef: string; slackMin: number | null; open: boolean; onToggle: () => void }) {
-  const list = dayExtras(doc, dayRef).open;
+  const list = dayExtras(doc, dayRef, NOTABLE_EXTRAS).open;
   if (list.length === 0) return null;
   const titles = new Map(doc.items.map((item) => [item.ref, item.title]));
   return (
@@ -30,6 +31,7 @@ export function DayExtrasCard({ doc, dayRef, slackMin, open, onToggle }: { doc: 
               <View key={extra.id} style={styles.entry}>
                 <ThemedText type="smallBold">
                   {extra.title}
+                  <ThemedText type="small" themeColor="primary">{` ${'★'.repeat(extraInterest(extra))}`}</ThemedText>
                   {extra.type ? <ThemedText type="small" themeColor="textSecondary">{` · ${extra.type}`}</ThemedText> : null}
                 </ThemedText>
                 <ThemedText type="small">

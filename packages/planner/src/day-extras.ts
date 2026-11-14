@@ -159,6 +159,7 @@ export const DayExtrasAnswer = z.object({
         fit: z.enum(['pass', 'stop', 'visit']),
         swapRef: z.string().nullish(),
         weather: z.enum(['outdoor', 'indoor', 'any']).nullish(),
+        interest: z.number().int().min(1).max(3).nullish(),
       }),
     )
     .max(40),
@@ -232,6 +233,7 @@ export function dayExtrasPrompt(doc: Doc, dayRef: string, options: ScheduleOptio
     '4. `stayMin`: realny czas na miejscu (obejrzeć z zewnątrz 5–15 min, krótki spacer 20–40 min, muzeum lub zamek ze zwiedzaniem 60–120 min). Dojazdu nie wliczaj: `detourMin` policzył kod.',
     '5. `fit`: `pass` — widać po drodze bez zatrzymywania albo leży tuż przy trasie (wieża, zamek nad drogą, wodospad przy szlaku; tylko przy małym `offM`); `stop` — krótki postój do ok. 20 min na miejscu; `visit` — zwiedzanie.',
     '6. `swapRef`: `ref` punktu planu, który ta atrakcja może zastąpić, gdy tamten wypadnie (zamknięte, pogoda, brak biletów) — podobny charakter i blisko; inaczej null. `weather`: `indoor`, gdy to dobre miejsce na deszcz.',
+    '7a. `interest` — atrakcyjność: 3 — wyjątkowe, znane z przewodników, warto nadłożyć drogi; 2 — warte uwagi, gdy jest się obok; 1 — drobne, lokalne (bierz je tylko tuż przy trasie). Oceniaj surowo: 3 to najwyżej kilka miejsc w dniu.',
     '7. Uwzględnij uczestników (wiek) i to, że `along: car` to zjazd z drogi autem, a `at`/`foot` — dojście pieszo.',
     '8. Długi przejazd autem (`towns` = miasta przy trasie, `offKm` od drogi; kandydat z `town` leży w takim mieście): zaproponuj miejsca na przerwę w drodze — rozprostować nogi, zjeść, zobaczyć coś krótko — rozłożone wzdłuż trasy, nie wszystkie w jednym mieście. `why` może powiedzieć, że to dobra przerwa po drodze.',
     '9. `request` to prośba użytkownika (gdzie szukać i czego chce): ma pierwszeństwo przy wyborze i kolejności; nadal tylko z listy `candidates`.',

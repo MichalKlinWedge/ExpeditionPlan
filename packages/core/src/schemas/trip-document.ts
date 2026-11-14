@@ -174,6 +174,8 @@ export const DayExtra = z.object({
   poolRef: Ref.optional(),
   /** Miasto po drodze, przy którym leży (długi przejazd albo szukanie w mieście). */
   town: z.string().max(120).optional(),
+  /** Atrakcyjność: 3 — wyjątkowe (warto nadłożyć drogi), 2 — warte uwagi, 1 — drobne, lokalne. Brak = 2. */
+  interest: z.number().int().min(1).max(3).optional(),
   wikipedia: HttpUrl.optional(),
   website: HttpUrl.optional(),
   /** `dismissed` — odrzucona (nie wraca przy odświeżeniu); `added` — wstawiona do planu jako `addedRef`. */

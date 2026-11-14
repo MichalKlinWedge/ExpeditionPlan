@@ -20,6 +20,7 @@ import { itemRouteLinks, RouteSiteLink } from "@/components/route-site-link";
 import { IconAction } from "@/components/icon-action";
 import { readChosenVariants, saveChosenVariants, shareChosenVariants } from "@/lib/plan-variants";
 import { EMPTY_POOL_QUERY, guideCount, POOL_FILTER, POOL_GROUP, POOL_GUIDE, poolCount, type PoolFilter, type PoolGroupBy, poolGroups, type PoolGuide, type PoolQuery } from "@/lib/pool";
+import { useExtraFilter } from "@/lib/extra-filter";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useRefreshOnReturn } from "@/lib/use-refresh-on-return";
@@ -174,7 +175,8 @@ export function PlanView({ state, tripId, ids: initialIds, canEdit, itemBase, gu
   }
   const dayOnly = dayMap(doc, mapRefs, { baseRef: mapDay ? dayLodging(doc, mapDay.ref)?.placeRef : undefined, pool: true });
   // Atrakcje „po drodze i w pobliżu” dnia: gwiazdki bez numerów.
-  const map = mapDay === undefined ? dayOnly : { ...dayOnly, pins: [...dayOnly.pins, ...extraPins(doc, mapDay.ref)] };
+  const extraFilter = useExtraFilter();
+  const map = mapDay === undefined ? dayOnly : { ...dayOnly, pins: [...dayOnly.pins, ...extraPins(doc, mapDay.ref, extraFilter)] };
   const mapKey = JSON.stringify([map.lines, map.straightLegs, map.pins.map((pin) => [pin.placeRef, pin.lat, pin.lng, pin.stops.map((stop) => stop.n), pin.pool?.length])]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- mapa przerysowuje się tylko przy zmianie tego, co pokazuje
   const stableMap = useMemo(() => map, [mapKey]);
@@ -981,7 +983,7 @@ function Day({ doc, dayRef, options, active, onChoose, places, actions, onPin, o
   // Do tego wolny czas między punktami; oba znaczniki po kolei godzin.
   const marks = schedule ? [...daySunMarks(schedule), ...dayGaps(schedule)].sort((a, b) => a.at - b.at) : [];
   // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu”.
-  const extras = itemExtras(doc, dayRef);
+  const extras = itemExtras(doc, dayRef, useExtraFilter());
   // Zadania dotyczące punktów (ikona prowadzi na „Zadania” i je tam zaznacza; bez linku publicznego).
   const itemTasks = tripId === undefined ? new Map<string, TripDocument["tasks"]>() : tasksByItem(doc.tasks);
   const showExtras = () => {

@@ -1,4 +1,4 @@
-import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, planLegLine, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
+import { activeVariants as resolveVariants, addItem, addPoolItem, capitalized, extraPins, itemExtras, NOTABLE_EXTRAS, dayLabel, dayLodging, dayGaps, type DaySchedule, daySunMarks, type DayWeather, formatMinutes, documentProblem, type EatOutEdit, flightLine, flightOf, hasScenarios, instantToZoned, ITEM_KIND, itemBookingRef, itemIcon, ItemInUseError, itemKindLabel, planLegLine, LODGING_STOP, lodgingContacts, mapCoverage, type MapPin, missingOnMap, moveToDay, moveWithinDay, type PlanEdit, type PlanItem, plural, proposeCuts, removeItemClosingGap, routeStopsLabel, setItemPlace, setLegRoute, routeStopTime, type Scenario, scheduleDay, type ScheduleWarning, transitLines, updateItem, votesFromRows, weatherLine, weatherVariantHint } from '@expeditionplan/core';
 import {
   type CachedTrip,
   cachedTrip,
@@ -807,7 +807,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
   // Wschód, zachód i wolny czas między punktami, po kolei godzin.
   const marks = schedule ? [...daySunMarks(schedule), ...dayGaps(schedule)].sort((a, b) => a.at - b.at) : [];
   // Przy punktach: atrakcje obok i zamienniki z „Po drodze i w pobliżu” (lista pod dniem).
-  const extras = itemExtras(doc, dayRef);
+  const extras = itemExtras(doc, dayRef, NOTABLE_EXTRAS);
   const { map, pinOf } = useDayStops(doc, schedule?.items.map((item) => item.ref).join(',') ?? '', lodging?.placeRef);
   const [mapPlace, setMapPlace] = useState<string | null>(null);
   const [mapFocus, setMapFocus] = useState<{ lng: number; lat: number } | null>(null);
@@ -882,7 +882,7 @@ function Day({ state, dayRef, scenario, variants, onChoose, voting, top, actions
       {/* Mapa dnia nad punktami planu: numer pinezki przewija w dół do punktu, karta punktu — z powrotem do mapy. */}
       {schedule && (
         <View onLayout={(event) => (mapTop.current = event.nativeEvent.layout.y)}>
-          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} extras={extraPins(doc, dayRef)} onExtra={() => setExtrasOpen(true)} />
+          <DayMap dayRef={dayRef} schedule={schedule} full={map} selected={mapPlace} onSelect={showInPlan} focus={mapFocus} variantsKey={[...active].sort().join()} guides={guides} onGuide={onGuide} extras={extraPins(doc, dayRef, NOTABLE_EXTRAS)} onExtra={() => setExtrasOpen(true)} />
         </View>
       )}
 

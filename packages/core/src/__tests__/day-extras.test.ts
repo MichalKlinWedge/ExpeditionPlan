@@ -12,6 +12,8 @@ import {
   dayExtras,
   detourMinutes,
   extraCandidates,
+  extraCategory,
+  extraPins,
   extraTimeText,
   itemExtras,
   setExtraDismissed,
@@ -131,6 +133,31 @@ describe('po drodze i w pobliżu', () => {
     expect(missed.map((each) => each.id)).toEqual(expect.arrayContaining(['node/7', 'pool:kapliczka']));
     expect(missed.some((each) => each.id === 'node/1')).toBe(false);
     expect(missed.find((each) => each.id === 'node/7')).toMatchObject({ stayMin: 20, fit: 'stop', why: '' });
+  });
+
+  it('filtr: atrakcyjność od AI (brak = 2) i rodzaje z typu; mapa i znaczniki przy punktach z tym samym filtrem', () => {
+    const candidates = extraCandidates(doc, corridor, features);
+    const day = applyExtraPicks(doc, 'd1', candidates, [
+      { id: 'node/1', title: 'Zamek Wysoki', type: 'ruiny zamku', why: '', stayMin: 45, fit: 'stop', interest: 3 },
+      { id: 'node/2', title: 'Wieża', type: 'wieża widokowa', why: '', stayMin: 20, fit: 'stop', interest: 1 },
+      { id: 'pool:kapliczka', title: 'Kapliczka', type: 'kaplica', why: '', stayMin: 10, fit: 'stop' },
+    ], '2026-06-01')!;
+    const withDay = { ...doc, days: [day] };
+    expect(day.extras!.items.map((each) => [each.id, each.interest])).toEqual([['node/1', 3], ['node/2', 1], ['pool:kapliczka', undefined]]);
+    expect(day.extras!.items.map(extraCategory)).toEqual(['history', 'view', 'religion']);
+    expect(extraCategory({ type: 'park rozrywki' })).toBe('family');
+    expect(extraCategory({ type: 'mural' })).toBe('art');
+    expect(extraCategory({ type: 'atrakcja' })).toBe('other');
+
+    const all = dayExtras(withDay, 'd1');
+    expect(all.open.map((each) => each.id)).toEqual(['node/1', 'pool:kapliczka', 'node/2']);
+    const good = dayExtras(withDay, 'd1', { categories: [], minInterest: 2 });
+    expect(good.open.map((each) => each.id)).toEqual(['node/1', 'pool:kapliczka']);
+    expect(good).toMatchObject({ hidden: 1, categories: { history: 1, religion: 1 } });
+    const churches = { categories: ['religion'] as const, minInterest: 1 as const };
+    expect(dayExtras(withDay, 'd1', churches).open.map((each) => each.id)).toEqual(['pool:kapliczka']);
+    expect(extraPins(withDay, 'd1', churches).map((pin) => pin.placeRef)).toEqual(['extra:pool:kapliczka']);
+    expect(itemExtras(withDay, 'd1', { categories: ['view'], minInterest: 2 }).get('rynek')).toBeUndefined();
   });
 
   it('do planu: przy drodze przejazdu = postój w trasie; z puli — punkt przechodzi do dnia', () => {

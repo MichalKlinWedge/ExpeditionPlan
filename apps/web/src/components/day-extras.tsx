@@ -1,6 +1,6 @@
 "use client";
 
-import { addExtraToPlan, type DayExtraItem, dayExtras, type DaySchedule, EXTRA_FIT, EXTRA_SCOPE, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
+import { addExtraToPlan, type DayExtraItem, dayExtras, type DaySchedule, EXTRA_CATEGORY, EXTRA_FIT, EXTRA_INTEREST, EXTRA_SCOPE, type ExtraCategory, extraInterest, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import { useState, useTransition } from "react";
 
@@ -8,6 +8,7 @@ import { findDayExtras } from "@/app/day-extras-actions";
 import { DayExtrasExternal } from "@/components/day-extras-external";
 import type { OnRules } from "@/components/day-rules";
 import { SparkIcon } from "@/components/icons";
+import { DEFAULT_EXTRA_FILTER, setExtraFilter, useExtraFilter } from "@/lib/extra-filter";
 
 /**
  * „Po drodze i w pobliżu” pod planem dnia: atrakcje przy trasie i miejscach dnia (OSM i pula, wybór i opis AI,
@@ -43,9 +44,13 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
   const [city, setCity] = useState("");
   const [hint, setHint] = useState("");
   const slackMin = schedule?.slackMin ?? null;
-  const list = dayExtras(doc, dayRef);
+  // Rodzaje i atrakcyjność: ustawienie tej przeglądarki, wspólne z mapą i znacznikami przy punktach.
+  const filter = useExtraFilter();
+  const list = dayExtras(doc, dayRef, filter);
   const titles = new Map(doc.items.map((item) => [item.ref, item.title]));
-  if (list.open.length === 0 && list.dismissed.length === 0 && !canFind && onRules === null) return null;
+  if (list.open.length === 0 && list.hidden === 0 && list.dismissed.length === 0 && !canFind && onRules === null) return null;
+  const toggleCategory = (category: ExtraCategory) =>
+    setExtraFilter({ ...filter, categories: filter.categories.includes(category) ? filter.categories.filter((each) => each !== category) : [...filter.categories, category] });
 
   const narrowed = scope !== "day" || hint.trim() !== "";
   const find = () =>
@@ -60,6 +65,7 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
       <summary className="card-title cursor-pointer">
         Po drodze i w pobliżu
         {list.open.length > 0 && <span className="font-normal text-zinc-500"> · {plural(list.open.length, ["atrakcja", "atrakcje", "atrakcji"])}</span>}
+        {list.hidden > 0 && <span className="font-normal text-zinc-500"> (+{list.hidden} ukrytych filtrem)</span>}
       </summary>
       <div className="mt-3 flex flex-col gap-2">
       {canFind && (
@@ -100,6 +106,47 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
       )}
       {message.error && <p className="text-xs msg-error">{message.error}</p>}
       {message.ok && <p className="text-xs msg-ok">{message.ok}</p>}
+      {list.open.length + list.hidden > 0 && (
+        // Filtr listy: atrakcyjność (od AI, 1–3) i rodzaje z liczbą otwartych; puste rodzaje = wszystkie.
+        <div className="flex flex-col gap-1.5 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-zinc-600 dark:text-zinc-400">Atrakcyjność</span>
+            {([3, 2, 1] as const).map((level) => (
+              <button key={level} type="button" onClick={() => setExtraFilter({ ...filter, minInterest: level })} aria-pressed={filter.minInterest === level} className="toggle-chip">
+                {"★".repeat(level)} {EXTRA_INTEREST[level]}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-zinc-600 dark:text-zinc-400">Rodzaje</span>
+            {(Object.keys(EXTRA_CATEGORY) as ExtraCategory[])
+              .filter((category) => (list.categories[category] ?? 0) > 0 || filter.categories.includes(category))
+              .map((category) => (
+                <button key={category} type="button" onClick={() => toggleCategory(category)} aria-pressed={filter.categories.includes(category)} className="toggle-chip">
+                  {EXTRA_CATEGORY[category]} <span className="text-zinc-500">{list.categories[category] ?? 0}</span>
+                </button>
+              ))}
+            {filter.categories.length > 0 && (
+              <button type="button" onClick={() => setExtraFilter({ ...filter, categories: [] })} className="btn-mini">
+                wszystkie rodzaje
+              </button>
+            )}
+          </div>
+          {list.hidden > 0 && (
+            <p className="text-xs text-zinc-500">
+              Filtr ukrywa {plural(list.hidden, ["atrakcję", "atrakcje", "atrakcji"])} — też na mapie i przy punktach.{" "}
+              <button type="button" onClick={() => setExtraFilter({ categories: [], minInterest: 1 })} className="btn-mini">
+                pokaż wszystkie
+              </button>
+              {(filter.minInterest !== DEFAULT_EXTRA_FILTER.minInterest || filter.categories.length > 0) && (
+                <button type="button" onClick={() => setExtraFilter(DEFAULT_EXTRA_FILTER)} className="btn-mini ml-1">
+                  domyślny
+                </button>
+              )}
+            </p>
+          )}
+        </div>
+      )}
       {list.open.length > 0 && (
         <ul className="flex flex-col gap-2">
           {list.open.map((extra) => {
@@ -114,6 +161,9 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
                     ★
                   </button>
                   <span className="font-medium">{extra.title}</span>
+                  <span className="text-xs text-amber-600 dark:text-amber-400" title="Atrakcyjność (ocena AI): ★★★ wyjątkowe, ★★ warte uwagi, ★ drobne">
+                    {"★".repeat(extraInterest(extra))}
+                  </span>
                   {extra.type && <span className="text-zinc-500">· {extra.type}</span>}
                   {extra.town && <span className="text-zinc-500">· {extra.town}</span>}
                   {extra.poolRef && <span className="rounded bg-sky-100 px-1 text-xs text-sky-900 dark:bg-sky-950 dark:text-sky-200">z puli</span>}
@@ -165,7 +215,7 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
           })}
         </ul>
       )}
-      {list.fetchedAt !== undefined && list.open.length === 0 && <p className="text-xs text-zinc-500">Nic więcej przy trasie tego dnia.</p>}
+      {list.fetchedAt !== undefined && list.open.length === 0 && list.hidden === 0 && <p className="text-xs text-zinc-500">Nic więcej przy trasie tego dnia.</p>}
       {list.dismissed.length > 0 && onRules && (
         <details className="text-xs">
           <summary className="cursor-pointer text-zinc-500">Odrzucone ({list.dismissed.length})</summary>

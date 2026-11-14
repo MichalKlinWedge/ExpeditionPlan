@@ -28,7 +28,7 @@ const answer = {
   format: EXTERNAL_EXTRAS_FORMAT,
   date: '2026-07-01',
   items: [
-    { title: 'Zamek Wysoki', type: 'zamek', why: 'Ruiny nad drogą.', lat: 50.005, lng: 20.06, stayMin: 45, fit: 'stop', nearRef: null, swapRef: 'jezioro', weather: 'outdoor', wikipedia: 'https://pl.wikipedia.org/wiki/Zamek', website: null },
+    { title: 'Zamek Wysoki', type: 'zamek', why: 'Ruiny nad drogą.', lat: 50.005, lng: 20.06, stayMin: 45, fit: 'stop', interest: '2', nearRef: null, swapRef: 'jezioro', weather: 'outdoor', wikipedia: 'https://pl.wikipedia.org/wiki/Zamek', website: null },
     { title: 'Wieża', lat: '50.002', lng: '20', stayMin: 15, fit: 'cokolwiek' },
     { title: 'Rynek', lat: 50, lng: 20, stayMin: 10, fit: 'pass' },
     { title: 'Zamek w innym kraju', lat: 41, lng: 2, stayMin: 60, fit: 'visit' },
@@ -68,7 +68,7 @@ describe('po drodze i w pobliżu z zewnętrznego AI', () => {
     expect(TripDocument.safeParse(withDay).success).toBe(true);
     const open = dayExtras(withDay, 'd1').open;
     const castle = open.find((each) => each.title === 'Zamek Wysoki')!;
-    expect(castle).toMatchObject({ id: 'ext:50.0050,20.0600', along: 'car', nearRef: 'jazda', swapRef: 'jezioro', stayMin: 45, wikipedia: 'https://pl.wikipedia.org/wiki/Zamek' });
+    expect(castle).toMatchObject({ id: 'ext:50.0050,20.0600', along: 'car', nearRef: 'jazda', swapRef: 'jezioro', stayMin: 45, interest: 2, wikipedia: 'https://pl.wikipedia.org/wiki/Zamek' });
     expect(open.find((each) => each.title === 'Wieża')).toMatchObject({ along: 'at', nearRef: 'rynek', fit: 'stop' });
 
     const dismissed = setExtraDismissed(withDay, 'd1', castle.id, true)!.doc;

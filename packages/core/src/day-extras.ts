@@ -397,6 +397,8 @@ export function extraCandidates(doc: Doc, corridor: DayCorridor, features: reado
 
 /** Wybór AI: klucz kandydata i to, czego kod nie wie (co to, ile na miejscu, czy widać po drodze, co może zastąpić). */
 export type ExtraPick = {
+  /** Atrakcyjność 1–3 (`DayExtra.interest`). */
+  interest?: number | null;
   id: string;
   title: string;
   type?: string | null;
@@ -425,7 +427,7 @@ export function closeMisses(candidates: readonly ExtraCandidate[], picks: readon
   return candidates
     .filter((each) => !picked.has(each.id) && each.detourMin <= CLOSE_DETOUR_MIN && (each.weight >= 2 || each.wikipedia !== undefined))
     .sort((a, b) => a.detourMin - b.detourMin)
-    .map((each) => ({ id: each.id, title: each.name, type: each.type, why: '', stayMin: STAY_BY_TYPE[each.type] ?? 20, fit: 'stop' as const }));
+    .map((each) => ({ id: each.id, title: each.name, type: each.type, why: '', stayMin: STAY_BY_TYPE[each.type] ?? 20, fit: 'stop' as const, interest: each.weight >= 2 && each.wikipedia !== undefined ? 3 : 2 }));
 }
 
 /** „Widać po drodze” tylko naprawdę przy trasie: pieszo do 100 m, przy drodze do 500 m (zamek nad drogą). */
@@ -461,6 +463,7 @@ export function applyExtraPicks(doc: Doc, dayRef: string, candidates: readonly E
       offM: candidate.offM,
       detourMin: candidate.detourMin,
       stayMin: Math.max(0, Math.min(480, Math.round(pick.stayMin))),
+      ...(pick.interest != null && pick.interest >= 1 && pick.interest <= 3 ? { interest: Math.round(pick.interest) } : {}),
       fit,
       ...(pick.swapRef && dayRefs.has(pick.swapRef) ? { swapRef: pick.swapRef } : {}),
       ...(pick.weather ? { weather: pick.weather } : {}),
@@ -492,19 +495,70 @@ export function extraDistanceText(extra: Pick<DayExtraItem, 'along' | 'offM'>): 
 /** Wstawiony dodatek, którego punktu już nie ma w dniu, wraca na listę. */
 const stillAdded = (doc: Doc, dayRef: string, extra: DayExtraItem) => extra.status === 'added' && doc.items.some((item) => item.ref === extra.addedRef && item.dayRef === dayRef);
 
-/** Lista dnia do pokazania: otwarte (od najmniejszego dodatkowego czasu) i odrzucone osobno. */
-export function dayExtras(doc: Doc, dayRef: string): { open: DayExtraItem[]; dismissed: DayExtraItem[]; fetchedAt?: string } {
+/** Rodzaje atrakcji do filtrowania (z `type`, po polsku — z OSM, od AI albo z zewnętrznego AI). */
+export type ExtraCategory = 'history' | 'religion' | 'museum' | 'view' | 'nature' | 'art' | 'family' | 'other';
+export const EXTRA_CATEGORY: Record<ExtraCategory, string> = {
+  history: 'zabytki i historia',
+  religion: 'kościoły i klasztory',
+  museum: 'muzea i galerie',
+  view: 'punkty widokowe',
+  nature: 'przyroda',
+  art: 'sztuka i architektura',
+  family: 'dla dzieci',
+  other: 'inne',
+};
+
+/** Kolejność ma znaczenie: „wieża widokowa” to widok, „park rozrywki” — dla dzieci, nie przyroda. */
+const CATEGORY_WORDS: [ExtraCategory, RegExp][] = [
+  ['family', /zoo|akwari|park rozrywki|dla dzieci|plac zabaw|aquapark|park linowy|oceanari/i],
+  ['museum', /muze|galeri|wystaw|skansen/i],
+  ['view', /widok|latarni|panoram|taras/i],
+  ['religion', /kości|katedr|bazylik|klaszt|opactw|kaplic|meczet|synagog|świątyni|cerkie|sanktuar|monast|kolegiat|kalwari/i],
+  ['nature', /wodospad|jaskini|łuk skaln|wąwóz|źród|gejzer|wulkan|szczyt|plaż|skał|rezerwat|ogród|park|jezior|przyrod|las\b|lasy|dolin|kanion|grot|zatok|klif|wydm|góra|przełęcz/i],
+  ['art', /sztuk|mural|rzeźb|instalacj|architekt|street art|fontann|kamienic|budyn|dzielnic|ulic|plac\b|rynek|stare miasto|starówk/i],
+  ['history', /zam|fort|ruin|archeolog|bram|pałac|dwór|wież|pomnik|pamięci|zabyt|akwedukt|kopal|most|kasb|twierdz|mury|histor|cytadel|wiatrak|młyn|ratusz|bunkr|cmentarz/i],
+];
+
+export function extraCategory(extra: Pick<DayExtraItem, 'type'>): ExtraCategory {
+  const type = extra.type ?? '';
+  return CATEGORY_WORDS.find(([, words]) => words.test(type))?.[0] ?? 'other';
+}
+
+export const extraInterest = (extra: Pick<DayExtraItem, 'interest'>): number => extra.interest ?? 2;
+export const EXTRA_INTEREST: Record<1 | 2 | 3, string> = { 3: 'tylko wyjątkowe', 2: 'warte uwagi i lepsze', 1: 'wszystkie' };
+
+/** Filtr listy (ustawienie oglądającego): wybrane rodzaje (puste = wszystkie) i najmniejsza atrakcyjność. */
+export type ExtraFilter = { categories: readonly ExtraCategory[]; minInterest: 1 | 2 | 3 };
+export const NO_EXTRA_FILTER: ExtraFilter = { categories: [], minInterest: 1 };
+/** Bez drobnych (★): domyślnie na webie, zawsze na telefonie. */
+export const NOTABLE_EXTRAS: ExtraFilter = { categories: [], minInterest: 2 };
+
+export const passesExtraFilter = (extra: DayExtraItem, filter: ExtraFilter) =>
+  extraInterest(extra) >= filter.minInterest && (filter.categories.length === 0 || filter.categories.includes(extraCategory(extra)));
+
+/**
+ * Lista dnia do pokazania: otwarte po filtrze (od najciekawszych, przy równych — od najmniejszego dodatkowego czasu),
+ * ile filtr ukrył, ile otwartych jest w każdym rodzaju (przed filtrem rodzajów) i odrzucone osobno.
+ */
+export function dayExtras(
+  doc: Doc,
+  dayRef: string,
+  filter: ExtraFilter = NO_EXTRA_FILTER,
+): { open: DayExtraItem[]; hidden: number; categories: Partial<Record<ExtraCategory, number>>; dismissed: DayExtraItem[]; fetchedAt?: string } {
   const day = doc.days.find((each) => each.ref === dayRef);
   const items = day?.extras?.items ?? [];
-  const open = items.filter((each) => each.status !== 'dismissed' && !stillAdded(doc, dayRef, each)).sort((a, b) => extraMinutes(a) - extraMinutes(b));
-  return { open, dismissed: items.filter((each) => each.status === 'dismissed'), ...(day?.extras ? { fetchedAt: day.extras.fetchedAt } : {}) };
+  const all = items.filter((each) => each.status !== 'dismissed' && !stillAdded(doc, dayRef, each));
+  const categories: Partial<Record<ExtraCategory, number>> = {};
+  for (const extra of all) if (extraInterest(extra) >= filter.minInterest) categories[extraCategory(extra)] = (categories[extraCategory(extra)] ?? 0) + 1;
+  const open = all.filter((each) => passesExtraFilter(each, filter)).sort((a, b) => extraInterest(b) - extraInterest(a) || extraMinutes(a) - extraMinutes(b));
+  return { open, hidden: all.length - open.length, categories, dismissed: items.filter((each) => each.status === 'dismissed'), ...(day?.extras ? { fetchedAt: day.extras.fetchedAt } : {}) };
 }
 
 /** Przy punktach planu: ile dodatków jest obok i ile może go zastąpić. */
-export function itemExtras(doc: Doc, dayRef: string): Map<string, { near: DayExtraItem[]; swaps: DayExtraItem[] }> {
+export function itemExtras(doc: Doc, dayRef: string, filter: ExtraFilter = NO_EXTRA_FILTER): Map<string, { near: DayExtraItem[]; swaps: DayExtraItem[] }> {
   const marks = new Map<string, { near: DayExtraItem[]; swaps: DayExtraItem[] }>();
   const of = (ref: string) => marks.get(ref) ?? marks.set(ref, { near: [], swaps: [] }).get(ref)!;
-  for (const extra of dayExtras(doc, dayRef).open) {
+  for (const extra of dayExtras(doc, dayRef, filter).open) {
     if (extra.nearRef) of(extra.nearRef).near.push(extra);
     if (extra.swapRef) of(extra.swapRef).swaps.push(extra);
   }
@@ -590,6 +644,6 @@ export function addExtraToPlan(doc: Doc, dayRef: string, id: string, ids: { item
 }
 
 /** Pinezki otwartych dodatków dnia na mapę (bez numerów, `extra.ref` = `extra:<id>`). */
-export function extraPins(doc: Doc, dayRef: string): MapPin[] {
-  return dayExtras(doc, dayRef).open.map((extra) => ({ placeRef: `extra:${extra.id}`, name: extra.title, lat: extra.lat, lng: extra.lng, stops: [], extra: { ref: `extra:${extra.id}`, title: extra.title } }));
+export function extraPins(doc: Doc, dayRef: string, filter: ExtraFilter = NO_EXTRA_FILTER): MapPin[] {
+  return dayExtras(doc, dayRef, filter).open.map((extra) => ({ placeRef: `extra:${extra.id}`, name: extra.title, lat: extra.lat, lng: extra.lng, stops: [], extra: { ref: `extra:${extra.id}`, title: extra.title } }));
 }
