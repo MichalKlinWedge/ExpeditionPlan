@@ -84,6 +84,7 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
           </View>
         </Pressable>
       )}
+      <TaskAlerts />
       {stats.next && (
         <Pressable
           onPress={() => {
@@ -112,7 +113,6 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
         </Pressable>
       )}
       {stats.next && stats.next.inDays <= 2 && <NextTripWeather tripId={stats.next.trip.id} />}
-      <TaskAlerts />
 
       <View style={styles.grid}>
         <Tile value={stats.total} label="wyjazdów" />
@@ -132,7 +132,7 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
         <Tile value={stats.daysThisYear} label={`dni w ${year}`} />
       </View>
 
-      <ThemedView type="backgroundElement" style={[styles.hero, styles.offline, { borderLeftColor: theme.accent }]}>
+      <ThemedView type="backgroundElement" style={[styles.hero, styles.offline, { borderColor: theme.backgroundSelected }]}>
         <ThemedText type="small" themeColor="textSecondary">
           NA TELEFONIE (OFFLINE)
         </ThemedText>
@@ -160,7 +160,6 @@ function Tile({ value, label, onPress }: { value: number; label: string; onPress
       </ThemedText>
       <ThemedText type="small" themeColor={onPress === undefined ? 'textSecondary' : 'accent'} style={styles.tileText}>
         {label}
-        {onPress === undefined ? '' : ' →'}
       </ThemedText>
     </>
   );
@@ -189,7 +188,7 @@ const styles = StyleSheet.create({
   countdownValue: { fontSize: 32, lineHeight: 36, fontWeight: 800 },
   grow: { flex: 1, gap: 2 },
   nextTitle: { fontSize: 17, lineHeight: 22 },
-  offline: { borderLeftWidth: 4 },
+  offline: { borderWidth: 1 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   tile: { flexBasis: '31%', flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.three, borderRadius: 16, borderWidth: 1 },
   tileText: { textAlign: 'center' },
