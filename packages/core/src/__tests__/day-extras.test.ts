@@ -4,6 +4,7 @@ import {
   addExtraToPlan,
   applyExtraPicks,
   attractionType,
+  candidateMayPass,
   CLOSE_DETOUR_MIN,
   closeMisses,
   corridorQueryLines,
@@ -13,10 +14,13 @@ import {
   detourMinutes,
   extraCandidates,
   extraCategory,
+  extraFilterText,
   extraPins,
   extraToPlace,
   extraTimeText,
+  isExtraFilterNarrow,
   itemExtras,
+  pickPasses,
   setExtraDismissed,
   wikipediaUrl,
 } from '../day-extras.ts';
@@ -159,6 +163,20 @@ describe('po drodze i w pobliżu', () => {
     expect(dayExtras(withDay, 'd1', churches).open.map((each) => each.id)).toEqual(['pool:kapliczka']);
     expect(extraPins(withDay, 'd1', churches).map((pin) => pin.placeRef)).toEqual(['extra:pool:kapliczka']);
     expect(itemExtras(withDay, 'd1', { categories: ['view'], minInterest: 2 }).get('rynek')).toBeUndefined();
+  });
+
+  it('filtr przy szukaniu: kandydaci innych rodzajów odpadają przed AI, wybory spoza filtra — po AI', () => {
+    const nature = { categories: ['nature'] as const, minInterest: 2 as const };
+    expect(extraFilterText(nature)).toBe('rodzaje: przyroda; atrakcyjność ★★ i więcej');
+    expect(isExtraFilterNarrow({ categories: [], minInterest: 1 })).toBe(false);
+    const ids = extraCandidates(doc, corridor, [...features, { id: 'node/8', lat: 50.001, lng: 20.002, tags: { name: 'Plaża', natural: 'beach' } }, { id: 'node/9', lat: 50.001, lng: 20.003, tags: { name: 'Coś', tourism: 'attraction' } }], new Set(), { filter: nature }).map((each) => each.id);
+    // Zamek i wieża (inne rodzaje) odpadają; plaża, „atrakcja” bez rodzaju i pula zostają.
+    expect(ids).toEqual(expect.arrayContaining(['pool:kapliczka', 'node/8', 'node/9']));
+    expect(ids).not.toContain('node/1');
+    expect(candidateMayPass('wieża widokowa', nature)).toBe(false);
+    expect(pickPasses({ type: 'wodospad', interest: 3 }, undefined, nature)).toBe(true);
+    expect(pickPasses({ type: 'wodospad', interest: 1 }, undefined, nature)).toBe(false);
+    expect(pickPasses({ type: null }, { type: 'muzeum' }, nature)).toBe(false);
   });
 
   it('do planu: przy drodze przejazdu = postój w trasie; z puli — punkt przechodzi do dnia', () => {

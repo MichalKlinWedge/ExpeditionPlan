@@ -79,5 +79,11 @@ describe('po drodze i w pobliżu z zewnętrznego AI', () => {
       { title: 'Wieża', reason: 'już na liście' },
     ]);
     expect(importExternalExtras(doc, 'd1', refs, { ...parsed.data, date: '2026-07-02' }, '2026-06-01').wrongDate).toBe('2026-07-02');
+    // Filtr: tylko przyroda — zamek i wieża odpadają z powodem; wytyczne mówią, czego szukać.
+    const nature = { categories: ['nature'] as const, minInterest: 2 as const };
+    const filtered = importExternalExtras(doc, 'd1', refs, parsed.data, '2026-06-01', nature);
+    expect(filtered.added).toBe(0);
+    expect(filtered.skipped[0]).toEqual({ title: 'Zamek Wysoki', reason: 'poza filtrem (rodzaje: przyroda; atrakcyjność ★★ i więcej)' });
+    expect(externalExtrasBrief(doc, 'd1', schedule, nature)).toContain('tylko rodzaje: przyroda; atrakcyjność ★★ i więcej');
   });
 });

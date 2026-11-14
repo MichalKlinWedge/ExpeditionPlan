@@ -63,6 +63,9 @@ describe('po drodze i w pobliżu — OSM i AI', () => {
     const prompt = dayExtrasPrompt(maroko, day.ref, {}, candidates);
     expect(prompt).toContain('"id": "node/1"');
     expect(prompt).toContain(`"ref": "${refs[0]}"`);
+    const filtered = dayExtrasPrompt(maroko, day.ref, {}, candidates, { request: { scope: 'day', filter: { categories: ['nature'], minInterest: 2 } } });
+    expect(filtered).toMatch(/"kinds": \[\s*"przyroda"\s*\]/);
+    expect(filtered).toContain('`request.only` to filtr użytkownika');
     let seen = '';
     const client: AiClient = {
       defaultProvider: 'GEMINI',

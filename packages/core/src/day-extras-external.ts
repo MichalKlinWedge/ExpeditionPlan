@@ -3,10 +3,14 @@ import { z } from 'zod';
 import {
   applyExtraPicks,
   dayCorridor,
+  EXTRA_CATEGORY,
   EXTRA_RADIUS_M,
+  type ExtraFilter,
+  extraFilterText,
   type ExtraCandidate,
   type ExtraPick,
   placeAnywhere,
+  passesExtraFilter,
   placeOnCorridor,
   SPOT_DRIVE_M,
 } from './day-extras.ts';
@@ -81,7 +85,7 @@ function briefLine(line: readonly LngLat[], toleranceM: number, max: number): Ln
 const km = (meters: number) => `${(meters / 1000).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} km`;
 
 /** Wytyczne dla zewnętrznego AI (Markdown) — dzień z godzinami silnika i wariantami oglądanymi w planie. */
-export function externalExtrasBrief(doc: Doc, dayRef: string, schedule: DaySchedule): string {
+export function externalExtrasBrief(doc: Doc, dayRef: string, schedule: DaySchedule, filter?: ExtraFilter): string {
   const day = doc.days.find((each) => each.ref === dayRef);
   if (day === undefined) return '';
   const items = new Map(doc.items.map((item) => [item.ref, item]));
@@ -151,6 +155,11 @@ export function externalExtrasBrief(doc: Doc, dayRef: string, schedule: DaySched
     '8a. `interest` — atrakcyjność: 3 — wyjątkowe, znane z przewodników, warto nadłożyć drogi; 2 — warte uwagi, gdy jest się obok; 1 — drobne, lokalne. Oceniaj surowo: 3 to najwyżej kilka miejsc w dniu. Aplikacja pozwala filtrować po atrakcyjności i rodzaju (`type`).',
     '9. `nearRef`: `ref` punktu planu, przy którym leży (z tabeli), albo null. `swapRef`: `ref` punktu, który może zastąpić, gdy tamten wypadnie (podobny charakter, blisko), albo null. `weather`: `indoor` — dobre na deszcz, `outdoor`, `any`.',
     '10. `wikipedia`, `website`: pełne adresy https albo null.',
+    ...(filter && (filter.categories.length > 0 || filter.minInterest > 1)
+      ? [
+          `10a. **Filtr użytkownika — tylko ${extraFilterText(filter)}.** Inne rodzaje i niższa atrakcyjność nie wejdą do listy, więc ich nie podawaj. \`type\` nazywaj jasno po polsku, tak by było widać rodzaj (np. „plaża”, „wodospad”, „muzeum”, „kościół”, „ruiny zamku”, „punkt widokowy”, „mural”). Rodzaje w aplikacji: ${Object.values(EXTRA_CATEGORY).join(', ')}.`,
+        ]
+      : []),
     '11. **Odpowiedz wyłącznie jednym blokiem JSON w formacie niżej** — bez tekstu przed i po.',
     '',
     '## Dzień',
@@ -216,6 +225,7 @@ export function importExternalExtras(
   refs: readonly string[],
   input: ExternalExtrasInput,
   today: string,
+  filter?: ExtraFilter,
 ): { edit: RulesEdit | null; added: number; skipped: ExternalSkip[]; wrongDate?: string } {
   const day = doc.days.find((each) => each.ref === dayRef);
   if (day === undefined) return { edit: null, added: 0, skipped: [] };
@@ -242,6 +252,10 @@ export function importExternalExtras(
     }
     if (candidates.some((other) => other.id === id || (plainName(other.name) === plain && distanceM([other.lng, other.lat], at) < 1500))) {
       skipped.push({ title: each.title, reason: 'powtórzone w odpowiedzi' });
+      continue;
+    }
+    if (filter && !passesExtraFilter({ type: each.type, interest: each.interest }, filter)) {
+      skipped.push({ title: each.title, reason: `poza filtrem (${extraFilterText(filter)})` });
       continue;
     }
     const where = placeOnCorridor(corridor, each) ?? placeAnywhere(corridor, each);

@@ -1,6 +1,6 @@
 "use client";
 
-import { addExtraToPlan, type DayExtraItem, dayExtras, type DaySchedule, EXTRA_CATEGORY, EXTRA_FIT, EXTRA_INTEREST, EXTRA_SCOPE, type ExtraCategory, extraInterest, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
+import { addExtraToPlan, type DayExtraItem, dayExtras, type DaySchedule, EXTRA_CATEGORY, EXTRA_FIT, EXTRA_INTEREST, EXTRA_SCOPE, type ExtraCategory, extraFilterText, extraInterest, isExtraFilterNarrow, extraDistanceText, type ExtraScope, extraMinutes, extraTimeText, plural, type PlanEdit, setExtraDismissed, shortDate, type TripDocument } from "@expeditionplan/core";
 import { uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -57,7 +57,7 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
   const toggleCategory = (category: ExtraCategory) =>
     setExtraFilter({ ...filter, categories: filter.categories.includes(category) ? filter.categories.filter((each) => each !== category) : [...filter.categories, category] });
 
-  const narrowed = scope !== "day" || hint.trim() !== "";
+  const narrowed = scope !== "day" || hint.trim() !== "" || filter.categories.length > 0;
   const describe = (extra: DayExtraItem) => {
     setDescribing(extra.id);
     start(async () => {
@@ -72,7 +72,7 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
   const find = () =>
     start(async () => {
       setMessage({});
-      setMessage(await findDayExtras(tripId, dayRef, { scope, ...(scope === "city" ? { city } : {}), ...(hint.trim() ? { hint } : {}) }));
+      setMessage(await findDayExtras(tripId, dayRef, { scope, ...(scope === "city" ? { city } : {}), ...(hint.trim() ? { hint } : {}), ...(isExtraFilterNarrow(filter) ? { filter } : {}) }));
     });
 
   return (
@@ -109,6 +109,11 @@ export function DayExtras({ doc, dayRef, tripId, schedule, onEdit, onRules, canF
             <SparkIcon className="size-4" />
             {pending ? "Szukam…" : narrowed ? "Szukaj i dopisz (AI)" : list.fetchedAt ? "Szukaj od nowa (AI)" : "Znajdź atrakcje (AI)"}
           </button>
+          {isExtraFilterNarrow(filter) && (
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Szukam tylko: {extraFilterText(filter)} — jak w filtrze niżej; reszta nie trafi na listę ani na mapę.
+            </p>
+          )}
           {list.fetchedAt !== undefined && (
             <p className="text-xs text-zinc-500">
               {narrowed ? "Wyniki dojdą do listy poniżej." : "Cały dzień bez doprecyzowania wymienia listę (odrzucone i wstawione zostają)."} Długi przejazd autem, też z domu, daje miasta po drodze na przerwę.

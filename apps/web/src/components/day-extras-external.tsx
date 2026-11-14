@@ -4,6 +4,7 @@ import { type DaySchedule, externalExtrasBrief, type ExternalSkip, importExterna
 import { useMemo, useState } from "react";
 
 import type { OnRules } from "@/components/day-rules";
+import { useExtraFilter } from "@/lib/extra-filter";
 
 /**
  * „Po drodze i w pobliżu” z zewnętrznego AI: wytyczne z danymi dnia do pobrania albo skopiowania (`externalExtrasBrief`),
@@ -16,7 +17,9 @@ export function DayExtrasExternal({ doc, dayRef, schedule, onRules }: { doc: Tri
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState<{ ok?: string; error?: string; skipped?: ExternalSkip[] }>({});
   const date = doc.days.find((each) => each.ref === dayRef)?.date ?? "";
-  const brief = useMemo(() => (open ? externalExtrasBrief(doc, dayRef, schedule) : ""), [open, doc, dayRef, schedule]);
+  // Filtr listy (rodzaje, atrakcyjność) idzie do wytycznych i odsiewa wczytaną odpowiedź.
+  const filter = useExtraFilter();
+  const brief = useMemo(() => (open ? externalExtrasBrief(doc, dayRef, schedule, filter) : ""), [open, doc, dayRef, schedule, filter]);
 
   if (!open) {
     return (
@@ -31,9 +34,9 @@ export function DayExtrasExternal({ doc, dayRef, schedule, onRules }: { doc: Tri
     if ("error" in parsed) return setMessage({ error: parsed.error });
     const refs = schedule.items.map((item) => item.ref);
     // Wynik liczony od dokumentu z chwili kliknięcia; zapis przez `onRules` jak odrzucenie.
-    const result = importExternalExtras(doc, dayRef, refs, parsed.data, localToday());
+    const result = importExternalExtras(doc, dayRef, refs, parsed.data, localToday(), filter);
     if (result.edit !== null) {
-      onRules((current) => importExternalExtras(current, dayRef, refs, parsed.data, localToday()).edit);
+      onRules((current) => importExternalExtras(current, dayRef, refs, parsed.data, localToday(), filter).edit);
       setText("");
     }
     const dateNote = result.wrongDate ? ` Uwaga: odpowiedź jest dla dnia ${result.wrongDate}, a wczytałem ją do ${date}.` : "";

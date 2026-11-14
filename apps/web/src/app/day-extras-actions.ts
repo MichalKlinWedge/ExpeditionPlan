@@ -1,6 +1,6 @@
 "use server";
 
-import { applyExtraPicks, corridorTowns, dayCorridor, dayLodging, extraCandidates, type ExtraRequest, extraToPlace, localToday, type OsmFeature, plural, scheduleDay, TripDocument } from "@expeditionplan/core";
+import { applyExtraPicks, corridorTowns, dayCorridor, dayLodging, EXTRA_CATEGORY, extraCandidates, type ExtraCategory, extraFilterText, type ExtraRequest, extraToPlace, isExtraFilterNarrow, pickPasses, localToday, type OsmFeature, plural, scheduleDay, TripDocument } from "@expeditionplan/core";
 import { z } from "zod";
 import { fetchDayAttractions, OVERPASS_URL, pickDayExtras } from "@expeditionplan/planner";
 import { refIndex, saveElements, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -18,18 +18,26 @@ import { pullTrip, validationError } from "@/lib/trip-snapshot";
  * oglądanych w planie, kandydaci z kodu (`core/day-extras.ts`), wybór i opis z AI (Gemini), zapis w dniu
  * (`days.extras`) — telefon ma listę offline. Odrzucone i wstawione zostają, reszta listy się odświeża; szukanie
  * zawężone (trasa przejazdu, miasto, własna prośba) dopisuje do listy. Długi przejazd autem (też z domu) daje
- * miasta po drodze, a w nich atrakcje na przerwę.
+ * miasta po drodze, a w nich atrakcje na przerwę. Filtr listy (rodzaje, atrakcyjność) działa też przy szukaniu:
+ * kandydaci innych rodzajów odpadają przed AI, AI dostaje go jako prośbę, a wybory spoza niego nie trafiają na listę.
  */
 const RequestInput = z.object({
   scope: z.enum(["day", "route", "city"]).default("day"),
   city: z.string().trim().max(80).optional(),
   hint: z.string().trim().max(300).optional(),
+  filter: z
+    .object({
+      categories: z.array(z.enum(Object.keys(EXTRA_CATEGORY) as [ExtraCategory, ...ExtraCategory[]])).max(8),
+      minInterest: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    })
+    .optional(),
 });
 
 export async function findDayExtras(tripId: string, dayRef: string, input: Partial<ExtraRequest> = {}): Promise<FormState> {
   const parsed = RequestInput.safeParse(input);
   if (!parsed.success) return { error: "Doprecyzowanie jest za długie (miasto do 80 znaków, prośba do 300)." };
-  const request: ExtraRequest = { scope: parsed.data.scope, ...(parsed.data.city ? { city: parsed.data.city } : {}), ...(parsed.data.hint ? { hint: parsed.data.hint } : {}) };
+  const filter = isExtraFilterNarrow(parsed.data.filter) ? parsed.data.filter : undefined;
+  const request: ExtraRequest = { scope: parsed.data.scope, ...(parsed.data.city ? { city: parsed.data.city } : {}), ...(parsed.data.hint ? { hint: parsed.data.hint } : {}), ...(filter ? { filter } : {}) };
   if (request.scope === "city" && !request.city) return { error: "Wpisz miasto, w którym szukać." };
   if (!process.env.CONTACT_EMAIL) return { error: "Nie szukam: serwer nie ma ustawionego CONTACT_EMAIL (warunek serwera OpenStreetMap Overpass)." };
   const { supabase } = await requireUser(`/trips/${tripId}/plan?day=${encodeURIComponent(dayRef)}`);
@@ -68,11 +76,13 @@ export async function findDayExtras(tripId: string, dayRef: string, input: Parti
   const towns = corridorTowns(corridor, features);
   if (request.scope === "city" && towns.length === 0) return { error: `Nie znalazłem w OpenStreetMap miasta „${request.city}” w okolicy trasy tego dnia (do 60 km). Sprawdź pisownię.` };
   // Szukanie zawężone dopisuje do listy: wcześniejsze otwarte zostają i nie wracają jako kandydaci.
-  const merge = request.scope !== "day" || request.hint !== undefined;
+  // Wybrane rodzaje też dopisują: atrakcje innych rodzajów zostają na liście.
+  const merge = request.scope !== "day" || request.hint !== undefined || (filter?.categories.length ?? 0) > 0;
   const skip = new Set((day.extras?.items ?? []).filter((each) => merge || each.status !== undefined).map((each) => each.id));
-  const candidates = extraCandidates(doc, corridor, features, skip, { towns, scope: request.scope });
+  const candidates = extraCandidates(doc, corridor, features, skip, { towns, scope: request.scope, ...(filter ? { filter } : {}) });
   if (candidates.length === 0) {
-    return { ok: request.scope === "city" ? `W OpenStreetMap nie ma atrakcji spoza planu w mieście „${request.city}”.` : "W pobliżu trasy i punktów tego dnia nie ma w OpenStreetMap atrakcji spoza planu." };
+    const only = filter ? ` (${extraFilterText(filter)})` : "";
+    return { ok: request.scope === "city" ? `W OpenStreetMap nie ma atrakcji spoza planu w mieście „${request.city}”${only}.` : `W pobliżu trasy i punktów tego dnia nie ma w OpenStreetMap atrakcji spoza planu${only}.` };
   }
 
   let picks;
@@ -81,8 +91,12 @@ export async function findDayExtras(tripId: string, dayRef: string, input: Parti
   } catch (e) {
     return { error: `AI nie wybrało atrakcji: ${e instanceof Error ? e.message : String(e)}` };
   }
+  // Poza filtrem (rodzaj z typu od AI, atrakcyjność od AI) — nie trafia na listę ani na mapę.
+  const byId = new Map(candidates.map((each) => [each.id, each]));
+  const chosen = filter ? picks.filter((pick) => pickPasses(pick, byId.get(pick.id), filter)) : picks;
+  const dropped = picks.length - chosen.length;
   const before = new Set((day.extras?.items ?? []).map((each) => each.id));
-  const next = applyExtraPicks(doc, dayRef, candidates, picks, localToday(), merge);
+  const next = applyExtraPicks(doc, dayRef, candidates, chosen, localToday(), merge);
   if (next === null) return { error: "Tego dnia już nie ma — odśwież stronę." };
   const nextDoc = { ...doc, days: doc.days.map((each) => (each.ref === dayRef ? next : each)) };
   const checked = TripDocument.safeParse(nextDoc);
@@ -94,9 +108,10 @@ export async function findDayExtras(tripId: string, dayRef: string, input: Parti
   }
   refresh();
   const found = next.extras!.items.filter((each) => each.status === undefined && (!merge || !before.has(each.id))).length;
-  if (found === 0) return { ok: merge ? "AI nie znalazło niczego nowego do dopisania." : "AI nie znalazło niczego wartego dorzucenia do tego dnia." };
+  const skipped = dropped > 0 ? ` Pominięto ${plural(dropped, ["propozycję", "propozycje", "propozycji"])} spoza filtra (${extraFilterText(filter!)}).` : "";
+  if (found === 0) return { ok: `${merge ? "AI nie znalazło niczego nowego do dopisania." : "AI nie znalazło niczego wartego dorzucenia do tego dnia."}${skipped}` };
   const where = request.scope === "city" ? ` w mieście ${request.city}` : request.scope === "route" ? " na trasie przejazdu" : " po drodze i w pobliżu";
-  return { ok: `${merge ? "Dopisano" : "Znaleziono"} ${plural(found, ["atrakcję", "atrakcje", "atrakcji"])}${where}.` };
+  return { ok: `${merge ? "Dopisano" : "Znaleziono"} ${plural(found, ["atrakcję", "atrakcje", "atrakcji"])}${where}${filter ? ` (${extraFilterText(filter)})` : ""}.${skipped}` };
 }
 
 /**

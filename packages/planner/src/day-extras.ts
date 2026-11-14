@@ -1,6 +1,7 @@
 import { type AiClient, type AiUsage, askStructured } from '@expeditionplan/ai';
 import {
   closeMisses,
+  EXTRA_CATEGORY,
   corridorQueryLines,
   type DayCorridor,
   EXTRA_RADIUS_M,
@@ -9,6 +10,7 @@ import {
   type ExtraRequest,
   type ExtraTown,
   instantToZoned,
+  isExtraFilterNarrow,
   type LngLat,
   type OsmFeature,
   scheduleDay,
@@ -197,11 +199,19 @@ export function dayExtrasContext(doc: Doc, dayRef: string, options: ScheduleOpti
         ...(item?.description ? { description: clip(item.description, 120) } : {}),
       };
     }),
-    ...(extra.request && (extra.request.scope !== 'day' || extra.request.hint)
+    ...(extra.request && (extra.request.scope !== 'day' || extra.request.hint || isExtraFilterNarrow(extra.request.filter))
       ? {
           request: {
             where: extra.request.scope === 'city' ? `w mieście ${extra.request.city ?? ''}`.trim() : extra.request.scope === 'route' ? 'na trasie przejazdu' : 'cały dzień',
             ...(extra.request.hint ? { wish: extra.request.hint } : {}),
+            ...(isExtraFilterNarrow(extra.request.filter)
+              ? {
+                  only: {
+                    ...(extra.request.filter.categories.length > 0 ? { kinds: extra.request.filter.categories.map((each) => EXTRA_CATEGORY[each]) } : {}),
+                    minInterest: extra.request.filter.minInterest,
+                  },
+                }
+              : {}),
           },
         }
       : {}),
@@ -237,6 +247,7 @@ export function dayExtrasPrompt(doc: Doc, dayRef: string, options: ScheduleOptio
     '7. Uwzględnij uczestników (wiek) i to, że `along: car` to zjazd z drogi autem, a `at`/`foot` — dojście pieszo.',
     '8. Długi przejazd autem (`towns` = miasta przy trasie, `offKm` od drogi; kandydat z `town` leży w takim mieście): zaproponuj miejsca na przerwę w drodze — rozprostować nogi, zjeść, zobaczyć coś krótko — rozłożone wzdłuż trasy, nie wszystkie w jednym mieście. `why` może powiedzieć, że to dobra przerwa po drodze.',
     '9. `request` to prośba użytkownika (gdzie szukać i czego chce): ma pierwszeństwo przy wyborze i kolejności; nadal tylko z listy `candidates`.',
+    '10. `request.only` to filtr użytkownika: bierz tylko rodzaje z `kinds` (gdy są) i tylko atrakcyjność `interest` ≥ `minInterest`. Wtedy `type` nazywaj jasno po polsku, tak by było widać rodzaj (np. „plaża”, „wodospad”, „muzeum”, „kościół”, „ruiny zamku”, „punkt widokowy”, „mural”) — aplikacja po nim odsiewa resztę.',
     '',
     'JSON Schema odpowiedzi:',
     JSON.stringify(z.toJSONSchema(DayExtrasAnswer, { io: 'input', unrepresentable: 'any' })),

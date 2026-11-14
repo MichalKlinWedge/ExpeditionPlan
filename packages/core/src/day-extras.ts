@@ -160,7 +160,7 @@ export function corridorQueryLines(corridor: DayCorridor): { near: LngLat[][]; c
 export type ExtraScope = 'day' | 'route' | 'city';
 export const EXTRA_SCOPE: Record<ExtraScope, string> = { day: 'cały dzień', route: 'trasa przejazdu', city: 'w mieście' };
 /** Prośba użytkownika przy szukaniu: zakres i własne słowa dla AI („zamki i punkty widokowe”, „przerwa na obiad”). */
-export type ExtraRequest = { scope: ExtraScope; city?: string; hint?: string };
+export type ExtraRequest = { scope: ExtraScope; city?: string; hint?: string; filter?: ExtraFilter };
 
 /** Miasto z OSM (`place`) przy trasie dnia albo podane do szukania. */
 export type ExtraTown = { name: string; lat: number; lng: number; place: string; offM: number };
@@ -304,7 +304,7 @@ export type ExtraCandidate = {
 };
 
 /** Zakres kandydatów: miasta po drodze (atrakcje w nich także poza pasem), tylko przy przejazdach, tylko w mieście. */
-export type CandidateOptions = { towns?: readonly ExtraTown[]; scope?: ExtraScope };
+export type CandidateOptions = { towns?: readonly ExtraTown[]; scope?: ExtraScope; filter?: ExtraFilter };
 
 const round5 = (value: number) => Math.round(value * 1e5) / 1e5;
 const httpUrl = (value: string | undefined) => (value && /^https?:\/\//i.test(value) ? value : undefined);
@@ -360,6 +360,8 @@ export function extraCandidates(doc: Doc, corridor: DayCorridor, features: reado
     if (feature.tags.place) continue;
     const kind = attractionType(feature.tags);
     if (kind === null || skipIds.has(feature.id)) continue;
+    // Rodzaj spoza filtra odpada od razu; „atrakcja” bez rodzaju zostaje — rodzaj poda AI.
+    if (options.filter && !candidateMayPass(kind.type, options.filter)) continue;
     const name = feature.tags['name:pl']?.trim() || feature.tags.name!.trim();
     const plain = plainName(name);
     if (known.has(plain) || known.has(plainName(feature.tags.name!)) || pooled.includes(plain)) continue;
@@ -533,7 +535,30 @@ export const NO_EXTRA_FILTER: ExtraFilter = { categories: [], minInterest: 1 };
 /** Bez drobnych (★): domyślnie na webie, zawsze na telefonie. */
 export const NOTABLE_EXTRAS: ExtraFilter = { categories: [], minInterest: 2 };
 
-export const passesExtraFilter = (extra: DayExtraItem, filter: ExtraFilter) =>
+/** Rodzaj kandydata przed wyborem AI: ten spoza filtra odpada, „inne” zostaje (AI może podać dokładniejszy rodzaj). */
+export function candidateMayPass(type: string, filter: ExtraFilter): boolean {
+  if (filter.categories.length === 0) return true;
+  const category = extraCategory({ type });
+  return category === 'other' || filter.categories.includes(category);
+}
+
+/** Filtr inny niż „wszystko”: zawęża szukanie (do AI idzie jako prośba, wyniki spoza niego nie trafiają na listę). */
+export const isExtraFilterNarrow = (filter: ExtraFilter | undefined): filter is ExtraFilter => filter !== undefined && (filter.categories.length > 0 || filter.minInterest > 1);
+
+/** „przyroda, muzea i galerie; atrakcyjność ★★ i więcej” — do podpowiedzi i promptów. */
+export function extraFilterText(filter: ExtraFilter): string {
+  const kinds = filter.categories.length > 0 ? `rodzaje: ${filter.categories.map((each) => EXTRA_CATEGORY[each]).join(', ')}` : undefined;
+  const interest = filter.minInterest > 1 ? `atrakcyjność ${'★'.repeat(filter.minInterest)}${filter.minInterest < 3 ? ' i więcej' : ''}` : undefined;
+  return [kinds, interest].filter(Boolean).join('; ');
+}
+
+/** Wybór AI w filtrze: rodzaj z typu od AI (inaczej z kandydata), atrakcyjność od AI (brak = 2). */
+export function pickPasses(pick: Pick<ExtraPick, 'type' | 'interest'>, candidate: Pick<ExtraCandidate, 'type'> | undefined, filter: ExtraFilter): boolean {
+  const interest = pick.interest != null && pick.interest >= 1 && pick.interest <= 3 ? Math.round(pick.interest) : undefined;
+  return passesExtraFilter({ type: pick.type?.trim() || candidate?.type, ...(interest !== undefined ? { interest } : {}) }, filter);
+}
+
+export const passesExtraFilter = (extra: Pick<DayExtraItem, 'type' | 'interest'>, filter: ExtraFilter) =>
   extraInterest(extra) >= filter.minInterest && (filter.categories.length === 0 || filter.categories.includes(extraCategory(extra)));
 
 /**
