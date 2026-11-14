@@ -44,4 +44,20 @@ describe('uwagi punktu w Markdown', () => {
   it('tekst bez znaczników do kalendarza', () => {
     expect(markdownPlainLines('# Uwaga\n**Weź** wodę\n- [mapa](https://mapy.com/x)\n1. bilet')).toEqual(['Uwaga', 'Weź wodę', '• mapa (https://mapy.com/x)', '1. bilet']);
   });
+
+  it('tabela: nagłówek, wyrównanie, brakujące komórki, kreska w komórce; tekst wokół zostaje', () => {
+    const blocks = parseMarkdown('Ceny:\n| Bilet | Cena |\n| --- | ---: |\n| **normalny** | 20 zł |\n| ulgowy |\n| a \\| b | 5 |\nPo tabeli');
+    expect(blocks.map((block) => block.kind)).toEqual(['paragraph', 'table', 'paragraph']);
+    expect(blocks[1]).toMatchObject({
+      kind: 'table',
+      header: [[{ text: 'Bilet' }], [{ text: 'Cena' }]],
+      align: [null, 'right'],
+      rows: [[[{ text: 'normalny', bold: true }], [{ text: '20 zł' }]], [[{ text: 'ulgowy' }], []], [[{ text: 'a | b' }], [{ text: '5' }]]],
+    });
+    expect(markdownPlainLines('| A | B |\n|---|---|\n| 1 | 2 |')).toEqual(['A | B', '1 | 2']);
+  });
+
+  it('kreska bez linii `---` pod spodem to zwykły tekst', () => {
+    expect(parseMarkdown('a | b\nc | d').map((block) => block.kind)).toEqual(['paragraph']);
+  });
 });

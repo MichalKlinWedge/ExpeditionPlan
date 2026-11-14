@@ -66,7 +66,7 @@ export function ItemTexts({ tripId, doc, ids, itemRef, editing }: { tripId: stri
         </label>
         <div
           title={
-            "Praktyczne wskazówki (jak dojść, co zabrać, na co uważać) z formatowaniem: **pogrubienie**, *kursywa*, ## nagłówek, - lista, 1. lista, [opis](https://…).\nTekst wklejony z Worda, Google Docs albo strony zachowuje pogrubienia, listy i linki. Na karcie punktu i w telefonie widać go sformatowanego, w puli na telefonie 2 pierwsze linie. AI uwag nie czyta."
+            "Praktyczne wskazówki (jak dojść, co zabrać, na co uważać) z formatowaniem: **pogrubienie**, *kursywa*, ## nagłówek, - lista, 1. lista, [opis](https://…), tabela | a | b |.\nTekst wklejony z Worda, Google Docs, Excela albo strony zachowuje pogrubienia, listy, tabele i linki. Na karcie punktu i w telefonie widać go sformatowanego, w puli na telefonie 2 pierwsze linie. AI uwag nie czyta."
           }>
           <MarkdownField label="Uwagi" value={text} onChange={setText} rows={Math.max(4, text.split("\n").length + 1)} placeholder="np. Na górze wieje, weźcie **kurtki**." />
         </div>

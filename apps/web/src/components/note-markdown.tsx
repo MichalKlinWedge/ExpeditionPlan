@@ -4,7 +4,7 @@ import { LinkedText } from "@/components/linked-text";
 
 /**
  * Uwagi punktu w Markdown (`core/note-markdown.ts`) jako HTML: nagłówki, akapity z liniami, listy,
- * pogrubienie, kursywa, linki zewnętrzne (podkreślone — jak każdy link poza aplikacją), a gołe adresy
+ * tabele (przewijane w poziomie), pogrubienie, kursywa, linki zewnętrzne (podkreślone — jak każdy link poza aplikacją), a gołe adresy
  * w tekście jako przyciski `btn-web` (`LinkedText`), tak jak dotąd.
  */
 export function NoteMarkdown({ text, className = "" }: { text: string; className?: string }) {
@@ -26,6 +26,31 @@ export function NoteMarkdown({ text, className = "" }: { text: string; className
               </span>
             ))}
           </p>
+        ) : block.kind === "table" ? (
+          <div key={index} className="overflow-x-auto">
+            <table className="border-collapse text-sm">
+              <thead>
+                <tr>
+                  {block.header.map((cell, at) => (
+                    <th key={at} className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-left font-semibold text-ink dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100" style={{ textAlign: block.align[at] ?? undefined }}>
+                      <Inline parts={cell} />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row, at) => (
+                  <tr key={at}>
+                    {row.map((cell, column) => (
+                      <td key={column} className="border border-zinc-300 px-2 py-1 align-top dark:border-zinc-700" style={{ textAlign: block.align[column] ?? undefined }}>
+                        <Inline parts={cell} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : block.ordered ? (
           <ol key={index} className="list-decimal pl-5">
             {block.items.map((item, at) => (

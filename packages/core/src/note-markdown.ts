@@ -1,7 +1,8 @@
 /**
  * Uwagi punktu jako Markdown (mały podzbiór, ten sam na webie i telefonie): nagłówki `#`–`###`,
  * listy `- ` / `* ` / `• ` i `1. `, akapity z zachowanymi przejściami linii, w tekście **pogrubienie**,
- * *kursywa* / _kursywa_ i [opis](https://…). Gołe adresy zostają tekstem — aplikacje robią z nich
+ * *kursywa* / _kursywa_ i [opis](https://…), a także tabele jak w GitHubie (`| a | b |`, pod nagłówkiem
+ * `| --- | :---: |`; `\|` to kreska w komórce). Gołe adresy zostają tekstem — aplikacje robią z nich
  * przyciski jak dotąd (`splitLinks`), a znaczniki w adresach (`_` w URL) nie są czytane jako formatowanie.
  *
  * Uwagi w planie to `item.notes: string[]`. Edytor zapisuje cały tekst jako jedną pozycję; starsze plany
@@ -14,12 +15,31 @@ export type MdBlock =
   | { kind: 'heading'; level: 1 | 2 | 3; inline: MdInline[] }
   /** Akapit: kolejne linie (bez łączenia w jedną) — `lines[i]` to jedna linia tekstu. */
   | { kind: 'paragraph'; lines: MdInline[][] }
-  | { kind: 'list'; ordered: boolean; items: MdInline[][] };
+  | { kind: 'list'; ordered: boolean; items: MdInline[][] }
+  /** Tabela: nagłówek i wiersze (każdy uzupełniony do liczby kolumn nagłówka), wyrównanie kolumn. */
+  | { kind: 'table'; header: MdInline[][]; rows: MdInline[][][]; align: MdAlign[] };
+
+export type MdAlign = 'left' | 'center' | 'right' | null;
 
 const BULLET = /^[-*•]\s+(.*)$/;
 const ORDERED = /^\d+[.)]\s+(.*)$/;
 const HEADING = /^(#{1,3})\s+(.*)$/;
 const URL = /https?:\/\/[^\s<>"]+/gi;
+const TABLE_RULE = /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$/;
+
+/** Komórki wiersza tabeli: bez skrajnych `|`, `\|` zostaje kreską w tekście. */
+function tableCells(line: string): string[] {
+  const inner = line.replace(/^\|/, '').replace(/(?<!\\)\|$/, '');
+  return inner.split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, '|'));
+}
+
+const isTableRow = (line: string) => line.includes('|');
+
+function tableAlign(rule: string): MdAlign {
+  const left = rule.startsWith(':');
+  const right = rule.endsWith(':');
+  return left && right ? 'center' : right ? 'right' : left ? 'left' : null;
+}
 
 /** Uwagi z planu jako jeden tekst Markdown: jedna pozycja — ona sama, kilka — lista (pozycja ze znacznikiem zostaje). */
 export function notesMarkdown(notes: readonly string[]): string {
@@ -111,11 +131,34 @@ export function parseMarkdown(text: string): MdBlock[] {
     paragraph = null;
     list = null;
   };
-  for (const raw of text.replace(/\r\n?/g, '\n').split('\n')) {
-    const line = raw.trim();
+  const lines = text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((raw) => raw.trim());
+  for (let at = 0; at < lines.length; at++) {
+    const line = lines[at]!;
     if (line === '') {
       close();
       continue;
+    }
+    // Tabela: wiersz z `|`, pod nim linia `| --- | --- |` o tej samej liczbie kolumn.
+    const rule = lines[at + 1];
+    if (isTableRow(line) && rule !== undefined && TABLE_RULE.test(rule)) {
+      const head = tableCells(line);
+      const rules = tableCells(rule);
+      if (rules.length === head.length) {
+        close();
+        const rows: MdInline[][][] = [];
+        at += 2;
+        while (at < lines.length && lines[at] !== '' && isTableRow(lines[at]!)) {
+          const cells = tableCells(lines[at]!);
+          rows.push(head.map((_, column) => parseInline(cells[column] ?? '')));
+          at++;
+        }
+        at--;
+        blocks.push({ kind: 'table', header: head.map(parseInline), rows, align: rules.map(tableAlign) });
+        continue;
+      }
     }
     const heading = HEADING.exec(line);
     if (heading !== null) {
@@ -144,13 +187,15 @@ export function parseMarkdown(text: string): MdBlock[] {
 
 const plainInline = (inline: MdInline[]) => inline.map((part) => (part.kind === 'link' ? `${part.label} (${part.url})` : part.text)).join('');
 
-/** Bez znaczników, linia po linii (kalendarz, krótkie podglądy): lista dostaje „• ”, numerowana „1. ”. */
+/** Bez znaczników, linia po linii (kalendarz, krótkie podglądy): lista dostaje „• ”, numerowana „1. ”, wiersz tabeli komórki po „ | ”. */
 export function markdownPlainLines(text: string): string[] {
   return parseMarkdown(text).flatMap((block) =>
     block.kind === 'heading'
       ? [plainInline(block.inline)]
       : block.kind === 'paragraph'
         ? block.lines.map(plainInline)
-        : block.items.map((item, index) => `${block.ordered ? `${index + 1}.` : '•'} ${plainInline(item)}`),
+        : block.kind === 'table'
+          ? [block.header, ...block.rows].map((row) => row.map(plainInline).join(' | '))
+          : block.items.map((item, index) => `${block.ordered ? `${index + 1}.` : '•'} ${plainInline(item)}`),
   );
 }

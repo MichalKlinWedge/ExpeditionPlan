@@ -1,13 +1,14 @@
-import { type MdInline, parseMarkdown } from '@expeditionplan/core';
-import { Linking, StyleSheet, View } from 'react-native';
+import { type MdBlock, type MdInline, parseMarkdown } from '@expeditionplan/core';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 
 import { LinkedText } from '@/components/linked-text';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 /**
  * Uwagi punktu w Markdown (`core/note-markdown.ts`, te same co na webie): nagłówki, akapity z liniami,
- * listy, pogrubienie, kursywa i linki [opis](adres) — dotknięcie otwiera przeglądarkę; gołe adresy jak
+ * listy, tabele (przewijane w bok), pogrubienie, kursywa i linki [opis](adres) — dotknięcie otwiera przeglądarkę; gołe adresy jak
  * dotąd przez `LinkedText`. Offline, z planu w telefonie.
  */
 export function NoteMarkdown({ text, secondary = false }: { text: string; secondary?: boolean }) {
@@ -31,6 +32,8 @@ export function NoteMarkdown({ text, secondary = false }: { text: string; second
               </ThemedText>
             ))}
           </ThemedText>
+        ) : block.kind === 'table' ? (
+          <NoteTable key={index} table={block} color={color} />
         ) : (
           <View key={index} style={styles.list}>
             {block.items.map((item, at) => (
@@ -47,6 +50,47 @@ export function NoteMarkdown({ text, secondary = false }: { text: string; second
         ),
       )}
     </View>
+  );
+}
+
+type MdTable = Extract<MdBlock, { kind: 'table' }>;
+
+const plainLength = (parts: MdInline[]) => parts.reduce((sum, part) => sum + (part.kind === 'link' ? part.label : part.text).length, 0);
+
+/** Tabela bez tabel RN: szerokość kolumny z najdłuższego tekstu (w granicach), dłuższy tekst się zawija. */
+function NoteTable({ table, color }: { table: MdTable; color?: 'textSecondary' }) {
+  const theme = useTheme();
+  const widths = table.header.map((cell, column) => {
+    const longest = Math.max(plainLength(cell), ...table.rows.map((row) => plainLength(row[column] ?? [])));
+    return Math.min(220, Math.max(64, longest * 7.5 + 16));
+  });
+  const border = { borderColor: theme.backgroundSelected };
+  const cellStyle = (column: number) => [styles.cell, border, { width: widths[column], alignItems: table.align[column] === 'right' ? ('flex-end' as const) : table.align[column] === 'center' ? ('center' as const) : ('flex-start' as const) }];
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={[styles.table, border]}>
+        <View style={[styles.row, { backgroundColor: theme.backgroundSelected }]}>
+          {table.header.map((cell, column) => (
+            <View key={column} style={cellStyle(column)}>
+              <ThemedText type="smallBold">
+                <Inline parts={cell.map((part) => (part.kind === 'text' ? { ...part, bold: true as const } : part))} />
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+        {table.rows.map((row, at) => (
+          <View key={at} style={styles.row}>
+            {row.map((cell, column) => (
+              <View key={column} style={cellStyle(column)}>
+                <ThemedText type="small" themeColor={color}>
+                  <Inline parts={cell} color={color} />
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    </ScrollView>
   );
 }
 
@@ -74,4 +118,7 @@ const styles = StyleSheet.create({
   link: { textDecorationLine: 'underline' },
   bold: { fontWeight: 700 },
   italic: { fontStyle: 'italic' },
+  table: { borderTopWidth: 1, borderLeftWidth: 1 },
+  row: { flexDirection: 'row' },
+  cell: { borderRightWidth: 1, borderBottomWidth: 1, paddingHorizontal: Spacing.one, paddingVertical: 2 },
 });

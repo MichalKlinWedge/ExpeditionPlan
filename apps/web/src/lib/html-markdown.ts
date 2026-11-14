@@ -1,7 +1,7 @@
 /**
  * Wklejony tekst z formatowaniem (Google Docs, Word, strona WWW, mail) → Markdown uwag punktu
- * (`core/note-markdown.ts`): nagłówki, akapity, listy, pogrubienie, kursywa i linki http(s). Reszta
- * (tabele, kolory, obrazy) zostaje samym tekstem. Tylko w przeglądarce (`DOMParser`); skrypty ze
+ * (`core/note-markdown.ts`): nagłówki, akapity, listy, tabele, pogrubienie, kursywa i linki http(s).
+ * Reszta (kolory, obrazy, scalone komórki) zostaje samym tekstem. Tylko w przeglądarce (`DOMParser`); skrypty ze
  * schowka się nie wykonują — dokument jest tylko czytany.
  *
  * Google Docs owija cały wklejony fragment w `<b style="font-weight:normal">`, a pogrubienie i kursywę
@@ -10,7 +10,7 @@
 
 type Style = { bold: boolean; italic: boolean };
 
-const BLOCK = new Set(["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "UL", "OL", "TR", "BLOCKQUOTE", "SECTION", "ARTICLE", "HEADER", "FOOTER", "TABLE"]);
+const BLOCK = new Set(["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "UL", "OL", "TR", "TD", "TH", "THEAD", "TBODY", "TFOOT", "BLOCKQUOTE", "SECTION", "ARTICLE", "HEADER", "FOOTER", "TABLE"]);
 const BLOCK_SELECTOR = [...BLOCK].map((tag) => tag.toLowerCase()).join(",");
 
 /** Blok albo element, który ma bloki w środku (np. `<b>` Google Docs wokół akapitów). */
@@ -66,6 +66,14 @@ function blocks(node: Node, style: Style, out: string[], list?: { ordered: boole
   }
   const tag = node.tagName;
   const own = styleOf(node, style);
+  if (node instanceof HTMLTableElement) {
+    const table = tableMarkdown(node, own);
+    if (table !== null) {
+      out.push(table, "");
+      return;
+    }
+    // Tabela układu strony (maile, strony) — dalej jak zwykłe bloki, komórka po komórce.
+  }
   if (tag === "UL" || tag === "OL") {
     const state = { ordered: tag === "OL", index: 0 };
     for (const child of node.children) blocks(child, own, out, state);
@@ -104,6 +112,32 @@ function blocks(node: Node, style: Style, out: string[], list?: { ordered: boole
   }
   const text = inline(node, own).split("\n").map((line) => line.trim()).join("\n").trim();
   if (text !== "") out.push(text, "");
+}
+
+/** Komórka tabeli jako jedna linia: jej akapity i pozycje list po spacji, bez znaczników bloków, `|` jako `\|`. */
+function cellText(cell: HTMLTableCellElement, style: Style): string {
+  const parts: string[] = [];
+  blocks(cell, style, parts);
+  return parts
+    .filter((part) => part !== "")
+    .map((part) => part.replace(/^(#{1,3}|[-*•]|\d+[.)])\s+/, ""))
+    .join(" ")
+    .replace(/\s*\n\s*/g, " ")
+    .replace(/\|/g, "\\|")
+    .trim();
+}
+
+/**
+ * Tabela z danymi (Word, Google Docs, Excel, cennik na stronie) → tabela Markdown, pierwszy wiersz jako
+ * nagłówek. Tabela z tabelą w środku, z jedną kolumną albo jednym wierszem to układ strony → `null`.
+ */
+function tableMarkdown(table: HTMLTableElement, style: Style): string | null {
+  if (table.querySelector("table") !== null) return null;
+  const rows = [...table.rows].map((row) => [...row.cells].map((cell) => cellText(cell, style))).filter((row) => row.some((cell) => cell !== ""));
+  const width = Math.max(0, ...rows.map((row) => row.length));
+  if (rows.length < 2 || width < 2) return null;
+  const line = (row: string[]) => `| ${[...row, ...Array<string>(width - row.length).fill("")].join(" | ")} |`;
+  return [line(rows[0]!), `| ${Array<string>(width).fill("---").join(" | ")} |`, ...rows.slice(1).map(line)].join("\n");
 }
 
 export function htmlToMarkdown(html: string): string {

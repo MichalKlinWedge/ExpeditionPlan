@@ -8,8 +8,9 @@ import { htmlToMarkdown } from "@/lib/html-markdown";
 /**
  * Pole tekstu z formatowaniem (uwagi punktu): zwykłe pole, w którym tekst zapisuje się jako Markdown
  * (`core/note-markdown.ts`). Pasek: pogrubienie, kursywa, nagłówek, lista, lista numerowana, link —
- * wstawiają znaczniki wokół zaznaczenia. Wklejony tekst z formatowaniem (Google Docs, Word, strona,
- * mail) zamienia się na Markdown (`htmlToMarkdown`), więc pogrubienia, listy i linki zostają. „Podgląd”
+ * wstawiają znaczniki wokół zaznaczenia — i tabela (szablon). Wklejony tekst z formatowaniem (Google
+ * Docs, Word, Excel, strona, mail) zamienia się na Markdown (`htmlToMarkdown`), więc pogrubienia, listy,
+ * tabele i linki zostają. „Podgląd”
  * pokazuje wynik tak, jak na karcie punktu i w telefonie.
  */
 export function MarkdownField({ value, onChange, rows = 6, placeholder, label }: { value: string; onChange: (value: string) => void; rows?: number; placeholder?: string; label: string }) {
@@ -60,6 +61,20 @@ export function MarkdownField({ value, onChange, rows = 6, placeholder, label }:
     replace(start, end, `[${label}](https://)`, [at, at + "https://".length]);
   };
 
+  /** Szablon tabeli 2×2 w nowym akapicie; zaznaczony „Kolumna 1” do nadpisania. */
+  const table = () => {
+    const element = area.current;
+    if (element === null) return;
+    const at = element.selectionEnd;
+    const before = value.slice(0, at);
+    const lead = before === "" || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+    const after = value.slice(at);
+    const tail = after === "" || after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
+    const template = "| Kolumna 1 | Kolumna 2 |\n| --- | --- |\n|  |  |\n|  |  |";
+    const start = at + lead.length + 2;
+    replace(at, at, `${lead}${template}${tail}`, [start, start + "Kolumna 1".length]);
+  };
+
   const paste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const html = event.clipboardData.getData("text/html");
     if (html === "") return;
@@ -100,6 +115,9 @@ export function MarkdownField({ value, onChange, rows = 6, placeholder, label }:
             </button>
             <button type="button" onClick={link} className={tool} title="Link ([opis](https://…))">
               link
+            </button>
+            <button type="button" onClick={table} className={tool} title={"Tabela: wiersze | a | b |, pod nagłówkiem | --- | --- |.\nTabela wklejona z Worda, Google Docs, Excela albo strony zamienia się sama."}>
+              tabela
             </button>
           </span>
         )}
