@@ -104,6 +104,12 @@ export const REVIEW_CATEGORY: Record<string, string> = {
   other: 'inne',
 };
 
+/** Waga uwagi z kontroli wyjazdu (`AuditSeverity`). */
+export const AUDIT_SEVERITY: Record<string, string> = { error: 'błąd', warning: 'uwaga', tip: 'podpowiedź' };
+
+/** Rodzaj uwagi z kontroli wyjazdu (`AuditCategory`). */
+export const AUDIT_CATEGORY: Record<string, string> = { consistency: 'niespójność', mistake: 'błąd w planie', risk: 'zagrożenie', missing: 'brak' };
+
 /** Środek przejazdu (`LegMode`). */
 export const LEG_MODE: Record<string, string> = {
   walk: 'pieszo',

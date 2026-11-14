@@ -12,6 +12,7 @@ export * from './practical.ts';
 export * from './logistics.ts';
 export * from './tune.ts';
 export * from './review.ts';
+export * from './audit.ts';
 export * from './receipt.ts';
 export * from './lodging.ts';
 export * from './booking.ts';

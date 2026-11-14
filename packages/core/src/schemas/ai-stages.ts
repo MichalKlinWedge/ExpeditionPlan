@@ -324,3 +324,43 @@ export const StoredReview = z.object({
   dismissed: z.array(z.string()).default([]),
 });
 export type StoredReview = z.infer<typeof StoredReview>;
+
+/** Waga uwagi z kontroli wyjazdu (`AUDIT_SEVERITY` w labels). */
+export const AuditSeverity = z.enum(['error', 'warning', 'tip']);
+/** Rodzaj uwagi: niespójność, błąd w planie, zagrożenie na miejscu, brak (`AUDIT_CATEGORY` w labels). */
+export const AuditCategory = z.enum(['consistency', 'mistake', 'risk', 'missing']);
+
+/**
+ * Kontrola całego wyjazdu z AI (strona dostrajania): spójność, błędy i zagrożenia jako lista uwag do
+ * przeczytania — bez łatek, plan zmienia człowiek. Klucze wskazują dzień, punkty i rezerwację.
+ */
+export const TripAudit = z.object({
+  /** Dwa–trzy zdania: ogólna ocena i co najpilniejsze. */
+  summary: text,
+  findings: z
+    .array(
+      z.object({
+        severity: AuditSeverity,
+        category: AuditCategory,
+        /** Krótko: „Dzień 2: wylot o 07:15, a zwrot auta o 07:30”. */
+        title: text,
+        /** Co dokładnie się nie zgadza albo czym grozi — z faktów planu. */
+        detail: text,
+        /** Co zrobić (opcjonalnie). */
+        suggestion: z.string().optional(),
+        dayRef: Ref.optional(),
+        itemRefs: z.array(Ref).max(6).default([]),
+        bookingRef: Ref.optional(),
+      }),
+    )
+    .max(25),
+});
+export type TripAudit = z.infer<typeof TripAudit>;
+export type AuditFinding = TripAudit['findings'][number];
+
+/** Kontrola zapisana w `ai_runs.output` (stage `audit`): uwagi z numerami i te, które człowiek odrzucił. */
+export const StoredAudit = z.object({
+  audit: TripAudit.extend({ findings: z.array(TripAudit.shape.findings.element.extend({ id: z.string() })) }),
+  dismissed: z.array(z.string()).default([]),
+});
+export type StoredAudit = z.infer<typeof StoredAudit>;

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PlanPatch, scheduleDay, SLACK_LABEL, type TripDocument } from "@expeditionplan/core";
+import { dayChip, PlanPatch, scheduleDay, SLACK_LABEL, StoredAudit, type TripDocument } from "@expeditionplan/core";
 import { applyPatch } from "@expeditionplan/planner";
 import { dbLoadError, lockedRefs, type PullPayload, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { Loading, Shell } from "@/components/shell";
 import { PageHeader } from "@/components/page-header";
 import { type Preview, TuneChat } from "@/components/tune-chat";
+import { TripAudit } from "@/components/trip-audit";
 import { requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Dostrajanie z AI — Expedition Planner" };
@@ -46,11 +47,12 @@ function daySummary(doc: TripDocument, dayRef: string): string {
 async function Tune({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireUser(`/trips/${id}/tune`);
-  const [{ data, error }, membership, messages, runRow] = await Promise.all([
+  const [{ data, error }, membership, messages, runRow, auditRow] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
     supabase.from("ai_messages").select("role, content").eq("trip_id", id).order("created_at", { ascending: false }).limit(20),
     supabase.from("ai_runs").select("id, output").eq("trip_id", id).eq("stage", "tune").eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("ai_runs").select("id, output, created_at").eq("trip_id", id).eq("stage", "audit").eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   if (error) return <p className="text-sm msg-error">{dbLoadError(error)}</p>;
   if (data === null) notFound();
@@ -81,6 +83,14 @@ async function Tune({ params }: { params: Promise<{ id: string }> }) {
     };
   }
 
+  const audit = StoredAudit.safeParse(auditRow.data?.output);
+  const auditRun = auditRow.data && audit.success ? { id: auditRow.data.id, createdAt: auditRow.data.created_at, stored: audit.data } : null;
+  const names = {
+    days: Object.fromEntries(doc.days.map((day, index) => [day.ref, `Dzień ${index + 1} · ${dayChip(day.date)}`])),
+    items: Object.fromEntries(doc.items.map((item) => [item.ref, item.title])),
+    bookings: Object.fromEntries(doc.bookings.map((booking) => [booking.ref, booking.title])),
+  };
+
   return (
     <>
       <PageHeader
@@ -88,6 +98,7 @@ async function Tune({ params }: { params: Promise<{ id: string }> }) {
         title="Dostrajanie z AI"
         intro={<>Napisz, co zmienić. AI proponuje łatkę — konkretne operacje na punktach — a do planu trafia dopiero po „Zastosuj”. Punkty zmienione ręcznie zostają nietknięte.</>}
       />
+      <TripAudit tripId={id} run={auditRun} names={names} />
       <TuneChat tripId={id} turns={(messages.data ?? []).reverse()} preview={preview} />
       <p>
         <Link href={`/trips/${id}/plan`} className="btn-secondary btn-sm">

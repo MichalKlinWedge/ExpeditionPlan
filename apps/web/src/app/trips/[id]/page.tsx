@@ -205,7 +205,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
             <Tile key="brief" href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />,
             compareHref !== null && <Tile key="compare" href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />,
             !title.startsWith(DRAFT) && <Tile key="votes" href={`/trips/${id}/votes`} icon={<BallotIcon />} title="Głosowanie" hint={poll.data?.date_poll ? "termin i warianty: zagłosuj" : toDecide > 0 ? `do decyzji: ${toDecide}` : "warianty, kandydaci, termin"} />,
-            canEdit && (days.count ?? 0) > 0 && <Tile key="tune" href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="zmiany i plan B czatem" />,
+            canEdit && (days.count ?? 0) > 0 && <Tile key="tune" href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="kontrola wyjazdu, zmiany i plan B czatem" />,
             canEdit && !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile key="review" href={`/trips/${id}/compare?review=1`} icon={<SparkIcon />} title="Propozycje AI" hint="przegląd planu: trasy, mapa, opisy obok planu" />,
           ],
           [
