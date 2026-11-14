@@ -67,12 +67,13 @@ export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }:
   // Uczestnicy „moi”: z moim kontem albo dzieci pod moją opieką — jak `is_my_traveler` w bazie.
   const travelers = trip.live.travelers as unknown as TravelerRow[];
   const byId = new Map(travelers.map((row) => [row.id, row]));
-  const names = new Map(travelers.filter((row) => row.ref !== null).map((row) => [row.ref!, row.name]));
+  // Uczestnik dodany w aplikacji nie ma `ref` — w planie jest nim „id-<id wiersza>” (jak w `packages/sync`).
+  const refOf = (row: TravelerRow) => row.ref ?? `id-${row.id}`;
+  const names = new Map(travelers.map((row) => [refOf(row), row.name]));
   const myRefs = new Set(
     travelers
       .filter((row) => userId !== null && (row.user_id === userId || (row.guardian_id !== null && byId.get(row.guardian_id)?.user_id === userId)))
-      .map((row) => row.ref)
-      .filter((ref): ref is string => ref !== null),
+      .map(refOf),
   );
   const canCheck = (task: Task) => signedIn && (canAct || (task.assigneeRefs ?? []).some((ref) => myRefs.has(ref)));
   const toggle = (task: Task) => {
@@ -92,7 +93,7 @@ export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }:
       task={task}
       due={dueLabel(task, doc)}
       overdue={taskOverdue(doc, task, today)}
-      who={(task.assigneeRefs ?? []).map((ref) => names.get(ref) ?? ref).join(', ')}
+      who={(task.assigneeRefs ?? []).map((ref) => names.get(ref) ?? '').filter(Boolean).join(', ')}
       note={section(task) === task.status ? '' : task.status === 'done' ? 'zrobione — dotknij ☑, żeby cofnąć' : 'do zrobienia — dotknij ☐, żeby odhaczyć'}
       canCheck={canCheck(task)}
       onToggle={() => toggle(task)}
