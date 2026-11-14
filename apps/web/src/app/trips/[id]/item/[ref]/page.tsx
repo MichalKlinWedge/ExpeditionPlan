@@ -164,8 +164,8 @@ async function ItemCard({ params }: { params: Promise<{ id: string; ref: string 
             {place.address ? <span className="text-zinc-500"> · {place.address}</span> : null}
             {place.lat !== undefined && place.lng !== undefined && (
               <>
-                {" · "}
-                <a href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`} target="_blank" rel="noreferrer" className="underline">
+                {" "}
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`} target="_blank" rel="noreferrer" className="btn-mini">
                   nawiguj
                 </a>
               </>

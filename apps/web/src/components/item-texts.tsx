@@ -82,7 +82,7 @@ export function ItemTexts({ tripId, doc, ids, itemRef, editing }: { tripId: stri
   return (
     <>
       {item.description && (
-        <p className="panel whitespace-pre-line px-3 py-2 font-medium text-ink dark:text-zinc-100">
+        <p className="whitespace-pre-line font-semibold text-ink dark:text-zinc-100">
           <LinkedText text={item.description} />
         </p>
       )}

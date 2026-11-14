@@ -212,6 +212,38 @@ h2 {
   a.btn-primary:not([download]) {
     border-radius: 999px;
   }
+  /* Link do zewnętrznej strony wklejony w tekst (`LinkedText`): jasna pigułka z ikoną globu (`GlobeIcon`),
+     inna niż żółte przejście w aplikacji i wypełniony przycisk funkcji. */
+  .btn-web {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-block: 0.0625rem;
+    border: 1px solid var(--btn-line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--foreground);
+    padding: 0 0.5rem 0 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.15rem;
+    white-space: nowrap;
+    text-decoration: none;
+    transition:
+      background-color 120ms,
+      border-color 120ms;
+  }
+  .btn-web svg {
+    color: var(--color-sea);
+  }
+  .btn-web:hover {
+    background: var(--btn-bg);
+    border-color: var(--color-sea);
+  }
+  .btn-web:focus-visible {
+    outline: 2px solid var(--color-sea);
+    outline-offset: 1px;
+  }
   .btn-mini:disabled {
     opacity: 0.5;
     cursor: not-allowed;
