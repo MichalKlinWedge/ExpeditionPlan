@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/session';
-import { Plan } from '@/features/plan/plan-screen';
+import { Plan, PLAN_TABS, type PlanTabName } from '@/features/plan/plan-screen';
 import { currentTrip, loadMyTrips, type MyTrips, type Trip } from '@/features/trips/my-trips';
 import { TripSwitcher } from '@/features/trips/trip-switcher';
 import { isConfigured } from '@/lib/supabase';
@@ -22,6 +22,9 @@ export default function PlanTab() {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
+  // Wejście z innego ekranu prosto w zakładkę (`/plan?tab=tasks` z karty zadań na Starcie).
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const tab = PLAN_TABS.includes(params.tab as PlanTabName) ? (params.tab as PlanTabName) : undefined;
 
   const load = useCallback(async () => {
     const apply = (result: MyTrips) => {
@@ -57,6 +60,7 @@ export default function PlanTab() {
             <Plan
               key={selected}
               tripId={selected}
+              tab={tab}
               signedIn={session !== null}
               canAct={['owner', 'editor'].includes(trips!.find((trip) => trip.id === selected)?.role ?? '')}
               canAddExpense={trips!.find((trip) => trip.id === selected)?.can_add_expenses === true}

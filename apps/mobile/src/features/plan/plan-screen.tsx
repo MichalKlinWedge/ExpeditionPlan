@@ -119,12 +119,22 @@ type PlanProps = {
   onClose?: () => void;
   /** Miejsce na pasek zakładek. */
   bottomInset?: number;
+  /** Zakładka otwarta od razu (wejście z innego ekranu, np. zadania ze Startu). */
+  tab?: PlanTabName;
 };
 
+/** Zakładki wyjazdu — kolejność jak w pasku. */
+export const PLAN_TABS = ['plan', 'wallet', 'meals', 'tasks', 'journal', 'info'] as const;
+export type PlanTabName = (typeof PLAN_TABS)[number];
+
 /** Plan jednego wyjazdu. */
-export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose, bottomInset = 0 }: PlanProps) {
+export function Plan({ tripId, signedIn, canAct, canAddExpense, userId, onClose, bottomInset = 0, tab }: PlanProps) {
   const theme = useTheme();
-  const [mode, setMode] = useState<'plan' | 'wallet' | 'meals' | 'tasks' | 'journal' | 'info'>('plan');
+  const [mode, setMode] = useState<PlanTabName>(tab ?? 'plan');
+  // Zakładka wskazana przez ekran wyżej (karta zadań na Starcie) — także po wczytaniu planu.
+  useEffect(() => {
+    if (tab !== undefined) setMode(tab);
+  }, [tab]);
   const [trip, setTrip] = useState<CachedTrip | null>(null);
   /** „Co nowego” — zmiany innych od ostatniej wizyty (online). */
   const [news, setNews] = useState<NewsSummary | null>(null);

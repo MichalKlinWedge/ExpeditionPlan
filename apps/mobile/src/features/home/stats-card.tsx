@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { OnTrip } from '@/features/home/on-trip';
+import { TaskAlerts } from '@/features/home/task-alerts';
 import { NextTripWeather } from '@/features/home/weather-alerts';
 import { loadMyTrips, type MyTrips, setCurrentTrip } from '@/features/trips/my-trips';
 import { localDb } from '@/lib/local-db';
@@ -111,6 +112,7 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
         </Pressable>
       )}
       {stats.next && stats.next.inDays <= 2 && <NextTripWeather tripId={stats.next.trip.id} />}
+      <TaskAlerts />
 
       <View style={styles.grid}>
         <Tile value={stats.total} label="wyjazdów" />
