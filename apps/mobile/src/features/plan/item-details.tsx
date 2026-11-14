@@ -30,6 +30,7 @@ import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-n
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
+import { LinkedText } from '@/components/linked-text';
 import { RouteSiteButton } from '@/components/route-site-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -243,7 +244,11 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
         {flight && <ThemedText type="smallBold">✈ {flightLine(flight)}</ThemedText>}
         {/* Mapa punktu: miejsce albo start, cel, postoje i trasa (offline z pobranych obszarów). */}
         <ItemMap doc={doc} item={item} />
-        {item.description && <ThemedText>{item.description}</ThemedText>}
+        {item.description && (
+          <ThemedText>
+            <LinkedText text={item.description} />
+          </ThemedText>
+        )}
         {item.kind === 'lodging' &&
           lodgingDetails(doc, item).map((line) => (
             <ThemedText key={line} type="small">
@@ -252,7 +257,7 @@ function Details({ trip, item, onBack, backLabel, onOpen, autoPlay, tripId, onli
           ))}
         {[...item.notes, ...notes].map((note, i) => (
           <ThemedText key={i} type="small" themeColor="textSecondary">
-            • {note}
+            • <LinkedText text={note} />
           </ThemedText>
         ))}
         <NotePhotos photos={item.notePhotos ?? []} />
