@@ -5,7 +5,7 @@ import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { offlineDoneVersion } from '@/features/trip/offline-flag';
-import { cachedTrips } from '@/features/trips/my-trips';
+import { archivedTrips, cachedTrips } from '@/features/trips/my-trips';
 import { localDb } from '@/lib/local-db';
 
 /**
@@ -15,7 +15,8 @@ import { localDb } from '@/lib/local-db';
  * wariantu — najbliższe 25, osobny kanał „Plan dnia”). Włączane w Ustawieniach; przeliczane przy
  * każdym wczytaniu planu i po każdym zdarzeniu dnia (opóźnienie, pominięcie, wybór wariantu) —
  * godziny z silnika razem z zapisami czekającymi w outboxie, więc działa też bez sieci. Wyjazd
- * odłożony nie przypomina: jego daty są tylko orientacyjne.
+ * odłożony nie przypomina: jego daty są tylko orientacyjne. Wyjazd przeniesiony do archiwum na telefonie też nie
+ * (`archivedTrips`; „Do archiwum” kasuje jego zaplanowane powiadomienia, „Przywróć” planuje je od nowa).
  */
 
 const KEY = 'reminders-enabled';
@@ -54,6 +55,7 @@ async function reschedule(tripId: string, doc: TripDocument): Promise<number> {
   await (channels ??= ensureChannel());
   await clearTrip(tripId);
   if (cachedTrips()?.some((trip) => trip.id === tripId && isPostponed(trip))) return 0;
+  if (archivedTrips().has(tripId)) return 0;
   // Opóźnienia, pominięcia i wybory z terenu — także te, które jeszcze czekają na sieć.
   const inputs = cachedTrip(localDb, tripId)?.state.inputs ?? {};
   const now = Date.now();
@@ -74,6 +76,13 @@ async function reschedule(tripId: string, doc: TripDocument): Promise<number> {
     });
   }
   return list.length;
+}
+
+/** Po przeniesieniu do archiwum albo przywróceniu: przypomnienia wyjazdu znikają albo wracają (z planu w telefonie). */
+export async function rescheduleCachedTrip(tripId: string): Promise<void> {
+  const cached = cachedTrip(localDb, tripId);
+  if (cached) await scheduleTripReminders(tripId, cached.state.doc);
+  else await clearTrip(tripId);
 }
 
 /**
@@ -104,9 +113,10 @@ export async function refreshCurrentReminders(): Promise<void> {
   // Daty telefonu, nie UTC (strefa UTC+4 po północy to w UTC jeszcze wczoraj).
   const today = localToday();
   const tomorrow = localToday(new Date(Date.now() + 86_400_000));
+  const archived = archivedTrips();
   for (const trip of cachedTrips() ?? []) {
-    // Odłożony na webie: przypomnienia zaplanowane wcześniej znikają też bez otwierania planu.
-    if (trip.id != null && isPostponed(trip)) {
+    // Odłożony na webie albo w archiwum telefonu: przypomnienia zaplanowane wcześniej znikają też bez otwierania planu.
+    if (trip.id != null && (isPostponed(trip) || archived.has(trip.id))) {
       await clearTrip(trip.id);
       continue;
     }
@@ -116,11 +126,12 @@ export async function refreshCurrentReminders(): Promise<void> {
   }
 }
 
-/** Przelicza przypomnienia wszystkich wyjazdów z telefonu (bez odłożonych); zwraca ich liczbę. */
+/** Przelicza przypomnienia wszystkich wyjazdów z telefonu (bez odłożonych i z archiwum); zwraca ich liczbę. */
 async function scheduleAll(): Promise<number> {
   let count = 0;
+  const archived = archivedTrips();
   for (const trip of cachedTrips() ?? []) {
-    if (isPostponed(trip)) continue;
+    if (isPostponed(trip) || archived.has(trip.id!)) continue;
     const cached = trip.id ? cachedTrip(localDb, trip.id) : null;
     if (cached) count += await scheduleTripReminders(trip.id!, cached.state.doc);
   }

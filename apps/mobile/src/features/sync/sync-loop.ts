@@ -7,7 +7,7 @@ import { AppState } from 'react-native';
 
 import { uploadPhotos, waitingPhotos } from '@/features/trip/journal-photos';
 import { refreshCurrentReminders, remindersEnabled, scheduleTripReminders } from '@/features/trip/reminders';
-import { cachedTrips } from '@/features/trips/my-trips';
+import { archivedTrips, cachedTrips } from '@/features/trips/my-trips';
 import { localDb, remote } from '@/lib/local-db';
 import { supabase } from '@/lib/supabase';
 
@@ -98,8 +98,10 @@ export function pullPlannedTrips(force = false): Promise<void> {
     if ((await supabase.auth.getSession()).data.session === null) return;
     lastPull = Date.now();
     const today = localToday();
+    // Wyjazdy z archiwum telefonu nie przypominają, więc nie ma po co ich doczytywać.
+    const archived = archivedTrips();
     for (const trip of cachedTrips() ?? []) {
-      if (trip.id == null || isDraft(trip) || isPostponed(trip) || (trip.end_date ?? '') < today) continue;
+      if (trip.id == null || isDraft(trip) || isPostponed(trip) || archived.has(trip.id) || (trip.end_date ?? '') < today) continue;
       const fresh = await refreshTrip(localDb, remote, trip.id).catch(() => null);
       // Bez sieci kolejne wyjazdy też się nie doczytają — koniec tej rundy.
       if (fresh === null) return;

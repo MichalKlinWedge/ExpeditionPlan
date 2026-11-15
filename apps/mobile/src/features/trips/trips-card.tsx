@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
+import { rescheduleCachedTrip } from '@/features/trip/reminders';
 import { ClearOfflineButton, OfflineBadge, OfflineButton, OfflineStamp } from '@/features/trips/offline-button';
 import { useTheme } from '@/hooks/use-theme';
 import { archivedTrips, loadMyTrips, type MyTrips, setCurrentTrip, setTripArchived, type Trip } from '@/features/trips/my-trips';
@@ -90,6 +91,8 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const archiveTrip = (trip: Trip, value: boolean) => {
     const apply = () => {
       setArchived(setTripArchived(trip.id!, value));
+      // Wyjazd w archiwum nie przypomina; po przywróceniu przypomnienia wracają.
+      void rescheduleCachedTrip(trip.id!).catch(() => undefined);
       setOpen(null);
     };
     // Przywrócenie nic nie kosztuje, więc idzie od razu; schowanie wyjazdu z listy wymaga potwierdzenia.
