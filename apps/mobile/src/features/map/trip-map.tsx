@@ -1,4 +1,4 @@
-import { dayChip, dayLodging, dayMap, instantToZoned, type MapLine, type MapPin, moveToDay, type PlanItem, scheduleDay, transitPlaceRefs, type TripDocument, tripMapAreas } from '@expeditionplan/core';
+import { dayChip, dayLodging, dayMap, instantToZoned, isRouteArea, type MapLine, type MapPin, moveToDay, type PlanItem, scheduleDay, transitPlaceRefs, type TripDocument, tripMapAreas } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip, savePlanEdit } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
@@ -155,6 +155,10 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   }
   const done = statuses?.filter((status) => status.done) ?? [];
   const busy = progress !== '';
+  // Ile z pobranego to paczki wzdłuż tras — osobno, bo to one rosną najszybciej przy wędrówkach.
+  const routeAreas = areas.filter(isRouteArea);
+  const routesDone = done.filter((status) => isRouteArea(status.area));
+  const bytes = (list: AreaStatus[]) => list.reduce((sum, status) => sum + status.bytes, 0);
 
   const fetchAreas = async (again: boolean) => {
     setProgress('Przygotowuję…');
@@ -258,8 +262,14 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
                 ? 'Sprawdzam…'
                 : areas.length === 0
                   ? 'Miejsca planu nie mają współrzędnych — uzupełnij je na webie („Uzupełnij współrzędne”).'
-                  : `${done.length} z ${areas.length} obszarów na telefonie${done.length > 0 ? ` (${mb(done.reduce((sum, status) => sum + status.bytes, 0))})` : ''}: ${areas.map((area) => area.label).join(', ')}`}
+                  : `${done.length} z ${areas.length} obszarów na telefonie${done.length > 0 ? ` (${mb(bytes(done))})` : ''}: ${areas.map((area) => area.label).join(', ')}`}
             </ThemedText>
+            {routeAreas.length > 0 && (
+              <ThemedText type="small" themeColor="textSecondary">
+                W tym trasy: {routesDone.length} z {routeAreas.length}
+                {routesDone.length > 0 ? ` (${mb(bytes(routesDone))})` : ''} — {routeAreas.map((area) => area.label).join(', ')}.
+              </ThemedText>
+            )}
             {transitPlaces > 0 && areas.length > 0 && (
               <ThemedText type="small" themeColor="textSecondary">
                 {showTransit ? 'Z dojazdem i powrotem (lotnisko w domu itp.).' : 'Bez dojazdu i powrotu — tylko obszar podróży.'} Zmienia to „✈ Dojazd i powrót” na mapie.

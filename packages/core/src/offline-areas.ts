@@ -71,6 +71,9 @@ export type AreaOptions = {
   transit?: boolean;
 };
 
+/** Czy to paczka wzdłuż trasy z „Tras” (klucz `route-<ref>`), a nie przegląd ani skupisko miejsc. */
+export const isRouteArea = (area: Pick<MapArea, 'key'>) => area.key.startsWith('route-');
+
 /** Czy `inner` mieści się w `outer` — obszar trasy wewnątrz skupiska nie potrzebuje własnej paczki. */
 const inside = (inner: Bounds, outer: Bounds) => outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3];
 
