@@ -5,8 +5,9 @@ import { useState, useTransition } from "react";
 
 import type { FormState } from "@/app/actions";
 import { saveCarRoutes } from "@/app/route-actions";
+import { RouteSiteLink } from "@/components/route-site-link";
 
-export type UnsavedCarRoute = { ref: string; title: string; day: string; facts: string };
+export type UnsavedCarRoute = { ref: string; title: string; day: string; facts: string; /** Własny link przejazdu (Mapy Google, mapy.com) — ikona serwisu obok. */ url?: string };
 
 /**
  * „Przejazdy autem z planu”: przejazdy z przebiegiem (linia, „Jedź przez”, własny link), których nie ma jeszcze
@@ -34,6 +35,7 @@ export function UnsavedCarRoutes({ tripId, routes, editing }: { tripId: string; 
               {route.day} · {route.title}
             </Link>
             {route.facts && <span className="text-zinc-500">{route.facts}</span>}
+            {route.url !== undefined && <RouteSiteLink url={route.url} />}
             {editing && (
               <button type="button" onClick={() => run([route.ref])} disabled={pending} className="btn-mini">
                 zapisz

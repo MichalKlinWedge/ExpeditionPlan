@@ -435,6 +435,44 @@ export function routeMap(track: Track): DayMap {
 }
 
 /**
+ * Mapa kilku tras naraz (lista „Trasy”): linie wszystkich i pinezki ich końców, bez powtórzeń — koniec jednej
+ * i początek następnej w tym samym miejscu to jedna pinezka. Linie są uproszczone (domyślnie 50 m), bo chodzi
+ * o przegląd, a nie o profil: cały ślad GPX każdej trasy byłby wielokrotnie cięższy niż ta strona potrzebuje.
+ */
+export function routesMap(tracks: readonly Track[], toleranceM = 50): DayMap {
+  const pins: MapPin[] = [];
+  const lines: DayMap['lines'] = [];
+  const addPin = (name: string | undefined, point: LngLat | undefined, fallback: string) => {
+    if (point === undefined) return;
+    if (pins.some((each) => distanceM([each.lng, each.lat], point) < 30)) return;
+    pins.push({ placeRef: `trasa-${pins.length}`, name: name ?? fallback, lat: point[1], lng: point[0], stops: [] });
+  };
+  for (const track of tracks) {
+    const line = routeLine(track);
+    const ends = routeEnds(track);
+    addPin(track.route?.from?.name, ends.from, 'Start');
+    addPin(track.route?.to?.name, ends.to, 'Koniec');
+    if (line !== undefined) {
+      const points = simplifyPath(line, toleranceM);
+      if (points.length >= 2) lines.push({ coordinates: points, routed: true, ...(routeKind(track) === 'foot' ? { track: true as const } : {}) });
+    }
+  }
+  return { pins, lines, numbers: {} };
+}
+
+/** Mapy kilku grup tras w jedną (filtr listy „Trasy” składa widoczne): linie po kolei, pinezki bez powtórzeń. */
+export function mergeRouteMaps(maps: readonly DayMap[]): DayMap {
+  const pins: MapPin[] = [];
+  for (const map of maps) {
+    for (const pin of map.pins) {
+      if (pins.some((each) => distanceM([each.lng, each.lat], [pin.lng, pin.lat]) < 30)) continue;
+      pins.push({ ...pin, placeRef: `trasa-${pins.length}` });
+    }
+  }
+  return { pins, lines: maps.flatMap((map) => map.lines), numbers: {} };
+}
+
+/**
  * Przejazdy autem z planu, których przebiegu (linia, „Jedź przez”, własny link) nie ma jeszcze w „Trasach” — do zapisania
  * jednym kliknięciem. W kolejności planu, pula na końcu.
  */

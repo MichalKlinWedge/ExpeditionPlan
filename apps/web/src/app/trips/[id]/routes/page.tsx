@@ -1,4 +1,4 @@
-import { dayChip, itemRouteRef, legLabel, plural, ROUTE_ICON, ROUTE_KIND, routeFacts, routeGroups, routeKindFor, routeLine, routeUsers, type TripDocument, unsavedCarRoutes } from "@expeditionplan/core";
+import { dayChip, itemRouteRef, legLabel, plural, ROUTE_ICON, ROUTE_KIND, routeFacts, routeGroups, routeKindFor, routeLine, routesMap, routeUsers, type TripDocument, unsavedCarRoutes } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -108,7 +108,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
           </>
         }
       />
-      {unsaved.length > 0 && <UnsavedCarRoutes tripId={id} editing={editing} routes={unsaved.map((item) => ({ ...itemView(doc, item), facts: legLabel(item) ?? "" }))} />}
+      {unsaved.length > 0 && <UnsavedCarRoutes tripId={id} editing={editing} routes={unsaved.map((item) => ({ ...itemView(doc, item), facts: legLabel(item) ?? "", ...(item.leg?.routeUrl !== undefined ? { url: item.leg.routeUrl } : {}) }))} />}
       {editing && <NewRoute tripId={id} places={doc.places.filter((place) => place.lat !== undefined && place.lng !== undefined).map((place) => ({ ref: place.ref, name: place.name })).sort((a, b) => a.name.localeCompare(b.name, "pl"))} />}
       {groups.length === 0 ? (
         <section className="card p-4 text-sm">
@@ -127,6 +127,8 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
             day,
             title,
             planned: day < doc.days.length,
+            // Linie i końce grupy na wspólną mapę pod listą — uproszczone, więc filtr przełącza je bez dociągania.
+            map: routesMap(group.tracks),
             node: (
           <section className="card flex flex-col gap-2 p-4 text-sm">
             <h2 className="card-title">

@@ -7,6 +7,7 @@ import { type ReactNode, useState, useTransition } from "react";
 import type { FormState } from "@/app/actions";
 import { type NewEndPlace, type RouteEditInput, updateRoute } from "@/app/route-actions";
 import { PinIcon } from "@/components/icons";
+import { RouteSiteLink } from "@/components/route-site-link";
 
 export type RouteEditorValues = {
   name: string;
@@ -183,10 +184,22 @@ export function RouteEditor({ tripId, trackRef, initial, places, users, top }: {
         </label>
         <EndField title="Skąd" value={values.fromRef} onChange={(fromRef) => set({ fromRef })} options={placeOptions(initial.fromRef)} placeHref={placeHref(values.fromRef)} fresh={fresh.from} onFresh={freshFor("from")} />
         <EndField title="Dokąd" value={values.toRef} onChange={(toRef) => set({ toRef })} options={placeOptions(initial.toRef)} placeHref={placeHref(values.toRef)} fresh={fresh.to} onFresh={freshFor("to")} />
-        <label className={`${label} sm:col-span-2`}>
-          Link do trasy
-          <input value={values.url} onChange={(event) => set({ url: event.target.value })} type="url" maxLength={500} placeholder="https://" className={field} />
-        </label>
+        <div className={`${label} sm:col-span-2`}>
+          <span>Link do trasy</span>
+          <span className="flex items-center gap-1.5">
+            <input
+              value={values.url}
+              onChange={(event) => set({ url: event.target.value })}
+              type="url"
+              maxLength={500}
+              placeholder="https://"
+              aria-label="Link do trasy"
+              className={`${field} min-w-0 flex-1`}
+            />
+            {/* Ikona serwisu (Mapy Google, mapy.com) otwiera trasę w nowej karcie — jak przy miejscu i na liście tras. */}
+            {/^https?:\/\//i.test(values.url.trim()) && <RouteSiteLink url={values.url.trim()} />}
+          </span>
+        </div>
         <label className={label}>
           Długość (km)
           <input value={values.km} onChange={(event) => set({ km: event.target.value })} inputMode="decimal" className={field} />

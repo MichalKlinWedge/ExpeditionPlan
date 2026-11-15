@@ -1,19 +1,35 @@
 "use client";
 
+import { type DayMap, mergeRouteMaps } from "@expeditionplan/core";
 import { type ReactNode, useState } from "react";
+
+import { MemoriesMap } from "@/components/memories-map";
 
 type Kind = "foot" | "car";
 const LABEL: Record<"all" | Kind, string> = { all: "wszystkie", foot: "🥾 pieszo", car: "🚗 autem" };
 type Sort = "day" | "name";
 const SORT: Record<Sort, string> = { day: "dzień planu", name: "nazwa" };
 
+/** Mapa tras widocznych po filtrze; trasy bez linii i bez końców ze współrzędnymi jej nie mają. */
+function RoutesMapCard({ groups, all }: { groups: { map: DayMap }[]; all: number }) {
+  const map = mergeRouteMaps(groups.map((group) => group.map));
+  if (map.lines.length === 0 && map.pins.length === 0) return null;
+  return (
+    <section className="card flex flex-col gap-2 p-4 text-sm">
+      <h2 className="card-title">Mapa tras</h2>
+      <p className="text-zinc-600 dark:text-zinc-400">{groups.length === all ? `Wszystkie trasy wyjazdu (${all}).` : `Trasy zostawione przez filtr: ${groups.length} z ${all}.`}</p>
+      <MemoriesMap map={map} fitLines />
+    </section>
+  );
+}
+
 /**
  * Filtr rodzaju na liście „Trasy” (wszystkie, piesze albo autem; przy jednym rodzaju go nie ma), „bez planu” (trasy
  * niepodpięte do żadnego punktu dnia: nieużywane albo tylko przy punktach z puli) i kolejność: po pierwszym
  * dniu planu, w którym trasa jest użyta (pula i nieużywane na końcu), albo po nazwie. Grupy rysuje serwer, tu się
- * tylko chowają i ustawiają.
+ * tylko chowają i ustawiają. Pod listą mapa tych tras, które filtr zostawił (`mergeRouteMaps`).
  */
-export function RouteFilter({ groups }: { groups: { key: string; kind: Kind; day: number; title: string; planned: boolean; node: ReactNode }[] }) {
+export function RouteFilter({ groups }: { groups: { key: string; kind: Kind; day: number; title: string; planned: boolean; map: DayMap; node: ReactNode }[] }) {
   const [shown, setShown] = useState<"all" | Kind>("all");
   const [unplanned, setUnplanned] = useState(false);
   const [sort, setSort] = useState<Sort>("day");
@@ -60,6 +76,7 @@ export function RouteFilter({ groups }: { groups: { key: string; kind: Kind; day
           {group.node}
         </div>
       ))}
+      <RoutesMapCard groups={[...groups].sort(order).filter(fits)} all={groups.length} />
     </>
   );
 }
