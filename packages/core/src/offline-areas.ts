@@ -71,6 +71,28 @@ export type AreaOptions = {
   transit?: boolean;
 };
 
+/** Trasa z „Tras” i obszar mapy offline, który trzyma jej kafle (`null` = żaden, trasa poza mapą wyjazdu). */
+export type RouteCoverage = { ref: string; name: string; areaKey: string | null };
+
+/**
+ * Która paczka trzyma którą trasę: własna (`route-<ref>`), a gdy trasa mieści się w skupisku miejsc
+ * albo tylko w przeglądzie — ta paczka. Telefon pokazuje z tego listę „Trasy na telefonie”.
+ */
+export function routeCoverage(doc: Doc, areas: readonly MapArea[]): RouteCoverage[] {
+  return doc.tracks.flatMap((track) => {
+    const line = routeLine(track);
+    if (line === undefined) return [];
+    const bounds = boundsOf(
+      line.map((point) => ({ lng: point[0], lat: point[1] })),
+      0,
+    );
+    const own = areas.find((area) => area.key === `route-${track.ref}`);
+    // Bez własnej paczki liczy się najdokładniejszy obszar, który trasę obejmuje (skupiska przed przeglądem).
+    const holder = own ?? [...areas].sort((a, b) => b.maxZoom - a.maxZoom).find((area) => inside(bounds, area.bounds));
+    return [{ ref: track.ref, name: track.name, areaKey: holder?.key ?? null }];
+  });
+}
+
 /** Czy to paczka wzdłuż trasy z „Tras” (klucz `route-<ref>`), a nie przegląd ani skupisko miejsc. */
 export const isRouteArea = (area: Pick<MapArea, 'key'>) => area.key.startsWith('route-');
 

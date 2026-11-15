@@ -1,10 +1,10 @@
-import { dayChip, dayLodging, dayMap, instantToZoned, isRouteArea, type MapLine, type MapPin, moveToDay, type PlanItem, scheduleDay, transitPlaceRefs, type TripDocument, tripMapAreas } from '@expeditionplan/core';
+import { dayChip, dayLodging, dayMap, instantToZoned, isRouteArea, type MapLine, type MapPin, moveToDay, type PlanItem, routeCoverage, scheduleDay, transitPlaceRefs, type TripDocument, tripMapAreas } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip, savePlanEdit } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
@@ -28,7 +28,8 @@ import { supabase } from '@/lib/supabase';
  * Mapa wyjazdu: pinezki dnia z numerami kolejności (ta sama `dayMap` co na webie), cała trasa,
  * nawigacja do miejsca i mapa offline — obszary liczone z miejsc planu i z tras z „Tras”
  * (`tripMapAreas`), pobierane jednym przyciskiem, odświeżane na żądanie („Zaktualizuj”: kasuje
- * paczki wyjazdu i pobiera je od nowa, bo kafle raz pobrane same się nie zmieniają). „✈ Dojazd i powrót” (zapamiętany dla wyjazdu, `map-transit.ts`)
+ * paczki wyjazdu i pobiera je od nowa, bo kafle raz pobrane same się nie zmieniają). Mapa jest
+ * kwadratem na całą szerokość, a wszystko pod nią przewija się osobno, więc rosnący panel jej nie ściska. „✈ Dojazd i powrót” (zapamiętany dla wyjazdu, `map-transit.ts`)
  * chowa lotnisko w domu itp.: wyłączony skupia mapę na miejscu i pobiera tylko obszar podróży.
  * Plan z pamięci telefonu, więc działa bez sieci. Organizator i edytor
  * długim przytrzymaniem dodają w tym miejscu punkt do puli (online). „Pula” pokazuje szare pinezki
@@ -157,6 +158,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   const busy = progress !== '';
   // Ile z pobranego to paczki wzdłuż tras — osobno, bo to one rosną najszybciej przy wędrówkach.
   const routeAreas = areas.filter(isRouteArea);
+  const coverage = routeCoverage(doc, areas);
   const routesDone = done.filter((status) => isRouteArea(status.area));
   const bytes = (list: AreaStatus[]) => list.reduce((sum, status) => sum + status.bytes, 0);
 
@@ -194,7 +196,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
         {poolCount > 0 && <Chip compact active={showPool} label={`Pula (${poolCount})`} onPress={() => setShowPool(!showPool)} />}
       </View>
 
-      <View style={styles.fill}>
+      <View style={styles.map}>
         <MapView
           mapStyle={mapStyle}
           androidView="surface"
@@ -229,64 +231,97 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
         </Pressable>
       </View>
 
-      <ThemedView style={[styles.panel, { borderTopColor: theme.backgroundSelected }]}>
-        {dropAt && trip !== null ? (
-          <PoolDrop
-            trip={trip}
-            tripId={tripId}
-            at={dropAt}
-            onDone={(updated) => {
-              if (updated !== null) setTrip(updated);
-              setDropAt(null);
-            }}
-          />
-        ) : pin ? (
-          <PinCard
-            pin={pin}
-            times={times}
-            onClose={() => setSelected(null)}
-            guide={pinGuide === undefined ? undefined : { onRead: () => setReading({ item: pinGuide, play: false }), onListen: () => setReading({ item: pinGuide, play: true }) }}
-            pool={{
-              onOpen: (ref) => {
-                const item = doc.items.find((each) => each.ref === ref);
-                if (item) setReading({ item, play: false });
-              },
-              ...(canDrop ? { onInsert: (ref: string) => setInserting(ref) } : {}),
-            }}
-          />
-        ) : (
-          <View style={styles.block}>
-            <ThemedText type="smallBold">Mapa offline</ThemedText>
+      <ScrollView style={styles.fill} contentContainerStyle={styles.below}>
+        <ThemedView style={[styles.panel, { borderTopColor: theme.backgroundSelected }]}>
+          {dropAt && trip !== null ? (
+            <PoolDrop
+              trip={trip}
+              tripId={tripId}
+              at={dropAt}
+              onDone={(updated) => {
+                if (updated !== null) setTrip(updated);
+                setDropAt(null);
+              }}
+            />
+          ) : pin ? (
+            <PinCard
+              pin={pin}
+              times={times}
+              onClose={() => setSelected(null)}
+              guide={pinGuide === undefined ? undefined : { onRead: () => setReading({ item: pinGuide, play: false }), onListen: () => setReading({ item: pinGuide, play: true }) }}
+              pool={{
+                onOpen: (ref) => {
+                  const item = doc.items.find((each) => each.ref === ref);
+                  if (item) setReading({ item, play: false });
+                },
+                ...(canDrop ? { onInsert: (ref: string) => setInserting(ref) } : {}),
+              }}
+            />
+          ) : (
+            <View style={styles.block}>
+              <ThemedText type="smallBold">Mapa offline</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {statuses === null
+                  ? 'Sprawdzam…'
+                  : areas.length === 0
+                    ? 'Miejsca planu nie mają współrzędnych — uzupełnij je na webie („Uzupełnij współrzędne”).'
+                    : `${done.length} z ${areas.length} obszarów na telefonie${done.length > 0 ? ` (${mb(bytes(done))})` : ''}: ${areas.map((area) => area.label).join(', ')}`}
+              </ThemedText>
+              {routeAreas.length > 0 && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  W tym trasy: {routesDone.length} z {routeAreas.length}
+                  {routesDone.length > 0 ? ` (${mb(bytes(routesDone))})` : ''} — {routeAreas.map((area) => area.label).join(', ')}.
+                </ThemedText>
+              )}
+              {transitPlaces > 0 && areas.length > 0 && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {showTransit ? 'Z dojazdem i powrotem (lotnisko w domu itp.).' : 'Bez dojazdu i powrotu — tylko obszar podróży.'} Zmienia to „✈ Dojazd i powrót” na mapie.
+                </ThemedText>
+              )}
+              {busy && <ThemedText type="small">{progress}</ThemedText>}
+              {areas.length > 0 && (
+                <View style={styles.row}>
+                  {done.length < areas.length && <Button label={busy ? 'Pobieram…' : 'Pobierz mapę i trasy'} variant="primary" disabled={busy} onPress={() => void fetchAreas(false)} />}
+                  {/* Pobranie od nowa: po zmianie planu albo tras i wtedy, gdy mapa w terenie okazała się nieaktualna. */}
+                  {done.length > 0 && !busy && <Button label="Zaktualizuj" variant={done.length === areas.length ? 'primary' : undefined} onPress={() => void fetchAreas(true)} />}
+                  {done.length > 0 && !busy && <Button label="Usuń" onPress={remove} small />}
+                </View>
+              )}
+            </View>
+          )}
+        </ThemedView>
+        {/* Na samym dole: każda trasa wyjazdu i to, czy jej kafle są już na telefonie. */}
+        {coverage.length > 0 && (
+          <ThemedView type="backgroundElement" style={styles.routes}>
+            <ThemedText type="smallBold">Trasy wyjazdu na telefonie</ThemedText>
+            {coverage.map((route) => {
+              const status = route.areaKey === null ? undefined : statuses?.find((each) => each.area.key === route.areaKey);
+              const own = route.areaKey === `route-${route.ref}`;
+              return (
+                <View key={route.ref} style={styles.routeRow}>
+                  <ThemedText type="small" style={styles.grow}>
+                    {status?.done === true ? '✓' : '·'} {route.name}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {route.areaKey === null
+                      ? 'poza mapą wyjazdu'
+                      : status === undefined
+                        ? '…'
+                        : !status.done
+                          ? 'nie pobrana'
+                          : own
+                            ? mb(status.bytes)
+                            : `w obszarze „${status.area.label}”`}
+                  </ThemedText>
+                </View>
+              );
+            })}
             <ThemedText type="small" themeColor="textSecondary">
-              {statuses === null
-                ? 'Sprawdzam…'
-                : areas.length === 0
-                  ? 'Miejsca planu nie mają współrzędnych — uzupełnij je na webie („Uzupełnij współrzędne”).'
-                  : `${done.length} z ${areas.length} obszarów na telefonie${done.length > 0 ? ` (${mb(bytes(done))})` : ''}: ${areas.map((area) => area.label).join(', ')}`}
+              Trasa bez własnej paczki leży w obszarze miejsc planu — jej kafle są pobrane razem z nim.
             </ThemedText>
-            {routeAreas.length > 0 && (
-              <ThemedText type="small" themeColor="textSecondary">
-                W tym trasy: {routesDone.length} z {routeAreas.length}
-                {routesDone.length > 0 ? ` (${mb(bytes(routesDone))})` : ''} — {routeAreas.map((area) => area.label).join(', ')}.
-              </ThemedText>
-            )}
-            {transitPlaces > 0 && areas.length > 0 && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {showTransit ? 'Z dojazdem i powrotem (lotnisko w domu itp.).' : 'Bez dojazdu i powrotu — tylko obszar podróży.'} Zmienia to „✈ Dojazd i powrót” na mapie.
-              </ThemedText>
-            )}
-            {busy && <ThemedText type="small">{progress}</ThemedText>}
-            {areas.length > 0 && (
-              <View style={styles.row}>
-                {done.length < areas.length && <Button label={busy ? 'Pobieram…' : 'Pobierz mapę i trasy'} variant="primary" disabled={busy} onPress={() => void fetchAreas(false)} />}
-                {/* Pobranie od nowa: po zmianie planu albo tras i wtedy, gdy mapa w terenie okazała się nieaktualna. */}
-                {done.length > 0 && !busy && <Button label="Zaktualizuj" variant={done.length === areas.length ? 'primary' : undefined} onPress={() => void fetchAreas(true)} />}
-                {done.length > 0 && !busy && <Button label="Usuń" onPress={remove} small />}
-              </View>
-            )}
-          </View>
+          </ThemedView>
         )}
-      </ThemedView>
+      </ScrollView>
       {trip !== null && <ItemDetails trip={trip} item={reading?.item ?? null} autoPlay={reading?.play ?? false} onClose={() => setReading(null)} />}
       {trip !== null && (
         <DayPicker
@@ -313,6 +348,12 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  // Mapa zawsze kwadratowa na całą szerokość — panel pod nią jej nie ściska, bo przewija się osobno.
+  map: { width: '100%', aspectRatio: 1 },
+  below: { paddingBottom: Spacing.three },
+  grow: { flex: 1 },
+  routes: { margin: Spacing.three, marginTop: Spacing.two, padding: Spacing.three, borderRadius: 12, gap: Spacing.one },
+  routeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   pad: { padding: Spacing.three },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one + 2, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   me: { position: 'absolute', right: Spacing.three, top: Spacing.three, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 3 },
