@@ -1,10 +1,12 @@
 import { transitPlaceRefs } from './plan-info.ts';
+import { routeLine } from './route-library.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
- * Obszary mapy offline wyjazdu (telefon): jedna paczka przeglądowa całej trasy i paczki dokładne
- * wokół skupisk miejsc planu. Warunki OpenFreeMap (docs/USLUGI.md): najwyżej 3000 kafli na jedno
- * pobranie — każdy obszar dostaje najwyższy zoom, przy którym się mieści.
+ * Obszary mapy offline wyjazdu (telefon): jedna paczka przeglądowa całej trasy, paczki dokładne
+ * wokół skupisk miejsc planu i paczki wzdłuż tras z „Tras” (ślad GPX, trasa po drogach), bo wędrówka
+ * potrafi iść daleko od każdego miejsca planu. Warunki OpenFreeMap (docs/USLUGI.md): najwyżej 3000
+ * kafli na jedno pobranie — każdy obszar dostaje najwyższy zoom, przy którym się mieści.
  */
 
 type Doc = TripDocument;
@@ -63,16 +65,21 @@ export type AreaOptions = {
   /** Miejsca bliżej siebie niż tyle łączą się w jedno skupisko (jedna paczka dokładna). */
   clusterKm?: number;
   maxDetailAreas?: number;
+  /** Ile tras z „Tras” dostaje własną paczkę (te o najwyższym zoomie, czyli najciaśniejsze). */
+  maxRouteAreas?: number;
   /** Z miejscami tylko dojazdu i powrotu (`transitPlaceRefs`, np. lotnisko w domu); domyślnie bez nich. */
   transit?: boolean;
 };
+
+/** Czy `inner` mieści się w `outer` — obszar trasy wewnątrz skupiska nie potrzebuje własnej paczki. */
+const inside = (inner: Bounds, outer: Bounds) => outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3];
 
 /**
  * Obszary do pobrania: „Cała trasa” (zoom przeglądowy) i skupiska miejsc (zoom do chodzenia po
  * mieście). Skupisko nazywa się od bazy noclegowej, inaczej od miejsca z największą liczbą punktów.
  */
 export function tripMapAreas(doc: Doc, options: AreaOptions = {}): MapArea[] {
-  const { tileLimit = 3000, clusterKm = 12, maxDetailAreas = 8, transit = false } = options;
+  const { tileLimit = 3000, clusterKm = 12, maxDetailAreas = 8, maxRouteAreas = 6, transit = false } = options;
   // Z dojazdem na życzenie — wtedy także daleko od środka wyjazdu.
   const outlierKm = options.outlierKm ?? (transit ? Number.POSITIVE_INFINITY : 600);
   const skipped = transit ? new Set<string>() : transitPlaceRefs(doc);
@@ -111,9 +118,37 @@ export function tripMapAreas(doc: Doc, options: AreaOptions = {}): MapArea[] {
       return { key: `detail-${index}`, label: named.name, bounds, minZoom, maxZoom, tiles: tileCount(bounds, minZoom, maxZoom) };
     });
 
-  const overviewBounds = boundsOf(places, 15);
+  // Trasy z „Tras”: linia w granicach wyjazdu wchodzi też do przeglądu, żeby wędrówka nie wypadła poza mapę.
+  const lines = doc.tracks.flatMap((track) => {
+    const line = routeLine(track);
+    if (line === undefined) return [];
+    const points = line.map((point) => ({ lng: point[0], lat: point[1] }));
+    const middle = points[Math.floor(points.length / 2)]!;
+    return distanceKm(middle, center) <= outlierKm ? [{ name: track.name, ref: track.ref, points }] : [];
+  });
+
+  const overviewBounds = boundsOf([...places, ...lines.flatMap((line) => line.points)], 15);
   const overviewMin = 5;
   const overviewMax = Math.min(maxZoomWithin(overviewBounds, overviewMin, tileLimit), 12);
   const overview = { key: 'overview', label: 'Cała trasa', bounds: overviewBounds, minZoom: overviewMin, maxZoom: overviewMax, tiles: tileCount(overviewBounds, overviewMin, overviewMax) };
-  return [overview, ...detail];
+
+  // Własną paczkę dostaje tylko trasa, która daje więcej niż przegląd i nie leży w całości w skupisku.
+  const routes: MapArea[] = [];
+  const candidates = lines
+    .map((line) => {
+      const bounds = boundsOf(line.points, 1);
+      const minZoom = 11;
+      const maxZoom = maxZoomWithin(bounds, minZoom, tileLimit);
+      return { key: `route-${line.ref}`, label: line.name, bounds, minZoom, maxZoom, tiles: tileCount(bounds, minZoom, maxZoom) };
+    })
+    .filter((area) => area.maxZoom > overviewMax && !detail.some((each) => inside(area.bounds, each.bounds)))
+    .sort((a, b) => b.maxZoom - a.maxZoom);
+  for (const area of candidates) {
+    if (routes.length >= maxRouteAreas) break;
+    // Warianty tej samej drogi mają niemal te same granice — wystarczy jedna paczka.
+    if (routes.some((each) => inside(area.bounds, each.bounds))) continue;
+    routes.push(area);
+  }
+
+  return [overview, ...detail, ...routes];
 }

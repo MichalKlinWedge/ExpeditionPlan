@@ -35,6 +35,31 @@ describe('obszary mapy offline wyjazdu', () => {
     expect(Math.max(...detail.map((area) => area.maxZoom))).toBeGreaterThanOrEqual(14);
   });
 
+  it('trasa z „Tras” dostaje własną paczkę, gdy idzie poza skupiska miejsc', () => {
+    const doc = load('maroko');
+    // Wędrówka w Atlasie Wysokim, ok. 60 km od miejsc planu — żadne skupisko jej nie obejmuje.
+    const line: [number, number][] = [];
+    for (let i = 0; i <= 20; i++) line.push([-7.92 + i * 0.004, 31.07 + i * 0.003]);
+    const withTrack = { ...doc, tracks: [...doc.tracks, { ref: 'tr-tubkal', name: 'Tubkal', route: { mode: 'foot' as const }, geojson: { type: 'LineString' as const, coordinates: line.map((point) => [point[0], point[1]]) } }] };
+
+    const after = tripMapAreas(withTrack);
+    const route = after.find((area) => area.key === 'tr-tubkal' || area.key === 'route-tr-tubkal');
+    expect(route).toBeDefined();
+    expect(route!.label).toBe('Tubkal');
+    // Zoom do chodzenia po szlaku i wciąż w limicie jednego pobrania.
+    expect(route!.maxZoom).toBeGreaterThanOrEqual(14);
+    expect(route!.tiles).toBeLessThanOrEqual(3000);
+    // Ślad mieści się w przeglądzie całej trasy.
+    const [west, south, east, north] = after[0]!.bounds;
+    for (const [lng, lat] of line) {
+      expect(lng).toBeGreaterThanOrEqual(west);
+      expect(lng).toBeLessThanOrEqual(east);
+      expect(lat).toBeGreaterThanOrEqual(south);
+      expect(lat).toBeLessThanOrEqual(north);
+    }
+    for (const area of after) expect(area.tiles).toBeLessThanOrEqual(3000);
+  });
+
   it('Maroko: lotnisko we Wrocławiu to miejsce tylko dojazdu — poza obszarami, chyba że `transit`', () => {
     const doc = load('maroko');
     const wroclaw = doc.places.find((place) => place.name === 'Lotnisko Wrocław')!;

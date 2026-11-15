@@ -18,7 +18,7 @@ import { PoolDrop } from '@/features/map/pool-drop';
 import { cachedTrips } from '@/features/trips/my-trips';
 import { useMapStyle } from '@/features/map/map-style';
 import { mapTransit, setMapTransit } from '@/features/map/map-transit';
-import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
+import { type AreaStatus, areaStatuses, deleteAreas, downloadAreas, refreshAreas } from '@/features/map/offline-packs';
 import { offlineChanged } from '@/features/trip/offline-download';
 import { useTheme } from '@/hooks/use-theme';
 import { localDb, remote } from '@/lib/local-db';
@@ -26,8 +26,9 @@ import { supabase } from '@/lib/supabase';
 
 /**
  * Mapa wyjazdu: pinezki dnia z numerami kolejności (ta sama `dayMap` co na webie), cała trasa,
- * nawigacja do miejsca i mapa offline — obszary liczone z miejsc planu (`tripMapAreas`),
- * pobierane jednym przyciskiem. „✈ Dojazd i powrót” (zapamiętany dla wyjazdu, `map-transit.ts`)
+ * nawigacja do miejsca i mapa offline — obszary liczone z miejsc planu i z tras z „Tras”
+ * (`tripMapAreas`), pobierane jednym przyciskiem, odświeżane na żądanie („Zaktualizuj”: kasuje
+ * paczki wyjazdu i pobiera je od nowa, bo kafle raz pobrane same się nie zmieniają). „✈ Dojazd i powrót” (zapamiętany dla wyjazdu, `map-transit.ts`)
  * chowa lotnisko w domu itp.: wyłączony skupia mapę na miejscu i pobiera tylko obszar podróży.
  * Plan z pamięci telefonu, więc działa bez sieci. Organizator i edytor
  * długim przytrzymaniem dodają w tym miejscu punkt do puli (online). „Pula” pokazuje szare pinezki
@@ -155,13 +156,13 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   const done = statuses?.filter((status) => status.done) ?? [];
   const busy = progress !== '';
 
-  const download = async () => {
+  const fetchAreas = async (again: boolean) => {
     setProgress('Przygotowuję…');
     try {
-      await downloadAreas(tripId, areas, setProgress);
-      Alert.alert('Mapa pobrana', 'Mapa wyjazdu działa teraz bez internetu.');
+      await (again ? refreshAreas : downloadAreas)(tripId, areas, setProgress);
+      Alert.alert(again ? 'Mapa zaktualizowana' : 'Mapa pobrana', 'Mapa wyjazdu razem z trasami działa teraz bez internetu.');
     } catch (e) {
-      Alert.alert('Nie pobrano mapy', e instanceof Error ? e.message : String(e));
+      Alert.alert(again ? 'Nie zaktualizowano mapy' : 'Nie pobrano mapy', e instanceof Error ? e.message : String(e));
     } finally {
       setProgress('');
       refreshStatuses();
@@ -267,7 +268,9 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
             {busy && <ThemedText type="small">{progress}</ThemedText>}
             {areas.length > 0 && (
               <View style={styles.row}>
-                {done.length < areas.length && <Button label={busy ? 'Pobieram…' : 'Pobierz mapę wyjazdu'} variant="primary" disabled={busy} onPress={() => void download()} />}
+                {done.length < areas.length && <Button label={busy ? 'Pobieram…' : 'Pobierz mapę i trasy'} variant="primary" disabled={busy} onPress={() => void fetchAreas(false)} />}
+                {/* Pobranie od nowa: po zmianie planu albo tras i wtedy, gdy mapa w terenie okazała się nieaktualna. */}
+                {done.length > 0 && !busy && <Button label="Zaktualizuj" variant={done.length === areas.length ? 'primary' : undefined} onPress={() => void fetchAreas(true)} />}
                 {done.length > 0 && !busy && <Button label="Usuń" onPress={remove} small />}
               </View>
             )}

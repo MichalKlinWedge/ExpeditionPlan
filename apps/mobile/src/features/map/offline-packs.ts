@@ -52,6 +52,16 @@ export async function downloadAreas(tripId: string, areas: MapArea[], onProgress
   }
 }
 
+/**
+ * Pobranie od nowa na żądanie: kafle OpenFreeMap raz pobrane nie odświeżają się same, więc
+ * „Zaktualizuj” kasuje paczki wyjazdu i pobiera obszary jeszcze raz — tak samo, gdy plan albo trasy
+ * zmieniły granice obszaru i gdy nie zmieniły, a dane mapy w międzyczasie się poprawiły.
+ */
+export async function refreshAreas(tripId: string, areas: MapArea[], onProgress: (text: string) => void): Promise<void> {
+  await deleteAreas(tripId);
+  await downloadAreas(tripId, areas, onProgress);
+}
+
 /** Usuwa wszystkie paczki mapy tego wyjazdu. */
 export async function deleteAreas(tripId: string): Promise<void> {
   for (const pack of (await OfflineManager.getPacks()).filter((each) => each.metadata.trip === tripId)) await OfflineManager.deletePack(pack.id);
