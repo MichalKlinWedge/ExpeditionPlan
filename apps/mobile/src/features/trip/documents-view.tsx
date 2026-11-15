@@ -70,6 +70,16 @@ export async function syncVaultFiles(tripId: string, documents: VaultDocument[])
  * `only` — tylko dokumenty jednego punktu albo jego rezerwacji (karta punktu); wtedy bez pobierania
  * plików w tle (robi to pełny sejf w Info — z wycinkiem listy skasowałby pliki innych dokumentów).
  */
+/** Kasuje cały katalog dokumentów wyjazdu („Wyczyść” przy wyjeździe z archiwum). */
+export function dropVaultFiles(tripId: string): void {
+  try {
+    const folder = new Directory(Paths.document, 'vault', tripId);
+    if (folder.exists) folder.delete();
+  } catch {
+    // Brak katalogu albo zajęty plik nie przerywa czyszczenia.
+  }
+}
+
 /** Ile dokumentów „offline” ma już kopię na telefonie (aktualną — po sha256). */
 export function savedVaultFiles(tripId: string, documents: VaultDocument[]): number {
   return documents.filter((each) => each.offline && localFile(tripId, each).exists).length;

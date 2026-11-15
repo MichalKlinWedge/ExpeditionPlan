@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { rowsFromDocument } from '../document.ts';
 import type { Remote, ServerRow, TripRow } from '../remote.ts';
 import { saveExpense, setPacked } from '../outbox.ts';
-import { cachedTrip, forgetLocal, forgetTrip, pruneLocal, recordDayEvent, recordVariantChoice, refreshTrip, setTaskDone } from '../trip-cache.ts';
+import { cachedTrip, clearTripData, forgetLocal, forgetTrip, pendingWrites, pruneLocal, recordDayEvent, recordVariantChoice, refreshTrip, setTaskDone } from '../trip-cache.ts';
 import { stableUuid, uuidv7 } from '../uuid.ts';
 import { nodeDb } from './helpers/node-db.ts';
 
@@ -214,6 +214,27 @@ describe('plan offline na telefonie', () => {
     expect(db.all('select 1 from rows where trip_id = ?', [TRIP])).toHaveLength(0);
     expect(cachedTrip(db, 'trip-drugi')!.live.expenses).toHaveLength(1);
     expect(db.all('select 1 from outbox')).toHaveLength(1);
+  });
+
+  it('„Wyczyść” kasuje dane wyjazdu, zostawia go na liście i nie rusza outboxu', async () => {
+    const db = nodeDb();
+    await refreshTrip(db, planServer('dinara').remote, TRIP);
+    await refreshTrip(db, planServer('maroko', 'trip-drugi').remote, 'trip-drugi');
+    saveExpense(db, { tripId: TRIP, amountMinor: 100, currency: 'EUR', category: 'food' });
+    expect(pendingWrites(db, TRIP)).toBe(1);
+    expect(pendingWrites(db, 'trip-drugi')).toBe(0);
+
+    clearTripData(db, TRIP);
+    // Plan znika, ale wyjazd zostaje na liście telefonu i da się go pobrać od nowa.
+    expect(db.all('select 1 from rows where trip_id = ?', [TRIP])).toHaveLength(0);
+    expect(db.all('select 1 from sync_state where trip_id = ?', [TRIP])).toHaveLength(0);
+    expect(db.all('select 1 from trips where id = ?', [TRIP])).toHaveLength(1);
+    // Niewysłany zapis czeka dalej, a drugi wyjazd jest nietknięty.
+    expect(pendingWrites(db, TRIP)).toBe(1);
+    expect(cachedTrip(db, 'trip-drugi')).not.toBeNull();
+
+    await refreshTrip(db, planServer('dinara').remote, TRIP);
+    expect(cachedTrip(db, TRIP)!.state.doc.days.length).toBeGreaterThan(0);
   });
 
   it('wyjazdy spoza listy „moich wyjazdów” są czyszczone, pozostałe zostają', async () => {

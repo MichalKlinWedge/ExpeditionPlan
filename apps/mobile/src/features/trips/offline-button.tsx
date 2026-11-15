@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { downloadTripOffline, offlineEstimate, onOfflineChange, type OfflineState, offlineState, polishVoice } from '@/features/trip/offline-download';
+import { clearTripOffline, downloadTripOffline, offlineEstimate, onOfflineChange, type OfflineState, offlineState, polishVoice } from '@/features/trip/offline-download';
 import { enableReminders, remindersEnabled, requestExactAlarms } from '@/features/trip/reminders';
 
 /**
@@ -96,7 +96,11 @@ export function OfflineBadge({ tripId }: { tripId: string }) {
   );
 }
 
-export function OfflineButton({ tripId }: { tripId: string }) {
+/**
+ * `label` — własny napis zamiast „Pobierz offline / Odśwież offline” (karta wyjazdu z archiwum
+ * po „Wyczyść” mówi „Pobierz na nowo całość”, bo pobiera się wtedy wszystko od zera).
+ */
+export function OfflineButton({ tripId, label }: { tripId: string; label?: string }) {
   const [state, refresh, setState] = useOfflineState(tripId);
   const [progress, setProgress] = useState('');
 
@@ -149,11 +153,45 @@ export function OfflineButton({ tripId }: { tripId: string }) {
   const busy = progress !== '';
   return (
     <Button
-      label={busy ? progress : state?.complete ? 'Odśwież offline' : 'Pobierz offline'}
+      label={busy ? progress : (label ?? (state?.complete ? 'Odśwież offline' : 'Pobierz offline'))}
       variant={state?.complete ? 'secondary' : 'primary'}
       disabled={busy}
       small
       onPress={() => void download()}
     />
   );
+}
+
+/**
+ * „Wyczyść” przy wyjeździe z archiwum: zwalnia miejsce na telefonie (plan, mapa, dokumenty,
+ * zdjęcia), zostawiając sam wyjazd na liście. Pyta przed skasowaniem, bo w trasie bez internetu
+ * nie dałoby się tego odzyskać.
+ */
+export function ClearOfflineButton({ tripId, title, onCleared }: { tripId: string; title: string; onCleared: () => void }) {
+  const [busy, setBusy] = useState(false);
+
+  const run = () => {
+    setBusy(true);
+    void clearTripOffline(tripId)
+      .then(
+        (result) => {
+          onCleared();
+          Alert.alert('Wyczyszczono', `Z „${title}” zostało tylko to, co widać na liście.${result.photos > 0 ? ` Skasowane zdjęcia: ${result.photos}.` : ''}`);
+        },
+        (e: unknown) => Alert.alert('Nie wyczyszczono', e instanceof Error ? e.message : String(e)),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  const ask = () =>
+    Alert.alert(
+      'Wyczyścić dane wyjazdu?',
+      `Z telefonu znikną plan, kafle mapy, dokumenty i zdjęcia wyjazdu „${title}”. Na liście zostanie sam wyjazd, a „Pobierz na nowo całość” ściągnie wszystko z powrotem — potrzebny będzie internet.`,
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        { text: 'Wyczyść', style: 'destructive', onPress: run },
+      ],
+    );
+
+  return <Button label={busy ? 'Czyszczę…' : 'Wyczyść'} disabled={busy} small danger onPress={ask} />;
 }

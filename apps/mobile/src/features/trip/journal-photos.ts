@@ -65,6 +65,28 @@ export const waitingPhotos = () => queue().length;
 export const savedPhotos = (paths: string[]) => paths.filter((path) => localPhoto(path).exists).length;
 
 /**
+ * Kasuje pliki tych zdjęć („Wyczyść” przy wyjeździe z archiwum). Zdjęcia czekające w kolejce
+ * wysyłki zostają — serwer ich jeszcze nie ma, więc skasowane przepadłyby na zawsze.
+ * Zwraca, ile plików zniknęło.
+ */
+export function dropPhotos(paths: string[]): number {
+  const waiting = new Set(queue().map((each) => each.path));
+  let gone = 0;
+  for (const path of new Set(paths)) {
+    if (waiting.has(path)) continue;
+    try {
+      const file = localPhoto(path);
+      if (!file.exists) continue;
+      file.delete();
+      gone++;
+    } catch {
+      // Jeden plik mniej albo więcej nie przerywa czyszczenia.
+    }
+  }
+  return gone;
+}
+
+/**
  * Cudze zdjęcia dziennika i paragonów na telefon („Pobierz offline”) — bez nich w trasie widać tylko
  * własne. Zwraca, ilu nie udało się pobrać (np. plik jeszcze niewysłany z telefonu autora).
  */

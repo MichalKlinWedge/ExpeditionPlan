@@ -14,6 +14,15 @@ export function offlineDoneVersion(tripId: string): number | null {
   }
 }
 
+/** „Wyczyść” wyjazd: pakiet offline przestaje istnieć, więc i wersja z ostatniego pobrania. */
+export function clearOfflineDoneVersion(tripId: string): void {
+  try {
+    localStorage.removeItem(KEY(tripId));
+  } catch {
+    // Bez zapisu plakietka pokaże się dopiero po ponownym pobraniu.
+  }
+}
+
 export function setOfflineDoneVersion(tripId: string, version: number): void {
   try {
     localStorage.setItem(KEY(tripId), String(version));

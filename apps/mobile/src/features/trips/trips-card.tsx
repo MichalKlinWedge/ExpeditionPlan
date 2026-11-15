@@ -8,7 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlanScreen } from '@/features/plan/plan-screen';
-import { OfflineBadge, OfflineButton, OfflineStamp } from '@/features/trips/offline-button';
+import { ClearOfflineButton, OfflineBadge, OfflineButton, OfflineStamp } from '@/features/trips/offline-button';
 import { useTheme } from '@/hooks/use-theme';
 import { archivedTrips, loadMyTrips, type MyTrips, setCurrentTrip, setTripArchived, type Trip } from '@/features/trips/my-trips';
 import { supabase } from '@/lib/supabase';
@@ -107,6 +107,8 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const sections = tripSections((trips ?? []).filter((trip) => !archived.has(trip.id!)), localToday());
   const { ahead, postponed } = sections;
   const archive = [...sections.archive, ...(trips ?? []).filter((trip) => archived.has(trip.id!))].sort((a, b) => (b.start_date ?? '').localeCompare(a.start_date ?? ''));
+  /** Wyjazd leży w „Archiwum” — po dacie końca albo schowany na tym telefonie. */
+  const inArchive = (trip: Trip) => archive.some((each) => each.id === trip.id);
 
   const tripCard = (trip: Trip) => (
     <ThemedView key={trip.id} type="backgroundElement" style={[styles.trip, { borderColor: open === trip.id ? theme.accent : theme.backgroundSelected }]}>
@@ -155,7 +157,12 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
             </>
           )}
           <View style={styles.actions}>
-            {signedIn && !offline && <OfflineButton tripId={trip.id!} />}
+            {/* Wyjazd z archiwum: zamiast dociągania braków — pełne pobranie od zera i czyszczenie miejsca. */}
+            {signedIn && !offline && <OfflineButton tripId={trip.id!} {...(inArchive(trip) ? { label: 'Pobierz na nowo całość' } : {})} />}
+            {inArchive(trip) && <ClearOfflineButton tripId={trip.id!} title={trip.title ?? 'wyjazd'} onCleared={() => {
+                  setDetails(null);
+                  setOpen(null);
+                }} />}
             {archived.has(trip.id!) ? (
               <AppButton label="Przywróć z archiwum" onPress={() => archiveTrip(trip, false)} small />
             ) : (

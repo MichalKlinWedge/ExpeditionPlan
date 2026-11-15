@@ -42,6 +42,26 @@ export function savedGuideImages(urls: string[]): number {
   return urls.filter((url) => fileOf(url).exists).length;
 }
 
+/**
+ * Kasuje pliki tych zdjęć („Wyczyść” przy wyjeździe z archiwum). Zdjęcia leżą pod skrótem adresu,
+ * wspólnym dla wszystkich wyjazdów, więc to samo zdjęcie użyte w innym wyjeździe pobierze się tam
+ * ponownie. Zwraca, ile plików zniknęło.
+ */
+export function dropGuideImages(urls: string[]): number {
+  let gone = 0;
+  for (const url of new Set(urls)) {
+    try {
+      const file = fileOf(url);
+      if (!file.exists) continue;
+      file.delete();
+      gone++;
+    } catch {
+      // Jeden plik mniej albo więcej nie przerywa czyszczenia.
+    }
+  }
+  return gone;
+}
+
 /** Pobiera brakujące; zwraca, ilu nie udało się pobrać. */
 export async function saveGuideImages(urls: string[], onProgress?: (done: number, total: number) => void): Promise<number> {
   const folder = new Directory(Paths.document, FOLDER);

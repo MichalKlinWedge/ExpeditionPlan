@@ -1,15 +1,15 @@
 import { vaultDocument, type VaultDocument } from '@expeditionplan/core';
-import { type CachedTrip, cachedTrip, refreshTrip } from '@expeditionplan/sync';
+import { type CachedTrip, cachedTrip, clearTripData, pendingWrites, refreshTrip } from '@expeditionplan/sync';
 import { Paths } from 'expo-file-system';
 import * as Speech from 'expo-speech';
 
 import { offlineAreas } from '@/features/map/map-transit';
-import { areaStatuses, downloadAreas } from '@/features/map/offline-packs';
-import { saveGuideImages, savedGuideImages } from '@/features/plan/guide-images';
+import { areaStatuses, deleteAreas, downloadAreas } from '@/features/map/offline-packs';
+import { dropGuideImages, saveGuideImages, savedGuideImages } from '@/features/plan/guide-images';
 import { guideImageUrls } from '@/features/plan/item-details';
-import { savedVaultFiles, syncVaultFiles } from '@/features/trip/documents-view';
-import { savedPhotos, savePhotos } from '@/features/trip/journal-photos';
-import { offlineDoneVersion, setOfflineDoneVersion } from '@/features/trip/offline-flag';
+import { dropVaultFiles, savedVaultFiles, syncVaultFiles } from '@/features/trip/documents-view';
+import { dropPhotos, savedPhotos, savePhotos } from '@/features/trip/journal-photos';
+import { clearOfflineDoneVersion, offlineDoneVersion, setOfflineDoneVersion } from '@/features/trip/offline-flag';
 import { scheduleTripReminders } from '@/features/trip/reminders';
 import { localDb, remote } from '@/lib/local-db';
 
@@ -179,4 +179,37 @@ export async function downloadTripOffline(tripId: string, onProgress: (text: str
   }
   for (const listener of listeners) listener(tripId);
   return { ...state, stale: false };
+}
+
+/** Co zwolniło „Wyczyść”: ile plików i czy mapa oraz plan zniknęły z telefonu. */
+export type ClearResult = { photos: number; documents: boolean; map: boolean };
+
+/**
+ * „Wyczyść” wyjazd z archiwum: z telefonu znikają plan w SQLite, kafle mapy, dokumenty z sejfu
+ * i zdjęcia przewodnika, dziennika oraz paragonów. Zostaje sam wpis na liście wyjazdów (tytuł,
+ * daty, rola), więc wyjazd nadal widać, a „Pobierz na nowo całość” ściąga wszystko od zera.
+ * Nic nie ginie bezpowrotnie: wszystko to kopie tego, co jest na serwerze. Dlatego czyszczenie
+ * odmawia, dopóki w outboxie czekają zapisy z tego wyjazdu albo zdjęcia w kolejce wysyłki.
+ */
+export async function clearTripOffline(tripId: string): Promise<ClearResult> {
+  const waiting = pendingWrites(localDb, tripId);
+  if (waiting > 0) {
+    throw new Error(`Z tego wyjazdu czeka jeszcze ${waiting} ${waiting === 1 ? 'zapis' : 'zapisów'} do wysłania. Połącz się z internetem i spróbuj ponownie.`);
+  }
+  // Adresy i ścieżki trzeba odczytać przed skasowaniem wierszy — potem nie ma z czego.
+  const trip = cachedTrip(localDb, tripId);
+  const result: ClearResult = { photos: 0, documents: false, map: false };
+  if (trip !== null) {
+    result.photos = dropGuideImages(guideImageUrls(trip)) + dropPhotos(tripPhotoPaths(trip));
+  }
+  dropVaultFiles(tripId);
+  result.documents = true;
+  await deleteAreas(tripId).then(
+    () => (result.map = true),
+    () => undefined,
+  );
+  clearTripData(localDb, tripId);
+  clearOfflineDoneVersion(tripId);
+  for (const listener of listeners) listener(tripId);
+  return result;
 }

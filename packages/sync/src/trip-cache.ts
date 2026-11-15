@@ -116,6 +116,23 @@ export function forgetTrip(db: LocalDb, tripId: string): void {
   });
 }
 
+/** Ile zapisów z tego wyjazdu czeka jeszcze w outboxie na wysłanie. */
+export function pendingWrites(db: LocalDb, tripId: string): number {
+  return db.all<{ n: number }>("select count(*) as n from outbox where json_extract(payload, '$.trip_id') = ?", [tripId])[0]?.n ?? 0;
+}
+
+/**
+ * „Wyczyść” wyjazd na telefonie: znikają wiersze planu i stan synchronizacji, zostaje sam wpis
+ * w `trips` (tytuł, daty, rola), więc wyjazd nadal jest na liście, a wejście w niego pobiera go od
+ * nowa. W odróżnieniu od `forgetTrip` nie rusza outboxu — niewysłane zapisy muszą najpierw trafić
+ * na serwer, więc wołający sprawdza `pendingWrites`.
+ */
+export function clearTripData(db: LocalDb, tripId: string): void {
+  db.transaction(() => {
+    for (const table of ['rows', 'sync_state']) db.run(`delete from ${table} where trip_id = ?`, [tripId]);
+  });
+}
+
 /**
  * Po pobraniu listy „moich wyjazdów”: wyjazdy, których na niej już nie ma (usunięte na webie,
  * opuszczone, odebrany dostęp), znikają z telefonu. Zwraca id zapomnianych.
