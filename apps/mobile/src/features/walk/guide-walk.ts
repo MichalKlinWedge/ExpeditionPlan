@@ -8,7 +8,9 @@ import * as TaskManager from 'expo-task-manager';
 /**
  * Spacer z przewodnikiem (SPECYFIKACJA M8, „Tryb spaceru”): usługa pierwszoplanowa z dokładnym GPS,
  * a przy miejscu z opisem (do 100 m) powiadomienie „Jesteś przy X — posłuchać?”. Dotknięcie otwiera
- * szczegóły punktu i od razu czyta przewodnik (`GuideFromNotification`).
+ * szczegóły punktu i od razu czyta przewodnik (`GuideFromNotification`). Każde miejsce podpowiada
+ * tylko raz: podpowiedziane zostają w osobnym pliku (`guideHeard`) także po zakończeniu spaceru, aż
+ * do „Podpowiadaj znowu” (`clearGuideHeard`).
  * Zadanie w tle działa też bez ekranu aplikacji, więc cele leżą w pliku (nie w bazie), a ten moduł
  * importuje główny `_layout.tsx` — `defineTask` musi się wykonać przy ładowaniu.
  */
@@ -22,6 +24,31 @@ export type GuideTarget = { key: string; name: string; lat: number; lng: number;
 type State = { targets: GuideTarget[]; inside: string[] };
 
 const stateFile = () => new File(Paths.document, 'guide-walk.json');
+const heardFile = () => new File(Paths.document, 'guide-walk-heard.json');
+
+/** Klucz podpowiedzianego miejsca: wyjazd + miejsce. */
+export const heardKey = (target: Pick<GuideTarget, 'tripId' | 'key'>) => `${target.tripId}:${target.key}`;
+
+/** Miejsca, o których powiadomienie już przyszło (wszystkie wyjazdy). */
+export function guideHeard(): Set<string> {
+  try {
+    const file = heardFile();
+    return new Set(file.exists ? (JSON.parse(file.textSync()) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeHeard(heard: Set<string>) {
+  const file = heardFile();
+  if (!file.exists) file.create();
+  file.write(JSON.stringify([...heard]));
+}
+
+/** „Podpowiadaj znowu”: zapomina podpowiedziane miejsca wyjazdu. */
+export function clearGuideHeard(tripId: string) {
+  writeHeard(new Set([...guideHeard()].filter((key) => !key.startsWith(`${tripId}:`))));
+}
 
 function readState(): State {
   try {
@@ -44,7 +71,9 @@ TaskManager.defineTask<WalkData>(GUIDE_WALK_TASK, async ({ data, error }) => {
   if (error || !data?.locations?.length) return;
   const state = readState();
   const inside = new Set(state.inside);
+  const heard = guideHeard();
   let changed = false;
+  let heardChanged = false;
   // Ostatni odczyt wystarcza — wcześniejsze z tej samej paczki są starsze.
   const { latitude, longitude, accuracy } = data.locations[data.locations.length - 1]!.coords;
   // Odczyt z dokładnością gorszą niż promień nie przesądza o wejściu (miasto, kanion ulicy).
@@ -54,6 +83,10 @@ TaskManager.defineTask<WalkData>(GUIDE_WALK_TASK, async ({ data, error }) => {
     if (meters <= GUIDE_RADIUS_M && !inside.has(target.key)) {
       inside.add(target.key);
       changed = true;
+      // Raz wystarczy: miejsce już podpowiedziane nie wraca, także w kolejnym spacerze.
+      if (heard.has(heardKey(target))) continue;
+      heard.add(heardKey(target));
+      heardChanged = true;
       await Notifications.scheduleNotificationAsync({
         content: {
           title: `Jesteś przy: ${target.name}`,
@@ -68,6 +101,7 @@ TaskManager.defineTask<WalkData>(GUIDE_WALK_TASK, async ({ data, error }) => {
       changed = true;
     }
   }
+  if (heardChanged) writeHeard(heard);
   if (changed) writeState({ ...state, inside: [...inside] });
 });
 
