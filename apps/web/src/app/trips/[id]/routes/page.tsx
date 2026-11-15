@@ -117,6 +117,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
         </section>
       ) : (
         <RouteFilter
+          tripId={id}
           groups={groups.map((group, index) => {
             const day = firstDay(group);
             // Pojedyncza trasa: jej nazwa; warianty: wspólne końce (nazwy są przy wariantach).

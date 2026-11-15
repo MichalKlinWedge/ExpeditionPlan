@@ -1,13 +1,14 @@
 "use client";
 
 import { type DayMap, mergeRouteMaps } from "@expeditionplan/core";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 
 import { MemoriesMap } from "@/components/memories-map";
+import { type RouteFilterState, setRouteFilter, useRouteFilter } from "@/lib/route-filter-state";
 
 type Kind = "foot" | "car";
 const LABEL: Record<"all" | Kind, string> = { all: "wszystkie", foot: "🥾 pieszo", car: "🚗 autem" };
-type Sort = "day" | "name";
+type Sort = RouteFilterState["sort"];
 const SORT: Record<Sort, string> = { day: "dzień planu", name: "nazwa" };
 
 /** Mapa tras widocznych po filtrze; trasy bez linii i bez końców ze współrzędnymi jej nie mają. */
@@ -28,11 +29,13 @@ function RoutesMapCard({ groups, all }: { groups: { map: DayMap }[]; all: number
  * niepodpięte do żadnego punktu dnia: nieużywane albo tylko przy punktach z puli) i kolejność: po pierwszym
  * dniu planu, w którym trasa jest użyta (pula i nieużywane na końcu), albo po nazwie. Grupy rysuje serwer, tu się
  * tylko chowają i ustawiają. Pod listą mapa tych tras, które filtr zostawił (`mergeRouteMaps`).
+ * Ustawienie trzyma się karty przeglądarki (`route-filter-state.ts`), więc wejście w trasę i powrót
+ * zastaje listę taką, jaka była.
  */
-export function RouteFilter({ groups }: { groups: { key: string; kind: Kind; day: number; title: string; planned: boolean; map: DayMap; node: ReactNode }[] }) {
-  const [shown, setShown] = useState<"all" | Kind>("all");
-  const [unplanned, setUnplanned] = useState(false);
-  const [sort, setSort] = useState<Sort>("day");
+export function RouteFilter({ tripId, groups }: { tripId: string; groups: { key: string; kind: Kind; day: number; title: string; planned: boolean; map: DayMap; node: ReactNode }[] }) {
+  const filter = useRouteFilter(tripId);
+  const { shown, unplanned, sort } = filter;
+  const set = (patch: Partial<RouteFilterState>) => setRouteFilter(tripId, { ...filter, ...patch });
   const count = (kind: Kind) => groups.filter((group) => group.kind === kind).length;
   const both = count("foot") > 0 && count("car") > 0;
   const outside = groups.filter((group) => !group.planned).length;
@@ -49,12 +52,12 @@ export function RouteFilter({ groups }: { groups: { key: string; kind: Kind; day
             <span className="text-xs text-zinc-600 dark:text-zinc-400">Pokaż</span>
             {both &&
               (["all", "foot", "car"] as const).map((each) => (
-                <button key={each} type="button" onClick={() => setShown(each)} aria-pressed={shown === each} className="toggle-chip">
+                <button key={each} type="button" onClick={() => set({ shown: each })} aria-pressed={shown === each} className="toggle-chip">
                   {LABEL[each]} ({each === "all" ? groups.length : count(each)})
                 </button>
               ))}
             {canFilterPlan && (
-              <button type="button" onClick={() => setUnplanned((current) => !current)} aria-pressed={unplanned} className="toggle-chip">
+              <button type="button" onClick={() => set({ unplanned: !unplanned })} aria-pressed={unplanned} className="toggle-chip">
                 tylko bez planu ({outside})
               </button>
             )}
@@ -64,7 +67,7 @@ export function RouteFilter({ groups }: { groups: { key: string; kind: Kind; day
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Kolejność tras">
             <span className="text-xs text-zinc-600 dark:text-zinc-400">Sortuj</span>
             {(["day", "name"] as const).map((each) => (
-              <button key={each} type="button" onClick={() => setSort(each)} aria-pressed={sort === each} className="toggle-chip">
+              <button key={each} type="button" onClick={() => set({ sort: each })} aria-pressed={sort === each} className="toggle-chip">
                 {SORT[each]}
               </button>
             ))}
