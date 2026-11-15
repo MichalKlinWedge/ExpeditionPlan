@@ -14,11 +14,9 @@ export function LoginForm() {
   const params = useSearchParams();
   const next = params.get("next") ?? "/";
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<{ error?: string; ok?: string }>(
-    params.get("error") ? { error: `Logowanie nie powiodło się — spróbuj jeszcze raz.${params.get("error") === "1" ? "" : ` (${params.get("error")})`}` } : {},
-  );
-  const [pending, setPending] = useState(false);
   const invite = /^\/join\/([A-Za-z0-9_-]+)/.exec(next)?.[1] ?? null;
+  const [status, setStatus] = useState<{ error?: string; ok?: string }>(() => loginError(params.get("error"), invite !== null));
+  const [pending, setPending] = useState(false);
   const redirectTo = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
   const google = async () => {
@@ -47,22 +45,27 @@ export function LoginForm() {
     setStatus(error ? { error: dbErrorMessage(error, "Nie udało się wysłać linku. Spróbuj za chwilę.") } : { ok: `Wysłałem link logowania na ${email}. Otwórz go w tej przeglądarce.` });
   };
 
+  const googleButton = (
+    <button
+      onClick={google}
+      disabled={pending}
+      className="btn-secondary">
+      {invite ? "Zaloguj przez Google (gdy masz już konto)" : "Zaloguj przez Google"}
+    </button>
+  );
+
+  // Z zaproszeniem pierwsze jest pole e-mail: tylko link z maila zakłada konto (Google nie przenosi zaproszenia).
   return (
     <div className="flex flex-col gap-6">
-      <button
-        onClick={google}
-        disabled={pending}
-        className="btn-secondary">
-        Zaloguj przez Google
-      </button>
+      {!invite && googleButton}
       {invite && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Nie masz jeszcze konta? Pierwszy raz zaloguj się linkiem z maila — konto powstaje z zaproszenia. Później możesz logować się też przez Google (ten sam adres).
+          Pierwszy raz? Wpisz swój adres i kliknij „Wyślij link” — konto powstaje z tego zaproszenia. Przez Google zalogujesz się dopiero potem (ten sam adres).
         </p>
       )}
       <form onSubmit={magicLink} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          albo link na e-mail
+          {invite ? "Twój e-mail" : "albo link na e-mail"}
           <input
             type="email"
             required
@@ -78,8 +81,25 @@ export function LoginForm() {
           Wyślij link
         </button>
       </form>
+      {invite && googleButton}
       {status.error && <p className="text-sm msg-error">{status.error}</p>}
       {status.ok && <p className="text-sm msg-ok">{status.ok}</p>}
     </div>
   );
+}
+
+/**
+ * Błąd z `/auth/callback`. Odmowa hooka „before user created” (nowe konto bez zaproszenia) przychodzi
+ * prawie zawsze z logowania Google, które nie przenosi tokenu zaproszenia — mówimy, co zrobić.
+ */
+function loginError(error: string | null, invite: boolean): { error?: string } {
+  if (!error) return {};
+  if (/Konto zakłada się z linku zaproszenia/.test(error)) {
+    return {
+      error: invite
+        ? "Tego konta jeszcze nie ma, a logowanie Google nie zakłada konta z zaproszenia. Wpisz swój adres powyżej i kliknij „Wyślij link” — konto powstanie z tego zaproszenia, a potem możesz logować się też przez Google."
+        : "Nie ma konta z tym adresem. Otwórz link zaproszenia od organizatora i za pierwszym razem zaloguj się linkiem z maila (nie przez Google).",
+    };
+  }
+  return { error: `Logowanie nie powiodło się — spróbuj jeszcze raz.${error === "1" ? "" : ` (${error})`}` };
 }

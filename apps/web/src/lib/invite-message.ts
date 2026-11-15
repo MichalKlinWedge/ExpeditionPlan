@@ -4,7 +4,7 @@ export function travelerInviteMessage(invite: { name: string; tripTitle: string;
     `Cześć ${invite.name}!`,
     `Zapraszam Cię do wyjazdu „${invite.tripTitle}” (${invite.dates}) w Expedition Planner — plan dzień po dniu, mapa i wspólne wydatki.`,
     "",
-    `1. Otwórz link (tylko dla Ciebie, ważny 14 dni) i zaloguj się linkiem z maila: ${invite.origin}/join/${invite.token}`,
+    `1. Otwórz link (tylko dla Ciebie, ważny 14 dni) i za pierwszym razem zaloguj się linkiem z maila, nie przez Google (Google działa dopiero, gdy konto już jest):${invite.origin}/join/${invite.token}`,
     invite.apkUrl
       ? `2. Aplikacja na telefon (Android): ${invite.apkUrl} — otwórz w Chrome, przy ostrzeżeniu wybierz „Zainstaluj mimo to” i zaloguj się tym samym mailem.`
       : "2. Link do aplikacji na telefon (Android) wyślę osobno.",
