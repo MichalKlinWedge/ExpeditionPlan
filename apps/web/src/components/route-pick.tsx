@@ -31,7 +31,8 @@ export function RoutePick({
 }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<FormState>({});
-  const [chosen, setChosen] = useState(options[0]?.ref ?? "");
+  // Pusto na starcie: „Podepnij” / „Zamień” ma nie trafić w przypadkowy pierwszy wiersz listy.
+  const [chosen, setChosen] = useState("");
   const run = (action: () => Promise<FormState>) =>
     start(async () => {
       setMessage({});
@@ -70,6 +71,7 @@ export function RoutePick({
       {editing && options.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <select value={chosen} onChange={(event) => setChosen(event.target.value)} disabled={pending} aria-label="Trasa z „Tras” do podpięcia" className="field max-w-full px-2 py-1 text-sm">
+            <option value="">— wybierz trasę —</option>
             {variants.length > 0 && (
               <optgroup label="Warianty tej samej drogi">
                 {variants.map((option) => (

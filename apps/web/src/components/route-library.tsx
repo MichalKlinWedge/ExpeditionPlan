@@ -29,7 +29,8 @@ export type RouteView = {
 export function RouteCard({ tripId, route, editing, showName }: { tripId: string; route: RouteView; editing: boolean; showName: boolean }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<FormState>({});
-  const [target, setTarget] = useState(route.candidates[0]?.ref ?? "");
+  // Pusto na starcie: „Podepnij do punktu” ma nie trafić w przypadkowy pierwszy punkt listy.
+  const [target, setTarget] = useState("");
   const run = (action: () => Promise<FormState>) =>
     start(async () => {
       setMessage({});
@@ -74,6 +75,7 @@ export function RouteCard({ tripId, route, editing, showName }: { tripId: string
             {route.candidates.length > 0 && (
               <>
                 <select value={target} onChange={(event) => setTarget(event.target.value)} disabled={pending} aria-label="Punkt, do którego podpiąć trasę" className="field max-w-full px-2 py-1 text-sm">
+                  <option value="">— wybierz punkt —</option>
                   {route.candidates.map((candidate) => (
                     <option key={candidate.ref} value={candidate.ref}>
                       {candidate.day} · {candidate.title}
