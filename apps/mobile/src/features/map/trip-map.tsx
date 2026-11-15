@@ -87,6 +87,8 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   const [reading, setReading] = useState<{ item: PlanItem; play: boolean } | null>(null);
   const [statuses, setStatuses] = useState<AreaStatus[] | null>(null);
   const [progress, setProgress] = useState('');
+  /** Mapa na całą wysokość ekranu — bez dni, panelu i listy tras. */
+  const [fullscreen, setFullscreen] = useState(false);
   /** Długie przytrzymanie: miejsce nowego punktu w puli. */
   const [dropAt, setDropAt] = useState<{ lat: number; lng: number } | null>(null);
   const role = cachedTrips()?.find((each) => each.id === tripId)?.role;
@@ -185,53 +187,76 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
     camera.current?.flyTo({ center: [here.coords.longitude, here.coords.latitude], zoom: 15, duration: 600 });
   };
 
+  const round = { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected };
+  const mapBlock = (
+    <View style={fullscreen ? styles.fill : styles.map}>
+      <MapView
+        mapStyle={mapStyle}
+        androidView="surface"
+        onPress={() => setSelected(null)}
+        onLongPress={
+          canDrop
+            ? (event) => {
+                const [lng, lat] = event.nativeEvent.lngLat;
+                setSelected(null);
+                setDropAt({ lat, lng });
+              }
+            : undefined
+        }>
+        <Camera ref={camera} initialViewState={areas[0] ? { bounds: areas[0].bounds } : undefined} />
+        <UserLocation accuracy />
+        <DayLines lines={view.lines} id="day-lines" />
+        <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} guided={new Set(guides.keys())} />
+      </MapView>
+      {(transit || transitPlaces > 0) && (
+        <TransitToggle
+          value={showTransit}
+          onChange={(value) => {
+            setShowTransit(value);
+            setMapTransit(tripId, value);
+            offlineChanged(tripId);
+            if (!value && full?.pins.some((each) => each.placeRef === selected && each.transit)) setSelected(null);
+          }}
+        />
+      )}
+      <Pressable onPress={() => void centerOnMe()} style={[styles.me, round]} hitSlop={6}>
+        <ThemedText type="smallBold">◎</ThemedText>
+      </Pressable>
+      {/* Pełny ekran: mapa na całą wysokość, bez dni i panelu pod spodem. */}
+      <Pressable
+        onPress={() => setFullscreen(!fullscreen)}
+        accessibilityLabel={fullscreen ? 'Zmniejsz mapę' : 'Mapa na pełny ekran'}
+        style={[styles.expand, round]}
+        hitSlop={6}>
+        <ThemedText type="smallBold">{fullscreen ? '✕' : '⛶'}</ThemedText>
+      </Pressable>
+    </View>
+  );
+
+  if (fullscreen) {
+    return (
+      <View style={styles.fill}>
+        {mapBlock}
+        {trip !== null && <ItemDetails trip={trip} item={reading?.item ?? null} autoPlay={reading?.play ?? false} onClose={() => setReading(null)} />}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.fill}>
-      {/* Wszystkie dni naraz (zawijane), bez przewijania w bok. */}
-      <View style={styles.chips}>
-        <Chip compact active={day < 0} label="Cała trasa" onPress={() => setDay(-1)} />
-        {doc.days.map((each, index) => (
-          <Chip key={each.ref} compact active={index === day} label={dayChip(each.date)} onPress={() => setDay(index)} />
-        ))}
-        {poolCount > 0 && <Chip compact active={showPool} label={`Pula (${poolCount})`} onPress={() => setShowPool(!showPool)} />}
-      </View>
-
-      <View style={styles.map}>
-        <MapView
-          mapStyle={mapStyle}
-          androidView="surface"
-          onPress={() => setSelected(null)}
-          onLongPress={
-            canDrop
-              ? (event) => {
-                  const [lng, lat] = event.nativeEvent.lngLat;
-                  setSelected(null);
-                  setDropAt({ lat, lng });
-                }
-              : undefined
-          }>
-          <Camera ref={camera} initialViewState={areas[0] ? { bounds: areas[0].bounds } : undefined} />
-          <UserLocation accuracy />
-          <DayLines lines={view.lines} id="day-lines" />
-          <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} guided={new Set(guides.keys())} />
-        </MapView>
-        {(transit || transitPlaces > 0) && (
-          <TransitToggle
-            value={showTransit}
-            onChange={(value) => {
-              setShowTransit(value);
-              setMapTransit(tripId, value);
-              offlineChanged(tripId);
-              if (!value && full?.pins.some((each) => each.placeRef === selected && each.transit)) setSelected(null);
-            }}
-          />
-        )}
-        <Pressable onPress={() => void centerOnMe()} style={[styles.me, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]} hitSlop={6}>
-          <ThemedText type="smallBold">◎</ThemedText>
-        </Pressable>
-      </View>
-
+      {/* Całość przewija się razem: mapa idzie w górę, a pod nią wchodzi panel i lista tras. */}
       <ScrollView style={styles.fill} contentContainerStyle={styles.below}>
+        {/* Wszystkie dni naraz (zawijane), bez przewijania w bok. */}
+        <View style={styles.chips}>
+          <Chip compact active={day < 0} label="Cała trasa" onPress={() => setDay(-1)} />
+          {doc.days.map((each, index) => (
+            <Chip key={each.ref} compact active={index === day} label={dayChip(each.date)} onPress={() => setDay(index)} />
+          ))}
+          {poolCount > 0 && <Chip compact active={showPool} label={`Pula (${poolCount})`} onPress={() => setShowPool(!showPool)} />}
+        </View>
+
+        {mapBlock}
+
         <ThemedView style={[styles.panel, { borderTopColor: theme.backgroundSelected }]}>
           {dropAt && trip !== null ? (
             <PoolDrop
@@ -357,6 +382,8 @@ const styles = StyleSheet.create({
   pad: { padding: Spacing.three },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one + 2, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   me: { position: 'absolute', right: Spacing.three, top: Spacing.three, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 3 },
+  // Przycisk pełnego ekranu pod przyciskiem „gdzie jestem”.
+  expand: { position: 'absolute', right: Spacing.three, top: Spacing.three + 52, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 3 },
   panel: { padding: Spacing.three, borderTopWidth: 1, gap: Spacing.two },
   block: { gap: Spacing.one },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingTop: Spacing.one },
