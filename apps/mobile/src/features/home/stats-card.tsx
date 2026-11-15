@@ -11,12 +11,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { OnTrip } from '@/features/home/on-trip';
 import { TaskAlerts } from '@/features/home/task-alerts';
 import { NextTripWeather } from '@/features/home/weather-alerts';
-import { loadMyTrips, type MyTrips, setCurrentTrip } from '@/features/trips/my-trips';
+import { archivedTrips, loadMyTrips, type MyTrips, setCurrentTrip } from '@/features/trips/my-trips';
 import { localDb } from '@/lib/local-db';
 
 /**
  * Start: statystyki wyjazdów — trwający (tryb „w trasie”: teraz/następny, pogoda, Nawiguj), najbliższy, liczby i dni — oraz co leży na telefonie
- * na wypadek braku sieci. Z listy wyjazdów (także tej z pamięci telefonu), więc działa offline.
+ * na wypadek braku sieci. Z listy wyjazdów (także tej z pamięci telefonu), więc działa offline. Wyjazd przeniesiony
+ * do archiwum na telefonie nie jest tu ani trwającym, ani najbliższym, ani przed nami; zakończony liczy się dalej do historii.
  */
 
 type Local = { downloaded: number; items: number; pending: number };
@@ -44,8 +45,10 @@ export function StatsCard({ signedIn }: { signedIn: boolean }) {
         const real = result.trips.filter((trip) => !isDraft(trip));
         const summary = (trip: (typeof real)[number]) => ({ id: trip.id!, title: trip.title!, startDate: trip.start_date!, endDate: trip.end_date! });
         // Odłożone nie odliczają dni ani nie wchodzą do statystyk podróży; pobrane dane liczą się dalej (szkice też leżą na telefonie).
-        const planned = real.filter((trip) => !isPostponed(trip)).map(summary);
-        setData({ stats: tripStats(planned, localToday()), local: localCounts(result.trips.map((trip) => trip.id!)), offline: result.offline, postponed: real.length - planned.length });
+        const today = localToday();
+        const archived = archivedTrips();
+        const planned = real.filter((trip) => !isPostponed(trip) && !(archived.has(trip.id!) && (trip.end_date ?? '') >= today)).map(summary);
+        setData({ stats: tripStats(planned, today), local: localCounts(result.trips.map((trip) => trip.id!)), offline: result.offline, postponed: real.length - planned.length });
       };
       void loadMyTrips(signedIn, apply).then(apply);
     }, [signedIn]),

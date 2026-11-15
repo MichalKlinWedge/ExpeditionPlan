@@ -12,7 +12,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/features/auth/session';
 import { scheduleTripReminders } from '@/features/trip/reminders';
-import { cachedTrips, setCurrentTrip } from '@/features/trips/my-trips';
+import { archivedTrips, cachedTrips, setCurrentTrip } from '@/features/trips/my-trips';
 import { syncPending } from '@/features/sync/sync-loop';
 import { localDb } from '@/lib/local-db';
 
@@ -80,7 +80,9 @@ function whenLabel(when: string | undefined, today: string, overdue: boolean): s
 function loadTasks(today: string, userId: string | null): Task[] {
   // Z dniem zapasu na strefy: wyjazd zakończony wczoraj liczy się jeszcze dziś (jak na webie).
   const yesterday = addDays(today, -1);
-  const planned = (cachedTrips() ?? []).filter((trip) => !isDraft(trip) && !isPostponed(trip) && typeof trip.end_date === 'string' && trip.end_date >= yesterday);
+  // Zarchiwizowane na telefonie nie pokazują się na Starcie.
+  const archived = archivedTrips();
+  const planned = (cachedTrips() ?? []).filter((trip) => !isDraft(trip) && !isPostponed(trip) && !archived.has(trip.id!) && typeof trip.end_date === 'string' && trip.end_date >= yesterday);
   if (planned.length === 0) return [];
   const marks = planned.map(() => '?').join(', ');
   const rows = localDb.all<{ tbl: string; trip_id: string; data: string }>(
