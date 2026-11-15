@@ -1,7 +1,7 @@
 import { isPostponed, localToday, MEMBER_ROLE, tripSections } from '@expeditionplan/core';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button as AppButton } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -88,8 +88,20 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   };
 
   const archiveTrip = (trip: Trip, value: boolean) => {
-    setArchived(setTripArchived(trip.id!, value));
-    setOpen(null);
+    const apply = () => {
+      setArchived(setTripArchived(trip.id!, value));
+      setOpen(null);
+    };
+    // Przywrócenie nic nie kosztuje, więc idzie od razu; schowanie wyjazdu z listy wymaga potwierdzenia.
+    if (!value) return apply();
+    Alert.alert(
+      'Przenieść do archiwum?',
+      `„${trip.title}” zniknie z listy wyjazdów i znajdziesz go w zwiniętym „Archiwum”, skąd możesz go przywrócić. Dotyczy tylko tego telefonu — plan, pobrane mapy i zdjęcia zostają, nic się nie usuwa.`,
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        { text: 'Do archiwum', onPress: apply },
+      ],
+    );
   };
 
   const sections = tripSections((trips ?? []).filter((trip) => !archived.has(trip.id!)), localToday());
