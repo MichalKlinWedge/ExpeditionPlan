@@ -19,7 +19,7 @@ import { supabase } from '@/lib/supabase';
  * „Do archiwum” przenosi wyjazd do „Archiwum” tylko na tym telefonie (nigdy nie usuwa; usunąć albo
  * opuścić wyjazd można na webie), „Przywróć” cofa. Odłożone (status ustawiany na webie) —
  * w zwiniętej sekcji bez względu na datę. Wyjazdy po dacie końca i zarchiwizowane — w zwiniętym „Archiwum” pod
- * wyjazdami przed nami (najnowsze na górze). Szkice AI — w zwiniętych „Szkicach” na samym dole.
+ * wyjazdami przed nami (najnowsze na górze). Szkiców AI tu nie ma (są na webie).
  */
 
 
@@ -40,7 +40,6 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   const [plan, setPlan] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [postponedOpen, setPostponedOpen] = useState(false);
-  const [draftsOpen, setDraftsOpen] = useState(false);
   const [archived, setArchived] = useState(archivedTrips);
 
   const load = useCallback(async () => {
@@ -94,7 +93,7 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
   };
 
   const sections = tripSections((trips ?? []).filter((trip) => !archived.has(trip.id!)), localToday());
-  const { ahead, postponed, drafts } = sections;
+  const { ahead, postponed } = sections;
   const archive = [...sections.archive, ...(trips ?? []).filter((trip) => archived.has(trip.id!))].sort((a, b) => (b.start_date ?? '').localeCompare(a.start_date ?? ''));
 
   const tripCard = (trip: Trip) => (
@@ -195,15 +194,6 @@ export function TripsCard({ reloadKey, signedIn, userId }: { reloadKey: number; 
         </Pressable>
       )}
       {archiveOpen && archive.map(tripCard)}
-      {drafts.length > 0 && (
-        <Pressable onPress={() => setDraftsOpen(!draftsOpen)} hitSlop={8} style={styles.archiveHead}>
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            Szkice ({drafts.length})
-          </ThemedText>
-          <ThemedText themeColor="accent">{draftsOpen ? '▾' : '▸'}</ThemedText>
-        </Pressable>
-      )}
-      {draftsOpen && drafts.map(tripCard)}
       <PlanScreen
         tripId={plan}
         signedIn={signedIn}
