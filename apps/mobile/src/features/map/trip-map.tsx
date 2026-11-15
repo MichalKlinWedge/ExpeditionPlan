@@ -1,10 +1,10 @@
-import { dayChip, dayLodging, dayMap, instantToZoned, isRouteArea, type MapLine, type MapPin, moveToDay, type PlanItem, routeCoverage, scheduleDay, transitPlaceRefs, type TripDocument, tripMapAreas } from '@expeditionplan/core';
+import { dayChip, dayLodging, dayMap, instantToZoned, isRouteArea, type MapLine, type MapPin, moveToDay, type PlanItem, routeCoverage, routeMap, scheduleDay, transitPlaceRefs, type TripDocument, tripMapAreas } from '@expeditionplan/core';
 import { type CachedTrip, cachedTrip, refreshTrip, savePlanEdit } from '@expeditionplan/sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Camera, type CameraRef, Map as MapView, UserLocation } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Dimensions, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
@@ -37,6 +37,16 @@ import { supabase } from '@/lib/supabase';
  */
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+/**
+ * Mapa w zwykłym widoku: kwadrat na całą szerokość, ale nie wyższy niż połowa ekranu. Po mapie
+ * przeciąga się samą mapę (MapLibre przejmuje gest), więc gdyby zajęła cały ekran, nie zostałoby
+ * miejsca, za które da się przewinąć listę pod nią. Cały ekran — przycisk ⛶.
+ */
+const mapHeight = () => {
+  const { width, height } = Dimensions.get('window');
+  return Math.round(Math.min(width, height * 0.5));
+};
 
 /** Punkty puli (bez dnia) dopisane do pinezek widoku: w istniejącej pinezce albo nowa szara. */
 function withPool(doc: TripDocument, pins: MapPin[]): MapPin[] {
@@ -89,6 +99,9 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   const [progress, setProgress] = useState('');
   /** Mapa na całą wysokość ekranu — bez dni, panelu i listy tras. */
   const [fullscreen, setFullscreen] = useState(false);
+  /** Trasa dotknięta na liście na dole: mapa pokazuje samą ją, aż do „pokaż dzień”. */
+  const [routePick, setRoutePick] = useState<string | null>(null);
+  const scroller = useRef<ScrollViewInstance>(null);
   /** Długie przytrzymanie: miejsce nowego punktu w puli. */
   const [dropAt, setDropAt] = useState<{ lat: number; lng: number } | null>(null);
   const role = cachedTrips()?.find((each) => each.id === tripId)?.role;
@@ -131,21 +144,30 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   const transitPlaces = useMemo(() => (doc ? transitPlaceRefs(doc).size : 0), [doc]);
   const poolCount = doc === null ? 0 : doc.items.filter((item) => item.dayRef === undefined && item.parentRef === undefined).length;
 
-  // Kamera obejmuje pinezki dnia (albo całą trasę) przy każdej zmianie widoku.
+  /** Wybrana trasa z listy na dole zastępuje widok dnia: jej linia i końce (`routeMap`, jak na webie). */
+  const picked = useMemo(() => {
+    const track = routePick === null ? undefined : doc?.tracks.find((each) => each.ref === routePick);
+    return track === undefined ? null : { track, map: routeMap(track) };
+  }, [routePick, doc]);
+  const shown = picked?.map ?? view;
+
+  // Kamera obejmuje pinezki i linie widoku (dzień, cała trasa albo wybrana trasa) przy każdej zmianie.
   useEffect(() => {
-    if (view === null || view.pins.length === 0) return;
-    const lngs = view.pins.map((pin) => pin.lng);
-    const lats = view.pins.map((pin) => pin.lat);
-    if (view.pins.length === 1) camera.current?.flyTo({ center: [lngs[0]!, lats[0]!], zoom: 14, duration: 600 });
+    if (shown === null) return;
+    const points = [...shown.pins.map((pin): [number, number] => [pin.lng, pin.lat]), ...shown.lines.flatMap((line) => line.coordinates)];
+    if (points.length === 0) return;
+    const lngs = points.map((point) => point[0]);
+    const lats = points.map((point) => point[1]);
+    if (points.length === 1) camera.current?.flyTo({ center: [lngs[0]!, lats[0]!], zoom: 14, duration: 600 });
     else camera.current?.fitBounds([Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)], { padding: { top: 60, right: 50, bottom: 60, left: 50 }, duration: 600 });
-  }, [view]);
+  }, [shown]);
 
   if (failure) return <ThemedText style={styles.pad}>Plan na telefonie nie przechodzi walidacji: {failure}</ThemedText>;
-  if (doc === null || view === null) {
+  if (doc === null || view === null || shown === null) {
     return <ThemedText style={styles.pad}>{signedIn ? 'Wczytuję plan…' : 'Tego wyjazdu nie ma jeszcze na telefonie — otwórz go raz w zakładce Plan z internetem.'}</ThemedText>;
   }
 
-  const pin = view.pins.find((each) => each.placeRef === selected) ?? null;
+  const pin = shown.pins.find((each) => each.placeRef === selected) ?? null;
   const guides = trip === null ? new Map<string, PlanItem>() : guidedPlaces(trip);
   const pinGuide = pin === null ? undefined : guides.get(pin.placeRef);
   const times = new Map<string, string>();
@@ -205,8 +227,8 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
         }>
         <Camera ref={camera} initialViewState={areas[0] ? { bounds: areas[0].bounds } : undefined} />
         <UserLocation accuracy />
-        <DayLines lines={view.lines} id="day-lines" />
-        <PinMarkers pins={view.pins} selected={selected} onSelect={setSelected} guided={new Set(guides.keys())} />
+        <DayLines lines={shown.lines} id="day-lines" />
+        <PinMarkers pins={shown.pins} selected={selected} onSelect={setSelected} guided={new Set(guides.keys())} />
       </MapView>
       {(transit || transitPlaces > 0) && (
         <TransitToggle
@@ -245,7 +267,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
   return (
     <View style={styles.fill}>
       {/* Całość przewija się razem: mapa idzie w górę, a pod nią wchodzi panel i lista tras. */}
-      <ScrollView style={styles.fill} contentContainerStyle={styles.below}>
+      <ScrollView ref={scroller} style={styles.fill} contentContainerStyle={styles.below}>
         {/* Wszystkie dni naraz (zawijane), bez przewijania w bok. */}
         <View style={styles.chips}>
           <Chip compact active={day < 0} label="Cała trasa" onPress={() => setDay(-1)} />
@@ -253,6 +275,7 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
             <Chip key={each.ref} compact active={index === day} label={dayChip(each.date)} onPress={() => setDay(index)} />
           ))}
           {poolCount > 0 && <Chip compact active={showPool} label={`Pula (${poolCount})`} onPress={() => setShowPool(!showPool)} />}
+          {picked !== null && <Chip compact active label={`✕ ${picked.track.name}`} onPress={() => setRoutePick(null)} />}
         </View>
 
         {mapBlock}
@@ -322,8 +345,18 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
             {coverage.map((route) => {
               const status = route.areaKey === null ? undefined : statuses?.find((each) => each.area.key === route.areaKey);
               const own = route.areaKey === `route-${route.ref}`;
+              const chosen = routePick === route.ref;
               return (
-                <View key={route.ref} style={styles.routeRow}>
+                // Dotknięcie pokazuje samą tę trasę na mapie i przewija ekran z powrotem do mapy.
+                <Pressable
+                  key={route.ref}
+                  onPress={() => {
+                    setRoutePick(chosen ? null : route.ref);
+                    setSelected(null);
+                    scroller.current?.scrollTo({ y: 0, animated: true });
+                  }}
+                  accessibilityLabel={chosen ? `Przestań pokazywać trasę ${route.name}` : `Pokaż na mapie trasę ${route.name}`}
+                  style={[styles.routeRow, chosen ? { backgroundColor: theme.backgroundSelected } : undefined]}>
                   <ThemedText type="small" style={styles.grow}>
                     {status?.done === true ? '✓' : '·'} {route.name}
                   </ThemedText>
@@ -338,11 +371,11 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
                             ? mb(status.bytes)
                             : `w obszarze „${status.area.label}”`}
                   </ThemedText>
-                </View>
+                </Pressable>
               );
             })}
             <ThemedText type="small" themeColor="textSecondary">
-              Trasa bez własnej paczki leży w obszarze miejsc planu — jej kafle są pobrane razem z nim.
+              Dotknij trasy, żeby zobaczyć ją na mapie. Trasa bez własnej paczki leży w obszarze miejsc planu — jej kafle są pobrane razem z nim.
             </ThemedText>
           </ThemedView>
         )}
@@ -373,12 +406,11 @@ export function TripMap({ tripId, signedIn }: { tripId: string; signedIn: boolea
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  // Mapa zawsze kwadratowa na całą szerokość — panel pod nią jej nie ściska, bo przewija się osobno.
-  map: { width: '100%', aspectRatio: 1 },
+  map: { width: '100%', height: mapHeight() },
   below: { paddingBottom: Spacing.three },
   grow: { flex: 1 },
   routes: { margin: Spacing.three, marginTop: Spacing.two, padding: Spacing.three, borderRadius: 12, gap: Spacing.one },
-  routeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  routeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 40, borderRadius: 8, paddingHorizontal: Spacing.one },
   pad: { padding: Spacing.three },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one + 2, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   me: { position: 'absolute', right: Spacing.three, top: Spacing.three, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 3 },
