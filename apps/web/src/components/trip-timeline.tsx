@@ -1,4 +1,4 @@
-import { type DayMap, dayMap, GUIDE_SITE, type ShowApproach, type TimelineDay, type TimelineEntry, type TimelineJournal, type TimelinePoint, type TripDocument } from "@expeditionplan/core";
+import { type DayMap, dayMap, GUIDE_SITE, type MemoryTimeline, type ShowApproach, type TimelineDay, type TimelineEntry, type TimelineJournal, type TimelinePoint, type TripDocument } from "@expeditionplan/core";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -61,9 +61,9 @@ export function ApproachMap({ doc, approach }: { doc: TripDocument; approach: Sh
 }
 
 /** Węzeł osi czasu: kółko na linii po lewej, treść po prawej. */
-export function Node({ mark, accent = false, children }: { mark: ReactNode; accent?: boolean; children: ReactNode }) {
+export function Node({ id, mark, accent = false, children }: { id?: string; mark: ReactNode; accent?: boolean; children: ReactNode }) {
   return (
-    <li className="relative pb-10 pl-10 last:pb-0">
+    <li id={id} className="relative scroll-mt-28 pb-10 pl-10 last:pb-0">
       <span
         className={`absolute top-0 left-0 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ring-4 ring-[var(--background)] ${accent ? "bg-signal text-white" : "bg-sea text-white"}`}
         aria-hidden
@@ -128,7 +128,7 @@ function WalkSection({ point, doc }: { point: TimelinePoint; doc: TripDocument }
 function KeyPoint({ point, tripId, doc }: { point: TimelinePoint; tripId: string; doc: TripDocument }) {
   const skipped = point.status === "skipped";
   return (
-    <article className={`card flex break-inside-avoid flex-col overflow-hidden sm:flex-row ${skipped ? "opacity-60" : ""}`}>
+    <article id={pointAnchor(point.ref)} className={`card flex scroll-mt-28 break-inside-avoid flex-col overflow-hidden transition sm:flex-row ${skipped ? "opacity-60" : ""}`}>
       {point.image && (
         <figure className="flex shrink-0 flex-col sm:w-56">
           {/* Miniatura z Commons; atrybucja pod zdjęciem. */}
@@ -181,7 +181,7 @@ function PlainPoints({ points }: { points: TimelinePoint[] }) {
   return (
     <ul className="flex flex-col gap-0.5 border-l border-dashed border-zinc-300 pl-3 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
       {points.map((point) => (
-        <li key={point.ref} className={point.status === "skipped" ? "text-zinc-400 line-through" : ""}>
+        <li key={point.ref} id={pointAnchor(point.ref)} className={`scroll-mt-28 rounded ${point.status === "skipped" ? "text-zinc-400 line-through" : ""}`}>
           <span className="inline-block w-12 tabular-nums text-zinc-400">{point.time ?? ""}</span>
           {point.icon} {point.title}
           {point.facts ? <span className="text-zinc-400"> · {point.facts}</span> : null} <Status point={point} />
@@ -229,7 +229,7 @@ export function DayNode({ day, doc, tripId }: { day: TimelineDay; doc: TripDocum
   const shown = dayPins.pins.some((pin) => !pin.transit) ? dayPins : null;
   if (day.entries.length === 0 && shown === null) return null;
   return (
-    <Node mark={day.no}>
+    <Node id={dayAnchor(day.ref)} mark={day.no}>
       <div className="flex flex-col gap-0.5 break-after-avoid">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
@@ -261,6 +261,21 @@ export function DayNode({ day, doc, tripId }: { day: TimelineDay; doc: TripDocum
       )}
       <DayEntries entries={day.entries} tripId={tripId} doc={doc} />
     </Node>
+  );
+}
+
+const pointAnchor = (ref: string) => `punkt-${ref}`;
+const dayAnchor = (ref: string) => `dzien-${ref}`;
+
+/**
+ * Kotwice dla mapy całej trasy (`MemoriesMap anchors`): numer na mapie prowadzi do punktu na osi, a punkt bez własnego
+ * wiersza (nocleg, podpunkt) albo dzień bez punktów — do swojego dnia.
+ */
+export function timelineAnchors(doc: TripDocument, timeline: MemoryTimeline): Record<string, string> {
+  const shown = new Set(timeline.days.flatMap((day) => day.entries.flatMap((entry) => (entry.kind === "point" ? [entry.ref] : []))));
+  const days = new Set(timeline.days.map((day) => day.ref));
+  return Object.fromEntries(
+    doc.items.flatMap((item) => (shown.has(item.ref) ? [[item.ref, pointAnchor(item.ref)]] : item.dayRef !== undefined && days.has(item.dayRef) ? [[item.ref, dayAnchor(item.dayRef)]] : [])),
   );
 }
 

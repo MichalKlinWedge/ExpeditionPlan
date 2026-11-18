@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { PrintButton } from "@/components/print-button";
 import { Loading, Shell } from "@/components/shell";
 import { Stat } from "@/components/stat";
-import { ApproachMap, DayNode, Node, RouteTrace, TimelineList } from "@/components/trip-timeline";
+import { ApproachMap, DayNode, Node, RouteTrace, TimelineList, timelineAnchors } from "@/components/trip-timeline";
 import { requireUser } from "@/lib/auth";
 import { tripDates } from "@/lib/labels";
 import { chosenVariantsFromCookie } from "@/lib/plan-variants-server";
@@ -118,7 +118,7 @@ async function Timeline({ params }: { params: Promise<{ id: string }> }) {
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-semibold">Trasa</h2>
           <div className="print:hidden lg:[&>div]:h-96">
-            <MemoriesMap map={map} />
+            <MemoriesMap map={map} anchors={timelineAnchors(doc, timeline)} />
           </div>
           <RouteTrace map={map} />
         </section>
