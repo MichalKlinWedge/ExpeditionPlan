@@ -67,6 +67,7 @@ export * from './settle.ts';
 export * from './field-log.ts';
 export * from './trip-memories.ts';
 export * from './memory-timeline.ts';
+export * from './trip-map.ts';
 export * from './trip-readiness.ts';
 export * from './task-due.ts';
 export * from './travel-documents.ts';

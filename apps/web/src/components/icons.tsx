@@ -224,6 +224,14 @@ export const PinIcon = (props: Props) => (
   </Svg>
 );
 
+/** Mapa wyjazdu: złożona mapa z trasą. */
+export const MapIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20Z" />
+    <path d="M9 4v13.5M15 6.5V20" strokeOpacity={0.5} />
+  </Svg>
+);
+
 /** Strona w sieci (link zewnętrzny, `btn-web`). */
 export const GlobeIcon = (props: Props) => (
   <Svg {...props}>

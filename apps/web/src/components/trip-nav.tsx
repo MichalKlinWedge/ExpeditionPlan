@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, ClapperIcon, CompareIcon, CompassIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PeopleIcon, PhoneIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, TimelineIcon, TrailIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, ClapperIcon, CompareIcon, CompassIcon, FilmIcon, InfoIcon, ListIcon, MapIcon, MealIcon, NoteIcon, PeakIcon, PeopleIcon, PhoneIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, TimelineIcon, TrailIcon, VaultIcon } from "@/components/icons";
 import { tripDates } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/client";
 
@@ -33,6 +33,7 @@ const SECTIONS = [
   { path: "places", title: "Miejsca", Icon: PinIcon },
   { path: "routes", title: "Trasy", Icon: TrailIcon },
   { path: "guides", title: "Opisy miejsc", Icon: ArticleIcon },
+  { path: "map", title: "Mapa wyjazdu", Icon: MapIcon },
   { path: "print", title: "Wydruk / PDF", Icon: PrinterIcon },
   { path: "show", title: "Film zapowiedź", Icon: FilmIcon },
   null,

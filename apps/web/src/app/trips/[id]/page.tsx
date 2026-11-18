@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, ClapperIcon, CompareIcon, DownloadIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PeopleIcon, PhoneIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, TimelineIcon, TrailIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, ClapperIcon, CompareIcon, DownloadIcon, FilmIcon, InfoIcon, ListIcon, MapIcon, MealIcon, NoteIcon, PeakIcon, PeopleIcon, PhoneIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, TimelineIcon, TrailIcon, VaultIcon } from "@/components/icons";
 import { SHOW_PAGES } from "@/lib/show-pages";
 import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
@@ -198,6 +198,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
             <Tile key="places" href={`/trips/${id}/places`} icon={<PinIcon />} title="Miejsca" hint="nazwy i współrzędne, co z nich korzysta" />,
             <Tile key="routes" href={`/trips/${id}/routes`} icon={<TrailIcon />} title="Trasy" hint="ślady piesze i trasy autem, warianty, gdzie podpięte" />,
             <Tile key="guides" href={`/trips/${id}/guides`} icon={<ArticleIcon />} title="Opisy miejsc" hint="przejrzyj, przygotuj od nowa, popraw" />,
+            (days.count ?? 0) > 0 && <Tile key="map" href={`/trips/${id}/map`} icon={<MapIcon />} title="Mapa wyjazdu" hint="wszystkie punkty i trasy, opisy i zdjęcia po kliknięciu" />,
             (days.count ?? 0) > 0 && <Tile key="print" href={`/trips/${id}/print`} icon={<PrinterIcon />} title="Wydruk / PDF" hint="plan na papierze, bez telefonu" />,
             !title.startsWith(DRAFT) && (days.count ?? 0) > 0 && <Tile key="show" href={`/trips/${id}/show`} icon={<FilmIcon />} title={SHOW_PAGES.preview.title} hint={SHOW_PAGES.preview.about} />,
           ],

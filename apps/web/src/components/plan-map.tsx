@@ -2,7 +2,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import type { DayMap, MapLine, MapPin } from "@expeditionplan/core";
+import type { DayMap, MapLine, MapPin, TripMapPhotoPin } from "@expeditionplan/core";
 import type { LngLatBoundsLike, Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -69,12 +69,36 @@ type Props = {
   focus?: string | null;
   /** Dopasowanie widoku także do linii (mapa jednej trasy: ślad wychodzi daleko poza pinezki). */
   fitLines?: boolean;
+  /** Dojazd i powrót widoczne od razu (mapa wyjazdu); przycisk „✈ Dojazd i powrót” je wyłącza. */
+  transitShown?: boolean;
+  /** Kliknięcie linii trasy punktu (ślad, trasa po drogach, prosta przejazdu) — ref tego punktu. */
+  onSelectLine?: (ref: string) => void;
+  /** Miniatury zdjęć z dziennika przy miejscach (mapa wyjazdu); kliknięcie — `onSelectPhotos(placeRef)`. */
+  photoPins?: readonly TripMapPhotoPin[];
+  onSelectPhotos?: (placeRef: string) => void;
 };
 
-export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing = null, emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.", square = false, banner = false, focus = null, fitLines = false }: Props) {
+const NO_PHOTOS: readonly TripMapPhotoPin[] = [];
+
+export function PlanMap({
+  map: full,
+  fitKey: dayKey,
+  selected,
+  onSelect,
+  editing = null,
+  emptyText = "Żaden punkt tego dnia nie ma miejsca ze współrzędnymi.",
+  square = false,
+  banner = false,
+  focus = null,
+  fitLines = false,
+  transitShown = false,
+  onSelectLine,
+  photoPins = NO_PHOTOS,
+  onSelectPhotos,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   // Dojazd i powrót (lot, długa droga) domyślnie ukryte — skala kraju gubi szczegóły na miejscu.
-  const [showTransit, setShowTransit] = useState(false);
+  const [showTransit, setShowTransit] = useState(transitShown);
   const hasTransit = full.pins.some((pin) => pin.transit) || full.lines.some((line) => line.transit);
   // Gwiazdki „po drodze i w pobliżu” można schować, gdy zasłaniają plan dnia.
   const [hideExtras, setHideExtras] = useState(false);
@@ -95,10 +119,15 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
   /** Licznik pokazań kontenera (rozmiar z 0 na >0) — wtedy dopasowanie widoku od nowa. */
   const [shown, setShown] = useState(0);
   const select = useRef(onSelect);
+  const selectLine = useRef(onSelectLine);
+  const selectPhotos = useRef(onSelectPhotos);
+  const photoMarkers = useRef<Marker[]>([]);
   const edit = useRef(editing);
   const chosen = useRef(selected);
   useEffect(() => {
     select.current = onSelect;
+    selectLine.current = onSelectLine;
+    selectPhotos.current = onSelectPhotos;
     edit.current = editing;
     chosen.current = selected;
   });
@@ -147,6 +176,21 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
             filter: ["get", "routed"],
             layout: { "line-cap": "round", "line-join": "round" },
             paint: { "line-color": "#2e7d74", "line-width": 4, "line-opacity": 0.9 },
+          });
+          // Szeroka, niewidoczna linia pod kliknięcie trasy (cienką trudno trafić).
+          created.addSource("path-hit", { type: "geojson", data: lines([]) });
+          created.addLayer({ id: "path-hit", type: "line", source: "path-hit", layout: { "line-cap": "round" }, paint: { "line-color": "#000", "line-width": 16, "line-opacity": 0 } });
+          created.on("click", "path-hit", (event) => {
+            // Pinezka nad linią: kliknięcie należy do niej, nie do trasy pod spodem.
+            if (event.originalEvent.target instanceof Element && event.originalEvent.target.closest(".maplibregl-marker") !== null) return;
+            const ref: unknown = event.features?.[0]?.properties?.ref;
+            if (typeof ref === "string" && !edit.current?.picking) selectLine.current?.(ref);
+          });
+          created.on("mouseenter", "path-hit", () => {
+            if (selectLine.current !== undefined && created !== undefined) created.getCanvas().style.cursor = "pointer";
+          });
+          created.on("mouseleave", "path-hit", () => {
+            if (created !== undefined && !edit.current?.picking) created.getCanvas().style.cursor = "";
           });
           created.addSource("path-hover", { type: "geojson", data: lines([]) });
           created.addLayer({
@@ -219,6 +263,40 @@ export function PlanMap({ map: full, fitKey: dayKey, selected, onSelect, editing
       fitTo(map, bounds);
     });
   }, [map, data, fitKey, movable, shown, focus, fitLines]);
+
+  // Linie do kliknięcia: trasy z punktem i proste przejazdów bez zapisanej trasy.
+  const lineClicks = onSelectLine !== undefined;
+  useEffect(() => {
+    if (map === null) return;
+    const parts = lineClicks
+      ? [
+          ...data.lines.filter((line) => (line.refs?.length ?? 0) > 0).map((line) => ({ coordinates: line.coordinates, ref: line.refs![0]! })),
+          ...Object.entries(data.straightLegs ?? {}).map(([ref, coordinates]) => ({ coordinates, ref })),
+        ]
+      : [];
+    (map.getSource("path-hit") as import("maplibre-gl").GeoJSONSource | undefined)?.setData({
+      type: "FeatureCollection",
+      features: parts.map((part) => ({ type: "Feature", properties: { ref: part.ref }, geometry: { type: "LineString", coordinates: part.coordinates } })),
+    });
+  }, [map, data, lineClicks]);
+
+  // Miniatury zdjęć z dziennika: obok pinezki miejsca, z liczbą zdjęć.
+  useEffect(() => {
+    if (map === null) return;
+    let cancelled = false;
+    void import("maplibre-gl").then((maplibre) => {
+      if (cancelled) return;
+      for (const marker of photoMarkers.current) marker.remove();
+      photoMarkers.current = photoPins.map((pin) => {
+        const element = photoElement(pin);
+        element.addEventListener("click", () => selectPhotos.current?.(pin.placeRef));
+        return new maplibre.Marker({ element, anchor: "bottom-left", offset: [8, -8] }).setLngLat([pin.lng, pin.lat]).addTo(map);
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [map, photoPins]);
 
   // Najechanie na link do trasy: ślad, trasa po drogach albo kawałek prostej tego punktu w kolorze sygnałowym.
   useEffect(() => {
@@ -388,12 +466,12 @@ function pinElement(pin: MapPin): HTMLElement {
   const element = document.createElement("button");
   element.type = "button";
   element.className = "group cursor-pointer";
-  const titles = [...pin.stops.map((stop) => `${stop.n}. ${stop.title}`), ...(pin.pool ?? []).map((each) => `pula: ${each.title}`), ...(pin.extra ? ["po drodze i w pobliżu"] : [])];
+  const titles = [...pin.stops.map((stop) => (pin.label !== undefined ? `dzień ${stop.n}: ${stop.title}` : `${stop.n}. ${stop.title}`)), ...(pin.pool ?? []).map((each) => `pula: ${each.title}`), ...(pin.extra ? ["po drodze i w pobliżu"] : [])];
   element.title = [pin.name, ...titles, ...(pin.base ? ["nocleg"] : [])].join("\n");
   const face = document.createElement("span");
   const ring = "border-2 border-white shadow-md transition-[scale,box-shadow] group-data-[active=true]:scale-125 group-data-[active=true]:ring-4 group-data-[active=true]:ring-signal/60";
   if (pin.stops.length > 0) {
-    face.textContent = ranges(pin.stops.map((stop) => stop.n));
+    face.textContent = pin.label ?? ranges(pin.stops.map((stop) => stop.n));
     face.className = `flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-white ${pin.base ? "bg-indigo-500" : "bg-sea"} ${ring}`;
   } else if (pin.base) {
     face.textContent = "⌂";
@@ -407,6 +485,26 @@ function pinElement(pin: MapPin): HTMLElement {
     face.className = `block size-3 rounded-full ${pin.arrival ? "bg-sea" : "bg-zinc-400"} ${ring}`;
   }
   element.append(face);
+  return element;
+}
+
+/** Miniatura zdjęcia z dziennika na mapie wyjazdu: okrągła, z liczbą zdjęć w tym miejscu. */
+function photoElement(pin: TripMapPhotoPin): HTMLElement {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.className = "group relative cursor-pointer";
+  element.title = pin.count === 1 ? "Zdjęcie z dziennika" : `Zdjęcia z dziennika: ${pin.count}`;
+  element.setAttribute("aria-label", element.title);
+  const face = document.createElement("span");
+  face.className = "block size-9 overflow-hidden rounded-full border-2 border-white bg-zinc-300 bg-cover bg-center shadow-md transition-[scale] group-hover:scale-125";
+  face.style.backgroundImage = `url("${pin.thumbUrl.replace(/"/g, "%22")}")`;
+  element.append(face);
+  if (pin.count > 1) {
+    const badge = document.createElement("span");
+    badge.textContent = String(pin.count);
+    badge.className = "absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-signal px-1 text-[10px] font-semibold text-white";
+    element.append(badge);
+  }
   return element;
 }
 
