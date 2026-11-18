@@ -237,7 +237,7 @@ export function PlanMap({
       for (const { marker } of markers.current) marker.remove();
       markers.current = data.pins.map((pin) => {
         const element = pinElement(pin);
-        const first = pin.stops[0]?.ref ?? pin.pool?.[0]?.ref ?? pin.extra?.ref;
+        const first = pin.stops[0]?.ref ?? pin.pool?.[0]?.ref ?? pin.extra?.ref ?? pin.clickRef;
         if (first !== undefined) element.addEventListener("click", () => select.current(first));
         const draggable = movable && pin.movable === true;
         if (draggable) element.title += "\n(przeciągnij, żeby przesunąć)";
@@ -434,7 +434,7 @@ export function PlanMap({
 }
 
 /** Pinezka zawiera wybrany punkt (dnia, z puli albo atrakcję po drodze). */
-const holds = (pin: MapPin, selected: string | null) => selected !== null && (pin.stops.some((stop) => stop.ref === selected) || (pin.pool ?? []).some((each) => each.ref === selected) || pin.extra?.ref === selected);
+const holds = (pin: MapPin, selected: string | null) => selected !== null && (pin.clickRef === selected || pin.stops.some((stop) => stop.ref === selected) || (pin.pool ?? []).some((each) => each.ref === selected) || pin.extra?.ref === selected);
 
 /** Wyróżnia pinezkę z wybranym punktem (dnia albo z puli); zwraca ją. */
 function highlight(markers: { pin: MapPin; marker: Marker }[], selected: string | null): MapPin | undefined {
@@ -466,12 +466,12 @@ function pinElement(pin: MapPin): HTMLElement {
   const element = document.createElement("button");
   element.type = "button";
   element.className = "group cursor-pointer";
-  const titles = [...pin.stops.map((stop) => (pin.label !== undefined ? `dzień ${stop.n}: ${stop.title}` : `${stop.n}. ${stop.title}`)), ...(pin.pool ?? []).map((each) => `pula: ${each.title}`), ...(pin.extra ? ["po drodze i w pobliżu"] : [])];
+  const titles = [...pin.stops.map((stop) => `${stop.n}. ${stop.title}`), ...(pin.pool ?? []).map((each) => `pula: ${each.title}`), ...(pin.extra ? ["po drodze i w pobliżu"] : [])];
   element.title = [pin.name, ...titles, ...(pin.base ? ["nocleg"] : [])].join("\n");
   const face = document.createElement("span");
   const ring = "border-2 border-white shadow-md transition-[scale,box-shadow] group-data-[active=true]:scale-125 group-data-[active=true]:ring-4 group-data-[active=true]:ring-signal/60";
   if (pin.stops.length > 0) {
-    face.textContent = pin.label ?? ranges(pin.stops.map((stop) => stop.n));
+    face.textContent = ranges(pin.stops.map((stop) => stop.n));
     face.className = `flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-white ${pin.base ? "bg-indigo-500" : "bg-sea"} ${ring}`;
   } else if (pin.base) {
     face.textContent = "⌂";

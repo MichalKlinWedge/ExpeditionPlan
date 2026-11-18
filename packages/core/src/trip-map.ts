@@ -15,8 +15,9 @@ import { isShowWalk, walkFacts } from './trip-show.ts';
 /**
  * Mapa wyjazdu (`/trips/[id]/map`): jedna mapa całego wyjazdu — wszystkie punkty dni po kolei (warianty jak w widoku
  * planu, bez pominiętych w terenie), wszystkie trasy (ślady GPX, przejazdy po drogach, proste między miejscami),
- * noclegi, dojazd i powrót (`transit`, do wyłączenia na mapie). Pinezka ma numery dni zamiast numerów kolejności
- * (`MapPin.label`), bo w skali wyjazdu kolejność kilkudziesięciu punktów nic nie mówi.
+ * noclegi, dojazd i powrót (`transit`, do wyłączenia na mapie). Numery pinezek to kolejne punkty całego wyjazdu
+ * (`dayMap` przez wszystkie dni, każdy numer raz); noc nie dostaje numeru, a pinezka bez numeru (sam nocleg, sam cel
+ * przejazdu) otwiera okno przez `MapPin.clickRef`.
  * Do okna po kliknięciu: miejsce (opis z przewodnika, zdjęcia, punkty planu w tym miejscu z dniem i godziną) i punkt
  * z trasą (liczby, profil wysokości). Zdjęcia z dziennika stoją przy miejscu swojego punktu, a wpis z samym dniem —
  * przy punkcie, który zaczął się ostatni przed zdjęciem (bez takiego: przy noclegu dnia).
@@ -36,6 +37,8 @@ export type TripMapStop = {
   dayRef: string;
   dayNo: number;
   dayLabel: string;
+  /** Numer na mapie (kolejny w całym wyjeździe); brak = punkt bez miejsca na mapie albo noc. */
+  no?: number;
   /** „10:00–12:30” z silnika. */
   time?: string;
   kind: string;
@@ -82,19 +85,6 @@ const SUMMARY_CHARS = 600;
 const IMAGES = 4;
 const PROFILE_POINTS = 120;
 export const NIGHT_STOP = 'nocleg:';
-
-/** [2, 3, 4, 7] → „2–4 · 7”. */
-function dayRanges(numbers: number[]): string {
-  const sorted = [...new Set(numbers)].sort((a, b) => a - b);
-  const parts: string[] = [];
-  for (let i = 0; i < sorted.length; i++) {
-    let j = i;
-    while (j + 1 < sorted.length && sorted[j + 1] === sorted[j]! + 1) j++;
-    parts.push(j > i ? `${sorted[i]}–${sorted[j]}` : String(sorted[i]));
-    i = j;
-  }
-  return parts.join(' · ');
-}
 
 function legFacts(item: Item): string {
   if (isShowWalk(item)) return walkFacts(item);
@@ -170,17 +160,13 @@ export function tripMap(doc: Doc, input: TripMapInput): TripMap {
     }
     pin.base = true;
     delete pin.transit;
-    pin.stops.push({ ref: night.ref, n: night.dayNo, title: stops[night.ref]!.title });
+    pin.clickRef ??= night.ref;
   }
-  // Sam cel przejazdu (numer stoi przy starcie) też jest do kliknięcia: dostaje przejazdy, które do niego prowadzą.
-  const arrivals = new Set(map.pins.filter((pin) => pin.stops.length === 0).map((pin) => pin.placeRef));
+  for (const [ref, n] of Object.entries(map.numbers)) if (stops[ref] !== undefined) stops[ref].no = n;
+  // Sam cel przejazdu (numer stoi przy starcie) też jest do kliknięcia: otwiera okno miejsca.
   for (const stop of Object.values(stops)) {
-    if (!stop.night && stop.placeRef !== undefined && arrivals.has(stop.placeRef)) pinOf.get(stop.placeRef)!.stops.push({ ref: stop.ref, n: stop.dayNo, title: stop.title });
-  }
-  // Numery dni zamiast kolejności w całym wyjeździe.
-  for (const pin of map.pins) {
-    pin.stops = pin.stops.map((stop) => ({ ...stop, n: stops[stop.ref]?.dayNo ?? stop.n }));
-    if (pin.stops.length > 0) pin.label = dayRanges(pin.stops.map((stop) => stop.n));
+    const pin = stop.night || stop.placeRef === undefined ? undefined : pinOf.get(stop.placeRef);
+    if (pin !== undefined && pin.stops.length === 0) pin.clickRef ??= stop.ref;
   }
   for (const line of map.lines) for (const ref of line.refs ?? []) if (stops[ref] !== undefined) stops[ref].route = true;
   for (const ref of Object.keys(map.straightLegs ?? {})) if (stops[ref] !== undefined) stops[ref].route = true;

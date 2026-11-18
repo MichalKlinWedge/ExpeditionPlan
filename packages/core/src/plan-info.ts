@@ -184,8 +184,8 @@ export type MapPin = {
   transit?: boolean;
   /** Widoczne, ale poza dopasowaniem widoku („Pokaż wszystkie punkty”): dojazd i start z domu na mapie miejsc. */
   approach?: boolean;
-  /** Napis na pinezce zamiast numerów kolejności (mapa wyjazdu: numery dni, `core/trip-map.ts`). */
-  label?: string;
+  /** Pinezka bez numeru, a jednak do kliknięcia (mapa wyjazdu: sam nocleg, sam cel przejazdu) — ten ref idzie do wyboru. */
+  clickRef?: string;
 };
 
 /** Kawałek linii dnia [lng, lat]: trasa po drogach z ORS (`routed`) albo prosta między miejscami. */

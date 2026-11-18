@@ -11,7 +11,7 @@ const fixture = (slug: string) => TripDocument.parse(JSON.parse(readFileSync(fil
 const SLUGS = ['barcelona', 'chatka', 'dinara', 'gruzja', 'maroko'];
 
 describe('mapa wyjazdu', () => {
-  it('pięć planów: wszystkie punkty dni, pinezki z numerami dni, każde miejsce z pinezki ma okno', () => {
+  it('pięć planów: wszystkie punkty dni, kolejne numery przez cały wyjazd bez powtórzeń, każde miejsce z pinezki ma okno', () => {
     for (const slug of SLUGS) {
       const doc = fixture(slug);
       const result = tripMap(doc, { skipRefs: [], guideOf: () => null, journal: [] });
@@ -20,9 +20,15 @@ describe('mapa wyjazdu', () => {
       expect(result.map.pins.length).toBeGreaterThan(0);
       for (const pin of result.map.pins) {
         expect(result.places[pin.placeRef]).toBeDefined();
-        if (pin.stops.length > 0) expect(pin.label).toMatch(/^\d+([–·\d ]+)?$/);
-        for (const stop of pin.stops) expect(stop.n).toBe(result.stops[stop.ref]!.dayNo);
+        // Każda pinezka otwiera okno: numerem albo `clickRef`.
+        expect(pin.stops.length > 0 || pin.clickRef !== undefined).toBe(true);
+        for (const stop of pin.stops) expect(stop.n).toBe(result.stops[stop.ref]!.no);
       }
+      const numbers = result.map.pins.flatMap((pin) => pin.stops.map((stop) => stop.n)).sort((a, b) => a - b);
+      expect(numbers).toEqual(numbers.map((_, at) => at + 1));
+      // Numery idą za dniami: punkt późniejszego dnia ma większy numer.
+      const byNo = Object.values(result.stops).filter((stop) => stop.no !== undefined).sort((a, b) => a.no! - b.no!);
+      for (let at = 1; at < byNo.length; at++) expect(byNo[at]!.dayNo).toBeGreaterThanOrEqual(byNo[at - 1]!.dayNo);
       // Trasy na mapie można kliknąć: każda linia z punktem wskazuje znany punkt z `route`.
       for (const line of result.map.lines) for (const ref of line.refs ?? []) expect(result.stops[ref]?.route).toBe(true);
     }

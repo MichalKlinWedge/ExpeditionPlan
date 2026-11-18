@@ -38,16 +38,17 @@ export function TripMapView({ tripId, data }: { tripId: string; data: TripMap })
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const selected = open === null ? null : open.kind === "stop" ? open.ref : (data.places[open.placeRef]?.stopRefs[0] ?? null);
+  const openPin = open?.kind === "place" ? data.map.pins.find((pin) => pin.placeRef === open.placeRef) : undefined;
+  const selected = open === null ? null : open.kind === "stop" ? open.ref : (openPin?.stops[0]?.ref ?? openPin?.clickRef ?? null);
   const onSelect = (ref: string) => {
-    const pin = data.map.pins.find((each) => each.stops.some((stop) => stop.ref === ref));
+    const pin = data.map.pins.find((each) => each.clickRef === ref || each.stops.some((stop) => stop.ref === ref));
     if (pin !== undefined) setOpen({ kind: "place", placeRef: pin.placeRef });
   };
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-        <span>Kliknij punkt, trasę{data.photoPins.length > 0 ? " albo zdjęcie" : ""}, żeby zobaczyć opis i plan. Numery na pinezkach to dni wyjazdu.</span>
+        <span>Kliknij punkt, trasę{data.photoPins.length > 0 ? " albo zdjęcie" : ""}, żeby zobaczyć opis i plan. Numery na pinezkach to kolejne punkty całego wyjazdu.</span>
         {data.photoPins.length > 0 && (
           <button type="button" onClick={() => setShowPhotos((value) => !value)} aria-pressed={showPhotos} className="toggle-chip">
             📷 Zdjęcia z dziennika ({data.photos.length})
@@ -132,6 +133,7 @@ function StopPanel({ tripId, data, stop, onOpen, onClose }: PanelProps & { stop:
     <>
       <DialogTitle onClose={onClose}>
         <h2 className="text-base font-semibold">
+          {stop.no !== undefined && <span className="text-sea">{stop.no}. </span>}
           {stop.icon} {stop.title}
         </h2>
         <p className="text-xs text-zinc-500">
@@ -166,6 +168,7 @@ function StopLine({ stop }: { stop: TripMapStop }) {
   return (
     <>
       <p className="font-medium">
+        {stop.no !== undefined && <span className="text-sea">{stop.no}. </span>}
         {stop.icon} {stop.title}
       </p>
       <p className="text-xs text-zinc-500">
