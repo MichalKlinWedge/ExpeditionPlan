@@ -22,7 +22,7 @@ const FAR_M = 500;
 const normal = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 /** Nazwy równe albo jedna zawiera drugą: „Muzeum Picassa w Barcelonie” i „Muzeum Picassa”. */
-function sameName(place: Place, typed: string): boolean {
+export function sameName(place: Pick<Place, 'name' | 'searchName'>, typed: string): boolean {
   const wanted = normal(typed);
   return [place.name, place.searchName].some((name) => {
     if (name === undefined) return false;

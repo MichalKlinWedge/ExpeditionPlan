@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DRAFT_PREFIX, type GuideRow, guideFor, isDraft, placesOffMap, vaultDocument, type VaultDocument } from "@expeditionplan/core";
+import { checkLegEnds, dayChip, DRAFT_PREFIX, type GuideRow, guideFor, isDraft, LEG_END_SOURCE, placesOffMap, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { groundTrip, routeTrip } from "@/app/actions";
 import { describeTrip } from "@/app/guide-actions";
 import { EditToggle } from "@/components/edit-toggle";
+import { LegEndsCheck, type LegEndsRow } from "@/components/leg-ends-check";
 import { editMode } from "@/lib/edit-mode";
 import { PlacePinner } from "@/components/place-pinner";
 import { PlanActionButton } from "@/components/plan-action-button";
@@ -71,6 +72,25 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
   const source = isDraft({ title })
     ? ((await supabase.from("my_trips").select("id, title, role").eq("title", title.slice(DRAFT_PREFIX.length))).data ?? []).find((each) => each.role === "owner" || each.role === "editor")
     : undefined;
+  // „Sprawdź skąd i dokąd”: liczone tutaj (czysty core), zapis wybranych w `saveLegEnds`; nowe miejsca dostają ref dopiero przy zapisie.
+  const legEnds = editing ? checkLegEnds(state.doc, () => "podglad") : null;
+  const legEndRows: LegEndsRow[] = (legEnds?.gaps ?? []).map((gap) => {
+    const day = state.doc.days.find((each) => each.ref === gap.dayRef);
+    return {
+      itemRef: gap.itemRef,
+      title: gap.title,
+      day: day === undefined ? "" : dayChip(day.date),
+      ends: gap.missing.map((end) => {
+        const found = legEnds!.proposals.find((each) => each.itemRef === gap.itemRef && each.end === end);
+        return {
+          end,
+          ...(found !== undefined
+            ? { proposal: { key: found.key, place: found.place.name, created: found.created, pinned: found.pinned, source: LEG_END_SOURCE[found.source], ...(found.detail !== undefined ? { detail: found.detail } : {}) } }
+            : {}),
+        };
+      }),
+    };
+  });
   return (
     <PlanPageGrid
       header={
@@ -117,6 +137,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
           {editing && (
             <>
               <PlanActionButton end run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
+              <LegEndsCheck tripId={id} rows={legEndRows} checked={legEnds?.checked ?? 0} withoutLeg={legEnds?.withoutLeg.length ?? 0} />
               <PlanActionButton end run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
               <PlanActionButton end ai run={describeTrip.bind(null, id)} label="Przygotuj brakujące opisy" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
               <Link href={`/trips/${id}/places`} className="btn-secondary btn-sm">
