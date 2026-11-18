@@ -66,6 +66,17 @@ export const NoteIcon = (props: Props) => (
   </Svg>
 );
 
+/** Oś czasu: pionowa linia z trzema węzłami i wpisami obok. */
+export const TimelineIcon = (props: Props) => (
+  <Svg {...props}>
+    <path d="M7 3v18" />
+    <circle cx="7" cy="6" r="2" fill="currentColor" fillOpacity={0.25} />
+    <circle cx="7" cy="12" r="2" fill="currentColor" fillOpacity={0.25} />
+    <circle cx="7" cy="18" r="2" fill="currentColor" fillOpacity={0.25} />
+    <path d="M12 6h8M12 12h6M12 18h7" />
+  </Svg>
+);
+
 export const DownloadIcon = (props: Props) => (
   <Svg {...props}>
     <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />

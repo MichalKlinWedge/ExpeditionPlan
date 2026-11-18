@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AiPlanButton } from "@/components/ai-plan-button";
-import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, ClapperIcon, CompareIcon, DownloadIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PeopleIcon, PhoneIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, TrailIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, ClapperIcon, CompareIcon, DownloadIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PeopleIcon, PhoneIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, TimelineIcon, TrailIcon, VaultIcon } from "@/components/icons";
 import { SHOW_PAGES } from "@/lib/show-pages";
 import { Loading, Shell } from "@/components/shell";
 import { type ReadinessPeople, TripReadiness } from "@/components/trip-readiness";
@@ -203,6 +203,7 @@ async function TripDetails({ params }: { params: Promise<{ id: string }> }) {
           ],
           [
             <Tile key="brief" href={`/trips/${id}/brief`} icon={<NoteIcon />} title={brief.data ? "Brief wyjazdu" : "Uzupełnij brief"} hint={brief.data ? "kto, dokąd, w jakim tempie" : "potrzebny do planu z AI"} />,
+            (days.count ?? 0) > 0 && <Tile key="timeline" href={`/trips/${id}/timeline`} icon={<TimelineIcon />} title="Oś czasu" hint="cały plan: mapy, godziny, zdjęcia i opisy atrakcji" />,
             compareHref !== null && <Tile key="compare" href={compareHref} icon={<CompareIcon />} title="Porównanie ze szkicem" hint={source !== undefined ? `z planem „${source.title}”` : "szkic AI obok planu"} />,
             !title.startsWith(DRAFT) && <Tile key="votes" href={`/trips/${id}/votes`} icon={<BallotIcon />} title="Głosowanie" hint={poll.data?.date_poll ? "termin i warianty: zagłosuj" : toDecide > 0 ? `do decyzji: ${toDecide}` : "warianty, kandydaci, termin"} />,
             canEdit && (days.count ?? 0) > 0 && <Tile key="tune" href={`/trips/${id}/tune`} icon={<SparkIcon />} title="Dostrajanie z AI" hint="kontrola wyjazdu, zmiany i plan B czatem" />,

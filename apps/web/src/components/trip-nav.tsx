@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, ClapperIcon, CompareIcon, CompassIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PeopleIcon, PhoneIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, TrailIcon, VaultIcon } from "@/components/icons";
+import { ArticleIcon, BackpackIcon, BallotIcon, BookIcon, CartIcon, ClapperIcon, CompareIcon, CompassIcon, FilmIcon, InfoIcon, ListIcon, MealIcon, NoteIcon, PeakIcon, PeopleIcon, PhoneIcon, PinIcon, PrinterIcon, RouteIcon, SparkIcon, TicketIcon, TimelineIcon, TrailIcon, VaultIcon } from "@/components/icons";
 import { tripDates } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/client";
 
@@ -37,6 +37,7 @@ const SECTIONS = [
   { path: "show", title: "Film zapowiedź", Icon: FilmIcon },
   null,
   { path: "brief", title: "Brief wyjazdu", Icon: NoteIcon },
+  { path: "timeline", title: "Oś czasu", Icon: TimelineIcon },
   { path: "compare", title: "Porównanie ze szkicem", Icon: CompareIcon },
   { path: "votes", title: "Głosowanie", Icon: BallotIcon },
   { path: "tune", title: "Dostrajanie z AI", Icon: SparkIcon },
