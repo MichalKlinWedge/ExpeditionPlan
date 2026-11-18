@@ -231,9 +231,15 @@ export function DayNode({ day, doc, tripId }: { day: TimelineDay; doc: TripDocum
   return (
     <Node mark={day.no}>
       <div className="flex flex-col gap-0.5 break-after-avoid">
-        <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-          Dzień {day.no} · {day.label}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+            Dzień {day.no} · {day.label}
+          </p>
+          {/* Szczegóły dnia w planie (ten sam dzień wybrany w widoku planu). */}
+          <Link href={`/trips/${tripId}/plan?day=${encodeURIComponent(day.ref)}`} className="btn-mini print:hidden">
+            plan dnia
+          </Link>
+        </div>
         {day.title && <h2 className="text-xl font-bold">{day.title}</h2>}
       </div>
       {day.summary && <p className="text-sm text-zinc-600 dark:text-zinc-400">{day.summary}</p>}
