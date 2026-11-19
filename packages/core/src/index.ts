@@ -28,6 +28,7 @@ export * from './item-plan.ts';
 export * from './item-route.ts';
 export * from './track-ends.ts';
 export * from './leg-ends-check.ts';
+export * from './day-order.ts';
 export * from './route-library.ts';
 export * from './pool-nearby.ts';
 export * from './polyline.ts';

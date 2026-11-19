@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { checkLegEnds, dayChip, DRAFT_PREFIX, type GuideRow, guideFor, isDraft, LEG_END_SOURCE, placesOffMap, vaultDocument, type VaultDocument } from "@expeditionplan/core";
+import { checkLegEnds, dayChip, dayPrograms, DRAFT_PREFIX, type GuideRow, guideFor, isDraft, LEG_END_SOURCE, placesOffMap, vaultDocument, type VaultDocument } from "@expeditionplan/core";
 import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { groundTrip, routeTrip } from "@/app/actions";
 import { describeTrip } from "@/app/guide-actions";
 import { EditToggle } from "@/components/edit-toggle";
+import { DayOrder } from "@/components/day-order";
 import { LegEndsCheck, type LegEndsRow } from "@/components/leg-ends-check";
 import { editMode } from "@/lib/edit-mode";
 import { PlacePinner } from "@/components/place-pinner";
@@ -137,6 +138,7 @@ async function Plan({ params, searchParams }: { params: Promise<{ id: string }>;
           {editing && (
             <>
               <PlanActionButton end run={groundTrip.bind(null, id)} label="Uzupełnij współrzędne miejsc" note="Miejsca: © OpenStreetMap, Geoapify" />
+              <DayOrder tripId={id} programs={dayPrograms(state.doc)} />
               <LegEndsCheck tripId={id} rows={legEndRows} checked={legEnds?.checked ?? 0} withoutLeg={legEnds?.withoutLeg.length ?? 0} />
               <PlanActionButton end run={routeTrip.bind(null, id)} label="Przelicz przejazdy (trasy z mapy)" note="Trasy: © openrouteservice.org, dane © OpenStreetMap" />
               <PlanActionButton end ai run={describeTrip.bind(null, id)} label="Przygotuj brakujące opisy" note="Z Wikipedii (CC BY-SA 4.0) i Wikimedia Commons; streszczenie AI" />
