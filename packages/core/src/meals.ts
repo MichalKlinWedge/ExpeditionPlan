@@ -5,6 +5,7 @@ import { addItem, dayItems, heldTime, placeAfterBlock, type PlanEdit } from './p
 import type { DayMap } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
 import { keyBetween } from './sort-key.ts';
+import { travelerAge } from './traveler-age.ts';
 
 /**
  * Jedzenie i zakupy: posiłki z planu (punkty `meal`) dzień po dniu i liczba osób — dorośli
@@ -31,14 +32,17 @@ export type MealVariant = { ref: string; label: string; active: boolean };
 export type MealPoint = { ref: string; title: string; stop: boolean };
 
 /** Dziecko = poniżej 13 lat albo (bez wieku) z opiekunem — jak „dorosły od 13 lat” u operatorów. */
-const isChild = (traveler: Traveler) => (traveler.age !== undefined ? traveler.age < 13 : traveler.guardianRef !== undefined);
+const isChild = (doc: Doc, traveler: Traveler) => {
+  const age = travelerAge(doc, traveler);
+  return age !== undefined ? age < 13 : traveler.guardianRef !== undefined;
+};
 
-function count(travelers: Traveler[]): People {
-  const children = travelers.filter(isChild).length;
+function count(doc: Doc, travelers: Traveler[]): People {
+  const children = travelers.filter((traveler) => isChild(doc, traveler)).length;
   return { adults: travelers.length - children, children };
 }
 
-export const headcount = (doc: Doc): People => count(doc.travelers);
+export const headcount = (doc: Doc): People => count(doc, doc.travelers);
 
 /**
  * Posiłki dnia po dniu; osoby z `participantRefs` punktu, inaczej cała grupa. Posiłek w wariantach
@@ -70,7 +74,7 @@ export function mealList(doc: Doc, options: { allVariants?: boolean } = {}): Mea
         place: item.placeRef === undefined ? undefined : places.get(item.placeRef),
         selfCooked: item.selfCooked,
         ...(item.parentRef !== undefined && items.has(item.parentRef) ? { at: { ref: item.parentRef, title: items.get(item.parentRef)!.title, stop: items.get(item.parentRef)!.kind === 'transport' } } : {}),
-        people: item.participantRefs === undefined ? headcount(doc) : count(doc.travelers.filter((traveler) => item.participantRefs!.includes(traveler.ref))),
+        people: item.participantRefs === undefined ? headcount(doc) : count(doc, doc.travelers.filter((traveler) => item.participantRefs!.includes(traveler.ref))),
         ...(item.variantRefs.length > 0 && eatOutGroup(doc, item.ref) === undefined ? { variants: variantsOf(item) } : {}),
       })),
   );

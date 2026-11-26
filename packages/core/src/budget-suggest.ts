@@ -1,5 +1,6 @@
 import { priceForGroup } from './engine/price.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
+import { travelersWithAge } from './traveler-age.ts';
 
 /**
  * Pozycje budżetu z planu (MVP-3: „pozycje z rezerwacji i cen punktów zasilają budżet”):
@@ -58,7 +59,7 @@ export function bookingAmount(doc: Doc, booking: Booking): { lowMinor: number; h
   if (booking.paid) return { lowMinor: booking.paid.amountMinor, highMinor: booking.paid.amountMinor, currency: booking.paid.currency };
   const price = booking.price;
   if (price === undefined) return null;
-  const group = priceForGroup(price, doc.travelers);
+  const group = priceForGroup(price, travelersWithAge(doc));
   const times = price.basis === 'per_night' || price.basis === 'per_day' ? nightsBetween(booking.start?.date, booking.end?.date) : 1;
   const note = times > 1 ? `${times} × ${price.basis === 'per_night' ? 'noc' : 'doba'}` : undefined;
   // „od X” — górna granica nieznana: obie kwoty od dołu, żeby suma nie udawała pewności.
@@ -98,7 +99,7 @@ export function budgetSuggestions(doc: Doc): BudgetSuggestion[] {
     if (price === undefined || item.dayRef === undefined || item.bookingRef !== undefined || item.payment === 'included' || item.payment === 'free') continue;
     if (linkedItems.has(item.ref) || (item.planStatus !== 'scheduled' && item.variantRefs.length === 0)) continue;
     const people = item.participantRefs && item.participantRefs.length > 0 ? doc.travelers.filter((traveler) => item.participantRefs!.includes(traveler.ref)) : doc.travelers;
-    const group = priceForGroup(price, people);
+    const group = priceForGroup(price, travelersWithAge(doc, people));
     result.push({
       source: 'item',
       ref: item.ref,

@@ -1,4 +1,4 @@
-import { formatMinutes, formatMoneyRange, ITEM_KIND, itemIcon, itemKindLabel, markdownPlainLines, notesMarkdown, type PlanItem, priceForGroup } from '@expeditionplan/core';
+import { formatMinutes, formatMoneyRange, ITEM_KIND, itemIcon, itemKindLabel, markdownPlainLines, notesMarkdown, type PlanItem, priceForGroup, travelersWithAge } from '@expeditionplan/core';
 import type { CachedTrip } from '@expeditionplan/sync';
 import * as Location from 'expo-location';
 import { useState } from 'react';
@@ -36,7 +36,7 @@ export function PoolView({ trip, onMove, onAdd, onOpen }: Props) {
   const [moving, setMoving] = useState<string | null>(null);
   const pool = doc.items.filter((item) => item.dayRef === undefined && item.parentRef === undefined);
   const places = new Map(doc.places.map((place) => [place.ref, place]));
-  const travelers = doc.travelers.map((each) => ({ ref: each.ref, age: each.age }));
+  const travelers = travelersWithAge(doc).map((each) => ({ ref: each.ref, age: each.age }));
   // Obszary w kolejności pierwszego punktu (bez `Object.groupBy` — Hermes).
   const areas = new Map<string, PlanItem[]>();
   for (const item of pool) areas.set(item.area ?? '', [...(areas.get(item.area ?? '') ?? []), item]);

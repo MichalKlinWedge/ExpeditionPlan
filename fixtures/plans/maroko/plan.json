@@ -46,14 +46,14 @@
     {
       "ref": "nastolatek",
       "name": "Nastolatek",
-      "age": 16,
+      "birthYear": 2010,
       "household": "rodzina",
       "notes": "U operatora pakietu na pustyni i u przewoźnika liczony jako dorosły (od 13 / od 12 lat)."
     },
     {
       "ref": "dziecko",
       "name": "Dziecko",
-      "age": 10,
+      "birthYear": 2016,
       "household": "rodzina",
       "heightCm": 152,
       "notes": "152 cm — bez podkładki w aucie. Na quadzie jako pasażer."

@@ -22,6 +22,7 @@ import { plainName } from './place-list.ts';
 import { distanceM, type LngLat, simplifyPath } from './polyline.ts';
 import { HttpUrl } from './schemas/common.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
+import { travelerAge } from './traveler-age.ts';
 
 /**
  * „Po drodze i w pobliżu” z zewnętrznego AI (ChatGPT, Claude, Gemini w przeglądarce — z wyszukiwaniem w sieci):
@@ -116,7 +117,7 @@ export function externalExtrasBrief(doc: Doc, dayRef: string, schedule: DaySched
   });
   const listed = day.extras?.items ?? [];
   const sunset = schedule.facts.sun?.sunset;
-  const ages = doc.travelers.map((each) => each.age).filter((age): age is number => typeof age === 'number');
+  const ages = doc.travelers.map((each) => travelerAge(doc, each)).filter((age): age is number => typeof age === 'number');
   const example = {
     format: EXTERNAL_EXTRAS_FORMAT,
     date: day.date,

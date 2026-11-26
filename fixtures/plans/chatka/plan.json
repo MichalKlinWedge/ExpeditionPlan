@@ -58,7 +58,7 @@
     {
       "ref": "dziecko-c3",
       "name": "Dziecko C3",
-      "age": 5,
+      "birthYear": 2021,
       "household": "C",
       "guardianRef": "dorosly-c",
       "notes": "Najmłodszy — pod niego kalibrujemy tempo i długość tras. W dokumencie raz jako 5 lat (Założenia, Uczestnicy), raz jako 6 lat (Trasy, Bezpieczeństwo). Do śpiwora o 22:30."

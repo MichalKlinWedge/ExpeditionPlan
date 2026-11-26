@@ -10,6 +10,7 @@ import {
   scheduleDay,
   type StoredReview,
   type TripDocument,
+  travelerAge,
 } from '@expeditionplan/core';
 import { z } from 'zod';
 
@@ -135,7 +136,7 @@ export function reviewContext(doc: Doc, locked: ReadonlySet<string>) {
   const used = new Set(doc.items.flatMap((item) => [item.placeRef, item.leg?.fromPlaceRef, item.leg?.toPlaceRef].filter((ref) => ref !== undefined)));
   return {
     title: doc.trip.title,
-    travelers: doc.travelers.map((each) => ({ name: each.name, age: each.age })),
+    travelers: doc.travelers.map((each) => ({ name: each.name, age: travelerAge(doc, each) })),
     days,
     pool: doc.items.filter((item) => item.dayRef === undefined).map((item) => ({ ref: item.ref, title: item.title, kind: item.kind, area: item.area })),
     placesNotOnMap: doc.places

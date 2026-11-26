@@ -3,6 +3,7 @@ import { priceForGroup } from './engine/price.ts';
 import { PAY_METHOD, PAY_WHEN } from './labels.ts';
 import type { dayLodging } from './plan-info.ts';
 import type { TripDocument } from './schemas/trip-document.ts';
+import { travelersWithAge } from './traveler-age.ts';
 
 /**
  * Karta punktu w terenie (MVP-4): ile zapłaci cała grupa, czym i kiedy, rezerwacja z kodem
@@ -41,7 +42,7 @@ const range = (low: number, high: number, currency: string) => (low === high ? f
 /** Cena punktu dla tych, którzy w nim biorą udział (uczestnicy punktu albo cała grupa). */
 export function groupPriceLine(doc: Doc, item: Item, price: Price): string {
   const people = (item.participantRefs ?? []).length > 0 ? doc.travelers.filter((traveler) => item.participantRefs!.includes(traveler.ref)) : doc.travelers;
-  const group = priceForGroup(price, people);
+  const group = priceForGroup(price, travelersWithAge(doc, people));
   const prefix = price.from ? 'od ' : group.approx ? 'ok. ' : '';
   const amount = price.from ? formatMoney(group.minMinor, price.currency) : range(group.minMinor, group.maxMinor, price.currency);
   if (price.basis !== 'per_person') return `${prefix}${amount}${BASIS[price.basis] ? ` ${BASIS[price.basis]}` : ' za całość'}`;

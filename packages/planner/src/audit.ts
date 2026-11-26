@@ -11,6 +11,7 @@ import {
   ticketItems,
   TripAudit,
   type TripDocument,
+  travelerAge,
 } from '@expeditionplan/core';
 import { z } from 'zod';
 
@@ -38,7 +39,7 @@ export function auditContext(doc: Doc, locked: ReadonlySet<string>, codeIssues: 
     dates: { start: doc.trip.startDate, end: doc.trip.endDate, timeZone: doc.trip.primaryTz },
     travelers: doc.travelers.map((person) => ({
       name: person.name,
-      ...(person.age !== undefined ? { age: person.age } : {}),
+      ...(travelerAge(doc, person) !== undefined ? { age: travelerAge(doc, person) } : {}),
       ...(person.tentative ? { tentative: true } : {}),
       ...(person.fromDate || person.toDate ? { present: `${person.fromDate ?? doc.trip.startDate} – ${person.toDate ?? doc.trip.endDate}` } : {}),
     })),

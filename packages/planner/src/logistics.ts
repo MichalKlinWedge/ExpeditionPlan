@@ -1,5 +1,5 @@
 import { type AiClient, type AiUsage, askStructured } from '@expeditionplan/ai';
-import { LogisticsCandidates, type TripBrief, type TripDocument } from '@expeditionplan/core';
+import { LogisticsCandidates, type TripBrief, type TripDocument, travelersWithAge } from '@expeditionplan/core';
 import { z } from 'zod';
 
 import { SYSTEM } from './prompts.ts';
@@ -23,7 +23,7 @@ const ONCE_PER_TRIP = new Set<string>(['car_rental', 'esim', 'insurance']);
 
 /** Skład grupy do wyszukiwarek: dorośli od 18 lat, dzieci z wiekiem (bez wieku = dorosły). */
 export function party(doc: Doc): { adults: number; children: number[] } {
-  const children = doc.travelers.flatMap((each) => (each.age !== undefined && each.age < 18 ? [each.age] : []));
+  const children = travelersWithAge(doc).flatMap((each) => (each.age !== undefined && each.age < 18 ? [each.age] : []));
   return { adults: Math.max(1, doc.travelers.length - children.length), children };
 }
 

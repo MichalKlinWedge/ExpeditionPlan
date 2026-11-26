@@ -17,6 +17,7 @@ import {
   setLodgingLink,
   TripDocument,
   updateItem,
+  travelerAge,
 } from '@expeditionplan/core';
 import { z } from 'zod';
 
@@ -73,7 +74,7 @@ export function tuneContext(doc: Doc, locked: ReadonlySet<string>) {
       .map((group) => ({ title: group.title, options: doc.variants.filter((variant) => variant.groupRef === group.ref).map((variant) => variant.label) }));
   return {
     title: doc.trip.title,
-    travelers: doc.travelers.map((each) => ({ name: each.name, age: each.age })),
+    travelers: doc.travelers.map((each) => ({ name: each.name, age: travelerAge(doc, each) })),
     days: doc.days.map((day) => {
       const variants = variantsOf(day.ref);
       return { ref: day.ref, date: day.date, title: day.title, items: dayItems(doc, day.ref).map(describe), ...(variants.length > 0 ? { variants } : {}) };

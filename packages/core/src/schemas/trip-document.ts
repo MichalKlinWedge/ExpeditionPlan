@@ -63,7 +63,8 @@ export const DocTraveler = z.object({
   ref: Ref,
   name: text,
   nickname: z.string().optional(),
-  age: z.number().int().min(0).max(120).optional(),
+  /** Rok urodzenia; wiek liczy się z niego na początek wyjazdu (`core/traveler-age.ts`). */
+  birthYear: z.number().int().min(1900).max(2100).optional(),
   /** Rodzina albo para — podział kosztów „na rodzinę”. */
   household: z.string().optional(),
   /** Dorosły odpowiedzialny za dziecko. */

@@ -1,6 +1,6 @@
 "use server";
 
-import { carRouteFromItem, Currency, DRAFT_PREFIX, formatMinutes, IsoDate, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
+import { ageOn, carRouteFromItem, Currency, DRAFT_PREFIX, formatMinutes, IsoDate, parseCoordinates, PLANNING, plannerMemory, type PlannerPlaceMemory, pluralForm, POSTPONED, TimeZone, travelerDates, TripBrief, TripDocument } from "@expeditionplan/core";
 import type { Json } from "@expeditionplan/db";
 import { geoapifyLookup, googleLinkVias, groundPlaces, locateLegEnds, planTrip, routeLegs, withCoordinates } from "@expeditionplan/planner";
 import { COLLECTIONS, dbErrorMessage, importTrip, lockedRefs, type PullPayload, refIndex, rowForUpdate, saveElements, saveMergeEdit, stateFromPayload, uuidv7 } from "@expeditionplan/sync";
@@ -110,7 +110,7 @@ export async function renameTrip(tripId: string, name: string): Promise<FormStat
 const NewTraveler = z.object({
   name: z.string().trim().min(1, "Podaj imię."),
   nickname: z.string().trim().optional(),
-  age: z.preprocess((value) => (value === "" ? undefined : Number(value)), z.number().int().min(0).max(120).optional()),
+  birthYear: z.preprocess((value) => (value === "" ? undefined : Number(value)), z.number({ message: "Rok urodzenia to liczba, np. 2015." }).int("Rok urodzenia to liczba, np. 2015.").min(1900, "Podaj rok urodzenia, np. 2015.").max(new Date().getFullYear(), "Rok urodzenia nie może być w przyszłości.").optional()),
   household: z.string().trim().optional(),
   guardianId: z.string().uuid().or(z.literal("")).optional(),
   isDriver: z.literal("on").optional(),
@@ -178,7 +178,7 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
     trip_id: tripId,
     name: parsed.data.name,
     nickname: parsed.data.nickname || null,
-    age: parsed.data.age ?? null,
+    birth_year: parsed.data.birthYear ?? null,
     household: parsed.data.household || null,
     guardian_id: parsed.data.guardianId || null,
     is_driver: parsed.data.isDriver === "on",
@@ -192,7 +192,7 @@ export async function addTraveler(tripId: string, _prev: FormState, form: FormDa
   return { ok: `Dodano: ${parsed.data.name}` };
 }
 
-/** Zmiana danych uczestnika (imię, wiek, rodzina, opiekun, kierowca, wahanie, daty, uwagi, start i koniec). O prawie decyduje RLS. */
+/** Zmiana danych uczestnika (imię, rok urodzenia, rodzina, opiekun, kierowca, wahanie, daty, uwagi, start i koniec). O prawie decyduje RLS. */
 export async function updateTraveler(tripId: string, travelerId: string, _prev: FormState, form: FormData): Promise<FormState> {
   const parsed = NewTraveler.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
@@ -207,7 +207,7 @@ export async function updateTraveler(tripId: string, travelerId: string, _prev: 
     .update({
       name: parsed.data.name,
       nickname: parsed.data.nickname || null,
-      age: parsed.data.age ?? null,
+      birth_year: parsed.data.birthYear ?? null,
       household: parsed.data.household || null,
       guardian_id: parsed.data.guardianId || null,
       is_driver: parsed.data.isDriver === "on",
@@ -296,7 +296,7 @@ export async function saveBrief(tripId: string, _prev: FormState, form: FormData
   if (denied) return { error: denied };
   const [trip, travelers, existing] = await Promise.all([
     supabase.from("trips").select("title, start_date, end_date, home_tz, base_currency").eq("id", tripId).single(),
-    supabase.from("travelers").select("name, nickname, age, household, is_driver, notes").eq("trip_id", tripId).is("deleted_at", null).order("sort_key"),
+    supabase.from("travelers").select("name, nickname, birth_year, household, is_driver, notes").eq("trip_id", tripId).is("deleted_at", null).order("sort_key"),
     supabase.from("trip_brief").select("id").eq("trip_id", tripId).maybeSingle(),
   ]);
   if (trip.error) return { error: dbErrorMessage(trip.error) };
@@ -315,7 +315,7 @@ export async function saveBrief(tripId: string, _prev: FormState, form: FormData
     travelers: people.map((person) => ({
       name: person.name,
       nickname: person.nickname ?? undefined,
-      age: person.age ?? undefined,
+      age: ageOn(person.birth_year ?? undefined, trip.data.start_date!),
       household: person.household ?? undefined,
       isDriver: person.is_driver ?? undefined,
       notes: person.notes ?? undefined,

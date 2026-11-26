@@ -5,6 +5,7 @@ import {
   TripDocument,
   type TripDocumentInput,
   TripDocumentShape,
+  birthYearFromAge,
 } from '@expeditionplan/core';
 import { z } from 'zod';
 
@@ -15,12 +16,13 @@ import { z } from 'zod';
 
 export function tripContext(brief: TripBrief, primaryTz: string): Pick<TripDocumentInput, 'schemaVersion' | 'trip' | 'travelers'> {
   if (brief.dates.kind !== 'fixed') throw new Error('PoC-1 obsługuje tylko briefy ze stałymi datami.');
+  const startDate = brief.dates.start;
   return {
     schemaVersion: 1,
     trip: {
       title: brief.title,
       goal: brief.goal,
-      startDate: brief.dates.start,
+      startDate,
       endDate: brief.dates.end,
       primaryTz,
       homeTz: brief.homeTz,
@@ -29,7 +31,7 @@ export function tripContext(brief: TripBrief, primaryTz: string): Pick<TripDocum
     travelers: brief.travelers.map((traveler, index) => ({
       ref: `t${index + 1}`,
       name: traveler.name,
-      ...(traveler.age === undefined ? {} : { age: traveler.age }),
+      ...(traveler.age === undefined ? {} : { birthYear: birthYearFromAge(traveler.age, startDate) }),
       ...(traveler.household === undefined ? {} : { household: traveler.household }),
       ...(traveler.isDriver === undefined ? {} : { isDriver: traveler.isDriver }),
     })),

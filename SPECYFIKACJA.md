@@ -228,7 +228,7 @@ Ustrukturyzowany formularz, zapisywany jako `trip_brief` i walidowany schematem 
 
 ### M9. Współpraca i udostępnianie
 - M (schemat + minimum UI): role `owner` / `editor` / `viewer` egzekwowane przez RLS, zaproszenie linkiem z rolą i terminem ważności.
-- M: uczestnicy (`travelers`) z imieniem, wiekiem, rodziną i opiekunem. Powiązanie z kontem opcjonalne.
+- M: uczestnicy (`travelers`) z imieniem, rokiem urodzenia (wiek liczony na początek wyjazdu), rodziną i opiekunem. Powiązanie z kontem opcjonalne.
 - M: realtime: zmiana na laptopie widoczna na telefonie z siecią (Supabase Realtime, subskrypcja per `trip_id`).
 - S: edytor w UI (współbieżna edycja: ostrzeżenie „ktoś zmienił ten punkt”), obecność („Anna edytuje dzień 2”), dziennik aktywności.
 - S: link publiczny tylko do odczytu: SSR w układzie wzoru, ładny podgląd, ukrywane zakresy (koszty, sejf, adres noclegu, imiona), unieważnialny.

@@ -17,6 +17,7 @@ import {
   type ScheduleOptions,
   SPOT_DRIVE_M,
   type TripDocument,
+  travelerAge,
 } from '@expeditionplan/core';
 import { z } from 'zod';
 
@@ -183,7 +184,7 @@ export function dayExtrasContext(doc: Doc, dayRef: string, options: ScheduleOpti
   return {
     date: day.date,
     title: day.title,
-    travelers: doc.travelers.map((each) => ({ age: each.age })),
+    travelers: doc.travelers.map((each) => ({ age: travelerAge(doc, each) })),
     ...(schedule?.slackMin != null ? { slackMin: schedule.slackMin } : {}),
     ...(schedule?.facts.sun?.sunset != null ? { sunset: instantToZoned(schedule.facts.sun.sunset, schedule.tz).time } : {}),
     plan: (schedule?.items ?? []).map((each) => {

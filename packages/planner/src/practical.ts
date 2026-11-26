@@ -1,5 +1,5 @@
 import { type AiClient, type AiUsage, askStructured } from '@expeditionplan/ai';
-import { formatOffset, instantToZoned, offsetMinutes, PracticalInfo, sunTimes, type TripBrief, type TripDocument, zonedToInstant } from '@expeditionplan/core';
+import { formatOffset, instantToZoned, offsetMinutes, PracticalInfo, sunTimes, type TripBrief, type TripDocument, travelerAge, zonedToInstant } from '@expeditionplan/core';
 import { z } from 'zod';
 
 import { SYSTEM } from './prompts.ts';
@@ -46,7 +46,7 @@ export function practicalContext(doc: Doc, brief: TripBrief | null) {
     countries: brief?.location.countries ?? [],
     tripKind: brief?.location.kind,
     profiles: brief?.profiles,
-    travelers: doc.travelers.map((each) => ({ name: each.name, age: each.age, driver: each.isDriver })),
+    travelers: doc.travelers.map((each) => ({ name: each.name, age: travelerAge(doc, each), driver: each.isDriver })),
     days: doc.days.map((day) => ({ date: day.date, title: day.title, base: doc.places.find((place) => place.ref === day.baseRef)?.name })),
     activities: doc.items
       .filter((item) => item.kind === 'activity' || item.kind === 'visit')

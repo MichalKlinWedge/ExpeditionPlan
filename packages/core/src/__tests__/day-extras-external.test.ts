@@ -9,7 +9,7 @@ import { TripDocument } from '../schemas/trip-document.ts';
 const doc = TripDocument.parse({
   schemaVersion: 1,
   trip: { title: 'Test', startDate: '2026-07-01', endDate: '2026-07-01', primaryTz: 'Europe/Warsaw', baseCurrency: 'PLN' },
-  travelers: [{ ref: 't1', name: 'Ala', age: 9 }],
+  travelers: [{ ref: 't1', name: 'Ala', birthYear: 2017 }],
   places: [
     { ref: 'a', name: 'Rynek', lat: 50, lng: 20 },
     { ref: 'b', name: 'Jezioro', lat: 50, lng: 20.1 },

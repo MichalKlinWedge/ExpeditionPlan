@@ -1,6 +1,6 @@
 "use client";
 
-import { ID_DOCUMENT, ID_DOCUMENT_VALID, type IdDocument, idDocumentProblem, transportPlan } from "@expeditionplan/core";
+import { ageOn, ID_DOCUMENT, ID_DOCUMENT_VALID, type IdDocument, idDocumentProblem, transportPlan } from "@expeditionplan/core";
 import { useActionState, useId, useState, useTransition } from "react";
 
 import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTraveler, removeTrip, updateTraveler } from "@/app/actions";
@@ -89,7 +89,7 @@ export type Traveler = {
   id: string;
   name: string;
   nickname: string | null;
-  age: number | null;
+  birth_year: number | null;
   household: string | null;
   guardian_id: string | null;
   is_driver: boolean | null;
@@ -130,8 +130,8 @@ export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone
         <input name="nickname" className={input} defaultValue={traveler?.nickname ?? ""} />
       </label>
       <label className={label}>
-        Wiek
-        <input name="age" type="number" min={0} max={120} className={input} defaultValue={traveler?.age ?? ""} />
+        Rok urodzenia
+        <input name="birthYear" type="number" min={1900} max={new Date().getFullYear()} placeholder="np. 2015" className={input} defaultValue={traveler?.birth_year ?? ""} />
       </label>
       <label className={label}>
         Rodzina
@@ -253,7 +253,9 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
   const [result, setResult] = useState<FormState>({});
   const [pending, start] = useTransition();
   const nameOf = new Map(people.map((person) => [person.id, person.name]));
-  const guardians = people.filter((person) => person.age === null || person.age >= 18);
+  // Wiek na początek wyjazdu z roku urodzenia (`core/traveler-age.ts`), więc rośnie sam z kolejnymi latami.
+  const ageOf = (person: Traveler) => ageOn(person.birth_year ?? undefined, trip.start);
+  const guardians = people.filter((person) => (ageOf(person) ?? 18) >= 18);
   const remove = (person: Traveler) => {
     if (!window.confirm(`Usunąć uczestnika „${person.name}”?`)) return;
     start(async () => setResult(await removeTraveler(tripId, person.id)));
@@ -261,7 +263,7 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
   const placeName = (id: string | null) => (id === null ? null : (places.find((place) => place.id === id)?.name ?? "?"));
   // Kolumna tylko wtedy, gdy ktoś ma w niej dane — tabela nie rośnie o puste kolumny.
   const show = {
-    age: people.some((person) => person.age !== null),
+    age: people.some((person) => person.birth_year !== null),
     family: people.some((person) => person.household),
     when: people.some((person) => travelerPresence(person.from_date, person.to_date) !== null),
     route: people.some((person) => person.start_place_id || person.end_place_id),
@@ -312,7 +314,17 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
                       {person.is_driver && <span className="block text-xs text-zinc-500">kierowca</span>}
                       {person.notes && <span className="block whitespace-pre-line text-xs text-zinc-600 dark:text-zinc-400">{person.notes}</span>}
                     </td>
-                    {show.age && <td className="py-1.5 pr-3 whitespace-nowrap">{person.age !== null ? `${person.age} l.` : <span className="text-zinc-500">—</span>}</td>}
+                    {show.age && (
+                      <td className="py-1.5 pr-3 whitespace-nowrap">
+                        {person.birth_year !== null ? (
+                          <>
+                            {ageOf(person)} l.<span className="block text-xs text-zinc-500">ur. {person.birth_year}</span>
+                          </>
+                        ) : (
+                          <span className="text-zinc-500">—</span>
+                        )}
+                      </td>
+                    )}
                     {show.family && (
                       <td className="py-1.5 pr-3">{person.household ?? <span className="text-zinc-500">—</span>}</td>
                     )}

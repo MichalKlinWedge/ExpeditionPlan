@@ -73,6 +73,7 @@ export * from './trip-map.ts';
 export * from './trip-readiness.ts';
 export * from './task-due.ts';
 export * from './travel-documents.ts';
+export * from './traveler-age.ts';
 export * from './gear.ts';
 export * from './eat-out.ts';
 export * from './trip-status.ts';

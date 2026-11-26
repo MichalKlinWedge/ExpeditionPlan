@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { priceForGroup } from '../engine/price.ts';
+import { travelersWithAge } from '../traveler-age.ts';
 import { checkCarKmLimit, proposeCuts, scheduleDay, type ScheduleOptions } from '../engine/schedule.ts';
 import { TripDocument, type TripDocumentInput } from '../schemas/trip-document.ts';
 
@@ -203,7 +204,7 @@ describe('scheduleDay — na Twoich planach', () => {
     const plan = fixture('maroko');
     const bahia = plan.items.find((item) => item.ref === 'd2-bahia')!;
 
-    const price = priceForGroup(bahia.price!, plan.travelers);
+    const price = priceForGroup(bahia.price!, travelersWithAge(plan));
 
     expect(price.minMinor).toBe(45_000);
     expect(price.unknownAgeRefs).toHaveLength(3);
