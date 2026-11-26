@@ -63,6 +63,10 @@ export function MemberStats({
   const inviteOf = new Map(invites.map((invite) => [invite.id, invite]));
   const linked = new Set(members.flatMap((member) => member.travelers));
   const without = travelers.filter((each) => !linked.has(each.id));
+  // Wygasłe linki (stan „wygasł”) w zwiniętej podsekcji pod aktualnymi.
+  const isExpired = (invite: InviteStat) => invite.revoked_at === null && new Date(invite.expires_at).getTime() < now;
+  const expired = invites.filter(isExpired);
+  const current = invites.filter((invite) => !isExpired(invite));
   const active = members.filter((member) => member.last_seen_phone_at !== null || member.last_seen_web_at !== null).length;
   return (
     <div className="flex flex-col gap-4 text-sm">
@@ -172,41 +176,54 @@ export function MemberStats({
       {invites.length > 0 && (
         <div className="flex flex-col gap-1">
           <h3 className="font-medium">Linki zaproszeń</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left">
-              <thead className="text-xs text-zinc-500">
-                <tr>
-                  <th className="py-1 pr-3 font-normal">Utworzony</th>
-                  <th className="py-1 pr-3 font-normal">Dostęp</th>
-                  <th className="py-1 pr-3 font-normal">Dla</th>
-                  <th className="py-1 pr-3 font-normal">Użycia</th>
-                  <th className="py-1 pr-3 font-normal">Stan</th>
-                  <th className="py-1 font-normal">Dołączyli</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invites.map((invite) => {
-                  const joined = members.filter((member) => member.invite_id === invite.id);
-                  const live = !invite.revoked_at && new Date(invite.expires_at).getTime() >= now && invite.used_count < invite.max_uses;
-                  const state = invite.revoked_at ? "cofnięty" : new Date(invite.expires_at).getTime() < now ? "wygasł" : invite.used_count >= invite.max_uses ? "wykorzystany" : `ważny do ${date(invite.expires_at)}`;
-                  return (
-                    <tr key={invite.id} className="border-t border-zinc-200 align-top dark:border-zinc-800">
-                      <td className="py-1.5 pr-3 whitespace-nowrap">{date(invite.created_at)}</td>
-                      <td className="py-1.5 pr-3">{MEMBER_ROLE[invite.role] ?? invite.role}</td>
-                      <td className="py-1.5 pr-3">{invite.traveler_id ? (travelers.find((each) => each.id === invite.traveler_id)?.name ?? "?") : <span className="text-zinc-500">każdy</span>}</td>
-                      <td className="py-1.5 pr-3 tabular-nums whitespace-nowrap">
-                        {invite.used_count} z {invite.max_uses}
-                      </td>
-                      <td className={`py-1.5 pr-3 whitespace-nowrap ${live ? "" : "text-zinc-500"}`}>{state}</td>
-                      <td className="py-1.5">{joined.length > 0 ? joined.map((member) => member.display_name ?? member.email ?? "?").join(", ") : <span className="text-zinc-500">—</span>}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {current.length > 0 ? <InviteTable invites={current} members={members} travelers={travelers} now={now} /> : <p className="text-sm text-zinc-500">Brak aktualnych linków.</p>}
+          {expired.length > 0 && (
+            <details data-remember="linki-wygasle" className="text-sm">
+              <summary className="cursor-pointer text-zinc-500">Wygasłe ({expired.length})</summary>
+              <InviteTable invites={expired} members={members} travelers={travelers} now={now} />
+            </details>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Tabela linków zaproszeń: aktualne i (zwinięte) wygasłe. */
+function InviteTable({ invites, members, travelers, now }: { invites: InviteStat[]; members: MemberStat[]; travelers: Traveler[]; now: number }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[560px] text-left">
+        <thead className="text-xs text-zinc-500">
+          <tr>
+            <th className="py-1 pr-3 font-normal">Utworzony</th>
+            <th className="py-1 pr-3 font-normal">Dostęp</th>
+            <th className="py-1 pr-3 font-normal">Dla</th>
+            <th className="py-1 pr-3 font-normal">Użycia</th>
+            <th className="py-1 pr-3 font-normal">Stan</th>
+            <th className="py-1 font-normal">Dołączyli</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invites.map((invite) => {
+            const joined = members.filter((member) => member.invite_id === invite.id);
+            const live = !invite.revoked_at && new Date(invite.expires_at).getTime() >= now && invite.used_count < invite.max_uses;
+            const state = invite.revoked_at ? "cofnięty" : new Date(invite.expires_at).getTime() < now ? "wygasł" : invite.used_count >= invite.max_uses ? "wykorzystany" : `ważny do ${date(invite.expires_at)}`;
+            return (
+              <tr key={invite.id} className="border-t border-zinc-200 align-top dark:border-zinc-800">
+                <td className="py-1.5 pr-3 whitespace-nowrap">{date(invite.created_at)}</td>
+                <td className="py-1.5 pr-3">{MEMBER_ROLE[invite.role] ?? invite.role}</td>
+                <td className="py-1.5 pr-3">{invite.traveler_id ? (travelers.find((each) => each.id === invite.traveler_id)?.name ?? "?") : <span className="text-zinc-500">każdy</span>}</td>
+                <td className="py-1.5 pr-3 tabular-nums whitespace-nowrap">
+                  {invite.used_count} z {invite.max_uses}
+                </td>
+                <td className={`py-1.5 pr-3 whitespace-nowrap ${live ? "" : "text-zinc-500"}`}>{state}</td>
+                <td className="py-1.5">{joined.length > 0 ? joined.map((member) => member.display_name ?? member.email ?? "?").join(", ") : <span className="text-zinc-500">—</span>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
