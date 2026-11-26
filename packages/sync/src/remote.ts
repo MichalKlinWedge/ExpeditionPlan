@@ -87,6 +87,17 @@ export function supabaseRemote(client: SupabaseClient): Remote {
         }
         return;
       }
+      if (table === 'travelers') {
+        // Z telefonu tylko daty dokumentów osoby — przez RPC, które sprawdza, czyje to dane.
+        for (const row of rows) {
+          const date = (value: unknown) => (typeof value === 'string' ? value : null);
+          // `null` = bez daty; wygenerowane typy argumentów funkcji nie znają nulli.
+          const args = { p_traveler: row.id as string, p_passport: date(row.passport_until), p_id_card: date(row.id_card_until), p_ekuz: date(row.ekuz_until) };
+          const { error } = await client.rpc('set_traveler_documents', args as { p_traveler: string; p_passport: string; p_id_card: string; p_ekuz: string });
+          if (error) throw new RemoteError(dbErrorMessage(error), error.code);
+        }
+        return;
+      }
       const { error } = await client
         .from(table)
         .upsert(rows, { onConflict: 'id', ignoreDuplicates: table === 'schedule_events' });

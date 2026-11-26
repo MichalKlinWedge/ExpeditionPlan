@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, inject, it } from 'vitest';
 
-import { saveExpense, setCarrying, setPacked, setVote } from '../outbox.ts';
+import { saveExpense, setCarrying, setPacked, setTravelerDocuments, setVote } from '../outbox.ts';
 import { cachedTrip, refreshTrip, setTaskDone } from '../trip-cache.ts';
 import { uuidv7 } from '../uuid.ts';
 import { createDevice, createTestUser, loadFixture, seedTrip } from './helpers/harness.ts';
@@ -163,5 +163,36 @@ describe('portfel i pakowanie z telefonu', () => {
     expect(after.pending).toBe(0);
     expect(after.state.doc.tasks.find((task) => task.ref === 't-cudze')?.status).toBe('open');
     expect((await owner.client.from('tasks').select('status').eq('id', foreign).single()).data?.status).toBe('open');
+  });
+
+  it('daty dokumentów: widz zmienia swoje offline, cudzych nie (wracają z serwera), organizator każdemu', async () => {
+    const owner = await device('docs-owner');
+    const viewer = await device('docs-viewer');
+    const { tripId, rows } = await seedTrip(owner.client, loadFixture('dinara'));
+    const [mine, other] = rows.travelers!;
+    await owner.client.from('travelers').update({ user_id: viewer.user.id }).eq('id', mine!.id);
+    await owner.client.from('travelers').update({ passport_until: '2031-01-01' }).eq('id', other!.id);
+    const invite = await owner.client.rpc('create_invite', { p_trip: tripId, p_role: 'viewer' });
+    await viewer.client.rpc('accept_invite', { p_token: invite.data });
+
+    await refreshTrip(viewer.db, viewer.remote, tripId);
+    viewer.setOffline(true);
+    setTravelerDocuments(viewer.db, tripId, mine!.id, { passportUntil: null, idCardUntil: '2030-02-02', ekuzUntil: '2028-03-03' });
+    const ref = (id: string) => rows.travelers!.find((row) => row.id === id)!.ref as string;
+    expect(cachedTrip(viewer.db, tripId)!.state.doc.travelers.find((each) => each.ref === ref(mine!.id))?.ekuzUntil).toBe('2028-03-03');
+    viewer.setOffline(false);
+    expect((await refreshTrip(viewer.db, viewer.remote, tripId)).pending).toBe(0);
+    expect((await owner.client.from('travelers').select('id_card_until, ekuz_until').eq('id', mine!.id).single()).data).toEqual({ id_card_until: '2030-02-02', ekuz_until: '2028-03-03' });
+
+    setTravelerDocuments(viewer.db, tripId, other!.id, { passportUntil: null, idCardUntil: null, ekuzUntil: '2029-01-01' });
+    const after = await refreshTrip(viewer.db, viewer.remote, tripId);
+    expect(after.rejected.map((each) => each.id)).toEqual([other!.id]);
+    expect(after.state.doc.travelers.find((each) => each.ref === ref(other!.id))).toMatchObject({ passportUntil: '2031-01-01' });
+    expect(after.state.doc.travelers.find((each) => each.ref === ref(other!.id))?.ekuzUntil).toBeUndefined();
+
+    await refreshTrip(owner.db, owner.remote, tripId);
+    setTravelerDocuments(owner.db, tripId, other!.id, { passportUntil: '2031-01-01', idCardUntil: null, ekuzUntil: '2029-01-01' });
+    expect((await refreshTrip(owner.db, owner.remote, tripId)).pending).toBe(0);
+    expect((await owner.client.from('travelers').select('ekuz_until').eq('id', other!.id).single()).data?.ekuz_until).toBe('2029-01-01');
   });
 });

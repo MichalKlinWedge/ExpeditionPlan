@@ -30,6 +30,9 @@ export function InfoView({
   trip,
   tripId,
   signedIn = false,
+  userId = null,
+  canEditAll = false,
+  onChanged,
   onContactsAt,
   onBooking,
   onOpenItem,
@@ -37,6 +40,10 @@ export function InfoView({
   trip: CachedTrip;
   tripId?: string;
   signedIn?: boolean;
+  /** Karta „Dokumenty podróży”: kto zmienia daty (organizator i edytor każdemu, uczestnik sobie i dzieciom). */
+  userId?: string | null;
+  canEditAll?: boolean;
+  onChanged?: () => void;
   onContactsAt?: (y: number) => void;
   onBooking?: (bookingRef: string) => void;
   onOpenItem?: (itemRef: string) => void;
@@ -72,7 +79,7 @@ export function InfoView({
         </ThemedText>
       )}
       {vault}
-      <TravelDocumentsCard doc={doc} />
+      <TravelDocumentsCard trip={trip} tripId={tripId} userId={signedIn ? userId : null} canEditAll={canEditAll} onChanged={onChanged} />
       {(emergency.length > 0 || others.length > 0) && (
         <View style={styles.list} onLayout={(event) => onContactsAt?.(event.nativeEvent.layout.y)}>
           {emergency.length > 0 && (

@@ -266,6 +266,29 @@ export function updateTask(db: LocalDb, tripId: string, taskId: string, patch: R
   });
 }
 
+export type TravelerDocumentDates = { passportUntil: string | null; idCardUntil: string | null; ekuzUntil: string | null };
+
+/**
+ * Daty ważności paszportu, dowodu i EKUZ z telefonu — offline. Na serwer idą zawsze wszystkie trzy
+ * (RPC `set_traveler_documents`, `supabaseRemote`), nic poza nimi; przyjmie je organizator i edytor
+ * dla każdego, a uczestnik połączony z kontem — dla siebie i swoich dzieci.
+ */
+export function setTravelerDocuments(db: LocalDb, tripId: string, travelerId: string, dates: TravelerDocumentDates): void {
+  const local = db.all<{ data: string }>('select data from rows where tbl = ? and id = ?', ['travelers', travelerId])[0];
+  if (local === undefined) throw new Error('Tej osoby nie ma w bazie telefonu — odśwież plan');
+  const patch = { passport_until: dates.passportUntil, id_card_until: dates.idCardUntil, ekuz_until: dates.ekuzUntil };
+  const row = { ...(JSON.parse(local.data) as Record<string, unknown>), ...patch };
+  db.transaction(() => {
+    db.run('update rows set data = ?, pending = 1 where tbl = ? and id = ?', [JSON.stringify(row), 'travelers', travelerId]);
+    db.run('insert into outbox (tbl, row_id, payload, created_at) values (?, ?, ?, ?)', [
+      'travelers',
+      travelerId,
+      JSON.stringify({ id: travelerId, trip_id: tripId, ...patch }),
+      new Date().toISOString(),
+    ]);
+  });
+}
+
 export function pendingCount(db: LocalDb): number {
   return db.all<{ n: number }>('select count(*) as n from outbox')[0]?.n ?? 0;
 }

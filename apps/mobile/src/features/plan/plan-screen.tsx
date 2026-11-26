@@ -504,6 +504,9 @@ Na mapie ${coverage.places.onMap} z ${coverage.places.total} miejsc${coverage.le
                 trip={trip}
                 tripId={tripId}
                 signedIn={signedIn}
+                userId={signedIn ? userId : null}
+                canEditAll={signedIn && canAct}
+                onChanged={afterLocalWrite}
                 onBooking={setBooking}
                 onOpenItem={(ref) => {
                   const item = trip.state.doc.items.find((each) => each.ref === ref);

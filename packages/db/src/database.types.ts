@@ -1583,6 +1583,9 @@ isOneToOne: false
 "set_public_show":
 { Args: { "p_kind"?: string,"p_show": boolean,"p_trip": string }; Returns: boolean
                            },
+"set_traveler_documents":
+{ Args: { "p_ekuz": string,"p_id_card": string,"p_passport": string,"p_traveler": string }; Returns: undefined
+                           },
 "show_is_public":
 { Args: { "p_trip": string }; Returns: boolean
                            },
