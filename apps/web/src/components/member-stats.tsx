@@ -63,10 +63,10 @@ export function MemberStats({
   const inviteOf = new Map(invites.map((invite) => [invite.id, invite]));
   const linked = new Set(members.flatMap((member) => member.travelers));
   const without = travelers.filter((each) => !linked.has(each.id));
-  // Wygasłe linki (stan „wygasł”) w zwiniętej podsekcji pod aktualnymi.
-  const isExpired = (invite: InviteStat) => invite.revoked_at === null && new Date(invite.expires_at).getTime() < now;
-  const expired = invites.filter(isExpired);
-  const current = invites.filter((invite) => !isExpired(invite));
+  // Nieaktywne linki (wygasłe, wykorzystane, cofnięte) w zwiniętej podsekcji pod aktualnymi.
+  const isLive = (invite: InviteStat) => invite.revoked_at === null && new Date(invite.expires_at).getTime() >= now && invite.used_count < invite.max_uses;
+  const inactive = invites.filter((invite) => !isLive(invite));
+  const current = invites.filter(isLive);
   const active = members.filter((member) => member.last_seen_phone_at !== null || member.last_seen_web_at !== null).length;
   return (
     <div className="flex flex-col gap-4 text-sm">
@@ -177,10 +177,10 @@ export function MemberStats({
         <div className="flex flex-col gap-1">
           <h3 className="font-medium">Linki zaproszeń</h3>
           {current.length > 0 ? <InviteTable invites={current} members={members} travelers={travelers} now={now} /> : <p className="text-sm text-zinc-500">Brak aktualnych linków.</p>}
-          {expired.length > 0 && (
-            <details data-remember="linki-wygasle" className="text-sm">
-              <summary className="cursor-pointer text-zinc-500">Wygasłe ({expired.length})</summary>
-              <InviteTable invites={expired} members={members} travelers={travelers} now={now} />
+          {inactive.length > 0 && (
+            <details data-remember="linki-nieaktywne" className="text-sm">
+              <summary className="cursor-pointer text-zinc-500">Wygasłe, wykorzystane i cofnięte ({inactive.length})</summary>
+              <InviteTable invites={inactive} members={members} travelers={travelers} now={now} />
             </details>
           )}
         </div>
@@ -189,7 +189,7 @@ export function MemberStats({
   );
 }
 
-/** Tabela linków zaproszeń: aktualne i (zwinięte) wygasłe. */
+/** Tabela linków zaproszeń: aktualne i (zwinięte) nieaktywne. */
 function InviteTable({ invites, members, travelers, now }: { invites: InviteStat[]; members: MemberStat[]; travelers: Traveler[]; now: number }) {
   return (
     <div className="overflow-x-auto">
