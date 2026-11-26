@@ -7,9 +7,10 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { PlacePin } from '@/features/plan/place-pin';
 import { DocumentsView } from '@/features/trip/documents-view';
+import { TravelDocumentsCard } from '@/features/trip/travel-documents-card';
 
 /**
- * Informacje praktyczne na telefonie — offline, z planu zapisanego w SQLite: numery alarmowe
+ * Informacje praktyczne na telefonie — offline, z planu zapisanego w SQLite: ważność paszportów, dowodów i EKUZ, numery alarmowe
  * (jedno dotknięcie = połączenie; 112 zawsze, nawet gdy plan go nie ma), kontakty (gospodarz, wypożyczalnia), ważne ostrzeżenia, notatki
  * według tematów i źródła. Na webie: „Informacje praktyczne” (etap 5 AI). Zadania — osobna zakładka.
  */
@@ -71,6 +72,7 @@ export function InfoView({
         </ThemedText>
       )}
       {vault}
+      <TravelDocumentsCard doc={doc} />
       {(emergency.length > 0 || others.length > 0) && (
         <View style={styles.list} onLayout={(event) => onContactsAt?.(event.nativeEvent.layout.y)}>
           {emergency.length > 0 && (
