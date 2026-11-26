@@ -22,8 +22,9 @@ export default function PlanTab() {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
-  // Wejście z innego ekranu prosto w zakładkę (`/plan?tab=tasks` z karty zadań na Starcie).
-  const params = useLocalSearchParams<{ tab?: string }>();
+  // Wejście z innego ekranu prosto w zakładkę (`openTripTab`: karta zadań na Starcie, dotknięcie przypomnienia).
+  // `at` zmienia się przy każdym wejściu: wyjazd z wejścia i jego zakładka także przy otwartym już Planie.
+  const params = useLocalSearchParams<{ tab?: string; at?: string }>();
   const tab = PLAN_TABS.includes(params.tab as PlanTabName) ? (params.tab as PlanTabName) : undefined;
 
   const load = useCallback(async () => {
@@ -40,6 +41,12 @@ export default function PlanTab() {
       if (session !== undefined) void load();
     }, [load, session]),
   );
+
+  const [seenAt, setSeenAt] = useState(params.at);
+  if (params.at !== seenAt && trips !== null) {
+    setSeenAt(params.at);
+    setSelected(currentTrip(trips));
+  }
 
   let message: string | null = null;
   if (!isConfigured) message = 'Brak adresu Supabase w tej wersji aplikacji.';
@@ -58,7 +65,7 @@ export default function PlanTab() {
           <View style={styles.fill}>
             <TripSwitcher trips={trips!} selected={selected} onSelect={setSelected} />
             <Plan
-              key={selected}
+              key={`${selected}:${params.at ?? ''}`}
               tripId={selected}
               tab={tab}
               signedIn={session !== null}

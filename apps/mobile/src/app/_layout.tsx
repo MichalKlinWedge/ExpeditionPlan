@@ -15,6 +15,7 @@ import { AppState, useColorScheme } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 import { startSyncLoop } from '@/features/sync/sync-loop';
+import { ReminderFromNotification } from '@/features/trip/reminder-from-notification';
 import { refreshCurrentReminders } from '@/features/trip/reminders';
 import { UpdateWatcher } from '@/features/updates/update-notice';
 import { GuideFromNotification } from '@/features/walk/guide-from-notification';
@@ -43,6 +44,7 @@ export default function TabLayout() {
       <AppTabs />
       <UpdateWatcher />
       <GuideFromNotification />
+      <ReminderFromNotification />
     </ThemeProvider>
   );
 }

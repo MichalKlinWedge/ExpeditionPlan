@@ -1,6 +1,6 @@
 import { addDays, isDraft, isPostponed, localToday, type TaskDueContext, taskDueDate, taskLimitDate, type TripDocument } from '@expeditionplan/core';
 import { cachedTrip, setTaskStatus, updateTask } from '@expeditionplan/sync';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert as RnAlert, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -12,7 +12,8 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/features/auth/session';
 import { scheduleTripReminders } from '@/features/trip/reminders';
-import { archivedTrips, cachedTrips, setCurrentTrip } from '@/features/trips/my-trips';
+import { archivedTrips, cachedTrips } from '@/features/trips/my-trips';
+import { openTripTab } from '@/features/trips/open-trip';
 import { syncPending } from '@/features/sync/sync-loop';
 import { localDb } from '@/lib/local-db';
 
@@ -169,10 +170,7 @@ export function TaskAlerts() {
   const overdue = left.filter((task) => task.overdue);
   const soon = left.filter(inWeek);
   const shown = group === null ? [] : tasks.filter((task) => inGroup(task, group)).slice(0, SHOWN);
-  const open = (tripId: string) => {
-    setCurrentTrip(tripId);
-    router.navigate('/plan?tab=tasks');
-  };
+  const open = (tripId: string) => openTripTab(tripId, 'tasks');
   /** Odhaczenie i cofnięcie; wiersz zostaje na liście aż do następnego wejścia na Start. */
   const check = (task: Task) => {
     if (!task.canCheck) {
