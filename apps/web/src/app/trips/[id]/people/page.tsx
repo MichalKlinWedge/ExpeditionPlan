@@ -46,7 +46,7 @@ async function People({ params }: { params: Promise<{ id: string }> }) {
   const [trip, members, travelers, share, places, vehicles, taskTitles] = await Promise.all([
     supabase.from("my_trips").select("title, role, start_date, end_date, primary_tz").eq("id", id).maybeSingle(),
     supabase.from("trip_members").select("user_id, role, can_add_expenses, profiles(display_name)").eq("trip_id", id).order("created_at"),
-    supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver, tentative, from_date, to_date, notes, start_place_id, end_place_id, passport_until, id_card_until").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
+    supabase.from("travelers").select("id, name, nickname, age, household, guardian_id, is_driver, tentative, from_date, to_date, notes, start_place_id, end_place_id, passport_until, id_card_until, ekuz_until").eq("trip_id", id).is("deleted_at", null).order("sort_key"),
     supabase.from("public_shares").select("enabled, hide").eq("trip_id", id).maybeSingle(),
     supabase.from("places").select("id, ref, name").eq("trip_id", id).is("deleted_at", null).order("name"),
     supabase.from("vehicles").select("id, label, driver_traveler_id, seats, passenger_ids, notes").eq("trip_id", id).is("deleted_at", null).order("sort_key"),

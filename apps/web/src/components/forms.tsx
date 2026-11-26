@@ -1,6 +1,6 @@
 "use client";
 
-import { ID_DOCUMENT, type IdDocument, idDocumentProblem, transportPlan } from "@expeditionplan/core";
+import { ID_DOCUMENT, ID_DOCUMENT_VALID, type IdDocument, idDocumentProblem, transportPlan } from "@expeditionplan/core";
 import { useActionState, useId, useState, useTransition } from "react";
 
 import { acceptInvite, addTraveler, createInvite, createTrip, type FormState, importSamples, importTripFile, removeTraveler, removeTrip, updateTraveler } from "@/app/actions";
@@ -101,6 +101,7 @@ export type Traveler = {
   end_place_id: string | null;
   passport_until: string | null;
   id_card_until: string | null;
+  ekuz_until: string | null;
 };
 
 type TripRange = { start: string; end: string };
@@ -170,6 +171,10 @@ export function TravelerForm({ tripId, trip, guardians, places, traveler, onDone
       <label className={label} title="Tylko data, bez numeru. U osoby z kontem uzupełni się też w jej innych wyjazdach, gdzie pole jest puste.">
         Dowód ważny do
         <input name="idCardUntil" type="date" className={input} defaultValue={traveler?.id_card_until ?? ""} />
+      </label>
+      <label className={label} title="Tylko data, bez numeru karty. U osoby z kontem uzupełni się też w jej innych wyjazdach, gdzie pole jest puste.">
+        EKUZ ważna do
+        <input name="ekuzUntil" type="date" className={input} defaultValue={traveler?.ekuz_until ?? ""} />
       </label>
       <label className={`${label} col-span-2 sm:col-span-3`}>
         Uwagi
@@ -260,7 +265,7 @@ export function TravelerList({ tripId, trip, people, places, canEdit, today }: {
     family: people.some((person) => person.household),
     when: people.some((person) => travelerPresence(person.from_date, person.to_date) !== null),
     route: people.some((person) => person.start_place_id || person.end_place_id),
-    documents: people.some((person) => person.passport_until !== null || person.id_card_until !== null),
+    documents: people.some((person) => person.passport_until !== null || person.id_card_until !== null || person.ekuz_until !== null),
   };
   const columns = 1 + Object.values(show).filter(Boolean).length + (canEdit ? 1 : 0);
   return (
@@ -375,11 +380,12 @@ function NewTraveler({ tripId, trip, guardians, places }: { tripId: string; trip
   );
 }
 
-/** Ważność paszportu i dowodu przy osobie; dokument, który nie wystarczy, na czerwono (nieważny w trakcie) albo bursztynowo (paszport bez 6 miesięcy zapasu). */
+/** Ważność paszportu, dowodu i EKUZ przy osobie; dokument, który nie wystarczy, na czerwono (nieważny w trakcie) albo bursztynowo (paszport bez 6 miesięcy zapasu). */
 function TravelerDocuments({ person, back, today }: { person: Traveler; back: string; today: string }) {
   const docs = [
     ["passport", person.passport_until],
     ["id_card", person.id_card_until],
+    ["ekuz", person.ekuz_until],
   ].filter((pair): pair is [IdDocument, string] => pair[1] !== null);
   if (docs.length === 0) return <span className="text-zinc-500">—</span>;
   return (
@@ -388,7 +394,7 @@ function TravelerDocuments({ person, back, today }: { person: Traveler; back: st
         const found = idDocumentProblem(document, until, back, today);
         return (
           <span key={document} className={found === null ? undefined : found.problem === "short_margin" ? "text-amber-700 dark:text-amber-400" : "text-red-700 dark:text-red-400"}>
-            {found === null ? `${ID_DOCUMENT[document]} ważny do ${dayMonthYear(until)}` : `⚠ ${found.text}`}
+            {found === null ? `${ID_DOCUMENT[document]} ${ID_DOCUMENT_VALID[document]} do ${dayMonthYear(until)}` : `⚠ ${found.text}`}
           </span>
         );
       })}

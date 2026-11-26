@@ -120,6 +120,7 @@ const NewTraveler = z.object({
   notes: z.string().trim().max(2000, "Uwagi są za długie.").optional(),
   passportUntil: IsoDate.or(z.literal("")).optional(),
   idCardUntil: IsoDate.or(z.literal("")).optional(),
+  ekuzUntil: IsoDate.or(z.literal("")).optional(),
   startPlace: z.string().trim().max(200, "Nazwa miejsca jest za długa.").optional(),
   endPlace: z.string().trim().max(200, "Nazwa miejsca jest za długa.").optional(),
 });
@@ -159,7 +160,7 @@ async function presenceFields(supabase: Awaited<ReturnType<typeof requireUser>>[
   const dates = travelerDates(data.fromDate, data.toDate, { startDate: trip.start_date!, endDate: trip.end_date! });
   if ("error" in dates) return { error: dates.error };
   return {
-    row: { tentative: data.tentative === "on", from_date: dates.fromDate, to_date: dates.toDate, notes: data.notes || null, passport_until: data.passportUntil || null, id_card_until: data.idCardUntil || null },
+    row: { tentative: data.tentative === "on", from_date: dates.fromDate, to_date: dates.toDate, notes: data.notes || null, passport_until: data.passportUntil || null, id_card_until: data.idCardUntil || null, ekuz_until: data.ekuzUntil || null },
   };
 }
 

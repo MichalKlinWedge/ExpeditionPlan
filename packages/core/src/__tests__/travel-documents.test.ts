@@ -47,6 +47,21 @@ describe('formalności: ważność dokumentów', () => {
     ]);
   });
 
+  it('EKUZ: nieważna dziś albo przed powrotem osoby; bez zapasu 6 miesięcy, pusta bez ostrzeżeń', () => {
+    const doc = TripDocument.parse({
+      ...base,
+      travelers: base.travelers.map((person) =>
+        person.ref === first.ref ? { ...person, ekuzUntil: '2026-10-01' } : person.ref === second.ref ? { ...person, ekuzUntil: end, toDate: undefined } : person,
+      ),
+    });
+    const warnings = documentWarnings(doc, '2026-11-08').filter((each) => each.document === 'ekuz');
+    expect(warnings.map((each) => [each.name, each.problem])).toEqual([[first.name, 'expired']]);
+    expect(warnings[0]!.text).toBe('EKUZ ważna do 1.10.2026 — już nieważna');
+    const short = TripDocument.parse({ ...doc, travelers: doc.travelers.map((person) => (person.ref === second.ref ? { ...person, ekuzUntil: base.trip.startDate } : person)) });
+    expect(documentWarnings(short, '2026-11-08').find((each) => each.document === 'ekuz' && each.travelerRef === second.ref)?.problem).toBe('before_return');
+    expect(tripReadiness(short, '2026-11-08').filter((issue) => issue.group === 'documents' && issue.title.includes('EKUZ')).every((issue) => issue.overdue)).toBe(true);
+  });
+
   it('zadania formalności z linkiem gov.pl i terminem przed wyjazdem; drugi raz bez duplikatów', () => {
     let next = 0;
     const tasks = formalityTasks(base, ['ekuz', 'odyseusz', 'insurance'], () => `t-${++next}`);

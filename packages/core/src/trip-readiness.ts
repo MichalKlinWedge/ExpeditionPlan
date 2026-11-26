@@ -29,7 +29,7 @@ export type ReadinessIssue = {
 
 export const READINESS_GROUP: Record<ReadinessGroup, string> = {
   book: 'Do zarezerwowania',
-  documents: 'Dokumenty tożsamości',
+  documents: 'Dokumenty podróży',
   pay: 'Do zapłaty przed wyjazdem',
   vault: 'Rezerwacje bez dokumentu w sejfie',
   lodging: 'Noce bez noclegu',

@@ -3,7 +3,7 @@
 -- brakujące daty. Uruchomienie: npm run test:db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(9);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000000f1', 'dok-owner@test.local'),
@@ -41,7 +41,7 @@ select is((select id_card_until from public.travelers where id = '7f000000-0000-
 
 -- Organizator A wpisuje paszport i dowód: C ma już swój dowód, więc tylko paszport się tam pojawia.
 select pg_temp.login('00000000-0000-4000-8000-0000000000f1');
-update public.travelers set passport_until = '2030-01-10', id_card_until = '2032-02-02' where id = '7f000000-0000-4000-8000-00000000000a';
+update public.travelers set passport_until = '2030-01-10', id_card_until = '2032-02-02', ekuz_until = '2029-09-09' where id = '7f000000-0000-4000-8000-00000000000a';
 reset role;
 select is((select passport_until from public.travelers where id = '7f000000-0000-4000-8000-00000000000c'), '2030-01-10'::date,
   'paszport trafia do pustego pola w wyjeździe innego organizatora');
@@ -52,7 +52,10 @@ select is((select passport_until from public.travelers where id = '7f000000-0000
 
 -- B łączy Anię z kontem później: dostaje paszport z A i dowód (najświeższy) z A.
 update public.travelers set user_id = '00000000-0000-4000-8000-0000000000f2' where id = '7f000000-0000-4000-8000-00000000000b';
+select is((select ekuz_until from public.travelers where id = '7f000000-0000-4000-8000-00000000000c'), '2029-09-09'::date,
+  'EKUZ trafia do pustego pola w wyjeździe innego organizatora');
 select is((select passport_until from public.travelers where id = '7f000000-0000-4000-8000-00000000000b'), '2030-01-10'::date, 'nowo połączony dostaje paszport');
+select is((select ekuz_until from public.travelers where id = '7f000000-0000-4000-8000-00000000000b'), '2029-09-09'::date, 'i EKUZ');
 select ok((select id_card_until from public.travelers where id = '7f000000-0000-4000-8000-00000000000b') is not null, 'i dowód');
 
 -- Zmiana daty w jednym wyjeździe nie nadpisuje już wpisanych w innych.

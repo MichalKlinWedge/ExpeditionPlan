@@ -1,9 +1,9 @@
 import type { TripDocument } from './schemas/trip-document.ts';
 
 /**
- * Formalności przed wyjazdem. Przy osobie zapisuje się tylko data ważności paszportu i dowodu (bez
- * numerów); ostrzeżenia trafiają do „Gotowości do wyjazdu”. Paszport powinien być ważny jeszcze co
- * najmniej 6 miesięcy po powrocie (wymóg wielu krajów spoza UE), dowód — do powrotu. Zadania
+ * Formalności przed wyjazdem. Przy osobie zapisuje się tylko data ważności paszportu, dowodu i EKUZ
+ * (bez numerów); ostrzeżenia trafiają do „Gotowości do wyjazdu”. Paszport powinien być ważny jeszcze co
+ * najmniej 6 miesięcy po powrocie (wymóg wielu krajów spoza UE), dowód i EKUZ — do powrotu. Zadania
  * formalności (EKUZ, ubezpieczenie, międzynarodowe prawo jazdy, Odyseusz) to zwykłe zadania wyjazdu
  * z linkiem do usługi na gov.pl — aplikacja nie pobiera tych stron.
  */
@@ -13,8 +13,10 @@ type Doc = TripDocument;
 /** Ile miesięcy po powrocie paszport ma być jeszcze ważny. */
 export const PASSPORT_MARGIN_MONTHS = 6;
 
-export type IdDocument = 'passport' | 'id_card';
-export const ID_DOCUMENT: Record<IdDocument, string> = { passport: 'paszport', id_card: 'dowód' };
+export type IdDocument = 'passport' | 'id_card' | 'ekuz';
+export const ID_DOCUMENT: Record<IdDocument, string> = { passport: 'paszport', id_card: 'dowód', ekuz: 'EKUZ' };
+/** „ważny” / „ważna” — EKUZ to karta. */
+export const ID_DOCUMENT_VALID: Record<IdDocument, string> = { passport: 'ważny', id_card: 'ważny', ekuz: 'ważna' };
 
 export type DocumentProblem = 'expired' | 'before_return' | 'short_margin';
 
@@ -43,11 +45,11 @@ export function idDocumentProblem(document: IdDocument, until: string, back: str
   const problem: DocumentProblem | null =
     until < today ? 'expired' : until < back ? 'before_return' : document === 'passport' && until < addMonths(back, PASSPORT_MARGIN_MONTHS) ? 'short_margin' : null;
   if (problem === null) return null;
-  const why = problem === 'expired' ? 'już nieważny' : problem === 'before_return' ? 'traci ważność przed powrotem' : `krócej niż ${PASSPORT_MARGIN_MONTHS} miesięcy po powrocie`;
-  return { problem, text: `${ID_DOCUMENT[document]} ważny do ${polishDate(until)} — ${why}` };
+  const why = problem === 'expired' ? `już nie${ID_DOCUMENT_VALID[document]}` : problem === 'before_return' ? 'traci ważność przed powrotem' : `krócej niż ${PASSPORT_MARGIN_MONTHS} miesięcy po powrocie`;
+  return { problem, text: `${ID_DOCUMENT[document]} ${ID_DOCUMENT_VALID[document]} do ${polishDate(until)} — ${why}` };
 }
 
-/** Dokumenty, które nie wystarczą na wyjazd: nieważne już dziś, tracące ważność przed powrotem osoby, paszport bez 6 miesięcy zapasu. */
+/** Dokumenty, które nie wystarczą na wyjazd: nieważne już dziś, tracące ważność przed powrotem osoby, paszport bez 6 miesięcy zapasu. EKUZ tylko, gdy jej datę wpisano (wyjazd poza UE jej nie potrzebuje). */
 export function documentWarnings(doc: Doc, today: string): DocumentWarning[] {
   const out: DocumentWarning[] = [];
   for (const person of doc.travelers) {
@@ -59,6 +61,7 @@ export function documentWarnings(doc: Doc, today: string): DocumentWarning[] {
     };
     check('passport', person.passportUntil);
     check('id_card', person.idCardUntil);
+    check('ekuz', person.ekuzUntil);
   }
   return out;
 }
