@@ -6,6 +6,8 @@ import { createContext, Fragment, type ReactNode, startTransition, useActionStat
 
 import type { FormState } from "@/app/actions";
 import { PlacePin } from "@/components/place-pin";
+import { DialogTitle } from "@/components/dialog-title";
+import { LinkedText } from "@/components/linked-text";
 import { IconAction } from "@/components/icon-action";
 import { bookingAnchor, contactAnchor } from "@/lib/booking-link";
 import { itemFromTasksHash, taskItemRefs } from "@/lib/task-link";
@@ -534,6 +536,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
   const formBox = useRef<HTMLElement>(null);
   const [adding, setAdding] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
+  const [viewing, setViewing] = useState<string | null>(null);
   // Wejście z planu (`#zadania-punktu-…`): zadania tego punktu podświetlone, zamknięte rozwinięte, pierwsze przewinięte.
   const [focusItem, setFocusItem] = useState<string | null>(null);
   const action = useAction();
@@ -554,13 +557,20 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
     if (focusItem !== null) document.querySelector("[data-task-focus]")?.scrollIntoView({ block: "center" });
   }, [focusItem, showClosed]);
   const checkColumn = canEdit || checkable.length > 0;
-  const span = 5 + (checkColumn ? 1 : 0) + (canEdit ? 1 : 0);
+  const span = 6 + (checkColumn ? 1 : 0);
   // Otwarta karta formularza (nowe zadanie albo edycja) jest nad listą: przewinięcie do niej.
   useEffect(() => {
     if (adding || editing !== null) formBox.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [adding, editing]);
   const edited = editing === null ? undefined : tasks.find((task) => task.ref === editing);
+  const viewed = viewing === null ? undefined : tasks.find((task) => task.ref === viewing);
   const buttons = (task: Task) => (
+    <>
+      <IconAction kind="view" onClick={() => setViewing(task.ref)} />
+      {canEdit && editButtons(task)}
+    </>
+  );
+  const editButtons = (task: Task) => (
     <>
       <IconAction
         kind="edit"
@@ -601,7 +611,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
             {/* Na telefonie rodzaj, termin, osoby i działania pod nazwą: tyle kolumn się nie mieści. */}
             {overdue && <span className="block text-xs font-semibold text-red-700 dark:text-red-400">po terminie</span>}
             <span className="block text-xs text-zinc-500 sm:hidden">{[TASK_KIND[task.kind], due, remind ? `🔔 ${remind}` : "", who].filter(Boolean).join(" · ")}</span>
-            {canEdit && <span className="mt-1 flex gap-1 sm:hidden">{buttons(task)}</span>}
+            <span className="mt-1 flex gap-1 sm:hidden">{buttons(task)}</span>
           </td>
           <td className="hidden py-1 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{TASK_KIND[task.kind]}</td>
           <td className={`hidden py-1 pr-3 align-top sm:table-cell ${overdue ? "text-red-700 dark:text-red-400" : "text-zinc-500"}`}>{due}</td>
@@ -609,11 +619,9 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
             {remind && `🔔 ${remind}`}
           </td>
           <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{who}</td>
-          {canEdit && (
-            <td className="hidden py-1 pl-2 align-top sm:table-cell">
-              <div className="flex items-center justify-end gap-1 whitespace-nowrap">{buttons(task)}</div>
-            </td>
-          )}
+          <td className="hidden py-1 pl-2 align-top sm:table-cell">
+            <div className="flex items-center justify-end gap-1 whitespace-nowrap">{buttons(task)}</div>
+          </td>
         </tr>
         {/* Opis i odpowiedź na całą szerokość tabeli, żeby nie ściskały kolumny z nazwą. */}
         {(task.body || task.answer) && (
@@ -638,7 +646,7 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
           <th className="hidden py-1 font-normal sm:table-cell">Termin</th>
           <th className="hidden py-1 font-normal sm:table-cell">Przypomnienie</th>
           <th className="hidden py-1 font-normal sm:table-cell">Kto</th>
-          {canEdit && <th className="hidden py-1 sm:table-cell" />}
+          <th className="hidden py-1 sm:table-cell" />
         </tr>
       </thead>
       <tbody>{rows.map(row)}</tbody>
@@ -687,7 +695,55 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
           {table(closed)}
         </section>
       )}
+      {viewed !== undefined && <TaskPreview key={viewed.ref} tripId={tripId} task={viewed} columns={columns[viewed.ref]} choices={choices} onClose={() => setViewing(null)} />}
     </>
+  );
+}
+
+const TASK_STATUS: Record<Task["status"], string> = { open: "otwarte", done: "zrobione", dropped: "porzucone" };
+const TASK_PRIORITY: Record<NonNullable<Task["priority"]>, string> = { high: "pilne", normal: "zwykłe", low: "kiedyś" };
+
+/** Podgląd zadania: tylko wypełnione pola formularza, bez edycji. */
+function TaskPreview({ tripId, task, columns, choices, onClose }: { tripId: string; task: Task; columns?: TaskColumns; choices: Choices; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+  const item = task.itemRef === undefined ? undefined : choices.items.find((each) => each.ref === task.itemRef);
+  const booking = task.bookingRef === undefined ? undefined : choices.bookings.find((each) => each.ref === task.bookingRef);
+  const group = task.variantGroupRef === undefined ? undefined : choices.groups.find((each) => each.ref === task.variantGroupRef);
+  const leave = () => dialog.current?.close();
+  const rows = (
+    [
+      ["Rodzaj", TASK_KIND[task.kind]],
+      task.status !== "open" ? ["Stan", TASK_STATUS[task.status]] : null,
+      task.priority !== undefined && task.priority !== "normal" ? ["Priorytet", TASK_PRIORITY[task.priority]] : null,
+      columns?.due ? ["Termin", <span key="due" className={columns.overdue ? "msg-error" : undefined}>{columns.due}{columns.overdue ? " · po terminie" : ""}</span>] : null,
+      columns?.remind ? ["Przypomnienie", <span key="remind" className={columns.remindPassed ? "msg-error" : undefined}>🔔 {columns.remind}{columns.remindPassed ? " · minęło" : ""}</span>] : null,
+      columns?.who ? ["Kto", columns.who] : null,
+      task.body ? ["Opis", <span key="body" className="whitespace-pre-line"><LinkedText text={task.body} /></span>] : null,
+      task.answer ? ["Odpowiedź", <span key="answer" className="whitespace-pre-line msg-ok"><LinkedText text={task.answer} /></span>] : null,
+      booking ? ["Rezerwacja", <Link key="booking" href={`/trips/${tripId}/logistics#${encodeURIComponent(bookingAnchor(booking.ref))}`} onClick={leave} className="btn-mini">{booking.title}</Link>] : null,
+      item ? ["Punkt planu", <Link key="item" href={`/trips/${tripId}/item/${encodeURIComponent(item.ref)}`} onClick={leave} className="btn-mini">{item.label}</Link>] : null,
+      group ? ["Wybór w planie", group.title] : null,
+    ] as ([string, ReactNode] | null)[]
+  ).filter((row): row is [string, ReactNode] => row !== null);
+  return (
+    <dialog ref={dialog} onClose={onClose} onClick={(event) => event.target === dialog.current && dialog.current.close()} aria-label={`Zadanie: ${task.title}`} className="card dialog">
+      <div className="flex flex-col gap-3 text-sm">
+        <DialogTitle onClose={() => dialog.current?.close()}>
+          <h2>{task.title}</h2>
+        </DialogTitle>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+          {rows.map(([name, value]) => (
+            <Fragment key={name}>
+              <dt className="text-zinc-500">{name}</dt>
+              <dd className="min-w-0 break-words">{value}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      </div>
+    </dialog>
   );
 }
 

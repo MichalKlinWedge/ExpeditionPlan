@@ -1,13 +1,14 @@
 import type { ButtonHTMLAttributes } from "react";
 
-import { ArrowDownIcon, ArrowUpIcon, CloseIcon, PencilIcon, SelectIcon, TrashIcon } from "@/components/icons";
+import { ArrowDownIcon, ArrowUpIcon, CloseIcon, EyeIcon, PencilIcon, SelectIcon, TrashIcon } from "@/components/icons";
 
 /**
- * Działanie przy wierszu jako sama ikona z dymkiem (`title`, też `aria-label`): ołówek = edycja,
+ * Działanie przy wierszu jako sama ikona z dymkiem (`title`, też `aria-label`): oko = podgląd, ołówek = edycja,
  * kosz = usuwanie, strzałki wyboru = zmiana, krzyżyk = zamknięcie otwartej edycji. Wygląd `btn-mini`.
  */
 
 const KIND = {
+  view: { Icon: EyeIcon, tip: "podgląd" },
   edit: { Icon: PencilIcon, tip: "edycja" },
   remove: { Icon: TrashIcon, tip: "usuwanie" },
   change: { Icon: SelectIcon, tip: "zmiana" },
