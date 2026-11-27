@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import type { TripDocument } from "@expeditionplan/core";
-import { dbLoadError, type PullPayload, stateFromPayload } from "@expeditionplan/sync";
+import { type PlannerTaskStatus, suggestedForPlanner, type TripDocument } from "@expeditionplan/core";
+import { dbLoadError, type PullPayload, refIndex, stateFromPayload } from "@expeditionplan/sync";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -10,7 +10,9 @@ import { TaskList } from "@/components/logistics-editors";
 import { Loading, Shell } from "@/components/shell";
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
-import { checkableTasks, planChoices, taskColumns } from "@/lib/tasks";
+import { checkableTasks, myTravelerRefs, planChoices, taskColumns } from "@/lib/tasks";
+import { type PlannerRow, TaskPlannerSend } from "@/components/taskplanner-send";
+import { plannerConfig } from "@/lib/taskplanner";
 
 export const metadata: Metadata = { title: "Zadania — Expedition Planner" };
 
@@ -33,7 +35,7 @@ export default function TasksPage(props: PageProps<"/trips/[id]/tasks">) {
 async function Tasks({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const wantsEdit = await editMode();
-  const { supabase, userId } = await requireUser(`/trips/${id}/tasks`);
+  const { supabase, userId, email } = await requireUser(`/trips/${id}/tasks`);
   const [{ data, error }, membership] = await Promise.all([
     supabase.rpc("pull_changes", { p_trip: id, p_since: 0 }),
     supabase.from("my_trips").select("role").eq("id", id).maybeSingle(),
@@ -50,6 +52,22 @@ async function Tasks({ params }: { params: Promise<{ id: string }> }) {
   const mayEdit = membership.data?.role === "owner" || membership.data?.role === "editor";
   const canEdit = mayEdit && wantsEdit;
   const checkable = mayEdit ? doc.tasks.map((task) => task.ref) : checkableTasks(doc, payload.tables.travelers ?? [], userId);
+  const planner = mayEdit && doc.tasks.length > 0 ? plannerConfig(email) : { off: null };
+  let plannerRows: PlannerRow[] = [];
+  if ("config" in planner) {
+    const exports = await supabase.from("task_exports").select("task_id, tp_url, tp_status, tp_deleted, sent_at").eq("trip_id", id);
+    const ids = refIndex(payload.tables);
+    const byId = new Map((exports.data ?? []).map((row) => [row.task_id, row]));
+    plannerRows = doc.tasks.map((task) => {
+      const row = ids[task.ref] === undefined ? undefined : byId.get(ids[task.ref]!);
+      return {
+        ref: task.ref,
+        title: task.title,
+        status: task.status,
+        ...(row && { export: { tpUrl: row.tp_url, tpStatus: row.tp_status as PlannerTaskStatus | null, tpDeleted: row.tp_deleted, sentAt: row.sent_at } }),
+      };
+    });
+  }
 
   return (
     <>
@@ -69,6 +87,9 @@ async function Tasks({ params }: { params: Promise<{ id: string }> }) {
           </>
         }
       />
+
+      {"config" in planner && <TaskPlannerSend tripId={id} rows={plannerRows} suggested={suggestedForPlanner(doc, myTravelerRefs(payload.tables.travelers ?? [], userId))} />}
+      {"off" in planner && planner.off !== null && <p className="text-xs msg-error">{planner.off}</p>}
     </>
   );
 }

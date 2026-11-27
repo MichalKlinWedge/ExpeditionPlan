@@ -1009,6 +1009,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"task_exports": {
+                  Row: {
+                    "sent_at": string,"task_id": string,"tp_deleted": boolean,"tp_event_at": string | null,"tp_status": string | null,"tp_task_id": string,"tp_url": string | null,"trip_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "sent_at"?: string,"task_id": string,"tp_deleted"?: boolean,"tp_event_at"?: string | null,"tp_status"?: string | null,"tp_task_id": string,"tp_url"?: string | null,"trip_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "sent_at"?: string,"task_id"?: string,"tp_deleted"?: boolean,"tp_event_at"?: string | null,"tp_status"?: string | null,"tp_task_id"?: string,"tp_url"?: string | null,"trip_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "task_exports_task_id_fkey"
+      columns: ["task_id"]
+isOneToOne: true
+      referencedRelation: "tasks"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "task_exports_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "my_trips"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "task_exports_trip_id_fkey"
+      columns: ["trip_id"]
+isOneToOne: false
+      referencedRelation: "trips"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"tasks": {
                   Row: {
                     "answer": string | null,"assignee_ids": (string)[],"body": string | null,"booking_id": string | null,"budget_line_id": string | null,"created_at": string,"deadline": string | null,"deleted_at": string | null,"due": Json | null,"id": string,"item_id": string | null,"kind": string,"priority": string | null,"ref": string | null,"remind_at": Json | null,"row_version": number,"sort_key": string | null,"source": string,"status": string,"title": string,"trip_id": string,"updated_at": string,"updated_by": string | null,"variant_group_id": string | null
@@ -1594,6 +1626,9 @@ isOneToOne: false
                            },
 "synced_tables":
 { Args: Record<PropertyKey, never>; Returns: (string)[]
+                           },
+"taskplanner_webhook":
+{ Args: { "p_body": string,"p_signature": string,"p_timestamp": string }; Returns: string
                            },
 "token_digest":
 { Args: { "p_token": string }; Returns: string

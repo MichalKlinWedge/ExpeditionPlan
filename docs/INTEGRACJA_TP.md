@@ -113,7 +113,8 @@ Treść: `{ "error": "<komunikat po polsku>", "details"?: [...] }`.
 ## TP → EP: webhook
 
 Konfiguracja w TP: Ustawienia → „Integracje” → połączenie **Webhook** na adres
-`https://expedition-plan.vercel.app/api/taskplanner` z sekretem `TASKPLANNER_WEBHOOK_SECRET` oraz reguła zdarzeniowa:
+`https://expedition-plan.vercel.app/api/taskplanner` z sekretem zapisanym też w Vault bazy EP (niżej) oraz reguła
+zdarzeniowa:
 
 - zdarzenia `task.completed`, `task.reopened`, `task.deleted`, `task.restored`,
 - filtr: lista docelowa tokenu,
@@ -146,17 +147,16 @@ Treść = `PluginPayload` TP z jednym dodatkiem: **`task.source`** (obiekt `sour
 }
 ```
 
-EP przy odbiorze:
+EP przy odbiorze (trasa `apps/web/src/app/api/taskplanner/route.ts` przekazuje surową treść i nagłówki do RPC
+`taskplanner_webhook`, migracja `*_taskplanner_exports.sql`; klucz serwisowy nie jest potrzebny):
 
-1. Sprawdza podpis na **surowej** treści (porównanie w stałym czasie) i znacznik czasu w oknie ±5 min.
-2. Pomija powtórzony `Idempotency-Key`.
-3. Szuka zadania po `task.source` (`kind = expeditionplan`), a bez niego po `task.id` w `task_exports`.
-4. Zdarzenia:
-   - `task.completed` → `done`,
-   - `task.reopened`, `task.restored` → `open` (tylko gdy w EP jest `done`; `dropped` zostaje),
-   - `task.deleted` → tylko oznaczenie w `task_exports`, status w EP bez zmian.
-
-   Status w EP nie zmienia się, gdy już jest docelowy.
+1. Sprawdza podpis na **surowej** treści sekretem z Vault (`taskplanner_webhook_secret`) i znacznik czasu w oknie ±5 min.
+2. Szuka zadania po `task.id` w `task_exports` (zapisanym przy wysyłce); `task.source` jest tylko informacyjne.
+3. Zdarzenia:
+   - `task.completed` przy statusie TP `done` → `done`,
+   - `task.reopened`, `task.restored` przy otwartym statusie TP → `open` (tylko gdy w EP jest `done`; `dropped` zostaje),
+   - `task.deleted` → tylko `task_exports.tp_deleted`, status w EP bez zmian.
+4. Idempotentnie po stanie: status już docelowy = nic. `Idempotency-Key` nie jest zapamiętywany.
 
 Odpowiedzi EP (zgodne z regułami ponowień TP):
 
@@ -165,7 +165,16 @@ Odpowiedzi EP (zgodne z regułami ponowień TP):
 | 204 | przyjęte, także nieznane zadanie, powtórka albo brak zmiany | wysłane |
 | 400 | znacznik czasu poza oknem albo zła treść | `failed`, bez ponowień |
 | 401 | zły podpis (niezgodny sekret) | połączenie wyłączone, komunikat w Ustawieniach TP |
-| 5xx | błąd bazy EP | ponowienia 1 min … 12 h |
+| 413 | treść > 256 KB | `failed` |
+| 503 | brak sekretu w Vault EP | ponowienia 1 min … 12 h |
+| 500 | błąd bazy EP | ponowienia |
+
+Sekret w bazie EP (raz, w SQL Editorze projektu w chmurze; ta sama wartość co w połączeniu Webhook w TP):
+
+```sql
+select vault.create_secret('<sekret>', 'taskplanner_webhook_secret');
+-- zmiana: select vault.update_secret((select id from vault.secrets where name = 'taskplanner_webhook_secret'), '<nowy>');
+```
 
 ## Mapowanie zadania EP → TP
 
@@ -181,12 +190,19 @@ Odpowiedzi EP (zgodne z regułami ponowień TP):
 | `kind`: `question` / `decision` | tag `pytanie` / `decyzja` |
 | — | tagi `wyjazd` i tytuł wyjazdu bez prefiksu |
 
-Wysyłane są zadania przypisane do konta EP z `TASKPLANNER_EMAIL` (jego uczestnika) albo bez osoby.
+Domyślnie zaznaczone (`suggestedForPlanner`) są otwarte zadania bez osoby albo przypisane do mnie (moi uczestnicy
+i dzieci pod opieką), jeszcze niewysłane; wysłać można dowolne.
+
+Kod: `packages/core/src/taskplanner.ts` (`plannerKey`, `plannerTask`, schematy `PlannerTaskInput` / `PlannerTaskResult`),
+`apps/web/src/lib/taskplanner.ts` (klient, jedno ponowienie po 429), `app/taskplanner-actions.ts` (`sendTasksToPlanner`
+→ `task_exports`), karta `components/taskplanner-send.tsx` na stronie zadań (zwijana, bez „Edytuj”, bo nie zmienia
+planu; wiersze mają kotwice `#zadanie-<ref>` dla linku z TP).
 
 ## Konfiguracja
 
 EP, zmienne serwera (bez `NEXT_PUBLIC_`, przez `scripts/sync-env.mjs`, także na Vercelu): `TASKPLANNER_API_URL`,
-`TASKPLANNER_TOKEN`, `TASKPLANNER_WEBHOOK_SECRET`, `TASKPLANNER_EMAIL`.
+`TASKPLANNER_TOKEN`, `TASKPLANNER_EMAILS` (konta EP, które widzą kartę i wysyłają; po przecinku). Sekret webhooka:
+Vault bazy EP (wyżej).
 
 TP: token z Ustawień → „Integracje” → „Token API” (z listą docelową), połączenie Webhook i reguła jak wyżej.
 

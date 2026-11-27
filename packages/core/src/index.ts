@@ -72,6 +72,7 @@ export * from './memory-timeline.ts';
 export * from './trip-map.ts';
 export * from './trip-readiness.ts';
 export * from './task-due.ts';
+export * from './taskplanner.ts';
 export * from './travel-documents.ts';
 export * from './traveler-age.ts';
 export * from './gear.ts';

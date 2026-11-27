@@ -113,11 +113,16 @@ type TravelerRow = { id: string; ref?: unknown; user_id?: unknown; guardian_id?:
  * jego opieką — jak RLS `tasks_update` (`is_my_traveler`). Organizator i edytor odhaczają wszystkie.
  */
 export function checkableTasks(doc: Doc, travelers: readonly TravelerRow[], userId: string): string[] {
+  const mine = myTravelerRefs(travelers, userId);
+  return doc.tasks.filter((task) => task.assigneeRefs.some((ref) => mine.has(ref))).map((task) => task.ref);
+}
+
+/** Refy uczestników z moim kontem i dzieci pod moją opieką. */
+export function myTravelerRefs(travelers: readonly TravelerRow[], userId: string): Set<string> {
   const byId = new Map(travelers.map((row) => [row.id, row]));
   // Uczestnik dodany w aplikacji nie ma kolumny `ref` — w dokumencie jest nim „id-<id wiersza>”.
   const refOf = (row: TravelerRow) => (typeof row.ref === "string" ? row.ref : `id-${row.id}`);
-  const mine = new Set(
+  return new Set(
     travelers.filter((row) => row.user_id === userId || (typeof row.guardian_id === "string" && byId.get(row.guardian_id)?.user_id === userId)).map(refOf),
   );
-  return doc.tasks.filter((task) => task.assigneeRefs.some((ref) => mine.has(ref))).map((task) => task.ref);
 }
