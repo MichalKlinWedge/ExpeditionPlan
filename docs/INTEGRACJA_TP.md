@@ -1,6 +1,7 @@
 # Integracja z Task Plannerem — kontrakt API
 
-Stan: wersja 1 (27.11.2026), do potwierdzenia przez stronę Task Plannera (`D:\AI\PRIV\PRACA\Tasks`).
+Stan: wersja 1.1 (27.11.2026), zaimplementowana po obu stronach (Task Planner: `D:\AI\PRIV\PRACA\Tasks`, Edge Function
+`inbound-api`). TP przyjmuje więcej niż EP wysyła (statusy `in_progress` / `waiting`, opis do 20 000 znaków).
 
 ## Cel i przepływ
 
@@ -71,7 +72,10 @@ Semantyka pól:
 - **Scalanie trójstronne:** TP pamięta rzut ostatniej przyjętej wysyłki (`pushed`). Pole nadpisuje tylko wtedy, gdy
   wartość w TP nadal równa się `pushed`, czyli użytkownik nie zmienił jej w TP. Zmienione w TP zostaje (`kept`).
   Przykład: EP wysłał `todo`, użytkownik dał w TP `in_progress`, EP znów wysyła `todo` → status zostaje
-  `in_progress`. EP wysyła `done` → TP ustawia `done`, bo to zmiana po stronie EP.
+  `in_progress`.
+- **Wyjątek dla statusu (uzgodnione z TP 27.11.2026):** `done` albo `cancelled` z EP zamyka zadanie, które w TP jest
+  otwarte (`todo` / `in_progress` / `waiting`), nawet jeśli status zmieniono w TP. Zadania zamkniętego w TP EP nie
+  zmienia. Przykład: w TP `in_progress`, EP wysyła `done` → `done`.
 - **Tagi:** scalanie dotyczy tylko tagów, które przyszły z EP. Tagów dodanych przez użytkownika w TP EP nigdy nie zdejmuje.
 - **Zadanie w koszu TP** nie jest zmieniane ani przywracane; odpowiedź ma `deleted: true`.
 - Zmiana z API idzie w TP z `origin = 'integration'`.
@@ -106,6 +110,7 @@ Treść: `{ "error": "<komunikat po polsku>", "details"?: [...] }`.
 | 401 | brak, zły albo odwołany token | „Połącz z Task Plannerem od nowa” |
 | 403 | konto tokenu straciło prawo edycji listy docelowej | komunikat |
 | 404 | `GET` nieznanego klucza | traktuje jako niewysłane |
+| 410 | zadanie z tym kluczem usunięto w TP na stałe; TP nie zakłada go od nowa | `task_exports.tp_deleted = true`, „usunięte w TP”, bez ponowień |
 | 413 | treść > 64 KB | — |
 | 429 | limit zapytań (≥ 60 na minutę na token); nagłówek `Retry-After` w sekundach | czeka i ponawia |
 | 5xx | błąd TP | ponawia później |
@@ -118,7 +123,8 @@ zdarzeniowa:
 
 - zdarzenia `task.completed`, `task.reopened`, `task.deleted`, `task.restored`,
 - filtr: lista docelowa tokenu,
-- **„Także zadania z integracji” włączone**, bo zadania z EP są w TP zadaniami z integracji.
+- „Także zadania z integracji” nie jest potrzebne: dotyczy zmian zrobionych przez integrację, a zamknięcie zadania przez użytkownika w TP nią nie jest.
+  Gdy jest włączone, status wysłany przez EP wraca echem, a EP go pomija (stan już docelowy).
 
 Nagłówki (plugin Webhook TP, `_shared/plugins/webhook.ts`):
 

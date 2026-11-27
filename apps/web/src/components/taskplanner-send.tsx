@@ -56,7 +56,7 @@ export function TaskPlannerSend({ tripId, rows, suggested }: { tripId: string; r
             {EP_STATUS[row.status] && <span className="text-xs text-zinc-500">{EP_STATUS[row.status]}</span>}
             {row.export && (
               <span className="text-xs text-zinc-500">
-                · {row.export.tpDeleted ? "w koszu TP" : `w TP: ${row.export.tpStatus ? PLANNER_STATUS_LABEL[row.export.tpStatus] : "wysłane"}`} ({shortDate(row.export.sentAt.slice(0, 10))})
+                · {row.export.tpDeleted ? "usunięte w TP" : `w TP: ${row.export.tpStatus ? PLANNER_STATUS_LABEL[row.export.tpStatus] : "wysłane"}`} ({shortDate(row.export.sentAt.slice(0, 10))})
                 {row.export.tpUrl && (
                   <>
                     {" "}

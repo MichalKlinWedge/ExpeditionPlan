@@ -35,6 +35,7 @@ export async function sendTasksToPlanner(tripId: string, refs: string[]): Promis
   let created = 0;
   let updated = 0;
   let kept = 0;
+  let gone = 0;
   const failed: string[] = [];
   for (const task of tasks) {
     try {
@@ -57,6 +58,12 @@ export async function sendTasksToPlanner(tripId: string, refs: string[]): Promis
       if (result.kept.length > 0) kept += 1;
     } catch (e) {
       if (e instanceof PlannerError && (e.status === 401 || e.status === 403)) return { error: e.message };
+      // 410: usunięte w TP na stałe — TP nie zakłada go od nowa; EP tylko to odnotowuje.
+      if (e instanceof PlannerError && e.status === 410) {
+        await supabase.from("task_exports").update({ tp_deleted: true }).eq("task_id", ids[task.ref]!);
+        gone += 1;
+        continue;
+      }
       failed.push(`„${task.title}”: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
@@ -65,6 +72,7 @@ export async function sendTasksToPlanner(tripId: string, refs: string[]): Promis
     created > 0 ? `nowe w Task Plannerze: ${created}` : undefined,
     updated > 0 ? `zaktualizowane: ${updated}` : undefined,
     kept > 0 ? `${plural(kept, ["zadanie ma", "zadania mają", "zadań ma"])} w TP własne zmiany, których nie nadpisano` : undefined,
+    gone > 0 ? `${plural(gone, ["zadanie usunięto", "zadania usunięto", "zadań usunięto"])} w TP na stałe — pominięte` : undefined,
   ].filter(Boolean);
   if (failed.length > 0) return { error: [done.length > 0 ? `${capitalized(done.join(", "))}.` : "", `Nie wysłano: ${failed.join("; ")}.`].filter(Boolean).join(" ") };
   return { ok: `${capitalized(done.join(", "))}.` };
