@@ -1,4 +1,4 @@
-import { localToday, taskOverdue } from '@expeditionplan/core';
+import { localToday, taskDueDate, taskOverdue } from '@expeditionplan/core';
 import { type CachedTrip, setTaskDone } from '@expeditionplan/sync';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -44,12 +44,14 @@ function dueText(task: Task, doc: CachedTrip['state']['doc']): string {
   const due = task.due;
   if (due === undefined) return '';
   if (due.kind === 'absolute') return `do ${due.date}`;
-  if (due.kind === 'before_trip') return due.days === 0 ? 'w dniu wyjazdu' : `${due.days} dni przed wyjazdem`;
   if (due.kind === 'on_trip') {
     const day = due.dayRef === undefined ? undefined : doc.days.find((each) => each.ref === due.dayRef);
     return ['w trakcie', day ? `${day.date.slice(8)}.${day.date.slice(5, 7)}` : '', due.time ?? ''].filter(Boolean).join(' ');
   }
-  return 'przed terminem w planie';
+  // Termin względny z wyliczoną datą: „3 dni przed wyjazdem (12.12)”.
+  const text = due.kind === 'before_trip' ? (due.days === 0 ? 'w dniu wyjazdu' : `${due.days} dni przed wyjazdem`) : 'przed terminem w planie';
+  const date = taskDueDate(doc, task);
+  return date === undefined ? text : `${text} (${date.slice(8)}.${date.slice(5, 7)})`;
 }
 
 export function TasksView({ trip, tripId, signedIn, userId, canAct, onChanged }: Props) {

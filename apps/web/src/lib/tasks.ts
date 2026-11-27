@@ -1,4 +1,4 @@
-import { shortDate, taskOverdue, taskReminderPassed } from "@expeditionplan/core";
+import { shortDate, taskDueDate, taskOverdue, taskReminderPassed } from "@expeditionplan/core";
 import type { TripDocument } from "@expeditionplan/core";
 
 import type { Choices, TaskColumns } from "@/components/logistics-editors";
@@ -12,7 +12,16 @@ type Doc = TripDocument;
 type Task = Doc["tasks"][number];
 
 
+/** Termin względny (przed wyjazdem, punktem, rezerwacją) z wyliczoną datą: „3 dni przed wyjazdem (12 gru)”. */
 function due(task: Task, doc: Doc): string | null {
+  const text = dueText(task, doc);
+  const kind = task.due?.kind;
+  if (text === null || kind === "absolute" || kind === "on_trip") return text;
+  const date = taskDueDate(doc, task);
+  return date === undefined ? text : `${text} (${shortDate(date)})`;
+}
+
+function dueText(task: Task, doc: Doc): string | null {
   const d = task.due;
   if (!d) return null;
   switch (d.kind) {
