@@ -521,8 +521,8 @@ export function TaskForm({ tripId, task, choices, onDone, itemRef }: { tripId: s
   );
 }
 /** Kolumny wiersza zadania, liczone na stronie, bo potrzebują całego planu. */
-/** `overdue` — otwarte zadanie po terminie albo po ostatecznym terminie wykonania (`taskOverdue`). */
-export type TaskColumns = { due: string; overdue: boolean; remind: string; who: string };
+/** `overdue` — otwarte zadanie po terminie albo po ostatecznym terminie wykonania (`taskOverdue`); `remindPassed` — otwarte zadanie, którego przypomnienie minęło. */
+export type TaskColumns = { due: string; overdue: boolean; remind: string; remindPassed: boolean; who: string };
 
 /** Tabela zadań, jak budżet i rezerwacje. `checkable` — zadania do odhaczenia także w podglądzie (organizator, edytor, widz przy swoich). */
 /**
@@ -573,9 +573,9 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
     </>
   );
   const row = (task: Task) => {
-    const { due, overdue, remind, who } = columns[task.ref] ?? { due: "", overdue: false, remind: "", who: "" };
+    const { due, overdue, remind, remindPassed, who } = columns[task.ref] ?? { due: "", overdue: false, remind: "", remindPassed: false, who: "" };
     const muted = task.status !== "open" ? "text-zinc-400 line-through" : overdue ? "text-red-700 dark:text-red-400" : "";
-    const lit = focused(task) || editing === task.ref ? "bg-signal/10" : overdue ? "bg-red-50 dark:bg-red-950/30" : "";
+    const lit = focused(task) || editing === task.ref ? "bg-signal/10" : overdue || remindPassed ? "bg-red-50 dark:bg-red-950/30" : "";
     return (
       <Fragment key={task.ref}>
         <tr data-task-focus={focused(task) ? "" : undefined} className={`border-t border-zinc-100 dark:border-zinc-900 ${lit}`}>
@@ -605,7 +605,9 @@ export function TaskList({ tripId, tasks, columns, choices, canEdit, checkable =
           </td>
           <td className="hidden py-1 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{TASK_KIND[task.kind]}</td>
           <td className={`hidden py-1 pr-3 align-top sm:table-cell ${overdue ? "text-red-700 dark:text-red-400" : "text-zinc-500"}`}>{due}</td>
-          <td className="hidden py-1 pr-3 align-top whitespace-nowrap text-zinc-500 sm:table-cell">{remind && `🔔 ${remind}`}</td>
+          <td className={`hidden py-1 pr-3 align-top whitespace-nowrap sm:table-cell ${remindPassed ? "font-semibold text-red-700 dark:text-red-400" : "text-zinc-500"}`} title={remindPassed ? "przypomnienie minęło" : undefined}>
+            {remind && `🔔 ${remind}`}
+          </td>
           <td className="hidden py-1 pr-3 align-top text-zinc-500 sm:table-cell">{who}</td>
           {canEdit && (
             <td className="hidden py-1 pl-2 align-top sm:table-cell">

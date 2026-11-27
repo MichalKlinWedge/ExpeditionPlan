@@ -12,6 +12,19 @@ import type { TripDocument } from './schemas/trip-document.ts';
 type Doc = TripDocument;
 export type Reminder = { key: string; title: string; body: string; at: number };
 
+/** Chwila własnego przypomnienia zadania: w strefie dnia wyjazdu z tą datą, inaczej domowej. */
+export function taskRemindInstant(doc: Doc, task: Doc['tasks'][number]): number | undefined {
+  if (task.remindAt === undefined) return undefined;
+  const { date, time } = task.remindAt;
+  return zonedToInstant(date, time, doc.days.find((day) => day.date === date)?.tz ?? doc.trip.homeTz);
+}
+
+/** Otwarte zadanie, którego własne przypomnienie już minęło. */
+export function taskReminderPassed(doc: Doc, task: Doc['tasks'][number], now: number): boolean {
+  const at = taskRemindInstant(doc, task);
+  return task.status === 'open' && at !== undefined && at <= now;
+}
+
 export function tripReminders(doc: Doc, now: number): Reminder[] {
   const home = doc.trip.homeTz;
   const days = new Map(doc.days.map((day) => [day.ref, day]));
@@ -30,9 +43,9 @@ export function tripReminders(doc: Doc, now: number): Reminder[] {
     const body = `${doc.trip.title}${task.body ? ` — ${task.body}` : ''}`;
     const key = `task:${task.ref}`;
     // Własne przypomnienie zastępuje domyślną godzinę z terminu: w strefie dnia wyjazdu z tą datą, inaczej domowej.
-    if (task.remindAt !== undefined) {
-      const { date, time } = task.remindAt;
-      add(key, title, body, date, time, doc.days.find((day) => day.date === date)?.tz ?? home);
+    const remindAt = taskRemindInstant(doc, task);
+    if (remindAt !== undefined) {
+      if (remindAt > now) out.push({ key, title, body, at: remindAt });
       continue;
     }
     if (task.due === undefined) continue;

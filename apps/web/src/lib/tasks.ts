@@ -1,4 +1,4 @@
-import { shortDate, taskOverdue } from "@expeditionplan/core";
+import { shortDate, taskOverdue, taskReminderPassed } from "@expeditionplan/core";
 import type { TripDocument } from "@expeditionplan/core";
 
 import type { Choices, TaskColumns } from "@/components/logistics-editors";
@@ -35,10 +35,12 @@ function due(task: Task, doc: Doc): string | null {
 
 /**
  * Termin, przypomnienie i osoby każdego zadania do kolumn tabeli („3 dni przed wyjazdem · najpóźniej 2 gru”,
- * „Ania, Tomek”) i czy jest po terminie — dzisiejsza data w strefie domowej wyjazdu (serwer liczy w UTC).
+ * „Ania, Tomek”), czy jest po terminie — dzisiejsza data w strefie domowej wyjazdu (serwer liczy w UTC) —
+ * i czy jego przypomnienie już minęło.
  */
 export function taskColumns(doc: Doc): Record<string, TaskColumns> {
-  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: doc.trip.homeTz }).format(new Date());
+  const now = Date.now();
+  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: doc.trip.homeTz }).format(now);
   return Object.fromEntries(
     doc.tasks.map((task) => [
       task.ref,
@@ -46,6 +48,7 @@ export function taskColumns(doc: Doc): Record<string, TaskColumns> {
         due: [due(task, doc), task.deadline ? `najpóźniej ${shortDate(task.deadline)}` : null].filter(Boolean).join(" · "),
         overdue: taskOverdue(doc, task, today),
         remind: task.remindAt ? `${shortDate(task.remindAt.date)} ${task.remindAt.time}` : "",
+        remindPassed: taskReminderPassed(doc, task, now),
         // Osoby, których nie ma już w planie, znikają z wiersza — nigdy surowe odwołanie.
         who: task.assigneeRefs
           .map((ref) => doc.travelers.find((each) => each.ref === ref)?.name ?? "")

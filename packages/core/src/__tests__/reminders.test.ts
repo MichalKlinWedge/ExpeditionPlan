@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { zonedToInstant } from '../engine/time.ts';
-import { dayAlerts, tripReminders } from '../reminders.ts';
+import { dayAlerts, taskReminderPassed, tripReminders } from '../reminders.ts';
 import { TripDocument } from '../schemas/trip-document.ts';
 
 const maroko = TripDocument.parse(JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/plans/maroko/plan.json', import.meta.url)), 'utf8')));
@@ -48,6 +48,23 @@ describe('przypomnienia z planu', () => {
     expect(list.filter((each) => each.key === 'task:t-odprawa').map((each) => each.at)).toEqual([zonedToInstant(day.date, '18:30', day.tz)]);
     expect(list.find((each) => each.key === 'task:t-ubezp')!.at).toBe(zonedToInstant('2026-12-01', '20:15', doc.trip.homeTz));
     expect(list.map((each) => each.key)).not.toContain('task:t-gotowe');
+  });
+
+  it('minione przypomnienie otwartego zadania', () => {
+    const doc = TripDocument.parse({
+      ...maroko,
+      tasks: [
+        ...maroko.tasks,
+        { ref: 't-a', kind: 'todo', title: 'A', status: 'open', remindAt: { date: '2026-11-27', time: '16:30' } },
+        { ref: 't-b', kind: 'todo', title: 'B', status: 'done', remindAt: { date: '2026-11-27', time: '16:30' } },
+        { ref: 't-c', kind: 'todo', title: 'C', status: 'open' },
+      ],
+    });
+    const [a, b, c] = doc.tasks.slice(-3);
+    expect(taskReminderPassed(doc, a!, zonedToInstant('2026-11-27', '16:29', doc.trip.homeTz))).toBe(false);
+    expect(taskReminderPassed(doc, a!, zonedToInstant('2026-11-27', '16:30', doc.trip.homeTz))).toBe(true);
+    expect(taskReminderPassed(doc, b!, zonedToInstant('2026-11-28', '12:00', doc.trip.homeTz))).toBe(false);
+    expect(taskReminderPassed(doc, c!, zonedToInstant('2026-11-28', '12:00', doc.trip.homeTz))).toBe(false);
   });
 
   it('po wyjeździe nic nie zostaje', () => {
