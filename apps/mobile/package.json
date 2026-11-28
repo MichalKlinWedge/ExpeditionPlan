@@ -62,7 +62,7 @@
     "android": "expo start --android",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "ota": "npx eas-cli@latest update --branch preview --environment preview --platform android",
+    "ota": "npx eas-cli@latest update --branch preview --environment preview --platform android --auto",
     "ota:friends": "npx eas-cli@latest update --branch friends --environment preview --platform android",
     "apk:friends": "npx eas-cli@latest build --platform android --profile friends"
   },
